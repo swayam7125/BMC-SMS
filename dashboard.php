@@ -43,7 +43,7 @@ if (!$role) {
 
         <!-- Sidebar -->
         <?php
-        include_once './includes/sidebar.php';
+        include './includes/sidebar/BMC_sidebar.php';
         // This file contains the sidebar HTML code
         ?>
         <!-- End of Sidebar -->
@@ -55,10 +55,8 @@ if (!$role) {
             <div id="content">
 
                 <!-- Topbar -->
-                <!-- Sidebar -->
                 <?php
-                include_once './includes/header.php';
-                // This file contains the sidebar HTML code
+                include './includes/header/BMC_header.php';
                 ?>
                 <!-- End of Topbar -->
 
@@ -397,10 +395,8 @@ if (!$role) {
             <!-- End of Main Content -->
 
             <!-- Footer -->
-            <!-- Sidebar -->
             <?php
-            include_once './includes/footer.php';
-            // This file contains the sidebar HTML code
+            include './includes/footer/BMC_footer.php';
             ?>
             <!-- End of Footer -->
 
