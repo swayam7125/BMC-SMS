@@ -48,7 +48,7 @@ $result = mysqli_query($conn, $query);
     <div id="wrapper">
 
         <!-- Sidebar -->
-        <?php include_once '../includes/sidebar.php'; ?>
+        <?php include_once '../includes/sidebar/BMC_sidebar.php'; ?>
         <!-- End of Sidebar -->
 
         <!-- Content Wrapper -->
@@ -58,7 +58,7 @@ $result = mysqli_query($conn, $query);
             <div id="content">
 
                 <!-- Topbar -->
-                <?php include_once '../includes/header.php'; ?>
+                <?php include_once '../includes/header/BMC_header.php'; ?>
                 <!-- End of Topbar -->
 
                 <!-- Begin Page Content -->
@@ -144,7 +144,7 @@ $result = mysqli_query($conn, $query);
             <!-- End of Main Content -->
 
             <!-- Footer -->
-            <?php include_once '../includes/footer.php'; ?>
+            <?php include_once '../includes/footer/BMC_footer.php'; ?>
             <!-- End of Footer -->
 
         </div>

@@ -159,7 +159,7 @@ mysqli_stmt_close($stmt);
     <div id="wrapper">
 
         <!-- Sidebar -->
-        <?php include_once '../../includes/sidebar.php'; ?>
+        <?php include_once '../../includes/sidebar/BMC_sidebar.php'; ?>
         <!-- End of Sidebar -->
 
         <!-- Content Wrapper -->
@@ -169,7 +169,7 @@ mysqli_stmt_close($stmt);
             <div id="content">
 
                 <!-- Topbar -->
-                <?php include_once '../../includes/header.php'; ?>
+                <?php include_once '../../includes/header/BMC_header.php'; ?>
                 <!-- End of Topbar -->
 
                 <!-- Begin Page Content -->
@@ -258,7 +258,7 @@ mysqli_stmt_close($stmt);
             <!-- End of Main Content -->
 
             <!-- Footer -->
-            <?php include_once '../../includes/footer.php'; ?>
+            <?php include_once '../../includes/footer/BMC_footer.php'; ?>
             <!-- End of Footer -->
 
         </div>
