@@ -1,7 +1,14 @@
 <?php
-include_once "connect.php";
+include_once "./includes/connect.php";
 include_once "encryption.php";
-
+// If already logged in (cookie exists), redirect to dashboard
+if (isset($_COOKIE['encrypted_user_id'])) {
+    $user_id = decrypt_id($_COOKIE['encrypted_user_id']);
+    if (!empty($user_id)) {
+        header("Location: index.php");
+        exit;
+    }
+}
 $error_message = '';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -22,10 +29,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             if ($result && mysqli_num_rows($result) > 0) {
                 $user = mysqli_fetch_assoc($result);
 
-                // In production use password_verify()
-                if ($password === $user["password"]) {
+                if ($password === $user["password"]) { // In production, use password_verify()
                     $encrypted_id = encrypt_id($user["id"]);
-                    setcookie("user_id_encrypted", $encrypted_id, time() + (86400 * 7), "/");
+                    $encrypted_role = encrypt_id($user["role"]); // still stored, but not asked during login
+
+                    // Session-like cookies
+                    setcookie("encrypted_user_id", $encrypted_id, 0, "/");
+                    setcookie("encrypted_user_role", $encrypted_role, 0, "/");
 
                     header("Location: index.php");
                     exit;
