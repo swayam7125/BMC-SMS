@@ -6,11 +6,12 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>Student Enrollment</title>
+    <title>School Enrollment</title>
     <!-- Custom fonts -->
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,700,900" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet"
+        crossorigin="anonymous">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 
@@ -48,9 +49,9 @@
                 }
                 ?>
                 <?php if (!empty($feedback_message)): ?>
-                    <div class="alert alert-<?php echo $feedback_type; ?>">
-                        <?php echo htmlspecialchars($feedback_message); ?>
-                    </div>
+                <div class="alert alert-<?php echo $feedback_type; ?>">
+                    <?php echo htmlspecialchars($feedback_message); ?>
+                </div>
                 <?php endif; ?>
                 <form method="post">
                     <div class="mb-3">
@@ -58,8 +59,8 @@
                         <input type="text" class="form-control" id="school_name" name="school_name" required>
                     </div>
                     <div class="mb-3">
-                        <label for="email_address" class="form-label">Email Address</label>
-                        <input type="email" class="form-control" id="email_address" name="email_address" required>
+                        <label for="email" class="form-label">Email Address</label>
+                        <input type="email" class="form-control" id="email" name="email" required>
                     </div>
                     <div class="mb-3">
                         <label for="phone" class="form-label">Phone</label>
@@ -70,12 +71,18 @@
                         <textarea class="form-control" id="address" name="address" rows="1" required></textarea>
                     </div>
                     <div class="form-check mb-3">
-                        <input type="checkbox" class="form-check-input" id="termsAgreement" name="termsAgreement" required>
-                        <label class="form-check-label" for="termsAgreement">I confirm that all information provided is accurate and complete</label>
+                        <input type="checkbox" class="form-check-input" id="termsAgreement" name="termsAgreement"
+                            required>
+                        <label class="form-check-label" for="termsAgreement">I confirm that all information provided is
+                            accurate and complete</label>
                     </div>
-                    <div class="d-flex justify-content-between">
-                        <button type="reset" class="btn btn-secondary">Reset Form</button>
-                        <button type="submit" name="submitBtn" class="btn btn-primary">Submit Enrollment</button>
+                    <div class="row gap-2 justify-content-between px-3">
+                        <div class="col-12 col-md-4">
+                            <button type="reset" class="btn btn-secondary w-100">Reset Form</button>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <button type="submit" name="submit" class="btn btn-primary w-100">Submit Enrollment</button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -87,18 +94,25 @@
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <?php
-    // ...existing code for PHP form handling...
-    if (isset($_POST['submitBtn'])) {
-        $school_no = $_POST['school_no'] ?? '';
-        $school_name = $_POST['school_name'] ?? '';
-        $email_address = $_POST['email_address'] ?? '';
-        $standard = $_POST['standard'] ?? '';
-        $principal_name = $_POST['principal_name'] ?? '';
-        $address = $_POST['address'] ?? '';
-        $phone = $_POST['phone'] ?? '';
+   include_once '../../includes/connect.php';
+    if (isset($_POST['submit'])) {
+        $school_name = $_POST['school_name'];
+        $email = $_POST['email'];
+        $phone = $_POST['phone'];
+        $address = $_POST['address'];
 
-        // ...existing code for DB insert...
+        $insert_query = "INSERT INTO school VALUES (NULL, '$school_name', '$email','$phone', '$address')";
+        $insert_result = mysqli_query($conn, $insert_query);
+
+        if ($insert_result) {
+            // if (headers_sent()) {
+            //     die("Headers already sent. Cannot redirect.");
+            // }
+            header("Location: ../../pages/school/school_list.php");
+            exit();
+        }
     }
     ?>
 </body>
+
 </html>

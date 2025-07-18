@@ -13,7 +13,7 @@
 
     <!-- Nav Item - Dashboard -->
     <li class="nav-item active">
-        <a class="nav-link" href="./dashboard.php">
+        <a class="nav-link" href="../../dashboard.php">
             <i class="fas fa-fw fa-tachometer-alt"></i>
             <span>Dashboard</span></a>
     </li>
@@ -28,7 +28,7 @@
 
     <!-- Nav Item - School Enrollment -->
     <li class="nav-item">
-        <a class="nav-link" href="./forms/school_enrollment.php">
+        <a class="nav-link" href="/BMC/includes/forms/school_enrollment.php">
             <i class="fas fa-fw fa-cog"></i>
             <span>School Enrollment</span>
         </a>
@@ -36,7 +36,7 @@
 
     <!-- Nav Item - Principal Enrollment -->
     <li class="nav-item">
-        <a class="nav-link" href="./forms/principal_enrollment.php">
+        <a class="nav-link" href="/BMC/includes/forms/principal_enrollment.php">
             <i class="fas fa-fw fa-wrench"></i>
             <span>Principal Enrollment</span>
         </a>
@@ -52,7 +52,7 @@
 
     <!-- Nav Item - List of School -->
     <li class="nav-item">
-        <a class="nav-link" href="./extra/tables.php">
+        <a class="nav-link" href="/BMC/pages/school/school_list.php">
             <i class="fas fa-fw fa-folder"></i>
             <span>List of School</span>
         </a>
@@ -60,21 +60,21 @@
 
     <!-- Nav Item - List of principal -->
     <li class="nav-item">
-        <a class="nav-link" href="#">
+        <a class="nav-link" href="../../pages/principal/principal_list.php">
             <i class="fas fa-fw fa-table"></i>
             <span>List of Principal</span></a>
     </li>
 
     <!-- Nav Item - List of teacher -->
     <li class="nav-item">
-        <a class="nav-link" href="charts.html">
-            <i class="fas fa-fw fa-chart-area"></i>
+        <a class="nav-link" href="#">
+            <i class=" fas fa-fw fa-chart-area"></i>
             <span>List of Teachers</span></a>
     </li>
 
     <!-- Nav Item - List of Student -->
     <li class="nav-item">
-        <a class="nav-link" href="charts.html">
+        <a class="nav-link" href="../../pages/student/student_list.php">
             <i class="fas fa-fw fa-chart-area"></i>
             <span>List of Student</span></a>
     </li>

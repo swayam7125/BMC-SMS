@@ -17,7 +17,7 @@ if (!$role) {
 
 // Check if ID is provided
 if (!isset($_GET['id']) || empty($_GET['id'])) {
-    header("Location: ../../extra/tables.php?error=Invalid ID provided");
+    header("Location: school_list.php?error=Invalid ID provided");
     exit;
 }
 
@@ -32,40 +32,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $phone = trim($_POST['phone']);
     $address = trim($_POST['address']);
     $principal_name = trim($_POST['principal_name']);
-    
+
     // Validation
     if (empty($school_name)) {
         $errors[] = "School name is required";
     }
-    
+
     if (empty($email)) {
         $errors[] = "Email is required";
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $errors[] = "Invalid email format";
     }
-    
+
     if (empty($phone)) {
         $errors[] = "Phone number is required";
     }
-    
+
     if (empty($address)) {
         $errors[] = "Address is required";
     }
-    
+
     // If no errors, update the database
     if (empty($errors)) {
         mysqli_autocommit($conn, false);
-        
+
         try {
             // Update school table
             $update_school = "UPDATE school SET school_name = ?, email = ?, phone = ?, address = ? WHERE id = ?";
             $stmt_school = mysqli_prepare($conn, $update_school);
             mysqli_stmt_bind_param($stmt_school, "ssssi", $school_name, $email, $phone, $address, $school_id);
-            
+
             if (!mysqli_stmt_execute($stmt_school)) {
                 throw new Exception("Error updating school record: " . mysqli_stmt_error($stmt_school));
             }
-            
+
             // Update or insert principal record
             if (!empty($principal_name)) {
                 // Check if principal record exists
@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 mysqli_stmt_bind_param($stmt_check, "i", $school_id);
                 mysqli_stmt_execute($stmt_check);
                 $result_check = mysqli_stmt_get_result($stmt_check);
-                
+
                 if (mysqli_num_rows($result_check) > 0) {
                     // Update existing principal
                     $update_principal = "UPDATE principal SET principal_name = ? WHERE school_id = ?";
@@ -86,11 +86,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmt_principal = mysqli_prepare($conn, $insert_principal);
                     mysqli_stmt_bind_param($stmt_principal, "is", $school_id, $principal_name);
                 }
-                
+
                 if (!mysqli_stmt_execute($stmt_principal)) {
                     throw new Exception("Error updating principal record: " . mysqli_stmt_error($stmt_principal));
                 }
-                
+
                 mysqli_stmt_close($stmt_check);
                 mysqli_stmt_close($stmt_principal);
             } else {
@@ -101,13 +101,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 mysqli_stmt_execute($stmt_delete);
                 mysqli_stmt_close($stmt_delete);
             }
-            
+
             mysqli_commit($conn);
             mysqli_stmt_close($stmt_school);
-            
-            header("Location: ../../extra/tables.php?success=School updated successfully");
+
+            header("Location: school_list.php?success=School updated successfully");
             exit;
-            
         } catch (Exception $e) {
             mysqli_rollback($conn);
             $errors[] = $e->getMessage();
@@ -126,7 +125,7 @@ mysqli_stmt_execute($stmt);
 $result = mysqli_stmt_get_result($stmt);
 
 if (mysqli_num_rows($result) === 0) {
-    header("Location: ../../extra/tables.php?error=School not found");
+    header("Location: school_list.php?error=School not found");
     exit;
 }
 
@@ -159,7 +158,7 @@ mysqli_stmt_close($stmt);
     <div id="wrapper">
 
         <!-- Sidebar -->
-        <?php include_once '../../includes/sidebar.php'; ?>
+        <?php include_once '../../includes/sidebar/BMC_sidebar.php'; ?>
         <!-- End of Sidebar -->
 
         <!-- Content Wrapper -->
@@ -169,7 +168,7 @@ mysqli_stmt_close($stmt);
             <div id="content">
 
                 <!-- Topbar -->
-                <?php include_once '../../includes/header.php'; ?>
+                <?php include_once '../../includes/header/BMC_header.php'; ?>
                 <!-- End of Topbar -->
 
                 <!-- Begin Page Content -->
@@ -178,8 +177,7 @@ mysqli_stmt_close($stmt);
                     <!-- Page Heading -->
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Edit School</h1>
-                        <a href="../../extra/tables.php"
-                            class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+                        <a href="school_list.php" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
                             <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Schools
                         </a>
                     </div>
@@ -241,7 +239,7 @@ mysqli_stmt_close($stmt);
                                             <button type="submit" class="btn btn-primary">
                                                 <i class="fas fa-save"></i> Update School
                                             </button>
-                                            <a href="../../extra/tables.php" class="btn btn-secondary">
+                                            <a href="school_list.php" class="btn btn-secondary">
                                                 <i class="fas fa-times"></i> Cancel
                                             </a>
                                         </div>
@@ -258,7 +256,7 @@ mysqli_stmt_close($stmt);
             <!-- End of Main Content -->
 
             <!-- Footer -->
-            <?php include_once '../../includes/footer.php'; ?>
+            <?php include_once '../../includes/footer/BMC_footer.php'; ?>
             <!-- End of Footer -->
 
         </div>

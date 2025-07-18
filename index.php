@@ -21,7 +21,7 @@ if (isset($_COOKIE['encrypted_user_role'])) {
 if ($role) {
     switch ($role) {
         case 'student':
-            header("Location: student-dashboard.php");
+            header("Location: dashboard.php");
             break;
         case 'teacher':
             header("Location: teacher-dashboard.php");
