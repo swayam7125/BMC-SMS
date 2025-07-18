@@ -60,7 +60,7 @@
                 <?php endif; ?>
                 <form method="post" enctype="multipart/form-data">
                     <fieldset class="mb-4">
-                        <legend class="fs-5 mb-3">School Information</legend>
+                        <legend class="fs-5 mt-3 mb-2">School Information</legend>
                         <div class="row g-3">
                             <div class="col-12">
                                 <label for="school_logo" class="form-label">School Logo</label>
@@ -90,7 +90,7 @@
                     </fieldset>
 
                     <fieldset class="mb-4">
-                        <legend class="fs-5 mb-3">Additional Details</legend>
+                        <legend class="fs-5 mt-3 mb-2">Additional Details</legend>
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label for="principal_name" class="form-label">Principal Name</label>
@@ -142,4 +142,5 @@
     }
     ?>
 </body>
+
 </html>

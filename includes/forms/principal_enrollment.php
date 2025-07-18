@@ -43,7 +43,7 @@
                 <?php endif; ?>
                 <form action="principal-enroll.php" method="post" enctype="multipart/form-data">
                     <fieldset class="mb-4">
-                        <legend class="fs-5 mb-3">Personal Information</legend>
+                        <legend class="fs-5 mt-3 mb-2">Personal Information</legend>
                         <div class="row g-3">
                             <div class="col-12">
                                 <label for="principal_image" class="form-label">Profile Photo</label>
@@ -86,7 +86,7 @@
                     </fieldset>
 
                     <fieldset class="mb-4">
-                        <legend class="fs-5 mb-3">Professional Information</legend>
+                        <legend class="fs-5 mt-3 mb-2">Professional Information</legend>
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label for="qualification" class="form-label">Qualification</label>

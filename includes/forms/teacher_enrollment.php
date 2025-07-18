@@ -10,7 +10,7 @@ $feedback_type = '';
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
     // Validate required fields
     $required_fields = [
-        'student_name',
+        'teacher_name',
         'rollno',
         'std',
         'email',
@@ -37,7 +37,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
 
     if (empty($feedback_message)) {
         // Sanitize inputs
-        $student_name = mysqli_real_escape_string($conn, $_POST['student_name']);
+        $teacher_name = mysqli_real_escape_string($conn, $_POST['teacher_name']);
         $rollno = mysqli_real_escape_string($conn, $_POST['rollno']);
         $std = intval($_POST['std']);
         $email = mysqli_real_escape_string($conn, $_POST['email']);
@@ -71,7 +71,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
                 $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
                 // 2. Insert into users table
-                $user_query = "INSERT INTO users (role, email, password) VALUES ('student', ?, ?)";
+                $user_query = "INSERT INTO users (role, email, password) VALUES ('teacher', ?, ?)";
                 $stmt = mysqli_prepare($conn, $user_query);
                 mysqli_stmt_bind_param($stmt, "ss", $email, $hashed_password);
                 mysqli_stmt_execute($stmt);
@@ -80,35 +80,35 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
                 $user_id = mysqli_insert_id($conn);
 
                 // 3. Handle file upload
-                $student_image = '';
-                if (isset($_FILES['student_image']) && $_FILES['student_image']['error'] === UPLOAD_ERR_OK) {
-                    $target_dir = "../../pages/student/uploads";
+                $teacher_image = '';
+                if (isset($_FILES['teacher_image']) && $_FILES['teacher_image']['error'] === UPLOAD_ERR_OK) {
+                    $target_dir = "../../pages/teacher/uploads";
                     if (!file_exists($target_dir)) {
                         mkdir($target_dir, 0777, true);
                     }
 
-                    $imageFileType = strtolower(pathinfo($_FILES["student_image"]["name"], PATHINFO_EXTENSION));
+                    $imageFileType = strtolower(pathinfo($_FILES["teacher_image"]["name"], PATHINFO_EXTENSION));
                     $new_filename = uniqid() . '.' . $imageFileType;
                     $destination = $target_dir . $new_filename;
 
-                    if (move_uploaded_file($_FILES["student_image"]["tmp_name"], $destination)) {
-                        $student_image = $destination;
+                    if (move_uploaded_file($_FILES["teacher_image"]["tmp_name"], $destination)) {
+                        $teacher_image = $destination;
                     }
                 }
 
-                // 4. Insert into students table
-                $student_query = "INSERT INTO student (
-                    student_image, student_name, rollno, std, email, password, 
+                // 4. Insert into teachers table
+                $teacher_query = "INSERT INTO teacher (
+                    teacher_image, teacher_name, rollno, std, email, password, 
                     academic_year, school_id, dob, gender, blood_group, address, 
                     father_name, father_phone, mother_name, mother_phone
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-                $stmt = mysqli_prepare($conn, $student_query);
+                $stmt = mysqli_prepare($conn, $teacher_query);
                 mysqli_stmt_bind_param(
                     $stmt,
                     "sssssssissssssss",
-                    $student_image,
-                    $student_name,
+                    $teacher_image,
+                    $teacher_name,
                     $rollno,
                     $std,
                     $email,
@@ -132,7 +132,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
                 // Set success message and redirect
                 $_SESSION['feedback_message'] = "Enrollment successful!";
                 $_SESSION['feedback_type'] = "success";
-                header("Location: ../../extra/student_tables.php");
+                header("Location: ../../extra/teacher_tables.php");
                 exit();
             } catch (Exception $e) {
                 // Rollback on error
@@ -152,7 +152,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>Student Enrollment</title>
+    <title>Teachers Enrollment</title>
     <!-- Custom fonts -->
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,700,900" rel="stylesheet">
@@ -173,7 +173,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
     <div class="container min-vh-100 d-flex justify-content-center align-items-center my-5">
         <div class="card shadow-lg w-100 lg-form-width">
             <div class="card-body py-5 px-5">
-                <h1 class="h2 text-center text-gray-900 my-3">Student Enrollment Form</h1>
+                <h1 class="h2 text-center text-gray-900 my-3">Teachers Enrollment Form</h1>
 
                 <?php if (!empty($feedback_message)): ?>
                     <div class="alert alert-<?php echo $feedback_type; ?>" role="alert">
@@ -187,51 +187,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
                         <legend class="fs-5 mt-3 mb-2">Basic Information</legend>
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label for="student_name" class="form-label">Student Name</label>
-                                <input type="text" class="form-control" id="student_name" name="student_name" required>
+                                <label for="teachers_name" class="form-label">Teachers Name</label>
+                                <input type="text" class="form-control" id="teacher_name" name="teacher_name" required>
                             </div>
                             <div class="col-md-6">
-                                <label for="rollno" class="form-label">Roll Number</label>
-                                <input type="text" class="form-control" id="rollno" name="rollno" required>
+                                <label for="mob" class="form-label">Contact Number</label>
+                                <input type="text" class="form-control" id="mob" name="mob" required>
                             </div>
                             <div class="col-md-6">
                                 <label for="std" class="form-label">Standard/Class</label>
                                 <input type="number" class="form-control" id="std" name="std" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="academic_year" class="form-label">Academic Year</label>
-                                <select class="form-select" id="academic_year" name="academic_year" required>
-                                    <option value="">Select Academic Year</option>
-                                    <?php
-                                    $current_year = date('Y');
-                                    $start_year = $current_year - 1;
-                                    $end_year = $current_year + 2;
-
-                                    for ($year = $start_year; $year <= $end_year; $year++) {
-                                        $academic_year = $year . '-' . ($year + 1);
-                                        echo "<option value='" . htmlspecialchars($academic_year) . "'>" .
-                                            htmlspecialchars($academic_year) . "</option>";
-                                    }
-                                    ?>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="school_id" class="required">School Name</label>
-                                <select id="school_id" name="school_id" class="form-select" required>
-                                    <option value="">Select School</option>
-                                    <?php
-                                    include_once '../../includes/connect.php';
-                                    $school_query = "SELECT id, school_name FROM school";
-                                    $school_result = mysqli_query($conn, $school_query);
-                                    if ($school_result && mysqli_num_rows($school_result) > 0) {
-                                        while ($row = mysqli_fetch_assoc($school_result)) {
-                                            echo "<option value='{$row['id']}'>{$row['school_name']}</option>";
-                                        }
-                                    } else {
-                                        echo "<option disabled>No schools found</option>";
-                                    }
-                                    ?>
-                                </select>
                             </div>
                             <div class="col-md-6">
                                 <label for="dob" class="form-label">Date of Birth</label>
@@ -261,8 +226,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
                                 </select>
                             </div>
                             <div class="col-12">
-                                <label for="student_image" class="form-label">Student Photo</label>
-                                <input type="file" class="form-control" id="student_image" name="student_image"
+                                <label for="teacher_image" class="form-label">Teacher Photo</label>
+                                <input type="file" class="form-control" id="teacher_image" name="teacher_image"
                                     accept="image/*">
                             </div>
                             <div class="col-12">
@@ -287,23 +252,45 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
                     </fieldset>
 
                     <fieldset class="mb-4">
-                        <legend class="fs-5 mt-3 mb-2">Parent/Guardian Information</legend>
+                        <legend class="fs-5 mt-3 mb-2">Professional Information</legend>
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label for="father_name" class="form-label">Father's Name</label>
-                                <input type="text" class="form-control" id="father_name" name="father_name" required>
+                                <label for="qualification" class="form-label">Qualification</label>
+                                <input type="text" class="form-control" id="qualification" name="qualification" placeholder="e.g., B.Ed, M.Ed, Ph.D" required>
                             </div>
                             <div class="col-md-6">
-                                <label for="father_phone" class="form-label">Father's Phone Number</label>
-                                <input type="tel" class="form-control" id="father_phone" name="father_phone" required>
+                                <label for="subject" class="form-label">Subject Specialization</label>
+                                <input type="text" class="form-control" id="subject" name="subject" placeholder="e.g., Mathematics, Science" required>
                             </div>
                             <div class="col-md-6">
-                                <label for="mother_name" class="form-label">Mother's Name</label>
-                                <input type="text" class="form-control" id="mother_name" name="mother_name" required>
+                                <label for="languages" class="form-label">Languages Known</label>
+                                <input type="text" class="form-control" id="languages" name="languages" placeholder="e.g., English, Hindi, Gujarati" required>
                             </div>
                             <div class="col-md-6">
-                                <label for="mother_phone" class="form-label">Mother's Phone Number</label>
-                                <input type="tel" class="form-control" id="mother_phone" name="mother_phone" required>
+                                <label for="salary" class="form-label">Expected Salary</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">₹</span>
+                                    <input type="number" class="form-control" id="salary" name="salary" placeholder="Enter amount" required>
+                                    <span class="input-group-text">/month</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="teaching_std" class="form-label">Teaching Standards</label>
+                                <select class="form-select" id="teaching_std" name="teaching_std[]" multiple required>
+                                    <option value="1">Standard 1</option>
+                                    <option value="2">Standard 2</option>
+                                    <option value="3">Standard 3</option>
+                                    <option value="4">Standard 4</option>
+                                    <option value="5">Standard 5</option>
+                                    <option value="6">Standard 6</option>
+                                    <option value="7">Standard 7</option>
+                                    <option value="8">Standard 8</option>
+                                </select>
+                                <div class="form-text">Hold Ctrl/Cmd to select multiple standards</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="experience" class="form-label">Years of Experience</label>
+                                <input type="number" class="form-control" id="experience" name="experience" min="0" max="50" placeholder="Years of teaching experience" required>
                             </div>
                         </div>
                     </fieldset>
@@ -315,7 +302,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
                     </div>
                     <div class="d-flex justify-content-between">
                         <button type="reset" class="btn btn-secondary">Reset Form</button>
-                        <button type="submit" name="submit" href="BMC-SMS/extra/student_tables.php"
+                        <button type="submit" name="submit" href="BMC-SMS/extra/teacher_tables.php"
                             class="btn btn-primary">Submit
                             Enrollment</button>
                     </div>
