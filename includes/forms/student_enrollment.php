@@ -45,6 +45,10 @@
                     <fieldset class="mb-4">
                         <legend class="fs-5 mb-3">Personal Information</legend>
                         <div class="row g-3">
+                            <div class="col-12">
+                                <label for="student_image" class="form-label">Student Photo</label>
+                                <input type="file" class="form-control" id="student_image" name="student_image" accept="image/*">
+                            </div>
                             <div class="col-md-6">
                                 <label for="student_name" class="form-label">Student Name</label>
                                 <input type="text" class="form-control" id="student_name" name="student_name" required>
@@ -52,32 +56,6 @@
                             <div class="col-md-6">
                                 <label for="rollno" class="form-label">Roll Number</label>
                                 <input type="text" class="form-control" id="rollno" name="rollno" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="std" class="form-label">Standard</label>
-                                <select class="form-select" id="std" name="std" required>
-                                    <option value="">Select</option>
-                                    <option value="1">1</option>
-                                    <option value="2">2</option>
-                                    <option value="3">3</option>
-                                    <option value="4">4</option>
-                                    <option value="5">5</option>
-                                    <option value="6">6</option>
-                                    <option value="7">7</option>
-                                    <option value="8">8</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="academic_year" class="form-label">Academic Year</label>
-                                <select class="form-select" id="academic_year" name="academic_year" required>
-                                    <option value="">Select</option>
-                                    <option value="2024-2025">2024-2025</option>
-                                    <option value="2025-2026">2025-2026</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="school_id" class="form-label">School ID</label>
-                                <input type="number" class="form-control" id="school_id" name="school_id" required>
                             </div>
                             <div class="col-md-6">
                                 <label for="dob" class="form-label">Date of Birth</label>
@@ -107,15 +85,44 @@
                                 </select>
                             </div>
                             <div class="col-12">
-                                <label for="student_image" class="form-label">Student Photo</label>
-                                <input type="file" class="form-control" id="student_image" name="student_image" accept="image/*">
-                            </div>
-                            <div class="col-12">
                                 <label for="address" class="form-label">Residential Address</label>
                                 <textarea class="form-control" id="address" name="address" rows="2" required></textarea>
                             </div>
                         </div>
                     </fieldset>
+
+                    <fieldset class="mb-4">
+                        <legend class="fs-5 mb-3">Academic Information</legend>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="school_id" class="form-label">School ID</label>
+                                <input type="number" class="form-control" id="school_id" name="school_id" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="std" class="form-label">Standard</label>
+                                <select class="form-select" id="std" name="std" required>
+                                    <option value="">Select</option>
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="3">3</option>
+                                    <option value="4">4</option>
+                                    <option value="5">5</option>
+                                    <option value="6">6</option>
+                                    <option value="7">7</option>
+                                    <option value="8">8</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="academic_year" class="form-label">Academic Year</label>
+                                <select class="form-select" id="academic_year" name="academic_year" required>
+                                    <option value="">Select</option>
+                                    <option value="2024-2025">2024-2025</option>
+                                    <option value="2025-2026">2025-2026</option>
+                                </select>
+                            </div>
+                        </div>
+                    </fieldset>
+
                     <fieldset class="mb-4">
                         <legend class="fs-5 mb-3">Parent/Guardian Information</legend>
                         <div class="row g-3">
