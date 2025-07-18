@@ -17,9 +17,9 @@
 
 
 <body class="bg-gradient-primary">
-    <div class="container w-50 min-vh-100 d-flex justify-content-center align-items-center">
-        <div class="card shadow-lg w-100">
-            <div class="card-body">
+    <div class="container min-vh-100 d-flex justify-content-center align-items-center my-5">
+        <div class="card shadow-lg w-100 lg-form-width">
+            <div class="card-body py-5 px-5">
                 <h1 class="h2 text-center text-gray-900 my-3">School Enrollment Form</h1>
                 <?php
                 $feedback_message = '';
@@ -114,5 +114,6 @@
     }
     ?>
 </body>
+
 
 </html>

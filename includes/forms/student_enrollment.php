@@ -164,6 +164,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
     .lg-form-width {
         max-width: 100rem;
     }
+
+    .lg-form-width {
+        max-width: 100rem;
+    }
     </style>
 
 </head>
@@ -184,7 +188,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
                 <form method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>"
                     enctype="multipart/form-data">
                     <fieldset class="mb-4">
-                        <legend class="fs-5 mb-3">Basic Information</legend>
+                        <legend class="fs-5 mt-3 mb-2">Basic Information</legend>
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label for="student_name" class="form-label">Student Name</label>
@@ -273,7 +277,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
                     </fieldset>
 
                     <fieldset class="mb-4">
-                        <legend class="fs-5 mb-3">Account Information</legend>
+                        <legend class="fs-5 mt-3 mb-2">Account Information</legend>
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label for="email" class="form-label">Email Address</label>
@@ -287,7 +291,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
                     </fieldset>
 
                     <fieldset class="mb-4">
-                        <legend class="fs-5 mb-3">Parent/Guardian Information</legend>
+                        <legend class="fs-5 mt-3 mb-2">Parent/Guardian Information</legend>
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label for="father_name" class="form-label">Father's Name</label>
