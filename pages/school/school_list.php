@@ -65,8 +65,8 @@ $result = mysqli_query($conn, $query);
                 <div class="container-fluid">
 
                     <!-- Page Heading -->
-                    <h1 class="h3 mb-2 text-gray-800">Tables</h1>
-                    <p class="mb-4">DataTables is a third party plugin that is used to generate the demo table below.
+                    <h1 class="h3 mb-2 text-gray-800">School Tables</h1>
+                    <p class="mb-4">Complete list of all schools in the school management system.
                     </p>
 
                     <!-- Display success/error messages -->
@@ -121,10 +121,10 @@ $result = mysqli_query($conn, $query);
                                                 echo "<td>" . htmlspecialchars($row['principal_name']) . "</td>";
                                                 echo "<td>";
                                                 echo "<a href='./edit.php?id=" . $row['id'] . "' class='btn btn-primary btn-sm mr-2'>";
-                                                echo "<i class='fas fa-edit'></i> Edit";
+                                                echo "<i class='fas fa-edit'></i>";
                                                 echo "</a>";
                                                 echo "<button class='btn btn-danger btn-sm' onclick='confirmDelete(" . $row['id'] . ")'>";
-                                                echo "<i class='fas fa-trash'></i> Delete";
+                                                echo "<i class='fas fa-trash'></i>";
                                                 echo "</button>";
                                                 echo "</td>";
                                                 echo "</tr>";
@@ -172,7 +172,7 @@ $result = mysqli_query($conn, $query);
                 <div class="modal-body">Select "Logout" below if you are ready to end your current session.</div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
-                    <a class="btn btn-primary" href="../logout.php">Logout</a>
+                    <a class="btn btn-primary" href="/BMC-SMS/logout.php">Logout</a>
                 </div>
             </div>
         </div>

@@ -132,7 +132,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
                 // Set success message and redirect
                 $_SESSION['feedback_message'] = "Enrollment successful!";
                 $_SESSION['feedback_type'] = "success";
-                header("Location: ../../extra/student_tables.php");
+                header("Location: /BMC-SMS/pages/student/student_list.php");
                 exit();
             } catch (Exception $e) {
                 // Rollback on error
@@ -319,9 +319,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
                     </div>
                     <div class="d-flex justify-content-between">
                         <button type="reset" class="btn btn-secondary">Reset Form</button>
-                        <button type="submit" name="submit" href="BMC-SMS/extra/student_tables.php"
-                            class="btn btn-primary">Submit
-                            Enrollment</button>
+                        <button type="submit" name="submit" class="btn btn-primary">Submit Enrollment</button>
                     </div>
                 </form>
             </div>

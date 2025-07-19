@@ -14,13 +14,14 @@ if (!$role) {
     exit;
 }
 
-// Fetch student data with school information
-$query = "SELECT s.id, s.student_name, s.rollno, s.std, s.email, s.academic_year, 
-                s.dob, s.gender, s.blood_group, s.address, s.father_name, s.father_phone, 
-                s.mother_name, s.mother_phone, sc.school_name 
-        FROM student s 
-        LEFT JOIN school sc ON s.school_id = sc.id
-        ORDER BY s.id ASC";  // Changed from DESC to ASC
+// Fetch teacher data with school information
+$query = "SELECT t.id, t.teacher_name, t.email, t.phone, t.dob, 
+                t.gender, t.blood_group, t.address, t.qualification, t.subject,
+                t.language_known, t.salary, t.std, t.experience,
+                sc.school_name 
+        FROM teacher t 
+        LEFT JOIN school sc ON t.school_id = sc.id
+        ORDER BY t.id ASC";
 $result = mysqli_query($conn, $query);
 ?>
 
@@ -31,7 +32,7 @@ $result = mysqli_query($conn, $query);
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>Student Tables - School Management System</title>
+    <title>Teacher Tables - School Management System</title>
 
     <!-- Custom fonts -->
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
@@ -68,8 +69,8 @@ $result = mysqli_query($conn, $query);
                 <div class="container-fluid">
 
                     <!-- Page Heading -->
-                    <h1 class="h3 mb-2 text-gray-800">Student Tables</h1>
-                    <p class="mb-4">Complete list of all students in the school management system.
+                    <h1 class="h3 mb-2 text-gray-800">Teacher Tables</h1>
+                    <p class="mb-4">Complete list of all teachers in the school management system.
                     </p>
 
                     <!-- Display success/error messages -->
@@ -93,13 +94,13 @@ $result = mysqli_query($conn, $query);
 
                     <!-- DataTales Example -->
                     <div class="card shadow mb-4">
-                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                            <h6 class="m-0 font-weight-bold text-primary">Student DataTable</h6>
-                            <a href="/BMC-SMS/includes/forms/student_enrollment.php" class="btn btn-primary btn-icon-split btn-sm">
+                        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                            <h6 class="m-0 font-weight-bold text-primary">Teacher DataTable</h6>
+                            <a href="/BMC-SMS/includes/forms/teacher_enrollment.php" class="btn btn-primary btn-icon-split btn-sm">
                                 <span class="icon text-white-50">
                                     <i class="fas fa-plus"></i>
                                 </span>
-                                <span class="text">Add New Student</span>
+                                <span class="text">Add New Teacher</span>
                             </a>
                         </div>
                         <div class="card-body">
@@ -107,11 +108,13 @@ $result = mysqli_query($conn, $query);
                                 <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
                                     <thead>
                                         <tr>
-                                            <th>Student ID</th>
+                                            <th>Teacher ID</th>
                                             <th>Name</th>
-                                            <th>Roll No</th>
-                                            <th>Standard</th>
-                                            <th>Gender</th>
+                                            <th>Email</th>
+                                            <th>Phone</th>
+                                            <th>School</th>
+                                            <th>Subject</th>
+                                            <th>Standards</th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
@@ -123,28 +126,30 @@ $result = mysqli_query($conn, $query);
                                                 echo "<tr>";
                                                 echo "<td>" . htmlspecialchars($row['id']) . "</td>";
                                                 echo "<td>";
-                                                echo "<a href='view.php?id=" . $row['id'] . "' class='text-decoration-none'>";
-                                                echo htmlspecialchars($row['student_name'] ?? 'N/A');
+                                                echo "<a href='view_teacher.php?id=" . $row['id'] . "' class='text-decoration-none'>";
+                                                echo htmlspecialchars($row['teacher_name'] ?? 'N/A');
                                                 echo "</a>";
                                                 echo "</td>";
-                                                echo "<td>" . htmlspecialchars($row['rollno'] ?? 'N/A') . "</td>";
+                                                echo "<td>" . htmlspecialchars($row['email'] ?? 'N/A') . "</td>";
+                                                echo "<td>" . htmlspecialchars($row['phone'] ?? 'N/A') . "</td>";
+                                                echo "<td>" . htmlspecialchars($row['school_name'] ?? 'N/A') . "</td>";
+                                                echo "<td>" . htmlspecialchars($row['subject'] ?? 'N/A') . "</td>";
                                                 echo "<td>" . htmlspecialchars($row['std'] ?? 'N/A') . "</td>";
-                                                echo "<td>" . htmlspecialchars(ucfirst($row['gender'] ?? 'N/A')) . "</td>";
                                                 echo "<td>";
-                                                echo "<a href='view.php?id=" . $row['id'] . "' class='btn btn-info btn-sm mr-2'>";
+                                                echo "<a href='view.php?id=" . $row['id'] . "' class='btn btn-info btn-sm mr-1' title='View'>";
                                                 echo "<i class='fas fa-eye'></i>";
                                                 echo "</a>";
-                                                echo "<a href='edit.php?id=" . $row['id'] . "' class='btn btn-primary btn-sm mr-2'>";
+                                                echo "<a href='edit.php?id=" . $row['id'] . "' class='btn btn-primary btn-sm mr-1' title='Edit'>";
                                                 echo "<i class='fas fa-edit'></i>";
                                                 echo "</a>";
-                                                echo "<button class='btn btn-danger btn-sm' onclick='confirmDelete(" . $row['id'] . ")'>";
+                                                echo "<button class='btn btn-danger btn-sm' onclick='confirmDelete(" . $row['id'] . ")' title='Delete'>";
                                                 echo "<i class='fas fa-trash'></i>";
                                                 echo "</button>";
                                                 echo "</td>";
                                                 echo "</tr>";
                                             }
                                         } else {
-                                            echo "<tr><td colspan='6' class='text-center'>No students found</td></tr>";
+                                            echo "<tr><td colspan='9' class='text-center'>No teachers found</td></tr>";
                                         }
                                         ?>
                                     </tbody>
@@ -205,7 +210,7 @@ $result = mysqli_query($conn, $query);
                         <span aria-hidden="true">×</span>
                     </button>
                 </div>
-                <div class="modal-body">Are you sure you want to delete this student? This action cannot be undone.
+                <div class="modal-body">Are you sure you want to delete this teacher? This action cannot be undone.
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>

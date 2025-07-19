@@ -1,7 +1,7 @@
 <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
 
     <!-- Sidebar - Brand -->
-    <a class="sidebar-brand d-flex align-items-center justify-content-center" href="./dashboard.php">
+    <a class="sidebar-brand d-flex align-items-center justify-content-center" href="/BMC-SMS/dashboard.php">
         <div class="sidebar-brand-icon rotate-n-15">
             <i class="fas fa-laugh-wink"></i>
         </div>
@@ -14,7 +14,7 @@
 
     <!-- Nav Item - Dashboard -->
     <li class="nav-item active">
-        <a class="nav-link" href="../../dashboard.php">
+        <a class="nav-link" href="/BMC-SMS/dashboard.php">
             <i class="fas fa-fw fa-tachometer-alt"></i>
             <span>Dashboard</span></a>
     </li>
@@ -37,8 +37,8 @@
         <div id="collapseSchool" class="collapse" aria-labelledby="headingSchool" data-parent="#accordionSidebar">
             <div class="bg-white py-2 collapse-inner rounded">
                 <h6 class="collapse-header">School Management:</h6>
-                <a class="collapse-item" href="../forms/school_enrollment.php">School Enrollment</a>
-                <a class="collapse-item" href="../extra/tables.php">School List</a>
+                <a class="collapse-item" href="/BMC-SMS/includes/forms/school_enrollment.php">School Enrollment</a>
+                <a class="collapse-item" href="/BMC-SMS/pages/school/school_list.php">School List</a>
             </div>
         </div>
     </li>
@@ -53,22 +53,22 @@
         <div id="collapsePrincipal" class="collapse" aria-labelledby="headingPrincipal" data-parent="#accordionSidebar">
             <div class="bg-white py-2 collapse-inner rounded">
                 <h6 class="collapse-header">Principal Management:</h6>
-                <a class="collapse-item" href="../forms/principal_enrollment.php">Principal Enrollment</a>
-                <a class="collapse-item" href="../extra/principal_list.php">Principal List</a>
+                <a class="collapse-item" href="/BMC-SMS/includes/forms/principal_enrollment.php">Principal Enrollment</a>
+                <a class="collapse-item" href="/BMC-SMS/pages/principal/principal_list.php">Principal List</a>
             </div>
         </div>
     </li>
 
     <!-- Nav Item - List of teacher -->
     <li class="nav-item">
-        <a class="nav-link" href="#">
+        <a class="nav-link" href="/BMC-SMS/pages/teacher/teacher_list.php">
             <i class=" fas fa-fw fa-chart-area"></i>
             <span>List of Teachers</span></a>
     </li>
 
     <!-- Nav Item - List of Student -->
     <li class="nav-item">
-        <a class="nav-link" href="../../pages/student/student_list.php">
+        <a class="nav-link" href="/BMC-SMS/pages/student/student_list.php">
             <i class="fas fa-fw fa-chart-area"></i>
             <span>List of Student</span></a>
     </li>

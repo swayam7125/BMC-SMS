@@ -128,13 +128,13 @@ $result = mysqli_query($conn, $query);
                                                 echo "<td>" . htmlspecialchars(ucfirst($row['gender'] ?? 'N/A')) . "</td>";
                                                 echo "<td>";
                                                 echo "<a href='view.php?id=" . $row['id'] . "' class='btn btn-info btn-sm mr-2'>";
-                                                echo "<i class='fas fa-eye'></i> View";
+                                                echo "<i class='fas fa-eye'></i>";
                                                 echo "</a>";
                                                 echo "<a href='edit.php?id=" . $row['id'] . "' class='btn btn-primary btn-sm mr-2'>";
-                                                echo "<i class='fas fa-edit'></i> Edit";
+                                                echo "<i class='fas fa-edit'></i>";
                                                 echo "</a>";
                                                 echo "<button class='btn btn-danger btn-sm' onclick='confirmDelete(" . $row['id'] . ")'>";
-                                                echo "<i class='fas fa-trash'></i> Delete";
+                                                echo "<i class='fas fa-trash'></i>";
                                                 echo "</button>";
                                                 echo "</td>";
                                                 echo "</tr>";
@@ -184,7 +184,7 @@ $result = mysqli_query($conn, $query);
                 <div class="modal-body">Select "Logout" below if you are ready to end your current session.</div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
-                    <a class="btn btn-primary" href="../logout.php">Logout</a>
+                    <a class="btn btn-primary" href="/BMC-SMS/logout.php">Logout</a>
                 </div>
             </div>
         </div>
