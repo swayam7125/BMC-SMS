@@ -1,176 +1,242 @@
+<?php
+include_once "../../includes/connect.php";
+include_once "../../encryption.php";
+
+// Check if user is logged in
+$role = null;
+if (isset($_COOKIE['encrypted_user_role'])) {
+    $role = decrypt_id($_COOKIE['encrypted_user_role']);
+}
+
+// Redirect to login if not authenticated
+if (!$role) {
+    header("Location: ../../login.php");
+    exit;
+}
+
+$errors = [];
+
+// Handle form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // --- Retrieve all form data ---
+    $school_id = $_POST['school_id'];
+    $principal_name = trim($_POST['principal_name']);
+    $email = trim($_POST['email']);
+    $phone = trim($_POST['phone']);
+    $principal_dob = $_POST['principal_dob'];
+    $gender = $_POST['gender'];
+    $blood_group = $_POST['blood_group'];
+    $address = trim($_POST['address']);
+    $qualification = trim($_POST['qualification']);
+    $salary = trim($_POST['salary']);
+    $password = $_POST['password'];
+    $batch = $_POST['batch']; // ADDED: Retrieve batch
+
+    $image_path_for_db = null;
+
+    // --- Handle Photo Upload ---
+    if (isset($_FILES['principal_image']) && $_FILES['principal_image']['error'] === UPLOAD_ERR_OK) {
+        $file = $_FILES['principal_image'];
+        $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        $allowed_exts = ['jpg', 'jpeg', 'png', 'gif'];
+        if (in_array($file_ext, $allowed_exts)) {
+            $target_dir = "../../pages/principal/uploads/";
+            if (!file_exists($target_dir)) mkdir($target_dir, 0777, true);
+            $new_filename = uniqid('principal_', true) . '.' . $file_ext;
+            $destination = $target_dir . $new_filename;
+            if (move_uploaded_file($file['tmp_name'], $destination)) {
+                $image_path_for_db = $destination;
+            } else { $errors[] = "Failed to move uploaded file."; }
+        } else { $errors[] = "Invalid file type. Only JPG, JPEG, PNG, and GIF are allowed."; }
+    }
+
+    // --- Validation ---
+    if (empty($school_id)) $errors[] = "A school must be selected.";
+    if (empty($principal_name)) $errors[] = "Principal name is required.";
+    if (empty($batch)) $errors[] = "Batch selection is required.";
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "A valid email is required.";
+    if (empty($password)) $errors[] = "Password is required.";
+    if (empty($gender)) $errors[] = "Gender is required.";
+    if (empty($blood_group)) $errors[] = "Blood group is required.";
+    
+    if (empty($errors)) {
+        mysqli_autocommit($conn, false);
+        try {
+            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+
+            // UPDATED: Added batch to the query
+            $insert_principal_query = "INSERT INTO principal (
+                principal_image, school_id, principal_name, email, password, phone, 
+                principal_dob, gender, blood_group, address, qualification, salary, batch
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+            $stmt_principal = mysqli_prepare($conn, $insert_principal_query);
+            // UPDATED: Added 's' for batch and the variable
+            mysqli_stmt_bind_param(
+                $stmt_principal, "sisssssssssds",
+                $image_path_for_db, $school_id, $principal_name, $email, $hashed_password,
+                $phone, $principal_dob, $gender, $blood_group, $address, $qualification, $salary, $batch
+            );
+
+            if (!mysqli_stmt_execute($stmt_principal)) {
+                throw new Exception("Principal record creation failed: " . mysqli_stmt_error($stmt_principal));
+            }
+            mysqli_stmt_close($stmt_principal);
+
+            // Insert into users table
+            $user_role = 'schooladmin'; 
+            $insert_user_query = "INSERT INTO users (role, email, password) VALUES (?, ?, ?)";
+            $stmt_user = mysqli_prepare($conn, $insert_user_query);
+            mysqli_stmt_bind_param($stmt_user, "sss", $user_role, $email, $hashed_password);
+            if (!mysqli_stmt_execute($stmt_user)) {
+                throw new Exception("User record creation failed: " . mysqli_stmt_error($stmt_user));
+            }
+            mysqli_stmt_close($stmt_user);
+            
+            mysqli_commit($conn);
+            header("Location: ../../pages/principal/principal_list.php?success=Principal enrolled successfully");
+            exit();
+
+        } catch (Exception $e) {
+            mysqli_rollback($conn);
+            if(mysqli_errno($conn) == 1062){
+                $errors[] = "A principal with this email or phone number already exists.";
+            } else {
+                $errors[] = "Database error: " . $e->getMessage();
+            }
+        }
+    }
+}
+
+// Fetch schools that don't have a principal yet
+$school_query = "SELECT s.id, s.school_name FROM school s LEFT JOIN principal p ON s.id = p.school_id WHERE p.school_id IS NULL ORDER BY s.school_name";
+$school_result = mysqli_query($conn, $school_query);
+?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>Principal Enrollment</title>
-    <!-- Custom fonts -->
+    <title>Enroll Principal - School Management System</title>
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
-    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,700,900" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet"
-        crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
-
-<body class="bg-gradient-primary">
-    <div class="container w-50 min-vh-100 d-flex justify-content-center align-items-center">
-        <div class="card shadow-lg w-100">
-            <div class="card-body">
-                <h1 class="h2 text-center text-gray-900 my-3">Principal Enrollment Form</h1>
-                <?php
-                include_once '../../includes/connect.php';
-                $feedback_message = '';
-                $feedback_type = '';
-
-                if (isset($_POST['submit'])) {
-                    try {
-                        $school_id = $_POST['school_id'];
-                        $principal_name = $_POST['principal_name'];
-                        $email = $_POST['email'];
-                        $phone = $_POST['phone'];
-                        $principal_dob = $_POST['principal_dob'];
-                        $gender = $_POST['gender'];
-                        $blood_group = $_POST['blood_group'];
-                        $address = $_POST['address'];
-                        $qualification = $_POST['qualification'];
-                        $salary = $_POST['salary'];
-
-                        $insert_query = "INSERT INTO principal (
-                            school_id, principal_name, email, phone, principal_dob,
-                            gender, blood_group, address, qualification, salary
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-                        $stmt = mysqli_prepare($conn, $insert_query);
-                        mysqli_stmt_bind_param(
-                            $stmt,
-                            "issssssssd",
-                            $school_id,
-                            $principal_name,
-                            $email,
-                            $phone,
-                            $principal_dob,
-                            $gender,
-                            $blood_group,
-                            $address,
-                            $qualification,
-                            $salary
-                        );
-
-                        if (mysqli_stmt_execute($stmt)) {
-                            header("Location: /BMC/pages/principal/principal_list.php");
-                            exit();
-                        } else {
-                            throw new Exception("Error inserting principal data");
-                        }
-                    } catch (Exception $e) {
-                        $feedback_message = "Error: " . $e->getMessage();
-                        $feedback_type = "danger";
-                    }
-                }
-                ?>
-                <?php if (!empty($feedback_message)): ?>
-                <div class="alert alert-<?php echo $feedback_type; ?>">
-                    <?php echo htmlspecialchars($feedback_message); ?>
+<body id="page-top">
+    <div id="wrapper">
+        <?php include_once '../../includes/sidebar/BMC_sidebar.php'; ?>
+        <div id="content-wrapper" class="d-flex flex-column">
+            <div id="content">
+                <?php include_once '../../includes/header/BMC_header.php'; ?>
+                <div class="container-fluid">
+                    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+                        <h1 class="h3 mb-0 text-gray-800">Enroll New Principal</h1>
+                        <a href="../../pages/principal/principal_list.php" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to List</a>
+                    </div>
+                    <?php if (!empty($errors)): ?>
+                    <div class="alert alert-danger"><ul class="mb-0"><?php foreach ($errors as $error): ?><li><?php echo htmlspecialchars($error); ?></li><?php endforeach; ?></ul></div>
+                    <?php endif; ?>
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Principal Information</h6></div>
+                        <div class="card-body">
+                             <form method="POST" enctype="multipart/form-data">
+                                <div class="row">
+                                    <div class="col-md-3 text-center">
+                                        <label>Photo Preview</label><br>
+                                        <img src="../../assets/img/default-user.jpg" alt="Principal Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
+                                        <div class="form-group"><label for="principal_image" class="small btn btn-sm btn-info"><i class="fas fa-upload fa-sm"></i> Upload Photo</label><input type="file" class="d-none" id="principal_image" name="principal_image"></div>
+                                    </div>
+                                    <div class="col-md-9">
+                                        <div class="form-row">
+                                            <div class="form-group col-md-12"><label for="principal_name">Principal Name *</label><input type="text" class="form-control" id="principal_name" name="principal_name" value="<?php echo htmlspecialchars($_POST['principal_name'] ?? ''); ?>" required></div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group col-md-6"><label for="email">Email *</label><input type="email" class="form-control" id="email" name="email" value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>" required></div>
+                                            <div class="form-group col-md-6"><label for="password">Password *</label><input type="password" class="form-control" id="password" name="password" required></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <hr>
+                                <div class="form-row">
+                                    <div class="form-group col-md-4"><label for="school_id">Assign to School *</label><select class="form-control" id="school_id" name="school_id" required><option value="">-- Select School --</option><?php while ($school = mysqli_fetch_assoc($school_result)) { $selected = (isset($_POST['school_id']) && $_POST['school_id'] == $school['id']) ? 'selected' : ''; echo "<option value='{$school['id']}' {$selected}>" . htmlspecialchars($school['school_name']) . "</option>"; } if(mysqli_num_rows($school_result) == 0) { echo "<option disabled>No unassigned schools</option>"; } ?></select></div>
+                                    <div class="form-group col-md-4">
+                                        <label for="batch">Batch *</label>
+                                        <select class="form-control" id="batch" name="batch" required>
+                                            <option value="">-- Select Batch --</option>
+                                            <option value="Morning" <?php echo (isset($_POST['batch']) && $_POST['batch'] == 'Morning') ? 'selected' : ''; ?>>Morning</option>
+                                            <option value="Evening" <?php echo (isset($_POST['batch']) && $_POST['batch'] == 'Evening') ? 'selected' : ''; ?>>Evening</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group col-md-4">
+                                        <label>Timings</label>
+                                        <div id="timingDetails" class="border p-2 rounded" style="min-height: 40px;"></div>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group col-md-6"><label for="phone">Phone</label><input type="tel" class="form-control" id="phone" name="phone" value="<?php echo htmlspecialchars($_POST['phone'] ?? ''); ?>" maxlength="10"></div>
+                                    <div class="form-group col-md-6"><label for="principal_dob">Date of Birth</label><input type="date" class="form-control" id="principal_dob" name="principal_dob" value="<?php echo htmlspecialchars($_POST['principal_dob'] ?? ''); ?>"></div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group col-md-6"><label for="gender">Gender *</label><select class="form-control" id="gender" name="gender" required><option value="">-- Select Gender --</option><option value="Male" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Male') ? 'selected' : ''; ?>>Male</option><option value="Female" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Female') ? 'selected' : ''; ?>>Female</option><option value="Others" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Others') ? 'selected' : ''; ?>>Others</option></select></div>
+                                    <div class="form-group col-md-6"><label for="blood_group">Blood Group *</label><select class="form-control" id="blood_group" name="blood_group" required><option value="">-- Select Blood Group --</option><?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']; foreach ($bg_options as $bg) { $selected = (isset($_POST['blood_group']) && $_POST['blood_group'] == $bg) ? 'selected' : ''; echo "<option value='{$bg}' {$selected}>" . $bg . "</option>"; } ?></select></div>
+                                </div>
+                                <div class="form-row">
+                                     <div class="form-group col-md-6"><label for="qualification">Qualification</label><input type="text" class="form-control" id="qualification" name="qualification" value="<?php echo htmlspecialchars($_POST['qualification'] ?? ''); ?>"></div>
+                                     <div class="form-group col-md-6"><label for="salary">Salary</label><input type="number" class="form-control" id="salary" name="salary" value="<?php echo htmlspecialchars($_POST['salary'] ?? ''); ?>" step="0.01" min="0"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="address">Address</label>
+                                    <textarea class="form-control" id="address" name="address" rows="2"><?php echo htmlspecialchars($_POST['address'] ?? ''); ?></textarea>
+                                </div>
+                                <div class="form-group mt-4">
+                                    <button type="submit" class="btn btn-primary"><i class="fas fa-user-plus"></i> Enroll Principal</button>
+                                    <button type="reset" class="btn btn-secondary"><i class="fas fa-times"></i> Reset Form</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 </div>
-                <?php endif; ?>
-                <form method="post">
-                    <div class="mb-3">
-                        <label for="school_id" class="required">School ID</label>
-                        <select id="school_id" name="school_id" class="form-select" required>
-                            <option value="">-- Select School --</option>
-                            <?php
-                            $school_query = "SELECT s.id, s.school_name 
-                        FROM school s
-                        LEFT JOIN principal p ON s.id = p.school_id 
-                        WHERE p.school_id IS NULL";
-                            $school_result = mysqli_query($conn, $school_query);
-                            if ($school_result && mysqli_num_rows($school_result) > 0) {
-                                while ($row = mysqli_fetch_assoc($school_result)) {
-                                    echo "<option value='{$row['id']}'>{$row['school_name']}</option>";
-                                }
-                            } else {
-                                echo "<option disabled>No schools available</option>";
-                            }
-                            ?>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="principal_name" class="form-label">Principal Name</label>
-                        <input type="text" class="form-control" id="principal_name" name="principal_name" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email Address</label>
-                        <input type="email" class="form-control" id="email" name="email" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="phone" class="form-label">Phone</label>
-                        <input type="tel" class="form-control" id="phone" name="phone" maxlength="10" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="principal_dob" class="form-label">Date of Birth</label>
-                        <input type="date" class="form-control" id="principal_dob" name="principal_dob" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="gender" class="form-label">Gender</label>
-                        <select class="form-control" id="gender" name="gender" required>
-                            <option value="">Select Gender</option>
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                            <option value="Others">Others</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="blood_group" class="form-label">Blood Group</label>
-                        <select class="form-control" id="blood_group" name="blood_group" required>
-                            <option value="">Select Blood Group</option>
-                            <option value="A+">A+</option>
-                            <option value="A-">A-</option>
-                            <option value="B+">B+</option>
-                            <option value="B-">B-</option>
-                            <option value="AB+">AB+</option>
-                            <option value="AB-">AB-</option>
-                            <option value="O+">O+</option>
-                            <option value="O-">O-</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="address" class="form-label">Address</label>
-                        <textarea class="form-control" id="address" name="address" rows="3" required></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label for="qualification" class="form-label">Qualification</label>
-                        <input type="text" class="form-control" id="qualification" name="qualification" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="salary" class="form-label">Salary</label>
-                        <input type="number" class="form-control" id="salary" name="salary" step="0.01" required>
-                    </div>
-                    <div class="form-check mb-3">
-                        <input type="checkbox" class="form-check-input" id="termsAgreement" name="termsAgreement"
-                            required>
-                        <label class="form-check-label" for="termsAgreement">I confirm that all information provided is
-                            accurate and complete</label>
-                    </div>
-                    <div class="row gap-2 justify-content-between px-3">
-                        <div class="col-12 col-md-4">
-                            <button type="reset" class="btn btn-secondary w-100">Reset Form</button>
-                        </div>
-                        <div class="col-12 col-md-4">
-                            <button type="submit" name="submit" class="btn btn-primary w-100">Submit
-                                Enrollment</button>
-                        </div>
-                    </div>
-                </form>
             </div>
+            <?php include_once '../../includes/footer/BMC_footer.php'; ?>
         </div>
     </div>
-
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
-</body>
+    <script>
+        $(document).ready(function() {
+            // ADDED: Logic for principal timings
+            const timingDetails = $('#timingDetails');
+            const batchSelect = $('#batch');
 
+            const timings = {
+                principal: {
+                    Morning: `
+                        <div><strong>Mon-Sat:</strong> 7:00 AM - 2:00 PM</div>
+                        <div><strong>Sunday:</strong> 10:00 AM - 12:00 PM</div>
+                    `,
+                    Evening: `
+                        <div><strong>Mon-Sat:</strong> 11:00 AM - 6:00 PM</div>
+                        <div><strong>Sunday:</strong> 10:00 AM - 12:00 PM</div>
+                    `
+                }
+            };
+
+            function updateTimings() {
+                const selectedBatch = batchSelect.val();
+                if (selectedBatch && timings.principal[selectedBatch]) {
+                    timingDetails.html(timings.principal[selectedBatch]);
+                } else {
+                    timingDetails.html('');
+                }
+            }
+            batchSelect.on('change', updateTimings);
+            updateTimings(); 
+        });
+        document.getElementById('principal_image').addEventListener('change', function(event) {
+            if (event.target.files[0]) {
+                document.getElementById('imagePreview').src = URL.createObjectURL(event.target.files[0]);
+            }
+        });
+    </script>
+</body>
 </html>

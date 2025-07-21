@@ -22,6 +22,7 @@ if ($principal_id <= 0) {
 }
 
 // Fetch principal data with school information
+// The existing query already selects all fields from principal (p.*), so it will include the new 'batch' field.
 $query = "SELECT p.*, s.school_name, s.address as school_address, s.phone as school_phone, s.email as school_email
           FROM principal p 
           LEFT JOIN school s ON p.school_id = s.id
@@ -53,7 +54,8 @@ function getPrincipalPhotoPath($principal_image, $principal_id = null)
         "../../uploads/",
         "../../assets/img/principals/",
         "../../images/principals/",
-        "../../principal_photos/"
+        "../../principal_photos/",
+        "../../pages/principal/uploads/" // Added from enrollment form
     ];
 
     // If it's already a full path, check if it exists
@@ -107,6 +109,24 @@ function getDefaultPhotoPath()
 $photo_path = getPrincipalPhotoPath($principal['principal_image'], $principal['id']);
 $default_photo = getDefaultPhotoPath();
 $show_default = ($photo_path === null);
+
+// ADDED: Define timings based on batch
+$timings_html = '';
+if (!empty($principal['batch'])) {
+    if ($principal['batch'] === 'Morning') {
+        $timings_html = "
+            <div><strong>Mon-Sat:</strong> 7:00 AM - 2:00 PM</div>
+            <div><strong>Sunday:</strong> 10:00 AM - 12:00 PM</div>
+        ";
+    } elseif ($principal['batch'] === 'Evening') {
+        $timings_html = "
+            <div><strong>Mon-Sat:</strong> 11:00 AM - 6:00 PM</div>
+            <div><strong>Sunday:</strong> 10:00 AM - 12:00 PM</div>
+        ";
+    }
+} else {
+    $timings_html = "<div class='text-muted'>Not specified</div>";
+}
 ?>
 
 <!DOCTYPE html>
@@ -118,16 +138,13 @@ $show_default = ($photo_path === null);
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>View Principal - <?php echo htmlspecialchars($principal['principal_name']); ?></title>
 
-    <!-- Custom fonts -->
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link
         href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i"
         rel="stylesheet">
 
-    <!-- Custom styles -->
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
 
-    <!-- Custom styles for photo display -->
     <style>
     .principal-photo {
         width: 150px;
@@ -167,27 +184,16 @@ $show_default = ($photo_path === null);
 </head>
 
 <body id="page-top">
-    <!-- Page Wrapper -->
     <div id="wrapper">
 
-        <!-- Sidebar -->
         <?php include_once '../../includes/sidebar/BMC_sidebar.php'; ?>
-        <!-- End of Sidebar -->
-
-        <!-- Content Wrapper -->
         <div id="content-wrapper" class="d-flex flex-column">
 
-            <!-- Main Content -->
             <div id="content">
 
-                <!-- Topbar -->
                 <?php include_once '../../includes/header/BMC_header.php'; ?>
-                <!-- End of Topbar -->
-
-                <!-- Begin Page Content -->
                 <div class="container-fluid">
 
-                    <!-- Page Heading -->
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Principal Details</h1>
                         <div>
@@ -200,10 +206,8 @@ $show_default = ($photo_path === null);
                         </div>
                     </div>
 
-                    <!-- Principal Information Cards -->
                     <div class="row">
 
-                        <!-- Principal Photo Card -->
                         <div class="col-lg-4 mb-4">
                             <div class="card shadow">
                                 <div class="card-header py-3">
@@ -235,7 +239,6 @@ $show_default = ($photo_path === null);
                             </div>
                         </div>
 
-                        <!-- Basic Information Card -->
                         <div class="col-lg-8 mb-4">
                             <div class="card shadow">
                                 <div class="card-header py-3">
@@ -304,9 +307,8 @@ $show_default = ($photo_path === null);
                             </div>
                         </div>
 
-                        <!-- School Info -->
-                        <div class="col-12 mb-4">
-                            <div class="card shadow">
+                        <div class="col-lg-6 mb-4">
+                            <div class="card shadow h-100">
                                 <div class="card-header py-3">
                                     <h6 class="m-0 font-weight-bold text-info">
                                         <i class="fas fa-school"></i> School Information
@@ -339,30 +341,41 @@ $show_default = ($photo_path === null);
                                 </div>
                             </div>
                         </div>
+                        
+                        <div class="col-lg-6 mb-4">
+                            <div class="card shadow h-100">
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-success">
+                                        <i class="fas fa-clock"></i> Batch & Timings
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row mb-3">
+                                        <div class="col-sm-4 font-weight-bold">Assigned Batch:</div>
+                                        <div class="col-sm-8">
+                                            <span class="badge badge-<?php echo ($principal['batch'] == 'Morning') ? 'primary' : 'warning'; ?>">
+                                                <?php echo htmlspecialchars($principal['batch'] ?? 'N/A'); ?>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                         <div class="col-sm-4 font-weight-bold">Work Timings:</div>
+                                         <div class="col-sm-8"><?php echo $timings_html; ?></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
                     </div>
-                    <!-- End Row -->
+                    </div>
                 </div>
-                <!-- /.container-fluid -->
-            </div>
-            <!-- End of Main Content -->
-
-            <!-- Footer -->
             <?php include_once '../../includes/footer/BMC_footer.php'; ?>
-            <!-- End of Footer -->
-
+            </div>
         </div>
-        <!-- End of Content Wrapper -->
-
-    </div>
-    <!-- End of Page Wrapper -->
-
-    <!-- Scroll to Top Button-->
     <a class="scroll-to-top rounded" href="#page-top">
         <i class="fas fa-angle-up"></i>
     </a>
 
-    <!-- Scripts -->
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>

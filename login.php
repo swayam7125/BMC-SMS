@@ -1,6 +1,6 @@
 <?php
-include_once "./includes/connect.php";
-include_once "encryption.php";
+include_once "./includes/connect.php"; // Ensure this path is correct
+include_once "encryption.php"; // Ensure this path is correct
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email = trim($_POST['email']);
@@ -9,6 +9,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error_message = "Invalid email or password"; // Generic message
     } else {
+        // First, get the user's ID, password, and role from the 'users' table
         $query = "SELECT id, password, role FROM users WHERE email = ?";
         $stmt = mysqli_prepare($conn, $query);
 
@@ -26,12 +27,61 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $encrypted_id = encrypt_id($user['id']);
                     $encrypted_role = encrypt_id($user['role']);
 
-                    // Set cookies (consider adding secure flags)
+                    $profile_image = ''; // Initialize profile image
+                    $user_name = '';     // Initialize user name
+
+                    // Fetch specific user details based on role
+                    switch ($user['role']) {
+                        case 'student':
+                            $detail_query = "SELECT student_image, student_name FROM student WHERE email = ?";
+                            break;
+                        case 'teacher':
+                            $detail_query = "SELECT teacher_image, teacher_name FROM teacher WHERE email = ?";
+                            break;
+                        case 'principal':
+                            $detail_query = "SELECT principal_image, principal_name FROM principal WHERE email = ?";
+                            break;
+                        default:
+                            // Handle other roles or no specific image
+                            break;
+                    }
+
+                    if (isset($detail_query)) {
+                        $detail_stmt = mysqli_prepare($conn, $detail_query);
+                        if ($detail_stmt) {
+                            mysqli_stmt_bind_param($detail_stmt, "s", $email);
+                            mysqli_stmt_execute($detail_stmt);
+                            $detail_result = mysqli_stmt_get_result($detail_stmt);
+                            if ($detail_result && mysqli_num_rows($detail_result) > 0) {
+                                $detail_row = mysqli_fetch_assoc($detail_result);
+                                if ($user['role'] == 'student') {
+                                    $profile_image = !empty($detail_row['student_image']) ? 'pages/student/uploads/' . basename($detail_row['student_image']) : '/BMC-SMS/assets/images/undraw_profile.svg';
+                                    $user_name = $detail_row['student_name'];
+                                } elseif ($user['role'] == 'teacher') {
+                                    $profile_image = !empty($detail_row['teacher_image']) ? 'pages/teacher/uploads/' . basename($detail_row['teacher_image']) : '/BMC-SMS/assets/images/undraw_profile.svg';
+                                    $user_name = $detail_row['teacher_name'];
+                                } elseif ($user['role'] == 'principal') {
+                                    $profile_image = !empty($detail_row['principal_image']) ? 'pages/principal/uploads/' . basename($detail_row['principal_image']) : '/BMC-SMS/assets/images/undraw_profile.svg';
+                                    $user_name = $detail_row['principal_name'];
+                                }
+                            }
+                            mysqli_stmt_close($detail_stmt);
+                        }
+                    }
+
+                    // Encrypt the profile image path and user name
+                    $encrypted_profile_image = encrypt_id($profile_image);
+                    $encrypted_user_name = encrypt_id($user_name);
+
+                    // Set cookies (consider adding secure and httponly flags for production)
                     setcookie("encrypted_user_id", $encrypted_id, time() + 86400, "/");
                     setcookie("encrypted_user_role", $encrypted_role, time() + 86400, "/");
+                    setcookie("encrypted_profile_image", $encrypted_profile_image, time() + 86400, "/");
+                    setcookie("encrypted_user_name", $encrypted_user_name, time() + 86400, "/");
 
-                    header("Location: index.php");
-                    exit;
+
+                    header("Location: dashboard.php");
+                    exit();
                 } else {
                     $error_message = "Invalid email or password"; // Generic message
                 }
@@ -56,12 +106,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>SB Admin 2 - Login</title>
 
-    <!-- Custom fonts -->
-    <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,700,900" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet"
         crossorigin="anonymous">
-    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="assets/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 
 <body class="bg-gradient-primary">
@@ -80,8 +129,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     </div>
 
                                     <?php if (!empty($error_message)): ?>
-                                    <div class="alert alert-danger"><?php echo htmlspecialchars($error_message); ?>
-                                    </div>
+                                        <div class="alert alert-danger"><?php echo htmlspecialchars($error_message); ?>
+                                        </div>
                                     <?php endif; ?>
 
                                     <form class="user" method="POST">
@@ -99,14 +148,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         </button>
                                         <hr>
                                     </form>
-
-                                    <hr>
-                                    <div class="text-center">
-                                        <a class="small" href="forgot-password.html">Forgot Password?</a>
-                                    </div>
-                                    <div class="text-center">
-                                        <a class="small" href="register.html">Create an Account!</a>
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -116,10 +157,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </div>
     </div>
 
-    <script src="../../assets/vendor/jquery/jquery.min.js"></script>
-    <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
-    <script src="../../assets/js/sb-admin-2.min.js"></script>
+    <script src="assets/vendor/jquery/jquery.min.js"></script>
+    <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/vendor/jquery-easing/jquery.easing.min.js"></script>
+    <script src="assets/js/sb-admin-2.min.js"></script>
 
 </body>
 
