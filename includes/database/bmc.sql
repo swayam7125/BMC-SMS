@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jul 21, 2025 at 06:12 PM
+-- Generation Time: Jul 22, 2025 at 09:43 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -49,7 +49,7 @@ CREATE TABLE `principal` (
 --
 
 INSERT INTO `principal` (`id`, `principal_image`, `school_id`, `principal_name`, `email`, `password`, `phone`, `principal_dob`, `gender`, `blood_group`, `address`, `qualification`, `salary`, `batch`) VALUES
-(1, '../../pages/principal/uploads/principal_687e645d13a9a6.93442731.jpg', 1, 'Fenil Pastagia', 'fenil@gmail.com', '$2y$10$d3NpW61HsPhfQMhrnQyz0uzEJbkMXRJrQZkPC6pnfls5JA/Ck0bKe', '9786564789', '1980-08-17', 'Male', 'B+', 'Katargam', 'M.A, B.Ed', 50000.00, 'Morning');
+(2, '../../pages/principal/uploads/principal_687e8b89043511.31717142.jpg', 2, 'dev', 'dev@gmail.com', '$2y$10$qmH7IN31FKaH/UJF2Ct9Ne5xtHZTZpx5D0k5iEGChnpWtQX6BeYUm', '8541235678', '2005-03-11', 'Male', 'AB+', 'adajan', 'MA', 50000.00, 'Morning');
 
 -- --------------------------------------------------------
 
@@ -77,7 +77,7 @@ CREATE TABLE `school` (
 --
 
 INSERT INTO `school` (`id`, `school_logo`, `school_name`, `email`, `phone`, `school_opening`, `school_type`, `education_board`, `school_medium`, `school_category`, `school_std`, `address`) VALUES
-(1, '../../pages/school/uploads/logo_687e6423036ec9.09563342.png', 'Sanskar Bharti Vidhyalaya', 'sbv@gmail.com', '9876567897', '2001-01-01', 'Private', 'State', 'Regional Language', 'Pre-Primary,Primary,Upper Primary,Secondary,Higher Secondary', 'Pre-Primary,Primary (1-5),Upper Primary (6-8),Secondary (9-10),Higher Secondary (11-12)', 'Adajan');
+(2, NULL, 'LP SAVANI CANAL ROAD', 'c@gmail.com', '8974561235', '2022-03-11', 'Government', 'State', 'English,Hindi', 'Upper Primary', 'Upper Primary (6-8)', 'surat');
 
 -- --------------------------------------------------------
 
@@ -110,7 +110,7 @@ CREATE TABLE `student` (
 --
 
 INSERT INTO `student` (`id`, `student_image`, `student_name`, `rollno`, `std`, `email`, `password`, `academic_year`, `school_id`, `dob`, `gender`, `blood_group`, `address`, `father_name`, `father_phone`, `mother_name`, `mother_phone`) VALUES
-(1, '../../uploads/students/687e666b279724.05053158.jpg', 'Meet Patel', '73', '1', 'meet@gmail.com', '$2y$10$Az8jVXsuxHYWC6EfnPTKy.dLTS.YENi5B5bCgMhpNLsKzvC1S9Ahu', '2025-2026', 1, '2020-03-03', 'male', 'b-', 'Varachha', 'Sanket Patel', '9327874000', 'Sita Patel', '9924976503');
+(3, '../../pages/student/uploads/student_687e8c52c37b06.96235602.jpg', 'Devam', '11', '12', 'devam11@gmail.com', '$2y$10$u36rVPMEjId68VW5OSdTWe6KUDviW0zniWSCg30yt5vhDphnuaAyq', '2024-2025', 2, '2005-03-11', 'male', 'b-', 'adajan', 'mukesh', '7874144228', 'heena', '7405670316');
 
 -- --------------------------------------------------------
 
@@ -144,7 +144,7 @@ CREATE TABLE `teacher` (
 --
 
 INSERT INTO `teacher` (`id`, `teacher_image`, `teacher_name`, `phone`, `school_id`, `dob`, `gender`, `blood_group`, `address`, `email`, `password`, `qualification`, `subject`, `language_known`, `salary`, `std`, `experience`, `batch`) VALUES
-(1, NULL, 'Swayam Shah', '9283745678', 1, '1992-02-02', 'Male', 'B-', 'Pal Gam', 'swayam@gmail.com', '$2y$10$s18f7OGGbOoMEB1i4eqFSuI5r07Zry8HfpshQvXi9GWR122mK81.y', 'B.A.Ed', 'English', 'Gujarati, Hindi, English', 30000.00, '7,8', '3', 'Evening');
+(3, '../../pages/teacher/uploads/teacher_687e8e7a0dfc45.80892459.jpg', 'Fenil', '5641237894', 2, '2003-03-11', 'Male', 'O+', 'canal road', 'fenil1@gmail.com', '$2y$10$IbbN2vpfWvOhxi1WvTc6Eu8.UOHLFbArSjuKs.GQOCQbP4vpcuP3i', 'MA', 'account', 'English', 50000.00, '11,12', '3', 'Morning');
 
 -- --------------------------------------------------------
 
@@ -166,7 +166,11 @@ CREATE TABLE `users` (
 INSERT INTO `users` (`id`, `role`, `email`, `password`) VALUES
 (1, 'schooladmin', 'fenil@gmail.com', '$2y$10$d3NpW61HsPhfQMhrnQyz0uzEJbkMXRJrQZkPC6pnfls5JA/Ck0bKe'),
 (2, 'teacher', 'swayam@gmail.com', '$2y$10$s18f7OGGbOoMEB1i4eqFSuI5r07Zry8HfpshQvXi9GWR122mK81.y'),
-(3, 'student', 'meet@gmail.com', '$2y$10$Az8jVXsuxHYWC6EfnPTKy.dLTS.YENi5B5bCgMhpNLsKzvC1S9Ahu');
+(3, 'student', 'meet@gmail.com', '$2y$10$Az8jVXsuxHYWC6EfnPTKy.dLTS.YENi5B5bCgMhpNLsKzvC1S9Ahu'),
+(4, 'student', 'ram@gmail.com', '$2y$10$JBzHDObjqBb/tBd86d1V1.N4WnAORx8Y6EVSJFZVKf0bR0Fioq3BW'),
+(5, 'schooladmin', 'dev@gmail.com', '$2y$10$qmH7IN31FKaH/UJF2Ct9Ne5xtHZTZpx5D0k5iEGChnpWtQX6BeYUm'),
+(6, 'student', 'devam11@gmail.com', '$2y$10$u36rVPMEjId68VW5OSdTWe6KUDviW0zniWSCg30yt5vhDphnuaAyq'),
+(8, 'teacher', 'fenil1@gmail.com', '$2y$10$IbbN2vpfWvOhxi1WvTc6Eu8.UOHLFbArSjuKs.GQOCQbP4vpcuP3i');
 
 --
 -- Indexes for dumped tables
@@ -220,31 +224,31 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `principal`
 --
 ALTER TABLE `principal`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `school`
 --
 ALTER TABLE `school`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `student`
 --
 ALTER TABLE `student`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `teacher`
 --
 ALTER TABLE `teacher`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- Constraints for dumped tables
