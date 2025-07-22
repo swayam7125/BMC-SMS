@@ -1,5 +1,6 @@
 <?php
 include_once "encryption.php";
+include_once "./includes/connect.php"; // Include your database connection file
 
 $role = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
@@ -11,6 +12,47 @@ if (!$role) {
     header("Location: login.php");
     exit;
 }
+
+// Fetch counts from the database
+$totalSchools = 0;
+$totalPrincipals = 0;
+$totalTeachers = 0;
+$totalStudents = 0;
+
+// Get total schools
+$sql = "SELECT COUNT(*) AS total FROM school";
+$result = $conn->query($sql);
+if ($result && $result->num_rows > 0) {
+    $row = $result->fetch_assoc();
+    $totalSchools = $row['total'];
+}
+
+// Get total principals
+$sql = "SELECT COUNT(*) AS total FROM principal";
+$result = $conn->query($sql);
+if ($result && $result->num_rows > 0) {
+    $row = $result->fetch_assoc();
+    $totalPrincipals = $row['total'];
+}
+
+// Get total teachers
+$sql = "SELECT COUNT(*) AS total FROM teacher";
+$result = $conn->query($sql);
+if ($result && $result->num_rows > 0) {
+    $row = $result->fetch_assoc();
+    $totalTeachers = $row['total'];
+}
+
+// Get total students
+$sql = "SELECT COUNT(*) AS total FROM student";
+$result = $conn->query($sql);
+if ($result && $result->num_rows > 0) {
+    $row = $result->fetch_assoc();
+    $totalStudents = $row['total'];
+}
+
+// Close the database connection
+$conn->close();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -90,7 +132,7 @@ if (!$role) {
                                             <div class="col mr-2">
                                                 <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
                                                     TOTAL Schools</div>
-                                                <div class="h5 mb-0 font-weight-bold text-gray-800">00</div>
+                                                <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalSchools; ?></div>
                                             </div>
                                             <div class="col-auto">
                                                 <i class="fas fa-school fa-2x text-gray-300"></i>
@@ -101,7 +143,7 @@ if (!$role) {
                             </a>
                         </div>
 
-                        <!-- Clickable Schools Card -->
+                        <!-- Clickable Principals Card -->
                         <div class="col-xl-3 col-md-6 mb-4">
                             <a href="./pages/principal/principal_list.php">
                                 <div class="card border-left-success shadow h-100 py-2">
@@ -110,7 +152,7 @@ if (!$role) {
                                             <div class="col mr-2">
                                                 <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                                     TOTAL Principals</div>
-                                                <div class="h5 mb-0 font-weight-bold text-gray-800">00</div>
+                                                <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalPrincipals; ?></div>
                                             </div>
                                             <div class="col-auto">
                                                 <i class="fas fa-user-tie fa-2x text-gray-300"></i>
@@ -121,7 +163,7 @@ if (!$role) {
                             </a>
                         </div>
 
-                        <!-- Clickable Schools Card -->
+                        <!-- Clickable Teachers Card -->
                         <div class="col-xl-3 col-md-6 mb-4">
                             <a href="./pages/teacher/teacher_list.php">
                                 <div class="card border-left-info shadow h-100 py-2">
@@ -130,7 +172,7 @@ if (!$role) {
                                             <div class="col mr-2">
                                                 <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
                                                     TOTAL Teachers</div>
-                                                <div class="h5 mb-0 font-weight-bold text-gray-800">00</div>
+                                                <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalTeachers; ?></div>
                                             </div>
                                             <div class="col-auto">
                                                 <i class="fas fa-person-chalkboard fa-2x text-gray-300"></i>
@@ -141,7 +183,7 @@ if (!$role) {
                             </a>
                         </div>
 
-                        <!-- Clickable Schools Card -->
+                        <!-- Clickable Students Card -->
                         <div class="col-xl-3 col-md-6 mb-4">
                             <a href="./pages/student/student_list.php">
                                 <div class="card border-left-warning shadow h-100 py-2">
@@ -150,7 +192,7 @@ if (!$role) {
                                             <div class="col mr-2">
                                                 <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                                                     TOTAL Students</div>
-                                                <div class="h5 mb-0 font-weight-bold text-gray-800">00</div>
+                                                <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalStudents; ?></div>
                                             </div>
                                             <div class="col-auto">
                                                 <i class="fas fa-children fa-2x text-gray-300"></i>
