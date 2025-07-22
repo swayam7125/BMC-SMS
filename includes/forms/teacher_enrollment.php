@@ -95,10 +95,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt_teacher = mysqli_prepare($conn, $insert_teacher_query);
             // UPDATED: Added 'is' for class_teacher and class_teacher_std, and their variables
             mysqli_stmt_bind_param(
-                $stmt_teacher, "sssisssssssssdsssis",
-                $image_path_for_db, $teacher_name, $phone, $school_id, $dob, $gender, $blood_group,
-                $address, $email, $hashed_password, $qualification, $subject, $language_known,
-                $salary, $std, $experience, $batch, $class_teacher, $class_teacher_std
+                $stmt_teacher,
+                "sssisssssssssdsssis",
+                $image_path_for_db,
+                $teacher_name,
+                $phone,
+                $school_id,
+                $dob,
+                $gender,
+                $blood_group,
+                $address,
+                $email,
+                $hashed_password,
+                $qualification,
+                $subject,
+                $language_known,
+                $salary,
+                $std,
+                $experience,
+                $batch,
+                $class_teacher,
+                $class_teacher_std
             );
 
             if (!mysqli_stmt_execute($stmt_teacher)) {
@@ -111,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $insert_user_query = "INSERT INTO users (role, email, password) VALUES (?, ?, ?)";
             $stmt_user = mysqli_prepare($conn, $insert_user_query);
             mysqli_stmt_bind_param($stmt_user, "sss", $user_role, $email, $hashed_password);
-             if (!mysqli_stmt_execute($stmt_user)) {
+            if (!mysqli_stmt_execute($stmt_user)) {
                 throw new Exception("User record creation failed: " . mysqli_stmt_error($stmt_user));
             }
             mysqli_stmt_close($stmt_user);
@@ -119,10 +136,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             mysqli_commit($conn);
             header("Location: ../../pages/teacher/teacher_list.php?success=Teacher enrolled successfully");
             exit();
-
         } catch (Exception $e) {
             mysqli_rollback($conn);
-            if(mysqli_errno($conn) == 1062){
+            if (mysqli_errno($conn) == 1062) {
                 $errors[] = "A teacher with this email or phone number already exists.";
             } else {
                 $errors[] = "Database error: " . $e->getMessage();
@@ -136,6 +152,7 @@ $school_result = mysqli_query($conn, $school_query);
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Enroll Teacher - School Management System</title>
@@ -144,30 +161,35 @@ $school_result = mysqli_query($conn, $school_query);
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include_once '../../includes/sidebar/BMC_sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header/BMC_header.php'; ?>
+                <?php include_once '.././includes/header.php'; ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Enroll New Teacher</h1>
                         <a href="../../pages/teacher/teacher_list.php" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to List</a>
                     </div>
                     <?php if (!empty($errors)): ?>
-                    <div class="alert alert-danger"><ul class="mb-0"><?php foreach ($errors as $error): ?><li><?php echo htmlspecialchars($error); ?></li><?php endforeach; ?></ul></div>
+                        <div class="alert alert-danger">
+                            <ul class="mb-0"><?php foreach ($errors as $error): ?><li><?php echo htmlspecialchars($error); ?></li><?php endforeach; ?></ul>
+                        </div>
                     <?php endif; ?>
                     <div class="card shadow mb-4">
-                        <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Teacher Information</h6></div>
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">Teacher Information</h6>
+                        </div>
                         <div class="card-body">
                             <form method="POST" enctype="multipart/form-data">
                                 <div class="row">
-                                     <div class="col-md-3 text-center">
+                                    <div class="col-md-3 text-center">
                                         <label>Photo Preview</label><br>
                                         <img src="../../assets/img/default-user.jpg" alt="Teacher Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
                                         <div class="form-group">
-                                             <label for="teacher_image" class="small btn btn-sm btn-info">
+                                            <label for="teacher_image" class="small btn btn-sm btn-info">
                                                 <i class="fas fa-upload fa-sm"></i> Upload Photo
                                             </label>
                                             <input type="file" class="d-none" id="teacher_image" name="teacher_image">
@@ -186,7 +208,13 @@ $school_result = mysqli_query($conn, $school_query);
                                 <hr>
                                 <h6 class="text-primary">Professional Information</h6>
                                 <div class="form-row mt-3">
-                                     <div class="form-group col-md-4"><label for="school_id">Assign to School *</label><select class="form-control" id="school_id" name="school_id" required><option value="">-- Select School --</option><?php mysqli_data_seek($school_result, 0); while ($school = mysqli_fetch_assoc($school_result)) { $selected = (isset($_POST['school_id']) && $_POST['school_id'] == $school['id']) ? 'selected' : ''; echo "<option value='{$school['id']}' {$selected}>" . htmlspecialchars($school['school_name']) . "</option>"; } ?></select></div>
+                                    <div class="form-group col-md-4"><label for="school_id">Assign to School *</label><select class="form-control" id="school_id" name="school_id" required>
+                                            <option value="">-- Select School --</option><?php mysqli_data_seek($school_result, 0);
+                                                                                            while ($school = mysqli_fetch_assoc($school_result)) {
+                                                                                                $selected = (isset($_POST['school_id']) && $_POST['school_id'] == $school['id']) ? 'selected' : '';
+                                                                                                echo "<option value='{$school['id']}' {$selected}>" . htmlspecialchars($school['school_name']) . "</option>";
+                                                                                            } ?>
+                                        </select></div>
                                     <div class="form-group col-md-4">
                                         <label for="batch">Batch *</label>
                                         <select class="form-control" id="batch" name="batch" required>
@@ -198,10 +226,10 @@ $school_result = mysqli_query($conn, $school_query);
                                     <div class="form-group col-md-4">
                                         <label>Timings</label>
                                         <div id="timingDetails" class="border p-2 rounded" style="min-height: 40px;">
-                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                 <div class="form-row">
+                                <div class="form-row">
                                     <div class="form-group col-md-6"><label for="subject">Subject Specialization *</label><input type="text" class="form-control" id="subject" name="subject" value="<?php echo htmlspecialchars($_POST['subject'] ?? ''); ?>" required></div>
                                     <div class="form-group col-md-6"><label for="qualification">Qualification</label><input type="text" class="form-control" id="qualification" name="qualification" value="<?php echo htmlspecialchars($_POST['qualification'] ?? ''); ?>"></div>
                                 </div>
@@ -209,7 +237,8 @@ $school_result = mysqli_query($conn, $school_query);
                                     <div class="form-group col-md-4">
                                         <label for="std">Teaching Standards</label>
                                         <select class="form-control multi-select" id="std" name="std[]" multiple="multiple">
-                                            <?php $stds = ['Nursery','Junior','Senior','1','2','3','4','5','6','7','8','9','10','11','12']; foreach($stds as $std_val): ?><option value="<?php echo $std_val; ?>"><?php echo $std_val; ?></option><?php endforeach; ?>
+                                            <?php $stds = ['Nursery', 'Junior', 'Senior', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+                                            foreach ($stds as $std_val): ?><option value="<?php echo $std_val; ?>"><?php echo $std_val; ?></option><?php endforeach; ?>
                                         </select>
                                     </div>
                                     <div class="form-group col-md-4"><label for="language_known">Languages Known</label><input type="text" class="form-control" id="language_known" name="language_known" value="<?php echo htmlspecialchars($_POST['language_known'] ?? ''); ?>"></div>
@@ -230,7 +259,8 @@ $school_result = mysqli_query($conn, $school_query);
                                         <label for="class_teacher_std">Class Teacher for Standard *</label>
                                         <select class="form-control" id="class_teacher_std" name="class_teacher_std">
                                             <option value="">-- Select Standard --</option>
-                                            <?php $stds_for_class_teacher = ['Nursery','Junior','Senior','1','2','3','4','5','6','7','8','9','10','11','12']; foreach($stds_for_class_teacher as $std_val): ?>
+                                            <?php $stds_for_class_teacher = ['Nursery', 'Junior', 'Senior', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+                                            foreach ($stds_for_class_teacher as $std_val): ?>
                                                 <option value="<?php echo $std_val; ?>" <?php echo (isset($_POST['class_teacher_std']) && $_POST['class_teacher_std'] == $std_val) ? 'selected' : ''; ?>><?php echo $std_val; ?></option>
                                             <?php endforeach; ?>
                                         </select>
@@ -241,10 +271,20 @@ $school_result = mysqli_query($conn, $school_query);
                                 <div class="form-row mt-3">
                                     <div class="form-group col-md-4"><label for="phone">Phone</label><input type="tel" class="form-control" id="phone" name="phone" value="<?php echo htmlspecialchars($_POST['phone'] ?? ''); ?>" maxlength="10"></div>
                                     <div class="form-group col-md-4"><label for="dob">Date of Birth</label><input type="date" class="form-control" id="dob" name="dob" value="<?php echo htmlspecialchars($_POST['dob'] ?? ''); ?>"></div>
-                                    <div class="form-group col-md-4"><label for="gender">Gender *</label><select class="form-control" id="gender" name="gender" required><option value="">-- Select Gender --</option><option value="Male">Male</option><option value="Female">Female</option><option value="Others">Others</option></select></div>
+                                    <div class="form-group col-md-4"><label for="gender">Gender *</label><select class="form-control" id="gender" name="gender" required>
+                                            <option value="">-- Select Gender --</option>
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                            <option value="Others">Others</option>
+                                        </select></div>
                                 </div>
                                 <div class="form-row">
-                                    <div class="form-group col-md-6"><label for="blood_group">Blood Group *</label><select class="form-control" id="blood_group" name="blood_group" required><option value="">-- Select Blood Group --</option><?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']; foreach ($bg_options as $bg) { echo "<option value='{$bg}'>{$bg}</option>"; } ?></select></div>
+                                    <div class="form-group col-md-6"><label for="blood_group">Blood Group *</label><select class="form-control" id="blood_group" name="blood_group" required>
+                                            <option value="">-- Select Blood Group --</option><?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+                                                                                                foreach ($bg_options as $bg) {
+                                                                                                    echo "<option value='{$bg}'>{$bg}</option>";
+                                                                                                } ?>
+                                        </select></div>
                                     <div class="form-group col-md-6"><label for="address">Address</label><textarea class="form-control" id="address" name="address" rows="1"><?php echo htmlspecialchars($_POST['address'] ?? ''); ?></textarea></div>
                                 </div>
                                 <div class="form-group mt-4">
@@ -256,7 +296,7 @@ $school_result = mysqli_query($conn, $school_query);
                     </div>
                 </div>
             </div>
-            <?php include_once '../../includes/footer/BMC_footer.php'; ?>
+            <?php include_once '../footer.php'; ?>
         </div>
     </div>
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
@@ -348,4 +388,5 @@ $school_result = mysqli_query($conn, $school_query);
         });
     </script>
 </body>
+
 </html>

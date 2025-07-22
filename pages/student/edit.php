@@ -73,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         mysqli_stmt_close($stmt_check);
     }
-    
+
     // --- Handle Photo Upload ---
     if (isset($_FILES['student_image']) && $_FILES['student_image']['error'] === UPLOAD_ERR_OK) {
         $file = $_FILES['student_image'];
@@ -83,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (in_array($file_ext, $allowed_exts)) {
             $target_dir = "../../uploads/students/";
             if (!file_exists($target_dir)) mkdir($target_dir, 0777, true);
-            
+
             $new_filename = uniqid('', true) . '.' . $file_ext;
             $destination = $target_dir . $new_filename;
 
@@ -119,10 +119,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $stmt_update = mysqli_prepare($conn, $update_student);
             mysqli_stmt_bind_param(
-                $stmt_update, "ssssssissssssssi",
-                $image_path_for_db, $student_name, $rollno, $std, $new_email, $academic_year,
-                $school_id, $dob, $gender, $blood_group, $address,
-                $father_name, $father_phone, $mother_name, $mother_phone,
+                $stmt_update,
+                "ssssssissssssssi",
+                $image_path_for_db,
+                $student_name,
+                $rollno,
+                $std,
+                $new_email,
+                $academic_year,
+                $school_id,
+                $dob,
+                $gender,
+                $blood_group,
+                $address,
+                $father_name,
+                $father_phone,
+                $mother_name,
+                $mother_phone,
                 $student_id
             );
 
@@ -132,7 +145,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             mysqli_commit($conn);
             header("Location: student_list.php?success=Student updated successfully");
             exit;
-
         } catch (Exception $e) {
             mysqli_rollback($conn);
             $errors[] = "Database update failed: " . $e->getMessage();
@@ -149,6 +161,7 @@ $schools_result = mysqli_query($conn, $schools_query);
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Edit Student - School Management System</title>
@@ -162,7 +175,9 @@ $schools_result = mysqli_query($conn, $schools_query);
         <?php include_once '../../includes/sidebar/BMC_sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header/BMC_header.php'; ?>
+                <!-- top bar code -->
+                <?php include_once '../../includes/header.php'; ?>
+                <!-- end of top bar code -->
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Edit Student</h1>
@@ -170,9 +185,9 @@ $schools_result = mysqli_query($conn, $schools_query);
                     </div>
 
                     <?php if (!empty($errors)): ?>
-                    <div class="alert alert-danger">
-                        <ul class="mb-0"><?php foreach ($errors as $error): ?><li><?php echo htmlspecialchars($error); ?></li><?php endforeach; ?></ul>
-                    </div>
+                        <div class="alert alert-danger">
+                            <ul class="mb-0"><?php foreach ($errors as $error): ?><li><?php echo htmlspecialchars($error); ?></li><?php endforeach; ?></ul>
+                        </div>
                     <?php endif; ?>
 
                     <div class="card shadow mb-4">
@@ -183,8 +198,8 @@ $schools_result = mysqli_query($conn, $schools_query);
                             <form method="POST" enctype="multipart/form-data">
                                 <div class="row">
                                     <div class="col-md-3 text-center">
-                                        <img src="<?php echo htmlspecialchars(!empty($student['student_image']) && file_exists($student['student_image']) ? $student['student_image'] : '../../assets/img/default-user.jpg'); ?>" 
-                                             alt="Student Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
+                                        <img src="<?php echo htmlspecialchars(!empty($student['student_image']) && file_exists($student['student_image']) ? $student['student_image'] : '../../assets/img/default-user.jpg'); ?>"
+                                            alt="Student Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
                                         <div class="form-group">
                                             <label for="student_image" class="small">Change Photo</label>
                                             <input type="file" class="form-control-file" id="student_image" name="student_image">
@@ -195,8 +210,16 @@ $schools_result = mysqli_query($conn, $schools_query);
                                             <div class="col-md-6 form-group"><label for="student_name">Student Name *</label><input type="text" class="form-control" id="student_name" name="student_name" value="<?php echo htmlspecialchars($student['student_name']); ?>" required></div>
                                             <div class="col-md-6 form-group"><label for="email">Email *</label><input type="email" class="form-control" id="email" name="email" value="<?php echo htmlspecialchars($student['email']); ?>" required></div>
                                             <div class="col-md-6 form-group"><label for="dob">Date of Birth</label><input type="date" class="form-control" id="dob" name="dob" value="<?php echo htmlspecialchars($student['dob']); ?>"></div>
-                                            <div class="col-md-6 form-group"><label for="gender">Gender</label><select class="form-control" id="gender" name="gender"><option value="male" <?php echo (strtolower($student['gender']) == 'male') ? 'selected' : ''; ?>>Male</option><option value="female" <?php echo (strtolower($student['gender']) == 'female') ? 'selected' : ''; ?>>Female</option><option value="others" <?php echo (strtolower($student['gender']) == 'others') ? 'selected' : ''; ?>>Others</option></select></div>
-                                            <div class="col-md-6 form-group"><label for="blood_group">Blood Group</label><select class="form-control" id="blood_group" name="blood_group"><?php $bg_options = ['a+', 'a-', 'b+', 'b-', 'ab+', 'ab-', 'o+', 'o-']; foreach ($bg_options as $bg) { $selected = (strtolower($student['blood_group']) == $bg) ? 'selected' : ''; echo "<option value='{$bg}' {$selected}>" . strtoupper($bg) . "</option>"; } ?></select></div>
+                                            <div class="col-md-6 form-group"><label for="gender">Gender</label><select class="form-control" id="gender" name="gender">
+                                                    <option value="male" <?php echo (strtolower($student['gender']) == 'male') ? 'selected' : ''; ?>>Male</option>
+                                                    <option value="female" <?php echo (strtolower($student['gender']) == 'female') ? 'selected' : ''; ?>>Female</option>
+                                                    <option value="others" <?php echo (strtolower($student['gender']) == 'others') ? 'selected' : ''; ?>>Others</option>
+                                                </select></div>
+                                            <div class="col-md-6 form-group"><label for="blood_group">Blood Group</label><select class="form-control" id="blood_group" name="blood_group"><?php $bg_options = ['a+', 'a-', 'b+', 'b-', 'ab+', 'ab-', 'o+', 'o-'];
+                                                                                                                                                                                            foreach ($bg_options as $bg) {
+                                                                                                                                                                                                $selected = (strtolower($student['blood_group']) == $bg) ? 'selected' : '';
+                                                                                                                                                                                                echo "<option value='{$bg}' {$selected}>" . strtoupper($bg) . "</option>";
+                                                                                                                                                                                            } ?></select></div>
                                             <div class="col-md-6 form-group"><label for="address">Address</label><textarea class="form-control" id="address" name="address" rows="1"><?php echo htmlspecialchars($student['address']); ?></textarea></div>
                                         </div>
                                     </div>
@@ -204,7 +227,11 @@ $schools_result = mysqli_query($conn, $schools_query);
                                 <hr>
                                 <h6 class="text-primary font-weight-bold">Academic Details</h6>
                                 <div class="row">
-                                    <div class="col-md-6 form-group"><label for="school_id">School *</label><select class="form-control" id="school_id" name="school_id" required><?php mysqli_data_seek($schools_result, 0); while ($school = mysqli_fetch_assoc($schools_result)) { $selected = ($school['id'] == $student['school_id']) ? 'selected' : ''; echo "<option value='{$school['id']}' {$selected}>" . htmlspecialchars($school['school_name']) . "</option>"; } ?></select></div>
+                                    <div class="col-md-6 form-group"><label for="school_id">School *</label><select class="form-control" id="school_id" name="school_id" required><?php mysqli_data_seek($schools_result, 0);
+                                                                                                                                                                                    while ($school = mysqli_fetch_assoc($schools_result)) {
+                                                                                                                                                                                        $selected = ($school['id'] == $student['school_id']) ? 'selected' : '';
+                                                                                                                                                                                        echo "<option value='{$school['id']}' {$selected}>" . htmlspecialchars($school['school_name']) . "</option>";
+                                                                                                                                                                                    } ?></select></div>
                                     <div class="col-md-6 form-group"><label for="rollno">Roll Number *</label><input type="text" class="form-control" id="rollno" name="rollno" value="<?php echo htmlspecialchars($student['rollno']); ?>" required></div>
                                     <div class="col-md-6 form-group"><label for="std">Class (Standard) *</label><input type="text" class="form-control" id="std" name="std" value="<?php echo htmlspecialchars($student['std']); ?>" required></div>
                                     <div class="col-md-6 form-group"><label for="academic_year">Academic Year *</label><input type="text" class="form-control" id="academic_year" name="academic_year" value="<?php echo htmlspecialchars($student['academic_year']); ?>" required></div>
@@ -227,7 +254,13 @@ $schools_result = mysqli_query($conn, $schools_query);
                     </div>
                 </div>
             </div>
-            <?php include_once '../../includes/footer/BMC_footer.php'; ?>
+
+            <!-- Footer -->
+            <?php
+            include '../../includes/footer.php';
+            ?>
+            <!-- End of Footer -->
+
         </div>
     </div>
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
@@ -248,7 +281,7 @@ $schools_result = mysqli_query($conn, $schools_query);
             </div>
         </div>
     </div>
-    
+
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
@@ -266,4 +299,5 @@ $schools_result = mysqli_query($conn, $schools_query);
         });
     </script>
 </body>
+
 </html>

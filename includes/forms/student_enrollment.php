@@ -116,7 +116,7 @@ $school_result = mysqli_query($conn, $school_query);
         <?php include_once '../../includes/sidebar/BMC_sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header/BMC_header.php'; ?>
+                <?php include_once '../../includes/header.php'; ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Enroll New Student</h1>
@@ -182,7 +182,7 @@ $school_result = mysqli_query($conn, $school_query);
                     </div>
                 </div>
             </div>
-            <?php include_once '../../includes/footer/BMC_footer.php'; ?>
+            <?php include_once '../footer.php'; ?>
         </div>
     </div>
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"

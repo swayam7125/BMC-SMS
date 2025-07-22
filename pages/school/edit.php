@@ -6,7 +6,10 @@ $role = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
-if (!$role) { header("Location: ../../login.php"); exit; }
+if (!$role) {
+    header("Location: ../../login.php");
+    exit;
+}
 
 if (!isset($_GET['id']) || empty($_GET['id'])) {
     header("Location: school_list.php?error=Invalid ID provided");
@@ -63,34 +66,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!empty($original_logo_path) && file_exists($original_logo_path)) {
                     unlink($original_logo_path);
                 }
-            } else { $errors[] = "Failed to move new logo."; }
-        } else { $errors[] = "Invalid file type for logo."; }
+            } else {
+                $errors[] = "Failed to move new logo.";
+            }
+        } else {
+            $errors[] = "Invalid file type for logo.";
+        }
     }
 
     if (empty($school_name)) $errors[] = "School name is required";
-    
+
     if (empty($errors)) {
         try {
             $update_query = "UPDATE school SET school_logo=?, school_name=?, email=?, phone=?, address=?, school_opening=?, school_type=?, education_board=?, school_medium=?, school_category=?, school_std=? WHERE id=?";
             $stmt = mysqli_prepare($conn, $update_query);
-            mysqli_stmt_bind_param($stmt, "sssssssssssi", 
-                $logo_path_for_db, $school_name, $email, $phone, $address, $school_opening, 
-                $school_type, $education_board, $school_medium, $school_category, $school_std, $school_id
+            mysqli_stmt_bind_param(
+                $stmt,
+                "sssssssssssi",
+                $logo_path_for_db,
+                $school_name,
+                $email,
+                $phone,
+                $address,
+                $school_opening,
+                $school_type,
+                $education_board,
+                $school_medium,
+                $school_category,
+                $school_std,
+                $school_id
             );
-            
+
             if (mysqli_stmt_execute($stmt)) {
                 header("Location: ../../pages/school/school_list.php?success=School updated successfully");
                 exit;
-            } else { throw new Exception(mysqli_stmt_error($stmt)); }
+            } else {
+                throw new Exception(mysqli_stmt_error($stmt));
+            }
         } catch (Exception $e) {
-            if (mysqli_errno($conn) == 1062) { $errors[] = "A school with this email or phone number already exists."; } 
-            else { $errors[] = "Database error: " . $e->getMessage(); }
+            if (mysqli_errno($conn) == 1062) {
+                $errors[] = "A school with this email or phone number already exists.";
+            } else {
+                $errors[] = "Database error: " . $e->getMessage();
+            }
         }
     }
 }
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Edit School - School Management System</title>
@@ -99,22 +124,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include_once '../../includes/sidebar/BMC_sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header/BMC_header.php'; ?>
+                <!-- top bar code -->
+                <?php include_once '../../includes/header.php'; ?>
+                <!-- end of top bar code -->
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Edit School</h1>
                         <a href="school_list.php" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i class="fas fa-arrow-left fa-sm"></i> Back to List</a>
                     </div>
                     <?php if (!empty($errors)): ?>
-                    <div class="alert alert-danger"><ul class="mb-0"><?php foreach ($errors as $error): ?><li><?php echo htmlspecialchars($error); ?></li><?php endforeach; ?></ul></div>
+                        <div class="alert alert-danger">
+                            <ul class="mb-0"><?php foreach ($errors as $error): ?><li><?php echo htmlspecialchars($error); ?></li><?php endforeach; ?></ul>
+                        </div>
                     <?php endif; ?>
                     <div class="card shadow mb-4">
-                        <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">School Details</h6></div>
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">School Details</h6>
+                        </div>
                         <div class="card-body">
                             <form method="POST" enctype="multipart/form-data">
                                 <div class="row">
@@ -124,7 +156,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         <div class="form-group"><label for="school_logo" class="small btn btn-sm btn-info"><i class="fas fa-upload fa-sm"></i> Change Logo</label><input type="file" class="d-none" id="school_logo" name="school_logo"></div>
                                     </div>
                                     <div class="col-md-9">
-                                        <div class="form-row"><div class="form-group col-md-12"><label for="school_name">School Name *</label><input type="text" class="form-control" name="school_name" value="<?php echo htmlspecialchars($school['school_name']); ?>" required></div></div>
+                                        <div class="form-row">
+                                            <div class="form-group col-md-12"><label for="school_name">School Name *</label><input type="text" class="form-control" name="school_name" value="<?php echo htmlspecialchars($school['school_name']); ?>" required></div>
+                                        </div>
                                         <div class="form-row">
                                             <div class="form-group col-md-6"><label for="email">Email Address *</label><input type="email" class="form-control" name="email" value="<?php echo htmlspecialchars($school['email']); ?>" required></div>
                                             <div class="form-group col-md-6"><label for="phone">Phone Number *</label><input type="tel" class="form-control" name="phone" value="<?php echo htmlspecialchars($school['phone']); ?>" maxlength="10" required></div>
@@ -134,28 +168,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <hr>
                                 <div class="form-row">
                                     <div class="form-group col-md-6"><label for="school_opening">School Opening Date *</label><input type="date" class="form-control" name="school_opening" value="<?php echo htmlspecialchars($school['school_opening']); ?>" required></div>
-                                    <div class="form-group col-md-6"><label for="school_type">School Type *</label><select class="form-control" name="school_type" required><option value="Government" <?php if($school['school_type'] == 'Government') echo 'selected'; ?>>Government</option><option value="Private" <?php if($school['school_type'] == 'Private') echo 'selected'; ?>>Private</option></select></div>
+                                    <div class="form-group col-md-6"><label for="school_type">School Type *</label><select class="form-control" name="school_type" required>
+                                            <option value="Government" <?php if ($school['school_type'] == 'Government') echo 'selected'; ?>>Government</option>
+                                            <option value="Private" <?php if ($school['school_type'] == 'Private') echo 'selected'; ?>>Private</option>
+                                        </select></div>
                                 </div>
                                 <div class="form-row">
-                                    <div class="form-group col-md-6"><label for="education_board">Education Board *</label><select class="form-control multi-select" name="education_board[]" multiple="multiple" required><?php $boards = ['CBSE', 'State', 'IGCSE']; foreach($boards as $board): ?><option value="<?php echo $board; ?>" <?php if(in_array($board, $selected_boards)) echo 'selected'; ?>><?php echo $board; ?></option><?php endforeach; ?></select></div>
-                                    <div class="form-group col-md-6"><label for="school_medium">School Medium *</label><select class="form-control multi-select" name="school_medium[]" multiple="multiple" required><?php $mediums = ['English', 'Hindi', 'Regional Language']; foreach($mediums as $medium): ?><option value="<?php echo $medium; ?>" <?php if(in_array($medium, $selected_mediums)) echo 'selected'; ?>><?php echo $medium; ?></option><?php endforeach; ?></select></div>
+                                    <div class="form-group col-md-6"><label for="education_board">Education Board *</label><select class="form-control multi-select" name="education_board[]" multiple="multiple" required><?php $boards = ['CBSE', 'State', 'IGCSE'];
+                                                                                                                                                                                                                            foreach ($boards as $board): ?><option value="<?php echo $board; ?>" <?php if (in_array($board, $selected_boards)) echo 'selected'; ?>><?php echo $board; ?></option><?php endforeach; ?></select></div>
+                                    <div class="form-group col-md-6"><label for="school_medium">School Medium *</label><select class="form-control multi-select" name="school_medium[]" multiple="multiple" required><?php $mediums = ['English', 'Hindi', 'Regional Language'];
+                                                                                                                                                                                                                        foreach ($mediums as $medium): ?><option value="<?php echo $medium; ?>" <?php if (in_array($medium, $selected_mediums)) echo 'selected'; ?>><?php echo $medium; ?></option><?php endforeach; ?></select></div>
                                 </div>
                                 <div class="form-row">
-                                    <div class="form-group col-md-6"><label for="school_category">School Category *</label><select class="form-control multi-select" id="school_category" name="school_category[]" multiple="multiple" required><?php $categories = ['Pre-Primary', 'Primary', 'Upper Primary', 'Secondary', 'Higher Secondary']; foreach($categories as $cat):?><option value="<?php echo $cat; ?>" <?php if(in_array($cat, $selected_categories)) echo 'selected'; ?>><?php echo $cat; ?></option><?php endforeach; ?></select></div>
-                                    <div class="form-group col-md-6"><label for="school_std">School Standards *</label><select class="form-control multi-select" id="school_std" name="school_std[]" multiple="multiple" required><?php $stds = ['Pre-Primary', 'Primary (1-5)', 'Upper Primary (6-8)', 'Secondary (9-10)', 'Higher Secondary (11-12)']; foreach($stds as $std):?><option value="<?php echo $std; ?>" <?php if(in_array($std, $selected_stds)) echo 'selected'; ?>><?php echo $std; ?></option><?php endforeach; ?></select></div>
+                                    <div class="form-group col-md-6"><label for="school_category">School Category *</label><select class="form-control multi-select" id="school_category" name="school_category[]" multiple="multiple" required><?php $categories = ['Pre-Primary', 'Primary', 'Upper Primary', 'Secondary', 'Higher Secondary'];
+                                                                                                                                                                                                                                                foreach ($categories as $cat): ?><option value="<?php echo $cat; ?>" <?php if (in_array($cat, $selected_categories)) echo 'selected'; ?>><?php echo $cat; ?></option><?php endforeach; ?></select></div>
+                                    <div class="form-group col-md-6"><label for="school_std">School Standards *</label><select class="form-control multi-select" id="school_std" name="school_std[]" multiple="multiple" required><?php $stds = ['Pre-Primary', 'Primary (1-5)', 'Upper Primary (6-8)', 'Secondary (9-10)', 'Higher Secondary (11-12)'];
+                                                                                                                                                                                                                                    foreach ($stds as $std): ?><option value="<?php echo $std; ?>" <?php if (in_array($std, $selected_stds)) echo 'selected'; ?>><?php echo $std; ?></option><?php endforeach; ?></select></div>
                                 </div>
                                 <div class="form-group"><label for="address">Address *</label><textarea class="form-control" name="address" rows="3" required><?php echo htmlspecialchars($school['address']); ?></textarea></div>
                                 <hr>
                                 <div class="form-group mt-4">
                                     <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update School</button>
                                     <a href="school_list.php" class="btn btn-secondary"><i class="fas fa-times"></i> Cancel</a>
-                                </div>                            
+                                </div>
                             </form>
                         </div>
                     </div>
                 </div>
             </div>
-            <?php include_once '../../includes/footer/BMC_footer.php'; ?>
+
+            <!-- Footer -->
+            <?php
+            include '../../includes/footer.php';
+            ?>
+            <!-- End of Footer -->
+
         </div>
     </div>
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
@@ -198,18 +245,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 const selectedCategories = categorySelect.val() || [];
                 const allowedStandards = selectedCategories.map(category => categoryToStandardMap[category]);
                 let currentSelectedStandards = standardSelect.val() || [];
-                
+
                 currentSelectedStandards = currentSelectedStandards.filter(std => allowedStandards.includes(std));
-                
+
                 standardSelect.find('option').each(function() {
                     $(this).prop('disabled', !allowedStandards.includes($(this).val()));
                 });
-                
+
                 standardSelect.val(currentSelectedStandards).trigger('change');
             }
 
             categorySelect.on('change', updateStandardOptions);
-            
+
             // Run on page load to set the initial state
             updateStandardOptions();
         });
@@ -221,4 +268,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         });
     </script>
 </body>
+
 </html>

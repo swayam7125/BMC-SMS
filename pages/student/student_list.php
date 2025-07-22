@@ -60,9 +60,9 @@ $result = mysqli_query($conn, $query);
             <!-- Main Content -->
             <div id="content">
 
-                <!-- Topbar -->
-                <?php include_once '../../includes/header/BMC_header.php'; ?>
-                <!-- End of Topbar -->
+                <!-- top bar code -->
+                <?php include_once '../../includes/header.php'; ?>
+                <!-- end of top bar code -->
 
                 <!-- Begin Page Content -->
                 <div class="container-fluid">
@@ -74,28 +74,28 @@ $result = mysqli_query($conn, $query);
 
                     <!-- Display success/error messages -->
                     <?php if (isset($_GET['success'])): ?>
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                        <?php echo htmlspecialchars($_GET['success']); ?>
-                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <?php echo htmlspecialchars($_GET['success']); ?>
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
                     <?php endif; ?>
 
                     <?php if (isset($_GET['error'])): ?>
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        <?php echo htmlspecialchars($_GET['error']); ?>
-                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <?php echo htmlspecialchars($_GET['error']); ?>
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
                     <?php endif; ?>
 
                     <!-- DataTales Example -->
                     <div class="card shadow mb-4">
-                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                        <div class="card-header py-3 d-flex justify-content-between align-items-center">
                             <h6 class="m-0 font-weight-bold text-primary">Student DataTable</h6>
-                            <a href="/BMC-SMS/includes/forms/student_enrollment.php" class="btn btn-primary btn-icon-split btn-sm">
+                            <a href="/BMC-SMS/includes/forms/student_enrollment.php" class="btn btn-primary btn-icon-split btn-sm disabled">
                                 <span class="icon text-white-50">
                                     <i class="fas fa-plus"></i>
                                 </span>
@@ -160,7 +160,9 @@ $result = mysqli_query($conn, $query);
             <!-- End of Main Content -->
 
             <!-- Footer -->
-            <?php include_once '../../includes/footer/BMC_footer.php'; ?>
+            <?php
+            include '../../includes/footer.php';
+            ?>
             <!-- End of Footer -->
 
         </div>
@@ -231,21 +233,21 @@ $result = mysqli_query($conn, $query);
 
     <!-- Page level custom scripts -->
     <script>
-    // Call the dataTables jQuery plugin
-    $(document).ready(function() {
-        $('#dataTable').DataTable({
-            "pageLength": 25,
-            "order": [
-                [0, "asc"]
-            ]
+        // Call the dataTables jQuery plugin
+        $(document).ready(function() {
+            $('#dataTable').DataTable({
+                "pageLength": 25,
+                "order": [
+                    [0, "asc"]
+                ]
+            });
         });
-    });
 
-    // Delete confirmation function
-    function confirmDelete(id) {
-        $('#confirmDeleteBtn').attr('href', 'delete.php?id=' + id);
-        $('#deleteModal').modal('show');
-    }
+        // Delete confirmation function
+        function confirmDelete(id) {
+            $('#confirmDeleteBtn').attr('href', 'delete.php?id=' + id);
+            $('#deleteModal').modal('show');
+        }
     </script>
 
 </body>

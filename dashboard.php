@@ -1,5 +1,5 @@
 <?php
-include_once "encryption.php";
+include_once "./encryption.php";
 
 $role = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
@@ -8,7 +8,7 @@ if (isset($_COOKIE['encrypted_user_role'])) {
 
 // Redirect to login if not logged in
 if (!$role) {
-    header("Location: login.php");
+    header("Location: ./login.php");
     exit;
 }
 ?>
@@ -43,6 +43,9 @@ if (!$role) {
     <!-- Corrected Font Awesome link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
 
+    <!-- Sidebar CSS -->
+    <link rel="stylesheet" href="./assets/css/sidebar.css">
+
 </head>
 
 <body id="page-top">
@@ -64,7 +67,7 @@ if (!$role) {
 
                 <!-- Topbar -->
                 <?php
-                include './includes/header/BMC_header.php';
+                include './includes/header.php';
                 ?>
                 <!-- End of Topbar -->
 
@@ -251,7 +254,7 @@ if (!$role) {
 
             <!-- Footer -->
             <?php
-            include './includes/footer/BMC_footer.php';
+            include './includes/footer.php';
             ?>
             <!-- End of Footer -->
 

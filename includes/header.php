@@ -1,6 +1,6 @@
 <?php
-include_once __DIR__ . "/../connect.php"; // Ensure this path is correct for your setup
-include_once __DIR__ . "/../../encryption.php"; // Ensure this path is correct for your setup
+include_once __DIR__ . "../connect.php"; // Ensure this path is correct for your setup
+include_once __DIR__ . "../../encryption.php"; // Ensure this path is correct for your setup
 
 // For debugging - KEEP THIS DURING DEVELOPMENT
 error_reporting(E_ALL);

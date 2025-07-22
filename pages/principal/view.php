@@ -146,40 +146,40 @@ if (!empty($principal['batch'])) {
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
 
     <style>
-    .principal-photo {
-        width: 150px;
-        height: 150px;
-        object-fit: cover;
-        border-radius: 10px;
-        border: 3px solid #e3e6f0;
-        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
-    }
+        .principal-photo {
+            width: 150px;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 3px solid #e3e6f0;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        }
 
-    .photo-placeholder {
-        width: 150px;
-        height: 150px;
-        background-color: #f8f9fc;
-        border: 2px dashed #d1d3e2;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #858796;
-        font-size: 14px;
-        text-align: center;
-    }
+        .photo-placeholder {
+            width: 150px;
+            height: 150px;
+            background-color: #f8f9fc;
+            border: 2px dashed #d1d3e2;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #858796;
+            font-size: 14px;
+            text-align: center;
+        }
 
-    .photo-container {
-        display: flex;
-        justify-content: center;
-        margin-bottom: 20px;
-    }
+        .photo-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
 
-    .salary-display {
-        font-size: 1.2em;
-        font-weight: bold;
-        color: #28a745;
-    }
+        .salary-display {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #28a745;
+        }
     </style>
 </head>
 
@@ -190,8 +190,9 @@ if (!empty($principal['batch'])) {
         <div id="content-wrapper" class="d-flex flex-column">
 
             <div id="content">
-
-                <?php include_once '../../includes/header/BMC_header.php'; ?>
+                <!-- top bar code -->
+                <?php include_once '../../includes/header.php'; ?>
+                <!-- end of top bar code -->
                 <div class="container-fluid">
 
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
@@ -218,16 +219,16 @@ if (!empty($principal['batch'])) {
                                 <div class="card-body">
                                     <div class="photo-container">
                                         <?php if (!$show_default): ?>
-                                        <img src="<?php echo htmlspecialchars($photo_path); ?>"
-                                            alt="<?php echo htmlspecialchars($principal['principal_name']); ?>"
-                                            class="principal-photo"
-                                            onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($default_photo); ?>'; this.nextElementSibling.style.display='block';">
-                                        <small class="text-muted mt-2" style="display: none;">Photo not
-                                            available</small>
+                                            <img src="<?php echo htmlspecialchars($photo_path); ?>"
+                                                alt="<?php echo htmlspecialchars($principal['principal_name']); ?>"
+                                                class="principal-photo"
+                                                onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($default_photo); ?>'; this.nextElementSibling.style.display='block';">
+                                            <small class="text-muted mt-2" style="display: none;">Photo not
+                                                available</small>
                                         <?php else: ?>
-                                        <img src="<?php echo htmlspecialchars($default_photo); ?>"
-                                            alt="Default Principal Avatar" class="principal-photo"
-                                            style="opacity: 0.7;">
+                                            <img src="<?php echo htmlspecialchars($default_photo); ?>"
+                                                alt="Default Principal Avatar" class="principal-photo"
+                                                style="opacity: 0.7;">
                                         <?php endif; ?>
                                     </div>
                                     <div class="text-center">
@@ -341,7 +342,7 @@ if (!empty($principal['batch'])) {
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="col-lg-6 mb-4">
                             <div class="card shadow h-100">
                                 <div class="card-header py-3">
@@ -359,23 +360,27 @@ if (!empty($principal['batch'])) {
                                         </div>
                                     </div>
                                     <div class="row">
-                                         <div class="col-sm-4 font-weight-bold">Work Timings:</div>
-                                         <div class="col-sm-8"><?php echo $timings_html; ?></div>
+                                        <div class="col-sm-4 font-weight-bold">Work Timings:</div>
+                                        <div class="col-sm-8"><?php echo $timings_html; ?></div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                     </div>
-                    </div>
                 </div>
-            <?php include_once '../../includes/footer/BMC_footer.php'; ?>
             </div>
+            <!-- Footer -->
+            <?php
+            include '../../includes/footer.php';
+            ?>
+            <!-- End of Footer -->
         </div>
+    </div>
     <a class="scroll-to-top rounded" href="#page-top">
         <i class="fas fa-angle-up"></i>
     </a>
-<div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
         aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">

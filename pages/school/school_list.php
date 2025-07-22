@@ -49,7 +49,9 @@ $result = mysqli_query($conn, $query);
 
             <div id="content">
 
-                <?php include_once '../../includes/header/BMC_header.php'; ?>
+                <!-- top bar code -->
+                <?php include_once '../../includes/header.php'; ?>
+                <!-- end of top bar code -->
                 <div class="container-fluid">
 
                     <h1 class="h3 mb-2 text-gray-800">School Tables</h1>
@@ -57,25 +59,25 @@ $result = mysqli_query($conn, $query);
                     </p>
 
                     <?php if (isset($_GET['success'])): ?>
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                        <?php echo htmlspecialchars($_GET['success']); ?>
-                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <?php echo htmlspecialchars($_GET['success']); ?>
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
                     <?php endif; ?>
 
                     <?php if (isset($_GET['error'])): ?>
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        <?php echo htmlspecialchars($_GET['error']); ?>
-                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <?php echo htmlspecialchars($_GET['error']); ?>
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
                     <?php endif; ?>
 
                     <div class="card shadow mb-4">
-                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                        <div class="card-header py-3 d-flex justify-content-between align-items-center">
                             <h6 class="m-0 font-weight-bold text-primary">School DataTable</h6>
                             <a href="/BMC-SMS/includes/forms/school_enrollment.php" class="btn btn-primary btn-icon-split btn-sm">
                                 <span class="icon text-white-50">
@@ -128,7 +130,7 @@ $result = mysqli_query($conn, $query);
                                                 echo "</tr>";
                                             }
                                         } else {
-                                             echo "<tr><td colspan='7' class='text-center'>No schools found</td></tr>";
+                                            echo "<tr><td colspan='7' class='text-center'>No schools found</td></tr>";
                                         }
                                         ?>
                                     </tbody>
@@ -138,10 +140,14 @@ $result = mysqli_query($conn, $query);
                     </div>
 
                 </div>
-                </div>
-            <?php include_once '../../includes/footer/BMC_footer.php'; ?>
             </div>
+            <!-- Footer -->
+            <?php
+            include '../../includes/footer.php';
+            ?>
+            <!-- End of Footer -->
         </div>
+    </div>
     <a class="scroll-to-top rounded" href="#page-top">
         <i class="fas fa-angle-up"></i>
     </a>
@@ -195,22 +201,22 @@ $result = mysqli_query($conn, $query);
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
 
     <script>
-    // Call the dataTables jQuery plugin
-    $(document).ready(function() {
-        $('#dataTable').DataTable({
-            "pageLength": 10,
-            "order": [
-                [0, "asc"]
-            ]
+        // Call the dataTables jQuery plugin
+        $(document).ready(function() {
+            $('#dataTable').DataTable({
+                "pageLength": 10,
+                "order": [
+                    [0, "asc"]
+                ]
+            });
         });
-    });
 
-    // Delete confirmation function
-    function confirmDelete(id) {
-        // Corrected path for delete action if needed, assuming delete script is in the same folder
-        $('#confirmDeleteBtn').attr('href', 'delete.php?id=' + id);
-        $('#deleteModal').modal('show');
-    }
+        // Delete confirmation function
+        function confirmDelete(id) {
+            // Corrected path for delete action if needed, assuming delete script is in the same folder
+            $('#confirmDeleteBtn').attr('href', 'delete.php?id=' + id);
+            $('#deleteModal').modal('show');
+        }
     </script>
 
 </body>

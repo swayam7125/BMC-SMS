@@ -6,10 +6,16 @@ $role = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
-if (!$role) { header("Location: ../../login.php"); exit; }
+if (!$role) {
+    header("Location: ../../login.php");
+    exit;
+}
 
 $school_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
-if ($school_id <= 0) { header("Location: school_list.php?error=Invalid school ID"); exit; }
+if ($school_id <= 0) {
+    header("Location: school_list.php?error=Invalid school ID");
+    exit;
+}
 
 // Fetch school data with assigned principal's details
 $query = "SELECT s.*, p.id as principal_id, p.principal_name, p.principal_image 
@@ -69,6 +75,7 @@ $show_default_principal_photo = ($principal_photo_path === null);
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>View School - <?php echo htmlspecialchars($school['school_name']); ?></title>
@@ -83,19 +90,42 @@ $show_default_principal_photo = ($principal_photo_path === null);
             border: 3px solid #e3e6f0;
             box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
         }
-        .view-photo { object-fit: cover; }
-        .view-logo { object-fit: contain; padding: 5px; }
-        .photo-container { display: flex; justify-content: center; margin-bottom: 1rem; }
-        .info-row { border-bottom: 1px solid #e3e6f0; padding-top: 0.75rem; padding-bottom: 0.75rem; }
-        .info-row:last-child { border-bottom: none; }
+
+        .view-photo {
+            object-fit: cover;
+        }
+
+        .view-logo {
+            object-fit: contain;
+            padding: 5px;
+        }
+
+        .photo-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+
+        .info-row {
+            border-bottom: 1px solid #e3e6f0;
+            padding-top: 0.75rem;
+            padding-bottom: 0.75rem;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
     </style>
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include_once '../../includes/sidebar/BMC_sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header/BMC_header.php'; ?>
+                <!-- top bar code -->
+                <?php include_once '../../includes/header.php'; ?>
+                <!-- end of top bar code -->
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">School Details</h1>
@@ -108,7 +138,9 @@ $show_default_principal_photo = ($principal_photo_path === null);
                     <div class="row">
                         <div class="col-lg-4 mb-4">
                             <div class="card shadow h-100">
-                                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-image"></i> School Logo</h6></div>
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-image"></i> School Logo</h6>
+                                </div>
                                 <div class="card-body text-center">
                                     <div class="photo-container">
                                         <?php if (!$show_default_logo): ?>
@@ -126,34 +158,73 @@ $show_default_principal_photo = ($principal_photo_path === null);
 
                         <div class="col-lg-8 mb-4">
                             <div class="card shadow h-100">
-                                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-info-circle"></i> Basic Information</h6></div>
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-info-circle"></i> Basic Information</h6>
+                                </div>
                                 <div class="card-body">
-                                    <div class="row info-row"><div class="col-sm-4 font-weight-bold">School ID:</div><div class="col-sm-8"><?php echo htmlspecialchars($school['id']); ?></div></div>
-                                    <div class="row info-row"><div class="col-sm-4 font-weight-bold">Name:</div><div class="col-sm-8"><?php echo htmlspecialchars($school['school_name']); ?></div></div>
-                                    <div class="row info-row"><div class="col-sm-4 font-weight-bold">Email:</div><div class="col-sm-8"><?php echo htmlspecialchars($school['email']); ?></div></div>
-                                    <div class="row info-row"><div class="col-sm-4 font-weight-bold">Phone:</div><div class="col-sm-8"><?php echo htmlspecialchars($school['phone']); ?></div></div>
-                                    <div class="row info-row"><div class="col-sm-4 font-weight-bold">Opening Date:</div><div class="col-sm-8"><?php echo date("d M, Y", strtotime($school['school_opening'])); ?></div></div>
-                                    <div class="row info-row"><div class="col-sm-4 font-weight-bold">Address:</div><div class="col-sm-8"><?php echo nl2br(htmlspecialchars($school['address'])); ?></div></div>
+                                    <div class="row info-row">
+                                        <div class="col-sm-4 font-weight-bold">School ID:</div>
+                                        <div class="col-sm-8"><?php echo htmlspecialchars($school['id']); ?></div>
+                                    </div>
+                                    <div class="row info-row">
+                                        <div class="col-sm-4 font-weight-bold">Name:</div>
+                                        <div class="col-sm-8"><?php echo htmlspecialchars($school['school_name']); ?></div>
+                                    </div>
+                                    <div class="row info-row">
+                                        <div class="col-sm-4 font-weight-bold">Email:</div>
+                                        <div class="col-sm-8"><?php echo htmlspecialchars($school['email']); ?></div>
+                                    </div>
+                                    <div class="row info-row">
+                                        <div class="col-sm-4 font-weight-bold">Phone:</div>
+                                        <div class="col-sm-8"><?php echo htmlspecialchars($school['phone']); ?></div>
+                                    </div>
+                                    <div class="row info-row">
+                                        <div class="col-sm-4 font-weight-bold">Opening Date:</div>
+                                        <div class="col-sm-8"><?php echo date("d M, Y", strtotime($school['school_opening'])); ?></div>
+                                    </div>
+                                    <div class="row info-row">
+                                        <div class="col-sm-4 font-weight-bold">Address:</div>
+                                        <div class="col-sm-8"><?php echo nl2br(htmlspecialchars($school['address'])); ?></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         <div class="col-lg-6 mb-4">
                             <div class="card shadow h-100">
-                                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-info"><i class="fas fa-university"></i> Academic Details</h6></div>
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-info"><i class="fas fa-university"></i> Academic Details</h6>
+                                </div>
                                 <div class="card-body">
-                                    <div class="row info-row"><div class="col-sm-5 font-weight-bold">School Type:</div><div class="col-sm-7"><?php echo htmlspecialchars($school['school_type']); ?></div></div>
-                                    <div class="row info-row"><div class="col-sm-5 font-weight-bold">Education Board(s):</div><div class="col-sm-7"><?php echo htmlspecialchars(str_replace(',', ', ', $school['education_board'])); ?></div></div>
-                                    <div class="row info-row"><div class="col-sm-5 font-weight-bold">Medium(s):</div><div class="col-sm-7"><?php echo htmlspecialchars(str_replace(',', ', ', $school['school_medium'])); ?></div></div>
-                                    <div class="row info-row"><div class="col-sm-5 font-weight-bold">Categories:</div><div class="col-sm-7"><?php echo htmlspecialchars(str_replace(',', ', ', $school['school_category'])); ?></div></div>
-                                    <div class="row info-row"><div class="col-sm-5 font-weight-bold">Standards:</div><div class="col-sm-7"><?php echo htmlspecialchars(str_replace(',', ', ', $school['school_std'])); ?></div></div>
+                                    <div class="row info-row">
+                                        <div class="col-sm-5 font-weight-bold">School Type:</div>
+                                        <div class="col-sm-7"><?php echo htmlspecialchars($school['school_type']); ?></div>
+                                    </div>
+                                    <div class="row info-row">
+                                        <div class="col-sm-5 font-weight-bold">Education Board(s):</div>
+                                        <div class="col-sm-7"><?php echo htmlspecialchars(str_replace(',', ', ', $school['education_board'])); ?></div>
+                                    </div>
+                                    <div class="row info-row">
+                                        <div class="col-sm-5 font-weight-bold">Medium(s):</div>
+                                        <div class="col-sm-7"><?php echo htmlspecialchars(str_replace(',', ', ', $school['school_medium'])); ?></div>
+                                    </div>
+                                    <div class="row info-row">
+                                        <div class="col-sm-5 font-weight-bold">Categories:</div>
+                                        <div class="col-sm-7"><?php echo htmlspecialchars(str_replace(',', ', ', $school['school_category'])); ?></div>
+                                    </div>
+                                    <div class="row info-row">
+                                        <div class="col-sm-5 font-weight-bold">Standards:</div>
+                                        <div class="col-sm-7"><?php echo htmlspecialchars(str_replace(',', ', ', $school['school_std'])); ?></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         <div class="col-lg-6 mb-4">
                             <div class="card shadow h-100">
-                                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-success"><i class="fas fa-user-tie"></i> Principal Information</h6></div>
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-success"><i class="fas fa-user-tie"></i> Principal Information</h6>
+                                </div>
                                 <div class="card-body text-center d-flex flex-column justify-content-center">
                                     <?php if (!empty($school['principal_id'])): ?>
                                         <div class="photo-container">
@@ -182,7 +253,11 @@ $show_default_principal_photo = ($principal_photo_path === null);
                     </div>
                 </div>
             </div>
-            <?php include_once '../../includes/footer/BMC_footer.php'; ?>
+            <!-- Footer -->
+            <?php
+            include '../../includes/footer.php';
+            ?>
+            <!-- End of Footer -->
         </div>
     </div>
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
@@ -207,4 +282,5 @@ $show_default_principal_photo = ($principal_photo_path === null);
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
+
 </html>

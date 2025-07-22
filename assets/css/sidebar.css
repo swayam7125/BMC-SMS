@@ -1,0 +1,7 @@
+#accordionSidebar {
+  position: -webkit-sticky; /* For Safari */
+  position: sticky;
+  top: 0;
+  height: 100vh; /* Full viewport height */
+  /* overflow-y: auto; Add scroll to sidebar if content is long */
+}

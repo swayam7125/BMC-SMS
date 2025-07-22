@@ -102,6 +102,7 @@ if (!empty($teacher['batch'])) {
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>View Teacher - <?php echo htmlspecialchars($teacher['teacher_name']); ?></title>
@@ -109,12 +110,40 @@ if (!empty($teacher['batch'])) {
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <style>
-        .view-photo { width: 150px; height: 150px; object-fit: cover; border-radius: 10px; border: 3px solid #e3e6f0; box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15); }
-        .photo-container { display: flex; justify-content: center; margin-bottom: 1rem; }
-        .salary-display { font-size: 1.2em; font-weight: bold; color: #1cc88a; }
-        .info-row { border-bottom: 1px solid #e3e6f0; padding-top: 0.75rem; padding-bottom: 0.75rem; }
-        .info-row:last-child { border-bottom: none; }
-        .card-body { padding: 1.25rem; }
+        .view-photo {
+            width: 150px;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 3px solid #e3e6f0;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        }
+
+        .photo-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+
+        .salary-display {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #1cc88a;
+        }
+
+        .info-row {
+            border-bottom: 1px solid #e3e6f0;
+            padding-top: 0.75rem;
+            padding-bottom: 0.75rem;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .card-body {
+            padding: 1.25rem;
+        }
     </style>
 </head>
 
@@ -123,7 +152,9 @@ if (!empty($teacher['batch'])) {
         <?php include_once '../../includes/sidebar/BMC_sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header/BMC_header.php'; ?>
+                <!-- top bar code -->
+                <?php include_once '../../includes/header.php'; ?>
+                <!-- end of top bar code -->
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Teacher Details</h1>
@@ -132,11 +163,13 @@ if (!empty($teacher['batch'])) {
                             <a href="edit.php?id=<?php echo $teacher['id']; ?>" class="btn btn-primary btn-sm"><i class="fas fa-edit fa-sm"></i> Edit Teacher</a>
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-lg-4 mb-4">
                             <div class="card shadow h-100">
-                                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-camera"></i> Teacher Photo</h6></div>
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-camera"></i> Teacher Photo</h6>
+                                </div>
                                 <div class="card-body">
                                     <div class="photo-container">
                                         <?php if (!$show_default): ?>
@@ -154,31 +187,61 @@ if (!empty($teacher['batch'])) {
 
                         <div class="col-lg-8 mb-4">
                             <div class="card shadow h-100">
-                                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-user-tie"></i> Basic Information</h6></div>
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-user-tie"></i> Basic Information</h6>
+                                </div>
                                 <div class="card-body">
-                                    <div class="row info-row"><div class="col-sm-4 font-weight-bold">Teacher ID:</div><div class="col-sm-8"><?php echo htmlspecialchars($teacher['id']); ?></div></div>
-                                    <div class="row info-row"><div class="col-sm-4 font-weight-bold">Name:</div><div class="col-sm-8"><?php echo htmlspecialchars($teacher['teacher_name'] ?? 'N/A'); ?></div></div>
-                                    <div class="row info-row"><div class="col-sm-4 font-weight-bold">Email:</div><div class="col-sm-8"><?php echo htmlspecialchars($teacher['email']); ?></div></div>
-                                    <div class="row info-row"><div class="col-sm-4 font-weight-bold">Phone:</div><div class="col-sm-8"><?php echo htmlspecialchars($teacher['phone']); ?></div></div>
-                                    <div class="row info-row"><div class="col-sm-4 font-weight-bold">Address:</div><div class="col-sm-8"><?php echo htmlspecialchars($teacher['address']); ?></div></div>
+                                    <div class="row info-row">
+                                        <div class="col-sm-4 font-weight-bold">Teacher ID:</div>
+                                        <div class="col-sm-8"><?php echo htmlspecialchars($teacher['id']); ?></div>
+                                    </div>
+                                    <div class="row info-row">
+                                        <div class="col-sm-4 font-weight-bold">Name:</div>
+                                        <div class="col-sm-8"><?php echo htmlspecialchars($teacher['teacher_name'] ?? 'N/A'); ?></div>
+                                    </div>
+                                    <div class="row info-row">
+                                        <div class="col-sm-4 font-weight-bold">Email:</div>
+                                        <div class="col-sm-8"><?php echo htmlspecialchars($teacher['email']); ?></div>
+                                    </div>
+                                    <div class="row info-row">
+                                        <div class="col-sm-4 font-weight-bold">Phone:</div>
+                                        <div class="col-sm-8"><?php echo htmlspecialchars($teacher['phone']); ?></div>
+                                    </div>
+                                    <div class="row info-row">
+                                        <div class="col-sm-4 font-weight-bold">Address:</div>
+                                        <div class="col-sm-8"><?php echo htmlspecialchars($teacher['address']); ?></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         <div class="col-lg-6 mb-4">
                             <div class="card shadow h-100">
-                                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-user-md"><i class="fas fa-user-md"></i> Personal Details</h6></div>
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-user-md"><i class="fas fa-user-md"></i> Personal Details</h6>
+                                </div>
                                 <div class="card-body">
-                                    <div class="row info-row"><div class="col-sm-4 font-weight-bold">DOB:</div><div class="col-sm-8"><?php echo htmlspecialchars($teacher['dob']); ?></div></div>
-                                    <div class="row info-row"><div class="col-sm-4 font-weight-bold">Gender:</div><div class="col-sm-8"><?php echo htmlspecialchars($teacher['gender']); ?></div></div>
-                                    <div class="row info-row"><div class="col-sm-4 font-weight-bold">Blood Group:</div><div class="col-sm-8"><?php echo htmlspecialchars($teacher['blood_group']); ?></div></div>
+                                    <div class="row info-row">
+                                        <div class="col-sm-4 font-weight-bold">DOB:</div>
+                                        <div class="col-sm-8"><?php echo htmlspecialchars($teacher['dob']); ?></div>
+                                    </div>
+                                    <div class="row info-row">
+                                        <div class="col-sm-4 font-weight-bold">Gender:</div>
+                                        <div class="col-sm-8"><?php echo htmlspecialchars($teacher['gender']); ?></div>
+                                    </div>
+                                    <div class="row info-row">
+                                        <div class="col-sm-4 font-weight-bold">Blood Group:</div>
+                                        <div class="col-sm-8"><?php echo htmlspecialchars($teacher['blood_group']); ?></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         <div class="col-lg-6 mb-4">
                             <div class="card shadow h-100">
-                                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-success"><i class="fas fa-clock"></i> Batch & Timings</h6></div>
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-success"><i class="fas fa-clock"></i> Batch & Timings</h6>
+                                </div>
                                 <div class="card-body">
                                     <div class="row info-row">
                                         <div class="col-sm-4 font-weight-bold">Assigned Batch:</div>
@@ -194,20 +257,62 @@ if (!empty($teacher['batch'])) {
 
                         <div class="col-lg-12 mb-4">
                             <div class="card shadow">
-                                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-info"><i class="fas fa-briefcase"></i> Professional & School Information</h6></div>
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-info"><i class="fas fa-briefcase"></i> Professional & School Information</h6>
+                                </div>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-md-6">
-                                            <div class="info-row"><div class="row"><div class="col-sm-5 font-weight-bold">School Name:</div><div class="col-sm-7"><?php echo htmlspecialchars($teacher['school_name']); ?></div></div></div>
-                                            <div class="info-row"><div class="row"><div class="col-sm-5 font-weight-bold">School Email:</div><div class="col-sm-7"><?php echo htmlspecialchars($teacher['school_email']); ?></div></div></div>
-                                            <div class="info-row"><div class="row"><div class="col-sm-5 font-weight-bold">School Phone:</div><div class="col-sm-7"><?php echo htmlspecialchars($teacher['school_phone']); ?></div></div></div>
-                                            <div class="info-row"><div class="row"><div class="col-sm-5 font-weight-bold">School Address:</div><div class="col-sm-7"><?php echo htmlspecialchars($teacher['school_address']); ?></div></div></div>
+                                            <div class="info-row">
+                                                <div class="row">
+                                                    <div class="col-sm-5 font-weight-bold">School Name:</div>
+                                                    <div class="col-sm-7"><?php echo htmlspecialchars($teacher['school_name']); ?></div>
+                                                </div>
+                                            </div>
+                                            <div class="info-row">
+                                                <div class="row">
+                                                    <div class="col-sm-5 font-weight-bold">School Email:</div>
+                                                    <div class="col-sm-7"><?php echo htmlspecialchars($teacher['school_email']); ?></div>
+                                                </div>
+                                            </div>
+                                            <div class="info-row">
+                                                <div class="row">
+                                                    <div class="col-sm-5 font-weight-bold">School Phone:</div>
+                                                    <div class="col-sm-7"><?php echo htmlspecialchars($teacher['school_phone']); ?></div>
+                                                </div>
+                                            </div>
+                                            <div class="info-row">
+                                                <div class="row">
+                                                    <div class="col-sm-5 font-weight-bold">School Address:</div>
+                                                    <div class="col-sm-7"><?php echo htmlspecialchars($teacher['school_address']); ?></div>
+                                                </div>
+                                            </div>
                                         </div>
                                         <div class="col-md-6">
-                                            <div class="info-row"><div class="row"><div class="col-sm-5 font-weight-bold">Qualification:</div><div class="col-sm-7"><?php echo htmlspecialchars($teacher['qualification']); ?></div></div></div>
-                                            <div class="info-row"><div class="row"><div class="col-sm-5 font-weight-bold">Subject:</div><div class="col-sm-7"><?php echo htmlspecialchars($teacher['subject']); ?></div></div></div>
-                                            <div class="info-row"><div class="row"><div class="col-sm-5 font-weight-bold">Teaching Standards:</div><div class="col-sm-7"><?php echo htmlspecialchars($teacher['std']); ?></div></div></div>
-                                            <div class="info-row"><div class="row"><div class="col-sm-5 font-weight-bold">Experience:</div><div class="col-sm-7"><?php echo htmlspecialchars($teacher['experience']); ?> Years</div></div></div>
+                                            <div class="info-row">
+                                                <div class="row">
+                                                    <div class="col-sm-5 font-weight-bold">Qualification:</div>
+                                                    <div class="col-sm-7"><?php echo htmlspecialchars($teacher['qualification']); ?></div>
+                                                </div>
+                                            </div>
+                                            <div class="info-row">
+                                                <div class="row">
+                                                    <div class="col-sm-5 font-weight-bold">Subject:</div>
+                                                    <div class="col-sm-7"><?php echo htmlspecialchars($teacher['subject']); ?></div>
+                                                </div>
+                                            </div>
+                                            <div class="info-row">
+                                                <div class="row">
+                                                    <div class="col-sm-5 font-weight-bold">Teaching Standards:</div>
+                                                    <div class="col-sm-7"><?php echo htmlspecialchars($teacher['std']); ?></div>
+                                                </div>
+                                            </div>
+                                            <div class="info-row">
+                                                <div class="row">
+                                                    <div class="col-sm-5 font-weight-bold">Experience:</div>
+                                                    <div class="col-sm-7"><?php echo htmlspecialchars($teacher['experience']); ?> Years</div>
+                                                </div>
+                                            </div>
 
                                             <div class="info-row">
                                                 <div class="row">
@@ -224,7 +329,12 @@ if (!empty($teacher['batch'])) {
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="info-row"><div class="row"><div class="col-sm-5 font-weight-bold">Salary:</div><div class="col-sm-7 salary-display">₹<?php echo number_format($teacher['salary'], 2); ?></div></div></div>
+                                            <div class="info-row">
+                                                <div class="row">
+                                                    <div class="col-sm-5 font-weight-bold">Salary:</div>
+                                                    <div class="col-sm-7 salary-display">₹<?php echo number_format($teacher['salary'], 2); ?></div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -233,7 +343,13 @@ if (!empty($teacher['batch'])) {
                     </div>
                 </div>
             </div>
-            <?php include_once '../../includes/footer/BMC_footer.php'; ?>
+
+            <!-- Footer -->
+            <?php
+            include '../../includes/footer.php';
+            ?>
+            <!-- End of Footer -->
+
         </div>
     </div>
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
@@ -258,4 +374,5 @@ if (!empty($teacher['batch'])) {
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
+
 </html>

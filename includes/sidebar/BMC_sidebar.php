@@ -62,17 +62,31 @@
     <!-- Nav Item - List of teacher -->
     <li class="nav-item">
         <a class="nav-link" href="/BMC-SMS/pages/teacher/teacher_list.php">
-            <i class=" fas fa-fw fa-chart-area"></i>
+            <i class=" fas fa-fw fa-person-chalkboard"></i>
             <span>List of Teachers</span></a>
     </li>
 
     <!-- Nav Item - List of Student -->
     <li class="nav-item">
         <a class="nav-link" href="/BMC-SMS/pages/student/student_list.php">
-            <i class="fas fa-fw fa-chart-area"></i>
+            <i class="fas fa-fw fa-children"></i>
             <span>List of Student</span></a>
     </li>
 
+    <li class="nav-item">
+        <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePrincipal"
+            aria-expanded="true" aria-controls="collapsePrincipal">
+            <i class="fas fa-fw fa-history"></i>
+            <span>View Past Data</span>
+        </a>
+        <div id="collapsePrincipal" class="collapse" aria-labelledby="headingPrincipal" data-parent="#accordionSidebar">
+            <div class="bg-white py-2 collapse-inner rounded">
+                <h6 class="collapse-header">Principal :</h6>
+                <a class="collapse-item" href="/BMC-SMS/includes/forms/principal_enrollment.php">Principal Enrollment</a>
+                <a class="collapse-item" href="/BMC-SMS/pages/principal/principal_list.php">Principal List</a>
+            </div>
+        </div>
+    </li>
 
     <!-- Divider -->
     <hr class="sidebar-divider d-none d-md-block">

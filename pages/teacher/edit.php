@@ -86,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (in_array($file_ext, $allowed_exts)) {
             $target_dir = "../../pages/teacher/uploads/";
             if (!file_exists($target_dir)) mkdir($target_dir, 0777, true);
-            
+
             $new_filename = uniqid('teacher_', true) . '.' . $file_ext;
             $destination = $target_dir . $new_filename;
 
@@ -121,15 +121,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                  subject = ?, language_known = ?, salary = ?, std = ?, experience = ?, batch = ?,
                                  class_teacher = ?, class_teacher_std = ?
                                  WHERE id = ?";
-            
+
             $stmt_update = mysqli_prepare($conn, $update_teacher);
             // UPDATED: Added 'is' for class_teacher and class_teacher_std, and their variables
             mysqli_stmt_bind_param(
-                $stmt_update, "sssissssssssssisisi",
-                $image_path_for_db, $teacher_name, $phone, $school_id, $dob, $gender, 
-                $blood_group, $address, $new_email, $qualification, $subject, 
-                $language_known, $salary, $std, $experience, $batch,
-                $class_teacher, $class_teacher_std, $teacher_id
+                $stmt_update,
+                "sssissssssssssisisi",
+                $image_path_for_db,
+                $teacher_name,
+                $phone,
+                $school_id,
+                $dob,
+                $gender,
+                $blood_group,
+                $address,
+                $new_email,
+                $qualification,
+                $subject,
+                $language_known,
+                $salary,
+                $std,
+                $experience,
+                $batch,
+                $class_teacher,
+                $class_teacher_std,
+                $teacher_id
             );
 
             if (!mysqli_stmt_execute($stmt_update)) throw new Exception("Failed to update teacher table.");
@@ -138,13 +154,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             mysqli_commit($conn);
             header("Location: teacher_list.php?id=" . $teacher_id . "&success=Teacher updated successfully");
             exit;
-
         } catch (Exception $e) {
             mysqli_rollback($conn);
             $errors[] = "Database update failed: " . $e->getMessage();
         }
     }
-    
+
     // Re-populate $teacher array with POST data if there are errors
     $teacher = $_POST;
     $teacher['id'] = $teacher_id;
@@ -162,6 +177,7 @@ $selected_stds = explode(',', $teacher['std']);
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Edit Teacher - School Management System</title>
@@ -176,7 +192,9 @@ $selected_stds = explode(',', $teacher['std']);
         <?php include_once '../../includes/sidebar/BMC_sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header/BMC_header.php'; ?>
+                <!-- top bar code -->
+                <?php include_once '../../includes/header.php'; ?>
+                <!-- end of top bar code -->
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Edit Teacher</h1>
@@ -184,11 +202,15 @@ $selected_stds = explode(',', $teacher['std']);
                     </div>
 
                     <?php if (!empty($errors)): ?>
-                    <div class="alert alert-danger"><ul class="mb-0"><?php foreach ($errors as $error): ?><li><?php echo htmlspecialchars($error); ?></li><?php endforeach; ?></ul></div>
+                        <div class="alert alert-danger">
+                            <ul class="mb-0"><?php foreach ($errors as $error): ?><li><?php echo htmlspecialchars($error); ?></li><?php endforeach; ?></ul>
+                        </div>
                     <?php endif; ?>
 
                     <div class="card shadow mb-4">
-                        <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Teacher Information</h6></div>
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">Teacher Information</h6>
+                        </div>
                         <div class="card-body">
                             <form method="POST" enctype="multipart/form-data">
                                 <div class="row">
@@ -202,17 +224,29 @@ $selected_stds = explode(',', $teacher['std']);
                                             <div class="col-md-6 form-group"><label for="email">Email *</label><input type="email" class="form-control" id="email" name="email" value="<?php echo htmlspecialchars($teacher['email']); ?>" required></div>
                                             <div class="col-md-6 form-group"><label for="phone">Phone *</label><input type="text" class="form-control" id="phone" name="phone" value="<?php echo htmlspecialchars($teacher['phone']); ?>" maxlength="10" required></div>
                                             <div class="col-md-6 form-group"><label for="dob">Date of Birth</label><input type="date" class="form-control" id="dob" name="dob" value="<?php echo htmlspecialchars($teacher['dob']); ?>"></div>
-                                            <div class="col-md-6 form-group"><label for="gender">Gender *</label><select class="form-control" id="gender" name="gender" required><option value="Male" <?php echo ($teacher['gender'] == 'Male') ? 'selected' : ''; ?>>Male</option><option value="Female" <?php echo ($teacher['gender'] == 'Female') ? 'selected' : ''; ?>>Female</option><option value="Others" <?php echo ($teacher['gender'] == 'Others') ? 'selected' : ''; ?>>Others</option></select></div>
-                                            <div class="col-md-6 form-group"><label for="blood_group">Blood Group *</label><select class="form-control" id="blood_group" name="blood_group" required><?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']; foreach ($bg_options as $bg) { $selected = ($teacher['blood_group'] == $bg) ? 'selected' : ''; echo "<option value='{$bg}' {$selected}>{$bg}</option>"; } ?></select></div>
+                                            <div class="col-md-6 form-group"><label for="gender">Gender *</label><select class="form-control" id="gender" name="gender" required>
+                                                    <option value="Male" <?php echo ($teacher['gender'] == 'Male') ? 'selected' : ''; ?>>Male</option>
+                                                    <option value="Female" <?php echo ($teacher['gender'] == 'Female') ? 'selected' : ''; ?>>Female</option>
+                                                    <option value="Others" <?php echo ($teacher['gender'] == 'Others') ? 'selected' : ''; ?>>Others</option>
+                                                </select></div>
+                                            <div class="col-md-6 form-group"><label for="blood_group">Blood Group *</label><select class="form-control" id="blood_group" name="blood_group" required><?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+                                                                                                                                                                                                        foreach ($bg_options as $bg) {
+                                                                                                                                                                                                            $selected = ($teacher['blood_group'] == $bg) ? 'selected' : '';
+                                                                                                                                                                                                            echo "<option value='{$bg}' {$selected}>{$bg}</option>";
+                                                                                                                                                                                                        } ?></select></div>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="form-group"><label for="address">Address</label><textarea class="form-control" id="address" name="address" rows="1"><?php echo htmlspecialchars($teacher['address']); ?></textarea></div>
                                 <hr>
-                                
+
                                 <h6 class="text-primary font-weight-bold">Professional Details</h6>
                                 <div class="row mt-3">
-                                    <div class="col-md-4 form-group"><label for="school_id">School *</label><select class="form-control" id="school_id" name="school_id" required><?php mysqli_data_seek($schools_result, 0); while ($school = mysqli_fetch_assoc($schools_result)) { $selected = ($school['id'] == $teacher['school_id']) ? 'selected' : ''; echo "<option value='{$school['id']}' {$selected}>" . htmlspecialchars($school['school_name']) . "</option>"; } ?></select></div>
+                                    <div class="col-md-4 form-group"><label for="school_id">School *</label><select class="form-control" id="school_id" name="school_id" required><?php mysqli_data_seek($schools_result, 0);
+                                                                                                                                                                                    while ($school = mysqli_fetch_assoc($schools_result)) {
+                                                                                                                                                                                        $selected = ($school['id'] == $teacher['school_id']) ? 'selected' : '';
+                                                                                                                                                                                        echo "<option value='{$school['id']}' {$selected}>" . htmlspecialchars($school['school_name']) . "</option>";
+                                                                                                                                                                                    } ?></select></div>
                                     <div class="form-group col-md-4">
                                         <label for="batch">Batch *</label>
                                         <select class="form-control" id="batch" name="batch" required>
@@ -232,7 +266,8 @@ $selected_stds = explode(',', $teacher['std']);
                                     <div class="col-md-4 form-group">
                                         <label for="std">Teaching Standards</label>
                                         <select class="form-control multi-select" id="std" name="std[]" multiple="multiple">
-                                            <?php $stds_options = ['Nursery','Junior','Senior','1','2','3','4','5','6','7','8','9','10','11','12']; foreach($stds_options as $std_val): ?>
+                                            <?php $stds_options = ['Nursery', 'Junior', 'Senior', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+                                            foreach ($stds_options as $std_val): ?>
                                                 <option value="<?php echo $std_val; ?>" <?php echo in_array($std_val, $selected_stds) ? 'selected' : ''; ?>><?php echo $std_val; ?></option>
                                             <?php endforeach; ?>
                                         </select>
@@ -253,7 +288,8 @@ $selected_stds = explode(',', $teacher['std']);
                                         <label for="class_teacher_std">Class Teacher for Standard *</label>
                                         <select class="form-control" id="class_teacher_std" name="class_teacher_std">
                                             <option value="">-- Select Standard --</option>
-                                            <?php $stds_for_class_teacher = ['Nursery','Junior','Senior','1','2','3','4','5','6','7','8','9','10','11','12']; foreach($stds_for_class_teacher as $std_val): ?>
+                                            <?php $stds_for_class_teacher = ['Nursery', 'Junior', 'Senior', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+                                            foreach ($stds_for_class_teacher as $std_val): ?>
                                                 <option value="<?php echo $std_val; ?>" <?php echo ($teacher['class_teacher_std'] == $std_val) ? 'selected' : ''; ?>><?php echo $std_val; ?></option>
                                             <?php endforeach; ?>
                                         </select>
@@ -268,7 +304,13 @@ $selected_stds = explode(',', $teacher['std']);
                     </div>
                 </div>
             </div>
-            <?php include_once '../../includes/footer/BMC_footer.php'; ?>
+
+            <!-- Footer -->
+            <?php
+            include '../../includes/footer.php';
+            ?>
+            <!-- End of Footer -->
+
         </div>
     </div>
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
@@ -305,6 +347,7 @@ $selected_stds = explode(',', $teacher['std']);
                     Evening: `<div><strong>Mon-Fri:</strong> 11:00 AM - 6:00 PM</div><div><strong>Saturday:</strong> 11:00 AM - 4:00 PM</div><div><strong>Sunday:</strong> Holiday</div>`
                 }
             };
+
             function updateTimings() {
                 const selectedBatch = batchSelect.val();
                 timingDetails.html(timings.teacher[selectedBatch] || '');
@@ -350,4 +393,5 @@ $selected_stds = explode(',', $teacher['std']);
         });
     </script>
 </body>
+
 </html>

@@ -128,34 +128,34 @@ $show_default = ($photo_path === null);
 
     <!-- Custom styles for photo display -->
     <style>
-    .student-photo {
-        width: 150px;
-        height: 150px;
-        object-fit: cover;
-        border-radius: 10px;
-        border: 3px solid #e3e6f0;
-        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
-    }
+        .student-photo {
+            width: 150px;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 3px solid #e3e6f0;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        }
 
-    .photo-placeholder {
-        width: 150px;
-        height: 150px;
-        background-color: #f8f9fc;
-        border: 2px dashed #d1d3e2;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #858796;
-        font-size: 14px;
-        text-align: center;
-    }
+        .photo-placeholder {
+            width: 150px;
+            height: 150px;
+            background-color: #f8f9fc;
+            border: 2px dashed #d1d3e2;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #858796;
+            font-size: 14px;
+            text-align: center;
+        }
 
-    .photo-container {
-        display: flex;
-        justify-content: center;
-        margin-bottom: 20px;
-    }
+        .photo-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 
@@ -173,9 +173,9 @@ $show_default = ($photo_path === null);
             <!-- Main Content -->
             <div id="content">
 
-                <!-- Topbar -->
-                <?php include_once '../../includes/header/BMC_header.php'; ?>
-                <!-- End of Topbar -->
+                <!-- top bar code -->
+                <?php include_once '../../includes/header.php'; ?>
+                <!-- end of top bar code -->
 
                 <!-- Begin Page Content -->
                 <div class="container-fluid">
@@ -207,15 +207,15 @@ $show_default = ($photo_path === null);
                                 <div class="card-body">
                                     <div class="photo-container">
                                         <?php if (!$show_default): ?>
-                                        <img src="<?php echo htmlspecialchars($photo_path); ?>"
-                                            alt="<?php echo htmlspecialchars($student['student_name']); ?>"
-                                            class="student-photo"
-                                            onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($default_photo); ?>'; this.nextElementSibling.style.display='block';">
-                                        <small class="text-muted mt-2" style="display: none;">Photo not
-                                            available</small>
+                                            <img src="<?php echo htmlspecialchars($photo_path); ?>"
+                                                alt="<?php echo htmlspecialchars($student['student_name']); ?>"
+                                                class="student-photo"
+                                                onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($default_photo); ?>'; this.nextElementSibling.style.display='block';">
+                                            <small class="text-muted mt-2" style="display: none;">Photo not
+                                                available</small>
                                         <?php else: ?>
-                                        <img src="<?php echo htmlspecialchars($default_photo); ?>"
-                                            alt="Default Student Avatar" class="student-photo" style="opacity: 0.7;">
+                                            <img src="<?php echo htmlspecialchars($default_photo); ?>"
+                                                alt="Default Student Avatar" class="student-photo" style="opacity: 0.7;">
                                         <?php endif; ?>
                                     </div>
                                     <div class="text-center">
@@ -263,11 +263,11 @@ $show_default = ($photo_path === null);
                                         <div class="col-sm-4 font-weight-bold">Email:</div>
                                         <div class="col-sm-8">
                                             <?php if ($student['email']): ?>
-                                            <a href="mailto:<?php echo htmlspecialchars($student['email']); ?>">
-                                                <?php echo htmlspecialchars($student['email']); ?>
-                                            </a>
+                                                <a href="mailto:<?php echo htmlspecialchars($student['email']); ?>">
+                                                    <?php echo htmlspecialchars($student['email']); ?>
+                                                </a>
                                             <?php else: ?>
-                                            N/A
+                                                N/A
                                             <?php endif; ?>
                                         </div>
                                     </div>
@@ -371,12 +371,12 @@ $show_default = ($photo_path === null);
                                                 <div class="col-sm-4 font-weight-bold">Father's Phone:</div>
                                                 <div class="col-sm-8">
                                                     <?php if ($student['father_phone']): ?>
-                                                    <a
-                                                        href="tel:<?php echo htmlspecialchars($student['father_phone']); ?>">
-                                                        <?php echo htmlspecialchars($student['father_phone']); ?>
-                                                    </a>
+                                                        <a
+                                                            href="tel:<?php echo htmlspecialchars($student['father_phone']); ?>">
+                                                            <?php echo htmlspecialchars($student['father_phone']); ?>
+                                                        </a>
                                                     <?php else: ?>
-                                                    N/A
+                                                        N/A
                                                     <?php endif; ?>
                                                 </div>
                                             </div>
@@ -393,12 +393,12 @@ $show_default = ($photo_path === null);
                                                 <div class="col-sm-4 font-weight-bold">Mother's Phone:</div>
                                                 <div class="col-sm-8">
                                                     <?php if ($student['mother_phone']): ?>
-                                                    <a
-                                                        href="tel:<?php echo htmlspecialchars($student['mother_phone']); ?>">
-                                                        <?php echo htmlspecialchars($student['mother_phone']); ?>
-                                                    </a>
+                                                        <a
+                                                            href="tel:<?php echo htmlspecialchars($student['mother_phone']); ?>">
+                                                            <?php echo htmlspecialchars($student['mother_phone']); ?>
+                                                        </a>
                                                     <?php else: ?>
-                                                    N/A
+                                                        N/A
                                                     <?php endif; ?>
                                                 </div>
                                             </div>
@@ -417,7 +417,9 @@ $show_default = ($photo_path === null);
             <!-- End of Main Content -->
 
             <!-- Footer -->
-            <?php include_once '../../includes/footer/BMC_footer.php'; ?>
+            <?php
+            include '../../includes/footer.php';
+            ?>
             <!-- End of Footer -->
 
         </div>
@@ -450,7 +452,7 @@ $show_default = ($photo_path === null);
             </div>
         </div>
     </div>
-<div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
         aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
