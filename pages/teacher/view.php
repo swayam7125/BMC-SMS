@@ -20,9 +20,9 @@ if ($teacher_id <= 0) {
     exit;
 }
 
-// Query will now also fetch the 'batch' field
+// Query will now also fetch 'batch', 'class_teacher', and 'class_teacher_std' fields
 $query = "SELECT t.*, s.school_name, s.address as school_address, s.phone as school_phone, s.email as school_email
-          FROM teacher t 
+          FROM teacher t
           LEFT JOIN school s ON t.school_id = s.id
           WHERE t.id = ?";
 
@@ -167,7 +167,7 @@ if (!empty($teacher['batch'])) {
 
                         <div class="col-lg-6 mb-4">
                             <div class="card shadow h-100">
-                                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-user-md"></i> Personal Details</h6></div>
+                                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-user-md"><i class="fas fa-user-md"></i> Personal Details</h6></div>
                                 <div class="card-body">
                                     <div class="row info-row"><div class="col-sm-4 font-weight-bold">DOB:</div><div class="col-sm-8"><?php echo htmlspecialchars($teacher['dob']); ?></div></div>
                                     <div class="row info-row"><div class="col-sm-4 font-weight-bold">Gender:</div><div class="col-sm-8"><?php echo htmlspecialchars($teacher['gender']); ?></div></div>
@@ -208,6 +208,22 @@ if (!empty($teacher['batch'])) {
                                             <div class="info-row"><div class="row"><div class="col-sm-5 font-weight-bold">Subject:</div><div class="col-sm-7"><?php echo htmlspecialchars($teacher['subject']); ?></div></div></div>
                                             <div class="info-row"><div class="row"><div class="col-sm-5 font-weight-bold">Teaching Standards:</div><div class="col-sm-7"><?php echo htmlspecialchars($teacher['std']); ?></div></div></div>
                                             <div class="info-row"><div class="row"><div class="col-sm-5 font-weight-bold">Experience:</div><div class="col-sm-7"><?php echo htmlspecialchars($teacher['experience']); ?> Years</div></div></div>
+
+                                            <div class="info-row">
+                                                <div class="row">
+                                                    <div class="col-sm-5 font-weight-bold">Is Class Teacher:</div>
+                                                    <div class="col-sm-7">
+                                                        <?php if ($teacher['class_teacher'] == 1): ?>
+                                                            <span class="badge badge-success">Yes</span>
+                                                            <?php if (!empty($teacher['class_teacher_std'])): ?>
+                                                                <br><small class="text-muted">(Standard: <?php echo htmlspecialchars($teacher['class_teacher_std']); ?>)</small>
+                                                            <?php endif; ?>
+                                                        <?php else: ?>
+                                                            <span class="badge badge-secondary">No</span>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </div>
+                                            </div>
                                             <div class="info-row"><div class="row"><div class="col-sm-5 font-weight-bold">Salary:</div><div class="col-sm-7 salary-display">₹<?php echo number_format($teacher['salary'], 2); ?></div></div></div>
                                         </div>
                                     </div>
@@ -218,6 +234,24 @@ if (!empty($teacher['batch'])) {
                 </div>
             </div>
             <?php include_once '../../includes/footer/BMC_footer.php'; ?>
+        </div>
+    </div>
+    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Ready to Leave?</h5>
+                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                </div>
+                <div class="modal-body">Select "Logout" below if you are ready to end your current session.</div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
+                    <a class="btn btn-primary" href="/BMC-SMS/logout.php">Logout</a>
+                </div>
+            </div>
         </div>
     </div>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>

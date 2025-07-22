@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jul 22, 2025 at 09:43 AM
+-- Generation Time: Jul 22, 2025 at 11:17 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -105,13 +105,6 @@ CREATE TABLE `student` (
   `mother_phone` varchar(10) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `student`
---
-
-INSERT INTO `student` (`id`, `student_image`, `student_name`, `rollno`, `std`, `email`, `password`, `academic_year`, `school_id`, `dob`, `gender`, `blood_group`, `address`, `father_name`, `father_phone`, `mother_name`, `mother_phone`) VALUES
-(3, '../../pages/student/uploads/student_687e8c52c37b06.96235602.jpg', 'Devam', '11', '12', 'devam11@gmail.com', '$2y$10$u36rVPMEjId68VW5OSdTWe6KUDviW0zniWSCg30yt5vhDphnuaAyq', '2024-2025', 2, '2005-03-11', 'male', 'b-', 'adajan', 'mukesh', '7874144228', 'heena', '7405670316');
-
 -- --------------------------------------------------------
 
 --
@@ -136,15 +129,17 @@ CREATE TABLE `teacher` (
   `salary` decimal(10,2) DEFAULT NULL,
   `std` set('Nursery','Junior','Senior','1','2','3','4','5','6','7','8','9','10','11','12') DEFAULT NULL,
   `experience` varchar(10) DEFAULT NULL,
-  `batch` enum('Morning','Evening') DEFAULT NULL
+  `batch` enum('Morning','Evening') DEFAULT NULL,
+  `class_teacher` tinyint(1) DEFAULT 0,
+  `class_teacher_std` varchar(50) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `teacher`
 --
 
-INSERT INTO `teacher` (`id`, `teacher_image`, `teacher_name`, `phone`, `school_id`, `dob`, `gender`, `blood_group`, `address`, `email`, `password`, `qualification`, `subject`, `language_known`, `salary`, `std`, `experience`, `batch`) VALUES
-(3, '../../pages/teacher/uploads/teacher_687e8e7a0dfc45.80892459.jpg', 'Fenil', '5641237894', 2, '2003-03-11', 'Male', 'O+', 'canal road', 'fenil1@gmail.com', '$2y$10$IbbN2vpfWvOhxi1WvTc6Eu8.UOHLFbArSjuKs.GQOCQbP4vpcuP3i', 'MA', 'account', 'English', 50000.00, '11,12', '3', 'Morning');
+INSERT INTO `teacher` (`id`, `teacher_image`, `teacher_name`, `phone`, `school_id`, `dob`, `gender`, `blood_group`, `address`, `email`, `password`, `qualification`, `subject`, `language_known`, `salary`, `std`, `experience`, `batch`, `class_teacher`, `class_teacher_std`) VALUES
+(3, '../../pages/teacher/uploads/teacher_687e8e7a0dfc45.80892459.jpg', 'Fenil', '5641237894', 2, '2003-03-11', 'Male', 'O+', 'canal road', 'fenil1@gmail.com', '$2y$10$IbbN2vpfWvOhxi1WvTc6Eu8.UOHLFbArSjuKs.GQOCQbP4vpcuP3i', 'MA', 'account', 'English', 50000.00, '11,12', '3', 'Morning', 1, '11');
 
 -- --------------------------------------------------------
 
@@ -169,7 +164,6 @@ INSERT INTO `users` (`id`, `role`, `email`, `password`) VALUES
 (3, 'student', 'meet@gmail.com', '$2y$10$Az8jVXsuxHYWC6EfnPTKy.dLTS.YENi5B5bCgMhpNLsKzvC1S9Ahu'),
 (4, 'student', 'ram@gmail.com', '$2y$10$JBzHDObjqBb/tBd86d1V1.N4WnAORx8Y6EVSJFZVKf0bR0Fioq3BW'),
 (5, 'schooladmin', 'dev@gmail.com', '$2y$10$qmH7IN31FKaH/UJF2Ct9Ne5xtHZTZpx5D0k5iEGChnpWtQX6BeYUm'),
-(6, 'student', 'devam11@gmail.com', '$2y$10$u36rVPMEjId68VW5OSdTWe6KUDviW0zniWSCg30yt5vhDphnuaAyq'),
 (8, 'teacher', 'fenil1@gmail.com', '$2y$10$IbbN2vpfWvOhxi1WvTc6Eu8.UOHLFbArSjuKs.GQOCQbP4vpcuP3i');
 
 --

@@ -38,7 +38,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         case 'teacher':
                             $detail_query = "SELECT teacher_image, teacher_name FROM teacher WHERE email = ?";
                             break;
-                        case 'principal':
+                        case 'schooladmin':
                             $detail_query = "SELECT principal_image, principal_name FROM principal WHERE email = ?";
                             break;
                         default:
@@ -60,7 +60,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 } elseif ($user['role'] == 'teacher') {
                                     $profile_image = !empty($detail_row['teacher_image']) ? 'pages/teacher/uploads/' . basename($detail_row['teacher_image']) : '/BMC-SMS/assets/images/undraw_profile.svg';
                                     $user_name = $detail_row['teacher_name'];
-                                } elseif ($user['role'] == 'principal') {
+                                } elseif ($user['role'] == 'schooladmin') {
                                     $profile_image = !empty($detail_row['principal_image']) ? 'pages/principal/uploads/' . basename($detail_row['principal_image']) : '/BMC-SMS/assets/images/undraw_profile.svg';
                                     $user_name = $detail_row['principal_name'];
                                 }

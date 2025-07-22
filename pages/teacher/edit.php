@@ -22,7 +22,8 @@ $teacher_id = intval($_GET['id']);
 $errors = [];
 
 // Fetch current teacher data
-$query = "SELECT * FROM teacher WHERE id = ?";
+// UPDATED: Select class_teacher and class_teacher_std
+$query = "SELECT *, class_teacher, class_teacher_std FROM teacher WHERE id = ?";
 $stmt = mysqli_prepare($conn, $query);
 mysqli_stmt_bind_param($stmt, "i", $teacher_id);
 mysqli_stmt_execute($stmt);
@@ -55,7 +56,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $salary = trim($_POST['salary']);
     $std = implode(',', (isset($_POST['std']) ? $_POST['std'] : []));
     $experience = trim($_POST['experience']);
-    $batch = $_POST['batch']; // ADDED: Retrieve batch
+    $batch = $_POST['batch'];
+
+    // NEW: Retrieve class teacher data
+    $class_teacher = isset($_POST['class_teacher']) ? 1 : 0;
+    $class_teacher_std = null;
+    if ($class_teacher) {
+        $class_teacher_std = $_POST['class_teacher_std'] ?? null;
+    }
 
     $image_path_for_db = $original_image_path;
 
@@ -63,11 +71,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($teacher_name)) $errors[] = "Teacher name is required.";
     if (empty($new_email) || !filter_var($new_email, FILTER_VALIDATE_EMAIL)) $errors[] = "A valid email is required.";
     if (empty($batch)) $errors[] = "Batch selection is required.";
+    // NEW: Validation for class teacher standard if checkbox is checked
+    if ($class_teacher && empty($class_teacher_std)) {
+        $errors[] = "Please select a standard for the class teacher.";
+    }
 
 
     // --- Handle Photo Upload ---
     if (isset($_FILES['teacher_image']) && $_FILES['teacher_image']['error'] === UPLOAD_ERR_OK) {
-        // Photo upload logic from your file...
         $file = $_FILES['teacher_image'];
         $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         $allowed_exts = ['jpg', 'jpeg', 'png', 'gif'];
@@ -103,20 +114,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 mysqli_stmt_close($stmt_users);
             }
 
-            // UPDATED: Added batch to the query
+            // UPDATED: Added class_teacher and class_teacher_std to the query
             $update_teacher = "UPDATE teacher SET 
                                  teacher_image = ?, teacher_name = ?, phone = ?, school_id = ?, dob = ?, 
                                  gender = ?, blood_group = ?, address = ?, email = ?, qualification = ?, 
-                                 subject = ?, language_known = ?, salary = ?, std = ?, experience = ?, batch = ?
+                                 subject = ?, language_known = ?, salary = ?, std = ?, experience = ?, batch = ?,
+                                 class_teacher = ?, class_teacher_std = ?
                                  WHERE id = ?";
             
             $stmt_update = mysqli_prepare($conn, $update_teacher);
-            // UPDATED: Added 's' for batch and the variable
+            // UPDATED: Added 'is' for class_teacher and class_teacher_std, and their variables
             mysqli_stmt_bind_param(
-                $stmt_update, "sssissssssssssssi",
+                $stmt_update, "sssissssssssssisisi",
                 $image_path_for_db, $teacher_name, $phone, $school_id, $dob, $gender, 
                 $blood_group, $address, $new_email, $qualification, $subject, 
-                $language_known, $salary, $std, $experience, $batch, $teacher_id
+                $language_known, $salary, $std, $experience, $batch,
+                $class_teacher, $class_teacher_std, $teacher_id
             );
 
             if (!mysqli_stmt_execute($stmt_update)) throw new Exception("Failed to update teacher table.");
@@ -132,9 +145,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
     
+    // Re-populate $teacher array with POST data if there are errors
     $teacher = $_POST;
     $teacher['id'] = $teacher_id;
-    $teacher['teacher_image'] = $image_path_for_db; 
+    $teacher['teacher_image'] = $image_path_for_db;
+    // NEW: Ensure class_teacher and class_teacher_std are set for repopulation
+    $teacher['class_teacher'] = $class_teacher;
+    $teacher['class_teacher_std'] = $class_teacher_std;
 }
 
 $schools_query = "SELECT id, school_name FROM school ORDER BY school_name";
@@ -223,6 +240,25 @@ $selected_stds = explode(',', $teacher['std']);
                                     <div class="col-md-4 form-group"><label for="salary">Salary</label><input type="number" class="form-control" id="salary" name="salary" value="<?php echo htmlspecialchars($teacher['salary']); ?>" step="0.01" min="0"></div>
                                 </div>
 
+                                <div class="form-row">
+                                    <div class="form-group col-md-6">
+                                        <div class="form-check mt-2">
+                                            <input class="form-check-input" type="checkbox" id="class_teacher" name="class_teacher" <?php echo ($teacher['class_teacher'] == '1') ? 'checked' : ''; ?>>
+                                            <label class="form-check-label" for="class_teacher">
+                                                Is Class Teacher?
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="form-group col-md-6" id="classTeacherStdGroup" style="display: none;">
+                                        <label for="class_teacher_std">Class Teacher for Standard *</label>
+                                        <select class="form-control" id="class_teacher_std" name="class_teacher_std">
+                                            <option value="">-- Select Standard --</option>
+                                            <?php $stds_for_class_teacher = ['Nursery','Junior','Senior','1','2','3','4','5','6','7','8','9','10','11','12']; foreach($stds_for_class_teacher as $std_val): ?>
+                                                <option value="<?php echo $std_val; ?>" <?php echo ($teacher['class_teacher_std'] == $std_val) ? 'selected' : ''; ?>><?php echo $std_val; ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                </div>
                                 <div class="form-group mt-4">
                                     <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update Teacher</button>
                                     <a href="teacher_list.php" class="btn btn-secondary"><i class="fas fa-times"></i> Cancel</a>
@@ -235,7 +271,24 @@ $selected_stds = explode(',', $teacher['std']);
             <?php include_once '../../includes/footer/BMC_footer.php'; ?>
         </div>
     </div>
-    
+    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Ready to Leave?</h5>
+                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                </div>
+                <div class="modal-body">Select "Logout" below if you are ready to end your current session.</div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
+                    <a class="btn btn-primary" href="/BMC-SMS/logout.php">Logout</a>
+                </div>
+            </div>
+        </div>
+    </div>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
@@ -244,7 +297,6 @@ $selected_stds = explode(',', $teacher['std']);
         $(document).ready(function() {
             $('.multi-select').select2();
 
-            // ADDED: Timings logic
             const timingDetails = $('#timingDetails');
             const batchSelect = $('#batch');
             const timings = {
@@ -259,6 +311,36 @@ $selected_stds = explode(',', $teacher['std']);
             }
             batchSelect.on('change', updateTimings);
             updateTimings(); // Run on page load
+
+            // NEW: Class Teacher Logic
+            const isClassTeacherCheckbox = $('#class_teacher');
+            const classTeacherStdGroup = $('#classTeacherStdGroup');
+            const classTeacherStdSelect = $('#class_teacher_std');
+
+            function toggleClassTeacherStd() {
+                if (isClassTeacherCheckbox.is(':checked')) {
+                    classTeacherStdGroup.show();
+                    classTeacherStdSelect.prop('required', true); // Make required when visible
+                } else {
+                    classTeacherStdGroup.hide();
+                    classTeacherStdSelect.prop('required', false); // Not required when hidden
+                    classTeacherStdSelect.val(''); // Clear selection when hidden
+                }
+            }
+
+            isClassTeacherCheckbox.on('change', toggleClassTeacherStd);
+            // Initial call to set visibility based on the current teacher's data
+            // Ensure the checkbox state from the database is reflected
+            if ('<?php echo $teacher['class_teacher']; ?>' === '1') {
+                isClassTeacherCheckbox.prop('checked', true);
+            }
+            toggleClassTeacherStd();
+
+            // Preserve state on form submission if there were errors
+            <?php if (isset($_POST['class_teacher']) && $_POST['class_teacher'] == '1'): ?>
+                isClassTeacherCheckbox.prop('checked', true);
+                toggleClassTeacherStd();
+            <?php endif; ?>
         });
 
         document.getElementById('teacher_image').addEventListener('change', function(event) {
