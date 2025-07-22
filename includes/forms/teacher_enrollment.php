@@ -36,6 +36,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'];
     $batch = $_POST['batch']; // ADDED: Retrieve batch data
 
+    // NEW: Retrieve class teacher data
+    $class_teacher = isset($_POST['class_teacher']) ? 1 : 0;
+    $class_teacher_std = null;
+    if ($class_teacher) {
+        $class_teacher_std = $_POST['class_teacher_std'] ?? null;
+    }
+
     $image_path_for_db = null;
 
     // --- Handle Photo Upload ---
@@ -66,26 +73,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($school_id)) $errors[] = "A school must be selected.";
     if (empty($teacher_name)) $errors[] = "Teacher name is required.";
     if (empty($batch)) $errors[] = "Batch selection is required."; // ADDED: Validation for batch
+    // NEW: Validation for class teacher standard if checkbox is checked
+    if ($class_teacher && empty($class_teacher_std)) {
+        $errors[] = "Please select a standard for the class teacher.";
+    }
+
+
     if (empty($errors)) {
         mysqli_autocommit($conn, false);
 
         try {
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
-            // UPDATED: Added batch to the query
+            // UPDATED: Added batch, class_teacher, and class_teacher_std to the query
             $insert_teacher_query = "INSERT INTO teacher (
-                teacher_image, teacher_name, phone, school_id, dob, gender, blood_group, 
-                address, email, password, qualification, subject, language_known, 
-                salary, std, experience, batch
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                teacher_image, teacher_name, phone, school_id, dob, gender, blood_group,
+                address, email, password, qualification, subject, language_known,
+                salary, std, experience, batch, class_teacher, class_teacher_std
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
             $stmt_teacher = mysqli_prepare($conn, $insert_teacher_query);
-            // UPDATED: Added 's' for batch and the variable
+            // UPDATED: Added 'is' for class_teacher and class_teacher_std, and their variables
             mysqli_stmt_bind_param(
-                $stmt_teacher, "sssisssssssssdsss",
+                $stmt_teacher, "sssisssssssssdsssis",
                 $image_path_for_db, $teacher_name, $phone, $school_id, $dob, $gender, $blood_group,
                 $address, $email, $hashed_password, $qualification, $subject, $language_known,
-                $salary, $std, $experience, $batch
+                $salary, $std, $experience, $batch, $class_teacher, $class_teacher_std
             );
 
             if (!mysqli_stmt_execute($stmt_teacher)) {
@@ -203,6 +216,26 @@ $school_result = mysqli_query($conn, $school_query);
                                     <div class="form-group col-md-2"><label for="experience">Experience</label><input type="number" class="form-control" id="experience" name="experience" min="0" max="50" value="<?php echo htmlspecialchars($_POST['experience'] ?? ''); ?>"></div>
                                     <div class="form-group col-md-2"><label for="salary">Salary</label><input type="number" class="form-control" id="salary" name="salary" value="<?php echo htmlspecialchars($_POST['salary'] ?? ''); ?>" step="0.01" min="0"></div>
                                 </div>
+
+                                <div class="form-row">
+                                    <div class="form-group col-md-6">
+                                        <div class="form-check mt-2">
+                                            <input class="form-check-input" type="checkbox" id="class_teacher" name="class_teacher" <?php echo (isset($_POST['class_teacher']) && $_POST['class_teacher'] == '1') ? 'checked' : ''; ?>>
+                                            <label class="form-check-label" for="class_teacher">
+                                                Is Class Teacher?
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="form-group col-md-6" id="classTeacherStdGroup" style="display: none;">
+                                        <label for="class_teacher_std">Class Teacher for Standard *</label>
+                                        <select class="form-control" id="class_teacher_std" name="class_teacher_std">
+                                            <option value="">-- Select Standard --</option>
+                                            <?php $stds_for_class_teacher = ['Nursery','Junior','Senior','1','2','3','4','5','6','7','8','9','10','11','12']; foreach($stds_for_class_teacher as $std_val): ?>
+                                                <option value="<?php echo $std_val; ?>" <?php echo (isset($_POST['class_teacher_std']) && $_POST['class_teacher_std'] == $std_val) ? 'selected' : ''; ?>><?php echo $std_val; ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                </div>
                                 <hr>
                                 <h6 class="text-primary">Personal Information</h6>
                                 <div class="form-row mt-3">
@@ -217,13 +250,31 @@ $school_result = mysqli_query($conn, $school_query);
                                 <div class="form-group mt-4">
                                     <button type="submit" class="btn btn-primary"><i class="fas fa-user-plus"></i> Enroll Teacher</button>
                                     <button type="reset" class="btn btn-secondary"><i class="fas fa-times"></i> Reset Form</button>
-                                </div>                            
+                                </div>
                             </form>
                         </div>
                     </div>
                 </div>
             </div>
             <?php include_once '../../includes/footer/BMC_footer.php'; ?>
+        </div>
+    </div>
+    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Ready to Leave?</h5>
+                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                </div>
+                <div class="modal-body">Select "Logout" below if you are ready to end your current session.</div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
+                    <a class="btn btn-primary" href="/BMC-SMS/logout.php">Logout</a>
+                </div>
+            </div>
         </div>
     </div>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
@@ -262,7 +313,32 @@ $school_result = mysqli_query($conn, $school_query);
             }
 
             batchSelect.on('change', updateTimings);
-            updateTimings(); 
+            updateTimings();
+
+            // NEW: Class Teacher Logic
+            const isClassTeacherCheckbox = $('#class_teacher');
+            const classTeacherStdGroup = $('#classTeacherStdGroup');
+            const classTeacherStdSelect = $('#class_teacher_std');
+
+            function toggleClassTeacherStd() {
+                if (isClassTeacherCheckbox.is(':checked')) {
+                    classTeacherStdGroup.show();
+                    classTeacherStdSelect.prop('required', true); // Make required when visible
+                } else {
+                    classTeacherStdGroup.hide();
+                    classTeacherStdSelect.prop('required', false); // Not required when hidden
+                    classTeacherStdSelect.val(''); // Clear selection when hidden
+                }
+            }
+
+            isClassTeacherCheckbox.on('change', toggleClassTeacherStd);
+            toggleClassTeacherStd(); // Initial call to set visibility based on loaded state
+
+            // Preserve state on form submission if there were errors
+            <?php if (isset($_POST['class_teacher']) && $_POST['class_teacher'] == '1'): ?>
+                isClassTeacherCheckbox.prop('checked', true);
+                toggleClassTeacherStd();
+            <?php endif; ?>
         });
 
         document.getElementById('teacher_image').addEventListener('change', function(event) {
