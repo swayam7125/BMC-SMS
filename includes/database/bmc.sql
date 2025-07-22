@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jul 22, 2025 at 11:17 AM
+-- Generation Time: Jul 22, 2025 at 02:37 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -49,7 +49,8 @@ CREATE TABLE `principal` (
 --
 
 INSERT INTO `principal` (`id`, `principal_image`, `school_id`, `principal_name`, `email`, `password`, `phone`, `principal_dob`, `gender`, `blood_group`, `address`, `qualification`, `salary`, `batch`) VALUES
-(2, '../../pages/principal/uploads/principal_687e8b89043511.31717142.jpg', 2, 'dev', 'dev@gmail.com', '$2y$10$qmH7IN31FKaH/UJF2Ct9Ne5xtHZTZpx5D0k5iEGChnpWtQX6BeYUm', '8541235678', '2005-03-11', 'Male', 'AB+', 'adajan', 'MA', 50000.00, 'Morning');
+(2, '../../pages/principal/uploads/principal_687e8b89043511.31717142.jpg', 2, 'dev', 'dev@gmail.com', '$2y$10$qmH7IN31FKaH/UJF2Ct9Ne5xtHZTZpx5D0k5iEGChnpWtQX6BeYUm', '8541235678', '2005-03-11', 'Male', 'AB+', 'adajan', 'MA', 50000.00, 'Morning'),
+(3, NULL, 3, 'jay', 'jay@gmail.com', '$2y$10$ASLgyQ8hU8aNusI/O5VhYOyX.DP2OrG72OnS0bMNJaVSO9J4a.T3S', '7405670316', '2001-01-01', 'Others', 'AB+', '19,Nutan Row House', '12th', 45000.00, 'Morning');
 
 -- --------------------------------------------------------
 
@@ -77,7 +78,8 @@ CREATE TABLE `school` (
 --
 
 INSERT INTO `school` (`id`, `school_logo`, `school_name`, `email`, `phone`, `school_opening`, `school_type`, `education_board`, `school_medium`, `school_category`, `school_std`, `address`) VALUES
-(2, NULL, 'LP SAVANI CANAL ROAD', 'c@gmail.com', '8974561235', '2022-03-11', 'Government', 'State', 'English,Hindi', 'Upper Primary', 'Upper Primary (6-8)', 'surat');
+(2, NULL, 'LP SAVANI CANAL ROAD', 'c@gmail.com', '8974561235', '2022-03-11', 'Government', 'State', 'English,Hindi', 'Upper Primary', 'Upper Primary (6-8)', 'surat'),
+(3, NULL, 'citizen', 'citizen@gmail.com', '8521596324', '2005-08-17', 'Private', 'CBSE', 'English', 'Upper Primary', 'Upper Primary (6-8)', 'adajan');
 
 -- --------------------------------------------------------
 
@@ -104,6 +106,13 @@ CREATE TABLE `student` (
   `mother_name` varchar(50) DEFAULT NULL,
   `mother_phone` varchar(10) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `student`
+--
+
+INSERT INTO `student` (`id`, `student_image`, `student_name`, `rollno`, `std`, `email`, `password`, `academic_year`, `school_id`, `dob`, `gender`, `blood_group`, `address`, `father_name`, `father_phone`, `mother_name`, `mother_phone`) VALUES
+(4, NULL, 'pooja', '9', '1', 'pooja@gmail.com', '$2y$10$zv3A2vUNw5YBCI4e7oCGK.Jxav87D97a/knxadonYA.tiuvp1/uc2', '2027-2028', 2, '2000-11-22', 'female', 'ab-', 'canal road', 'girishbhai', '7405670316', 'Sita Patel', '7405670316');
 
 -- --------------------------------------------------------
 
@@ -139,7 +148,8 @@ CREATE TABLE `teacher` (
 --
 
 INSERT INTO `teacher` (`id`, `teacher_image`, `teacher_name`, `phone`, `school_id`, `dob`, `gender`, `blood_group`, `address`, `email`, `password`, `qualification`, `subject`, `language_known`, `salary`, `std`, `experience`, `batch`, `class_teacher`, `class_teacher_std`) VALUES
-(3, '../../pages/teacher/uploads/teacher_687e8e7a0dfc45.80892459.jpg', 'Fenil', '5641237894', 2, '2003-03-11', 'Male', 'O+', 'canal road', 'fenil1@gmail.com', '$2y$10$IbbN2vpfWvOhxi1WvTc6Eu8.UOHLFbArSjuKs.GQOCQbP4vpcuP3i', 'MA', 'account', 'English', 50000.00, '11,12', '3', 'Morning', 1, '11');
+(3, '../../pages/teacher/uploads/teacher_687e8e7a0dfc45.80892459.jpg', 'Fenil', '5641237894', 2, '2003-03-11', 'Male', 'O+', 'canal road', 'fenil1@gmail.com', '$2y$10$IbbN2vpfWvOhxi1WvTc6Eu8.UOHLFbArSjuKs.GQOCQbP4vpcuP3i', 'MA', 'account', 'English', 50000.00, '11,12', '3', 'Morning', 1, '11'),
+(4, NULL, 'het', '8521239875', 3, '2005-12-19', 'Male', 'O-', 'saiyadpura', 'het@gmail.com', '$2y$10$3yaRnjoRqo2RE/ezQkRy6e.rOOQJEs.QNiH/yUfq6MLbPq3/0GoN.', 'ca', 'account', 'gujarati', 100000.00, '6,7,8,9,10', '5', 'Evening', 1, '10');
 
 -- --------------------------------------------------------
 
@@ -164,7 +174,11 @@ INSERT INTO `users` (`id`, `role`, `email`, `password`) VALUES
 (3, 'student', 'meet@gmail.com', '$2y$10$Az8jVXsuxHYWC6EfnPTKy.dLTS.YENi5B5bCgMhpNLsKzvC1S9Ahu'),
 (4, 'student', 'ram@gmail.com', '$2y$10$JBzHDObjqBb/tBd86d1V1.N4WnAORx8Y6EVSJFZVKf0bR0Fioq3BW'),
 (5, 'schooladmin', 'dev@gmail.com', '$2y$10$qmH7IN31FKaH/UJF2Ct9Ne5xtHZTZpx5D0k5iEGChnpWtQX6BeYUm'),
-(8, 'teacher', 'fenil1@gmail.com', '$2y$10$IbbN2vpfWvOhxi1WvTc6Eu8.UOHLFbArSjuKs.GQOCQbP4vpcuP3i');
+(8, 'teacher', 'fenil1@gmail.com', '$2y$10$IbbN2vpfWvOhxi1WvTc6Eu8.UOHLFbArSjuKs.GQOCQbP4vpcuP3i'),
+(9, 'bmc', 'bmc@gmail.com', '$2y$10$wXqP8OYXqFgKiXGFS9jqnOv3YO2kt.L9Hyw2LEOiBRBdRRM/xKnAy'),
+(10, 'schooladmin', 'jay@gmail.com', '$2y$10$ASLgyQ8hU8aNusI/O5VhYOyX.DP2OrG72OnS0bMNJaVSO9J4a.T3S'),
+(11, 'teacher', 'het@gmail.com', '$2y$10$3yaRnjoRqo2RE/ezQkRy6e.rOOQJEs.QNiH/yUfq6MLbPq3/0GoN.'),
+(12, 'student', 'pooja@gmail.com', '$2y$10$zv3A2vUNw5YBCI4e7oCGK.Jxav87D97a/knxadonYA.tiuvp1/uc2');
 
 --
 -- Indexes for dumped tables
@@ -218,31 +232,31 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `principal`
 --
 ALTER TABLE `principal`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `school`
 --
 ALTER TABLE `school`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `student`
 --
 ALTER TABLE `student`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `teacher`
 --
 ALTER TABLE `teacher`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- Constraints for dumped tables
