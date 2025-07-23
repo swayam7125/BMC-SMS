@@ -81,6 +81,8 @@ $show_default_principal_photo = ($principal_photo_path === null);
     <title>View School - <?php echo htmlspecialchars($school['school_name']); ?></title>
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
+    <!-- Corrected Font Awesome link -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <style>
         .view-image {
