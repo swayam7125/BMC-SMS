@@ -19,7 +19,8 @@ $school_id = intval($_GET['id']);
 $errors = [];
 
 // Fetch current school data to populate the form
-$query = "SELECT * FROM school WHERE id = ?";
+// Removed 'school_std' from SELECT query
+$query = "SELECT id, school_logo, school_name, email, phone, school_opening, school_type, education_board, school_medium, school_category, address FROM school WHERE id = ?";
 $stmt_fetch = mysqli_prepare($conn, $query);
 mysqli_stmt_bind_param($stmt_fetch, "i", $school_id);
 mysqli_stmt_execute($stmt_fetch);
@@ -80,7 +81,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($errors)) {
         try {
-            $update_query = "UPDATE school SET school_logo=?, school_name=?, email=?, phone=?, address=?, school_opening=?, school_type=?, education_board=?, school_medium=?, school_category=?, school_std=? WHERE id=?";
+            // Removed school_std from UPDATE query
+            $update_query = "UPDATE school SET school_logo=?, school_name=?, email=?, phone=?, address=?, school_opening=?, school_type=?, education_board=?, school_medium=?, school_category=? WHERE id=?";
             $stmt = mysqli_prepare($conn, $update_query);
             mysqli_stmt_bind_param(
                 $stmt,
@@ -95,7 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $education_board,
                 $school_medium,
                 $school_category,
-                $school_std,
+                // Removed $school_std,
                 $school_id
             );
 
@@ -140,6 +142,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
+    <!-- Corrected Font Awesome link -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 </head>
 
@@ -196,11 +200,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                                                                                                                                                                                         foreach ($mediums as $medium): ?><option value="<?php echo $medium; ?>" <?php if (in_array($medium, $selected_mediums)) echo 'selected'; ?>><?php echo $medium; ?></option><?php endforeach; ?></select></div>
                                 </div>
                                 <div class="form-row">
-                                    <div class="form-group col-md-6"><label for="school_category">School Category *</label><select class="form-control multi-select" id="school_category" name="school_category[]" multiple="multiple" required><?php $categories = ['Pre-Primary', 'Primary', 'Upper Primary', 'Secondary', 'Higher Secondary'];
-                                                                                                                                                                                                                                                foreach ($categories as $cat): ?><option value="<?php echo $cat; ?>" <?php if (in_array($cat, $selected_categories)) echo 'selected'; ?>><?php echo $cat; ?></option><?php endforeach; ?></select></div>
-                                    <div class="form-group col-md-6"><label for="school_std">School Standards *</label><select class="form-control multi-select" id="school_std" name="school_std[]" multiple="multiple" required><?php $stds = ['Pre-Primary', 'Primary (1-5)', 'Upper Primary (6-8)', 'Secondary (9-10)', 'Higher Secondary (11-12)'];
-                                                                                                                                                                                                                                    foreach ($stds as $std): ?><option value="<?php echo $std; ?>" <?php if (in_array($std, $selected_stds)) echo 'selected'; ?>><?php echo $std; ?></option><?php endforeach; ?></select></div>
-                                </div>
+                                    <div class="form-group col-md-12"> <label for="school_category">School Category *</label>
+                                        <select class="form-control multi-select" id="school_category" name="school_category[]" multiple="multiple" required>
+                                            <?php $categories = ['Pre-Primary', 'Primary', 'Upper Primary', 'Secondary', 'Higher Secondary'];
+                                            foreach ($categories as $cat): ?>
+                                                <option value="<?php echo $cat; ?>" <?php if (in_array($cat, $selected_categories)) echo 'selected'; ?>><?php echo $cat; ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    </div>
                                 <div class="form-group"><label for="address">Address *</label><textarea class="form-control" name="address" rows="3" required><?php echo htmlspecialchars($school['address']); ?></textarea></div>
                                 <hr>
                                 <div class="form-group mt-4">
@@ -216,6 +224,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php
             include '../../includes/footer.php';
             ?>
+            </div>
             </div>
     </div>
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
@@ -243,35 +252,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $(document).ready(function() {
             $('.multi-select').select2();
 
-            const categoryToStandardMap = {
-                'Pre-Primary': 'Pre-Primary',
-                'Primary': 'Primary (1-5)',
-                'Upper Primary': 'Upper Primary (6-8)',
-                'Secondary': 'Secondary (9-10)',
-                'Higher Secondary': 'Higher Secondary (11-12)'
-            };
-
-            const categorySelect = $('#school_category');
-            const standardSelect = $('#school_std');
-
-            function updateStandardOptions() {
-                const selectedCategories = categorySelect.val() || [];
-                const allowedStandards = selectedCategories.map(category => categoryToStandardMap[category]);
-                let currentSelectedStandards = standardSelect.val() || [];
-
-                currentSelectedStandards = currentSelectedStandards.filter(std => allowedStandards.includes(std));
-
-                standardSelect.find('option').each(function() {
-                    $(this).prop('disabled', !allowedStandards.includes($(this).val()));
-                });
-
-                standardSelect.val(currentSelectedStandards).trigger('change');
-            }
-
-            categorySelect.on('change', updateStandardOptions);
-
-            // Run on page load to set the initial state
-            updateStandardOptions();
+            // Removed all dynamic dropdown logic for school_std
+            // const categoryToStandardMap = {...};
+            // const categorySelect = $('#school_category');
+            // const standardSelect = $('#school_std');
+            // function updateStandardOptions() {...}
+            // categorySelect.on('change', updateStandardOptions);
+            // updateStandardOptions();
         });
 
         document.getElementById('school_logo').addEventListener('change', function(event) {
@@ -282,4 +269,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </script>
 </body>
 
-</html>
+</html> 

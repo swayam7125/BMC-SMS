@@ -103,6 +103,8 @@ $default_principal_photo = getDefaultImagePath('principal', BASE_WEB_PATH);
     <title>View School - <?php echo htmlspecialchars($school['school_name']); ?></title>
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
+    <!-- Corrected Font Awesome link -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <style>
         .view-image {
@@ -232,11 +234,7 @@ $default_principal_photo = getDefaultImagePath('principal', BASE_WEB_PATH);
                                         <div class="col-sm-5 font-weight-bold">Categories:</div>
                                         <div class="col-sm-7"><?php echo htmlspecialchars(str_replace(',', ', ', $school['school_category'])); ?></div>
                                     </div>
-                                    <div class="row info-row">
-                                        <div class="col-sm-5 font-weight-bold">Standards:</div>
-                                        <div class="col-sm-7"><?php echo htmlspecialchars(str_replace(',', ', ', $school['school_std'])); ?></div>
                                     </div>
-                                </div>
                             </div>
                         </div>
 
@@ -276,6 +274,7 @@ $default_principal_photo = getDefaultImagePath('principal', BASE_WEB_PATH);
             <?php
             include '../../includes/footer.php';
             ?>
+            </div>
             </div>
     </div>
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
