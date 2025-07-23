@@ -131,7 +131,7 @@ $school_result = mysqli_query($conn, $school_query);
 </head>
 <body id="page-top">
     <div id="wrapper">
-        <?php include_once '../../includes/sidebar/BMC_sidebar.php'; ?>
+    <?php include '../sidebar.php';?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '.././header.php'; ?>

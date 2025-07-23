@@ -212,7 +212,7 @@ $selected_stds = explode(',', $teacher['std']);
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include_once '../../includes/sidebar/BMC_sidebar.php'; ?>
+    <?php include '../../includes/sidebar.php';?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jul 23, 2025 at 03:06 PM
+-- Generation Time: Jul 23, 2025 at 08:40 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -119,6 +119,30 @@ CREATE TABLE `deleted_teachers` (
 
 INSERT INTO `deleted_teachers` (`id`, `teacher_name`, `email`, `phone`, `gender`, `dob`, `blood_group`, `address`, `school_id`, `qualification`, `subject`, `language_known`, `salary`, `std`, `experience`, `batch`, `class_teacher`, `class_teacher_std`, `deleted_by_role`, `deleted_at`) VALUES
 (1, 'JAY', 'jay@gmail.com', '5674298791', 'male', '2005-11-03', 'AB-', '0', 3, 'BA', 'Account', 'Hindi', 500000.00, 'Nursery,Junior,1', '5', 'Evening', 0, NULL, 'schooladmin', '2025-07-22 11:51:18');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `leave_applications`
+--
+
+CREATE TABLE `leave_applications` (
+  `id` int(11) NOT NULL,
+  `teacher_id` int(11) NOT NULL,
+  `from_date` date NOT NULL,
+  `to_date` date NOT NULL,
+  `reason` text NOT NULL,
+  `status` varchar(20) NOT NULL DEFAULT 'Pending',
+  `applied_on` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `leave_applications`
+--
+
+INSERT INTO `leave_applications` (`id`, `teacher_id`, `from_date`, `to_date`, `reason`, `status`, `applied_on`) VALUES
+(1, 6, '2025-07-30', '2025-08-10', 'My friend\'s marriage', 'Approved', '2025-07-23 17:40:03'),
+(2, 6, '2025-07-31', '2025-08-20', 'swayam marriage', 'Approved', '2025-07-23 17:55:10');
 
 -- --------------------------------------------------------
 
@@ -328,6 +352,13 @@ ALTER TABLE `deleted_teachers`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indexes for table `leave_applications`
+--
+ALTER TABLE `leave_applications`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_leave_teacher_id` (`teacher_id`);
+
+--
 -- Indexes for table `principal`
 --
 ALTER TABLE `principal`
@@ -413,6 +444,12 @@ ALTER TABLE `deleted_teachers`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
+-- AUTO_INCREMENT for table `leave_applications`
+--
+ALTER TABLE `leave_applications`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
 -- AUTO_INCREMENT for table `school`
 --
 ALTER TABLE `school`
@@ -445,6 +482,12 @@ ALTER TABLE `users`
 --
 -- Constraints for dumped tables
 --
+
+--
+-- Constraints for table `leave_applications`
+--
+ALTER TABLE `leave_applications`
+  ADD CONSTRAINT `fk_leave_teacher_id` FOREIGN KEY (`teacher_id`) REFERENCES `teacher` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `principal`

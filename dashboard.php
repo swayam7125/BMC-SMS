@@ -236,7 +236,7 @@ switch ($role) {
     <div id="wrapper">
 
         <?php
-        include './includes/sidebar/BMC_sidebar.php';
+            include './includes/sidebar.php';        
         ?>
         <div id="content-wrapper" class="d-flex flex-column">
 
