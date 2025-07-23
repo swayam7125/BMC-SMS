@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jul 23, 2025 at 10:07 AM
+-- Generation Time: Jul 23, 2025 at 03:06 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -160,8 +160,26 @@ CREATE TABLE `school` (
   `education_board` set('CBSE','State','IGCSE') DEFAULT NULL,
   `school_medium` set('English','Hindi','Regional Language') DEFAULT NULL,
   `school_category` set('Pre-Primary','Primary','Upper Primary','Secondary','Higher Secondary') DEFAULT NULL,
-  `school_std` set('Pre-Primary','Primary (1-5)','Upper Primary (6-8)','Secondary (9-10)','Higher Secondary (11-12)') DEFAULT NULL,
   `address` text DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `school`
+--
+
+INSERT INTO `school` (`id`, `school_logo`, `school_name`, `email`, `phone`, `school_opening`, `school_type`, `education_board`, `school_medium`, `school_category`, `address`) VALUES
+(4, NULL, 'sanskar bharti vidyalay', 'sbv@gmail.com', '8526548525', '2025-07-06', 'Private', 'CBSE', 'Hindi', '', 'adajan');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `standard_subjects`
+--
+
+CREATE TABLE `standard_subjects` (
+  `std_subject_id` int(11) NOT NULL,
+  `standard` varchar(10) NOT NULL,
+  `subject_id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -190,6 +208,45 @@ CREATE TABLE `student` (
   `mother_phone` varchar(10) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `student`
+--
+
+INSERT INTO `student` (`id`, `student_image`, `student_name`, `rollno`, `std`, `email`, `password`, `academic_year`, `school_id`, `dob`, `gender`, `blood_group`, `address`, `father_name`, `father_phone`, `mother_name`, `mother_phone`) VALUES
+(3, NULL, 'devam parekh', '8526548525', '12', 'devam@gmail.com', '$2y$10$vl/hHLMF3ar5GEc6pQJfVexTt3vKCXoAGF/9HcDtgGGDsfKHoXHQu', '2024-2025', 4, '2025-07-11', 'male', 'b+', 'canal road', 'mukesh', '9874522589', 'sunita', '753685124');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `student_marks`
+--
+
+CREATE TABLE `student_marks` (
+  `mark_id` int(11) NOT NULL,
+  `student_id` int(11) NOT NULL,
+  `school_id` int(11) NOT NULL,
+  `academic_year` varchar(10) NOT NULL,
+  `std` varchar(10) NOT NULL,
+  `division` varchar(5) NOT NULL,
+  `exam_type` varchar(100) NOT NULL,
+  `subject_name` varchar(100) NOT NULL,
+  `marks_obtained` decimal(5,2) NOT NULL,
+  `total_marks` decimal(5,2) NOT NULL DEFAULT 100.00,
+  `entry_date` timestamp NOT NULL DEFAULT current_timestamp(),
+  `entered_by_user_id` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `subjects`
+--
+
+CREATE TABLE `subjects` (
+  `subject_id` int(11) NOT NULL,
+  `subject_name` varchar(100) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 -- --------------------------------------------------------
 
 --
@@ -211,13 +268,20 @@ CREATE TABLE `teacher` (
   `qualification` varchar(100) DEFAULT NULL,
   `subject` varchar(100) DEFAULT NULL,
   `language_known` varchar(100) DEFAULT NULL,
-  `salary` decimal(10,2) DEFAULT NULL,
+  `salary` int(11) DEFAULT NULL,
   `std` set('Nursery','Junior','Senior','1','2','3','4','5','6','7','8','9','10','11','12') DEFAULT NULL,
   `experience` varchar(10) DEFAULT NULL,
   `batch` enum('Morning','Evening') DEFAULT NULL,
   `class_teacher` tinyint(1) DEFAULT 0,
   `class_teacher_std` varchar(50) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `teacher`
+--
+
+INSERT INTO `teacher` (`id`, `teacher_image`, `teacher_name`, `phone`, `school_id`, `dob`, `gender`, `blood_group`, `address`, `email`, `password`, `qualification`, `subject`, `language_known`, `salary`, `std`, `experience`, `batch`, `class_teacher`, `class_teacher_std`) VALUES
+(6, '../../pages/teacher/uploads/teacher_6880cd02b30464.45441036.jpg', 'meet parekh', '9900990099', 4, '2025-07-01', 'Male', 'B-', 'mota varachaa', 'meet@gmail.com', '$2y$10$sdz4DZ5oaMJNrUA9mld44uiBNIIkAQCPjs2XrrnUcl.Bp6wlzYz1a', 'B.A', 'maths', 'english', 100000, '8,9,10,11,12', '10', 'Evening', 1, '11');
 
 -- --------------------------------------------------------
 
@@ -238,9 +302,8 @@ CREATE TABLE `users` (
 
 INSERT INTO `users` (`id`, `role`, `email`, `password`) VALUES
 (1, 'schooladmin', 'fenil@gmail.com', '$2y$10$d3NpW61HsPhfQMhrnQyz0uzEJbkMXRJrQZkPC6pnfls5JA/Ck0bKe'),
-(2, 'teacher', 'swayam@gmail.com', '$2y$10$s18f7OGGbOoMEB1i4eqFSuI5r07Zry8HfpshQvXi9GWR122mK81.y'),
-(3, 'student', 'meet@gmail.com', '$2y$10$Az8jVXsuxHYWC6EfnPTKy.dLTS.YENi5B5bCgMhpNLsKzvC1S9Ahu'),
-(4, 'student', 'ram@gmail.com', '$2y$10$JBzHDObjqBb/tBd86d1V1.N4WnAORx8Y6EVSJFZVKf0bR0Fioq3BW');
+(3, 'student', 'devam@gmail.com', '$2y$10$vl/hHLMF3ar5GEc6pQJfVexTt3vKCXoAGF/9HcDtgGGDsfKHoXHQu'),
+(6, 'teacher', 'meet@gmail.com', '$2y$10$sdz4DZ5oaMJNrUA9mld44uiBNIIkAQCPjs2XrrnUcl.Bp6wlzYz1a');
 
 --
 -- Indexes for dumped tables
@@ -282,12 +345,35 @@ ALTER TABLE `school`
   ADD UNIQUE KEY `email` (`email`);
 
 --
+-- Indexes for table `standard_subjects`
+--
+ALTER TABLE `standard_subjects`
+  ADD PRIMARY KEY (`std_subject_id`),
+  ADD UNIQUE KEY `uq_std_subject` (`standard`,`subject_id`),
+  ADD KEY `subject_id` (`subject_id`);
+
+--
 -- Indexes for table `student`
 --
 ALTER TABLE `student`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `email` (`email`,`password`),
   ADD KEY `school_id` (`school_id`);
+
+--
+-- Indexes for table `student_marks`
+--
+ALTER TABLE `student_marks`
+  ADD PRIMARY KEY (`mark_id`),
+  ADD UNIQUE KEY `uq_student_exam_subject` (`student_id`,`academic_year`,`exam_type`,`subject_name`),
+  ADD KEY `school_id` (`school_id`),
+  ADD KEY `entered_by_user_id` (`entered_by_user_id`);
+
+--
+-- Indexes for table `subjects`
+--
+ALTER TABLE `subjects`
+  ADD PRIMARY KEY (`subject_id`),
+  ADD UNIQUE KEY `subject_name` (`subject_name`);
 
 --
 -- Indexes for table `teacher`
@@ -327,34 +413,34 @@ ALTER TABLE `deleted_teachers`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
--- AUTO_INCREMENT for table `principal`
---
-ALTER TABLE `principal`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
-
---
 -- AUTO_INCREMENT for table `school`
 --
 ALTER TABLE `school`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
--- AUTO_INCREMENT for table `student`
+-- AUTO_INCREMENT for table `standard_subjects`
 --
-ALTER TABLE `student`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+ALTER TABLE `standard_subjects`
+  MODIFY `std_subject_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `teacher`
+-- AUTO_INCREMENT for table `student_marks`
 --
-ALTER TABLE `teacher`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+ALTER TABLE `student_marks`
+  MODIFY `mark_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `subjects`
+--
+ALTER TABLE `subjects`
+  MODIFY `subject_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- Constraints for dumped tables
@@ -364,18 +450,35 @@ ALTER TABLE `users`
 -- Constraints for table `principal`
 --
 ALTER TABLE `principal`
+  ADD CONSTRAINT `fk_principal_user_id` FOREIGN KEY (`id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `principal_ibfk_1` FOREIGN KEY (`school_id`) REFERENCES `school` (`id`);
+
+--
+-- Constraints for table `standard_subjects`
+--
+ALTER TABLE `standard_subjects`
+  ADD CONSTRAINT `standard_subjects_ibfk_1` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`subject_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `student`
 --
 ALTER TABLE `student`
+  ADD CONSTRAINT `fk_student_user_id` FOREIGN KEY (`id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `student_ibfk_1` FOREIGN KEY (`school_id`) REFERENCES `school` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `student_marks`
+--
+ALTER TABLE `student_marks`
+  ADD CONSTRAINT `student_marks_ibfk_1` FOREIGN KEY (`student_id`) REFERENCES `student` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `student_marks_ibfk_2` FOREIGN KEY (`school_id`) REFERENCES `school` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `student_marks_ibfk_3` FOREIGN KEY (`entered_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `teacher`
 --
 ALTER TABLE `teacher`
+  ADD CONSTRAINT `fk_teacher_user_id` FOREIGN KEY (`id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `teacher_ibfk_1` FOREIGN KEY (`school_id`) REFERENCES `school` (`id`) ON DELETE CASCADE;
 COMMIT;
 

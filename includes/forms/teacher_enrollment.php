@@ -106,11 +106,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"; // One more '?' for ID
 
             $stmt_teacher = mysqli_prepare($conn, $insert_teacher_query);
-            // Add 'i' for the new_user_id (integer) at the beginning of bind_param types
+            
+            // FIX: The type definition string now has 20 characters to match the 20 variables.
+            // Data types have also been corrected (e.g., phone is 's', school_id is 'i', experience is 'i').
             mysqli_stmt_bind_param(
                 $stmt_teacher,
-                "ississsssssssdsssis", // Add 'i' at the start
-                $new_user_id, // Pass the ID from the users table
+                "isssisssssssssdsisis", 
+                $new_user_id, 
                 $image_path_for_db,
                 $teacher_name,
                 $phone,
@@ -168,6 +170,7 @@ $school_result = mysqli_query($conn, $school_query);
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="./assets/css/notification_window.css">
 </head>
 
 <body id="page-top">

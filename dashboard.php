@@ -162,16 +162,14 @@ switch ($role) {
                 $studentData = $result->fetch_assoc();
                 $schoolId = $studentData['school_id'];
                 // Students typically won't see counts of other students/teachers globally.
-                // You might add specific queries here if a student's dashboard needs to show, e.g.,
-                // counts of courses they are enrolled in, or specific notices for their class.
             }
             $stmt->close();
         }
         break;
 }
 
-// Close the database connection
-$conn->close();
+// FIX: Do NOT close the connection here. It will be closed at the end of the file.
+// $conn->close(); 
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -398,6 +396,7 @@ $conn->close();
                                                     <?php
                                                         // Fetch student's standard
                                                         $student_std = 'N/A';
+                                                        // This query will now work because the connection is still open.
                                                         $stmt_std = $conn->prepare("SELECT std FROM student WHERE id = ?");
                                                         if ($stmt_std) {
                                                             $stmt_std->bind_param("i", $userId);
@@ -576,3 +575,7 @@ $conn->close();
 </body>
 
 </html>
+<?php
+// FIX: Close the database connection at the very end of the script.
+$conn->close();
+?>
