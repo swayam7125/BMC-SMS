@@ -17,7 +17,7 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
     exit;
 }
 
-$principal_id = intval($_GET['id']);
+$principal_id = intval($_GET['id']); // This principal_id is now also the user_id
 $errors = [];
 
 // Fetch current principal data
@@ -32,14 +32,14 @@ if (mysqli_num_rows($result) === 0) {
 }
 $principal = mysqli_fetch_assoc($result);
 $original_image_path = $principal['principal_image'];
-$original_email = $principal['email'];
+$original_email = $principal['email']; // Keep original email for comparison
 mysqli_stmt_close($stmt);
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // --- Retrieve all form data ---
     $principal_name = trim($_POST['principal_name']);
-    $email = trim($_POST['email']);
+    $new_email = trim($_POST['email']); // Use $new_email to avoid confusion with $email variable name
     $phone = trim($_POST['phone']);
     $principal_dob = $_POST['principal_dob'];
     $gender = $_POST['gender'];
@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $qualification = trim($_POST['qualification']);
     $salary = trim($_POST['salary']);
     $school_id = intval($_POST['school_id']);
-    $batch = $_POST['batch']; // Retrieve batch from form
+    $batch = $_POST['batch'];
 
     $image_path_for_db = $original_image_path;
 
@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $destination = $target_dir . $new_filename;
             if (move_uploaded_file($file['tmp_name'], $destination)) {
                 if (!empty($original_image_path) && file_exists($original_image_path)) {
-                    @unlink($original_image_path);
+                    @unlink($original_image_path); // Use @ to suppress errors if file doesn't exist
                 }
                 $image_path_for_db = $destination;
             } else {
@@ -79,14 +79,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($school_id)) $errors[] = "A school must be selected.";
     if (empty($principal_name)) $errors[] = "Principal name is required.";
     if (empty($batch)) $errors[] = "Batch selection is required.";
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "A valid email is required.";
+    if (!filter_var($new_email, FILTER_VALIDATE_EMAIL)) $errors[] = "A valid email is required.";
     if (empty($gender)) $errors[] = "Gender is required.";
+    // Blood group is not marked as required in DB, so no strict validation here.
 
     if (empty($errors)) {
         mysqli_autocommit($conn, false);
         try {
-            // REMOVED: Password logic is gone.
-            // UPDATED: Query no longer updates the password. It now includes batch.
+            // Update the 'users' table ONLY if the email changed.
+            // Principal ID is now directly the User ID.
+            if ($new_email !== $original_email) {
+                $update_user_query = "UPDATE users SET email=? WHERE id=? AND role='schooladmin'"; // Ensure role matches
+                $stmt_user = mysqli_prepare($conn, $update_user_query);
+                mysqli_stmt_bind_param($stmt_user, "si", $new_email, $principal_id);
+                if (!mysqli_stmt_execute($stmt_user)) {
+                    // Check for duplicate email error from users table
+                    if (mysqli_errno($conn) == 1062) {
+                        throw new Exception("Another user with this email already exists.");
+                    } else {
+                        throw new Exception("Error updating user record: " . mysqli_stmt_error($stmt_user));
+                    }
+                }
+                mysqli_stmt_close($stmt_user);
+            }
+
+            // Update the 'principal' table
+            // Password logic is gone. It now includes batch.
             $update_principal_query = "UPDATE principal SET 
                 principal_image=?, principal_name=?, email=?, phone=?, 
                 principal_dob=?, gender=?, blood_group=?, address=?, 
@@ -95,13 +113,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $stmt_principal = mysqli_prepare($conn, $update_principal_query);
 
-            // UPDATED: `bind_param` call simplified without password, includes batch.
+            // `bind_param` call simplified without password, includes batch.
+            // 's' for image, name, email, phone, dob, gender, blood_group, address, qualification, batch
+            // 'd' for salary
+            // 'i' for school_id, principal_id
             mysqli_stmt_bind_param(
                 $stmt_principal,
-                "sssssssssdisi",
+                "sssssssssdisi", // Types for: image, name, email, phone, dob, gender, blood_group, address, qual, salary, school_id, batch, principal_id
                 $image_path_for_db,
                 $principal_name,
-                $email,
+                $new_email, // Use new_email here
                 $phone,
                 $principal_dob,
                 $gender,
@@ -119,34 +140,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             mysqli_stmt_close($stmt_principal);
 
-            // Update the 'users' table ONLY if the email changed.
-            if ($email !== $original_email) {
-                $update_user_query = "UPDATE users SET email=? WHERE email=?";
-                $stmt_user = mysqli_prepare($conn, $update_user_query);
-                mysqli_stmt_bind_param($stmt_user, "ss", $email, $original_email);
-                if (!mysqli_stmt_execute($stmt_user)) {
-                    throw new Exception("Error updating user record: " . mysqli_stmt_error($stmt_user));
-                }
-                mysqli_stmt_close($stmt_user);
-            }
-
             mysqli_commit($conn);
             header("Location: principal_list.php?id=" . $principal_id . "&success=Principal updated successfully");
             exit;
         } catch (Exception $e) {
             mysqli_rollback($conn);
             if (mysqli_errno($conn) == 1062) {
+                // This will catch unique key violations on email (from users table) or phone (from principal table)
                 $errors[] = "A principal with this email or phone number already exists.";
             } else {
                 $errors[] = "Database error: " . $e->getMessage();
             }
+            // Re-populate $principal array with POST data for sticky form fields
             $principal = $_POST;
             $principal['id'] = $principal_id;
+            $principal['principal_image'] = $image_path_for_db; // Ensure image path is sticky too
         }
     }
 }
 
-// Fetch all schools for the dropdown
+// Fetch all schools for the dropdown (if current principal is already assigned, still list it)
 $schools_query = "SELECT id, school_name FROM school ORDER BY school_name";
 $schools_result = mysqli_query($conn, $schools_query);
 ?>
@@ -166,9 +179,7 @@ $schools_result = mysqli_query($conn, $schools_query);
         <?php include_once '../../includes/sidebar/BMC_sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <!-- top bar code -->
                 <?php include_once '../../includes/header.php'; ?>
-                <!-- end of top bar code -->
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Edit Principal</h1>
@@ -248,7 +259,7 @@ $schools_result = mysqli_query($conn, $schools_query);
                                 </div>
                                 <div class="form-group"><label for="address">Address</label><textarea class="form-control" id="address" name="address" rows="2"><?php echo htmlspecialchars($principal['address']); ?></textarea></div>
                                 <div class="form-group mt-4">
-                                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update School</button>
+                                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update Principal</button>
                                     <a href="principal_list.php" class="btn btn-secondary"><i class="fas fa-times"></i> Cancel</a>
                                 </div>
                             </form>
@@ -256,12 +267,10 @@ $schools_result = mysqli_query($conn, $schools_query);
                     </div>
                 </div>
             </div>
-            <!-- Footer -->
             <?php
             include '../../includes/footer.php';
             ?>
-            <!-- End of Footer -->
-        </div>
+            </div>
     </div>
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
         aria-hidden="true">

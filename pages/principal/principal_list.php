@@ -15,6 +15,7 @@ if (!$role) {
 }
 
 // Fetch principal data with school and batch information
+// No change needed to this query for the new schema, as 'p.id' and 'p.batch' are already selected.
 $query = "SELECT p.id, p.principal_name, p.email, p.phone, p.batch, 
                 sc.school_name 
         FROM principal p 
@@ -50,10 +51,7 @@ $result = mysqli_query($conn, $query);
 
             <div id="content">
 
-                <!-- top bar code -->
                 <?php include_once '../../includes/header.php'; ?>
-                <!-- end of top bar code -->
-
                 <div class="container-fluid">
 
                     <h1 class="h3 mb-2 text-gray-800">Principal Tables</h1>
@@ -144,12 +142,10 @@ $result = mysqli_query($conn, $query);
 
                 </div>
             </div>
-            <!-- Footer -->
             <?php
             include '../../includes/footer.php';
             ?>
-            <!-- End of Footer -->
-        </div>
+            </div>
     </div>
     <a class="scroll-to-top rounded" href="#page-top">
         <i class="fas fa-angle-up"></i>

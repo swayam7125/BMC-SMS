@@ -64,16 +64,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
-            // UPDATED: Added batch to the query
+            // 1. Insert into users table FIRST to get the user_id
+            $user_role = 'schooladmin'; // Assuming principal role maps to 'schooladmin' in users table
+            $insert_user_query = "INSERT INTO users (role, email, password) VALUES (?, ?, ?)";
+            $stmt_user = mysqli_prepare($conn, $insert_user_query);
+            mysqli_stmt_bind_param($stmt_user, "sss", $user_role, $email, $hashed_password);
+            if (!mysqli_stmt_execute($stmt_user)) {
+                throw new Exception("User record creation failed: " . mysqli_stmt_error($stmt_user));
+            }
+            // Get the last inserted ID from the users table
+            $new_user_id = mysqli_insert_id($conn);
+            mysqli_stmt_close($stmt_user);
+
+            // 2. Insert into 'principal' table using the new_user_id as its primary key
+            // Note: The 'id' column in the principal table must now be primary key AND foreign key referencing users.id
             $insert_principal_query = "INSERT INTO principal (
-                principal_image, school_id, principal_name, email, password, phone, 
+                id, principal_image, school_id, principal_name, email, password, phone,
                 principal_dob, gender, blood_group, address, qualification, salary, batch
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"; // One more '?' for ID
 
             $stmt_principal = mysqli_prepare($conn, $insert_principal_query);
-            // UPDATED: Added 's' for batch and the variable
+            // Add 'i' for the new_user_id (integer) at the beginning of bind_param types
             mysqli_stmt_bind_param(
-                $stmt_principal, "sisssssssssds",
+                $stmt_principal, "iisssssssssds", // Add 'i' at the start
+                $new_user_id, // Pass the ID from the users table
                 $image_path_for_db, $school_id, $principal_name, $email, $hashed_password,
                 $phone, $principal_dob, $gender, $blood_group, $address, $qualification, $salary, $batch
             );
@@ -82,16 +96,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new Exception("Principal record creation failed: " . mysqli_stmt_error($stmt_principal));
             }
             mysqli_stmt_close($stmt_principal);
-
-            // Insert into users table
-            $user_role = 'schooladmin'; 
-            $insert_user_query = "INSERT INTO users (role, email, password) VALUES (?, ?, ?)";
-            $stmt_user = mysqli_prepare($conn, $insert_user_query);
-            mysqli_stmt_bind_param($stmt_user, "sss", $user_role, $email, $hashed_password);
-            if (!mysqli_stmt_execute($stmt_user)) {
-                throw new Exception("User record creation failed: " . mysqli_stmt_error($stmt_user));
-            }
-            mysqli_stmt_close($stmt_user);
             
             mysqli_commit($conn);
             header("Location: ../../pages/principal/principal_list.php?success=Principal enrolled successfully");
@@ -100,6 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (Exception $e) {
             mysqli_rollback($conn);
             if(mysqli_errno($conn) == 1062){
+                // This error is likely now from the 'users' table's unique email or phone constraint
                 $errors[] = "A principal with this email or phone number already exists.";
             } else {
                 $errors[] = "Database error: " . $e->getMessage();

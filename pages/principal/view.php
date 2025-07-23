@@ -49,35 +49,39 @@ function getPrincipalPhotoPath($principal_image, $principal_id = null)
 
     // Possible photo directories to check
     $photo_directories = [
+        "../../pages/principal/uploads/", // Primary upload dir
         "../../assets/images/",
         "../../uploads/principals/",
         "../../uploads/",
         "../../assets/img/principals/",
         "../../images/principals/",
-        "../../principal_photos/",
-        "../../pages/principal/uploads/" // Added from enrollment form
+        "../../principal_photos/"
     ];
 
-    // If it's already a full path, check if it exists
-    if (strpos($principal_image, '../../') === 0 || strpos($principal_image, '/') === 0) {
-        if (file_exists($principal_image) && is_file($principal_image)) {
-            return $principal_image;
+    // If it's already a full path (like starts with ../..), check if it exists
+    // Note: This needs to be relative to the script's location on the filesystem.
+    // For web paths, consider defining a base path.
+    if (strpos($principal_image, '../../') === 0 || strpos($principal_image, '../') === 0) {
+        // Attempt to resolve relative path to absolute filesystem path
+        // __DIR__ gives the directory of the current script (e.g., /path/to/project/pages/principal/)
+        // We need to go up to the project root and then follow the relative path.
+        // This is tricky and often better handled by storing web-accessible paths in DB.
+        // For simplicity, we'll assume direct web paths or paths relative to BMC-SMS root.
+        $absolute_path_from_script = realpath(__DIR__ . '/' . $principal_image);
+        if ($absolute_path_from_script && file_exists($absolute_path_from_script) && is_file($absolute_path_from_script)) {
+            // Convert to web-accessible path if possible, or return as is if it's already relative to web root
+            return $principal_image; // This might need further adjustment for web display
         }
     }
-
-    // Try different directory combinations
+    
+    // Try different directory combinations relative to current script's parent (BMC-SMS root generally)
     foreach ($photo_directories as $dir) {
-        $full_path = $dir . $principal_image;
-        if (file_exists($full_path) && is_file($full_path)) {
-            return $full_path;
-        }
-
-        // Also try with principal ID prefix (common pattern)
-        if ($principal_id) {
-            $id_prefixed = $dir . $principal_id . "_" . $principal_image;
-            if (file_exists($id_prefixed) && is_file($id_prefixed)) {
-                return $id_prefixed;
-            }
+        // Construct full filesystem path
+        $full_filesystem_path = realpath(__DIR__ . '/../..' . substr($dir, 2) . basename($principal_image)); // Adjust path from current script
+        if ($full_filesystem_path && file_exists($full_filesystem_path) && is_file($full_filesystem_path)) {
+            // Return web-accessible path relative to BASE_WEB_PATH
+            // Assuming BASE_WEB_PATH is '/BMC-SMS/'
+            return str_replace($_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/', '/BMC-SMS/', $full_filesystem_path);
         }
     }
 
@@ -105,12 +109,32 @@ function getDefaultPhotoPath()
     return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 150 150'%3E%3Crect width='150' height='150' fill='%23f8f9fc'/%3E%3Ctext x='75' y='75' text-anchor='middle' dy='0.35em' fill='%23858796' font-family='Arial' font-size='14'%3ENo Photo%3C/text%3E%3C/svg%3E";
 }
 
+
 // Get the actual photo path
-$photo_path = getPrincipalPhotoPath($principal['principal_image'], $principal['id']);
+// When storing paths in the DB, it's generally best to store them as web-accessible relative paths from the document root, e.g., 'pages/principal/uploads/filename.jpg'
+// This simplifies photo retrieval dramatically.
+// Assuming getPrincipalPhotoPath now returns a web-accessible path (e.g. starting with /BMC-SMS/)
+$photo_path = $principal['principal_image']; // Assume DB stores the path relative to project root directly (e.g., pages/principal/uploads/...)
+if (!empty($photo_path)) {
+    // Construct the full web-accessible URL
+    $full_web_path = BASE_WEB_PATH . ltrim($photo_path, '/');
+    // Check if the file actually exists on the filesystem
+    $filesystem_path = $_SERVER['DOCUMENT_ROOT'] . $full_web_path;
+
+    if (!file_exists($filesystem_path) || !is_file($filesystem_path)) {
+        $photo_path = null; // Mark as not found if file doesn't exist
+    } else {
+        $photo_path = $full_web_path; // Use the full web-accessible path
+    }
+} else {
+    $photo_path = null; // No image path in DB
+}
+
 $default_photo = getDefaultPhotoPath();
 $show_default = ($photo_path === null);
 
-// ADDED: Define timings based on batch
+
+// Define timings based on batch
 $timings_html = '';
 if (!empty($principal['batch'])) {
     if ($principal['batch'] === 'Morning') {
@@ -121,6 +145,7 @@ if (!empty($principal['batch'])) {
     } elseif ($principal['batch'] === 'Evening') {
         $timings_html = "
             <div><strong>Mon-Sat:</strong> 11:00 AM - 6:00 PM</div>
+            <div><strong>Saturday:</strong> 11:00 AM - 4:00 PM</div>
             <div><strong>Sunday:</strong> 10:00 AM - 12:00 PM</div>
         ";
     }
@@ -190,9 +215,7 @@ if (!empty($principal['batch'])) {
         <div id="content-wrapper" class="d-flex flex-column">
 
             <div id="content">
-                <!-- top bar code -->
                 <?php include_once '../../includes/header.php'; ?>
-                <!-- end of top bar code -->
                 <div class="container-fluid">
 
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
@@ -210,7 +233,7 @@ if (!empty($principal['batch'])) {
                     <div class="row">
 
                         <div class="col-lg-4 mb-4">
-                            <div class="card shadow">
+                            <div class="card shadow h-100">
                                 <div class="card-header py-3">
                                     <h6 class="m-0 font-weight-bold text-primary">
                                         <i class="fas fa-camera"></i> Principal Photo
@@ -218,13 +241,11 @@ if (!empty($principal['batch'])) {
                                 </div>
                                 <div class="card-body">
                                     <div class="photo-container">
-                                        <?php if (!$show_default): ?>
+                                        <?php if ($photo_path): // Check if a valid web-accessible path was found ?>
                                             <img src="<?php echo htmlspecialchars($photo_path); ?>"
                                                 alt="<?php echo htmlspecialchars($principal['principal_name']); ?>"
                                                 class="principal-photo"
-                                                onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($default_photo); ?>'; this.nextElementSibling.style.display='block';">
-                                            <small class="text-muted mt-2" style="display: none;">Photo not
-                                                available</small>
+                                                onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($default_photo); ?>';">
                                         <?php else: ?>
                                             <img src="<?php echo htmlspecialchars($default_photo); ?>"
                                                 alt="Default Principal Avatar" class="principal-photo"
@@ -233,7 +254,7 @@ if (!empty($principal['batch'])) {
                                     </div>
                                     <div class="text-center">
                                         <small class="text-muted">
-                                            <?php echo !$show_default ? 'Principal Photo' : 'Default Avatar'; ?>
+                                            <?php echo ($photo_path) ? 'Principal Photo' : 'Default Avatar'; ?>
                                         </small>
                                     </div>
                                 </div>
@@ -241,7 +262,7 @@ if (!empty($principal['batch'])) {
                         </div>
 
                         <div class="col-lg-8 mb-4">
-                            <div class="card shadow">
+                            <div class="card shadow h-100">
                                 <div class="card-header py-3">
                                     <h6 class="m-0 font-weight-bold text-primary">
                                         <i class="fas fa-user-tie"></i> Basic Information
@@ -370,12 +391,10 @@ if (!empty($principal['batch'])) {
                     </div>
                 </div>
             </div>
-            <!-- Footer -->
             <?php
             include '../../includes/footer.php';
             ?>
-            <!-- End of Footer -->
-        </div>
+            </div>
     </div>
     <a class="scroll-to-top rounded" href="#page-top">
         <i class="fas fa-angle-up"></i>
