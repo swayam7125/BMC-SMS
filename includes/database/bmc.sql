@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jul 22, 2025 at 02:37 PM
+-- Generation Time: Jul 23, 2025 at 10:07 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -20,6 +20,105 @@ SET time_zone = "+00:00";
 --
 -- Database: `bmc`
 --
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `deleted_principals`
+--
+
+CREATE TABLE `deleted_principals` (
+  `id` int(11) NOT NULL,
+  `principal_name` varchar(100) DEFAULT NULL,
+  `email` varchar(100) DEFAULT NULL,
+  `phone` varchar(15) DEFAULT NULL,
+  `dob` date DEFAULT NULL,
+  `gender` enum('male','female','other') DEFAULT NULL,
+  `blood_group` enum('A+','A-','B+','B-','AB+','AB-','O+','O-') DEFAULT NULL,
+  `address` text DEFAULT NULL,
+  `qualification` varchar(100) DEFAULT NULL,
+  `salary` decimal(10,2) DEFAULT NULL,
+  `batch` enum('Morning','Evening') DEFAULT NULL,
+  `school_id` int(11) DEFAULT NULL,
+  `deleted_by_role` varchar(50) DEFAULT NULL,
+  `deleted_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `deleted_principals`
+--
+
+INSERT INTO `deleted_principals` (`id`, `principal_name`, `email`, `phone`, `dob`, `gender`, `blood_group`, `address`, `qualification`, `salary`, `batch`, `school_id`, `deleted_by_role`, `deleted_at`) VALUES
+(1, 'HARSH', 'harsh@gmail.com', '5674231689', '2005-02-06', 'male', 'B-', 'Adajan', 'B.C.A', 500000.00, '', 3, 'schooladmin', '2025-07-22 11:51:18');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `deleted_students`
+--
+
+CREATE TABLE `deleted_students` (
+  `id` int(11) NOT NULL,
+  `student_name` varchar(100) DEFAULT NULL,
+  `email` varchar(100) DEFAULT NULL,
+  `rollno` varchar(20) DEFAULT NULL,
+  `std` varchar(10) DEFAULT NULL,
+  `academic_year` varchar(10) DEFAULT NULL,
+  `dob` date DEFAULT NULL,
+  `gender` enum('male','female','other') DEFAULT NULL,
+  `blood_group` enum('A+','A-','B+','B-','AB+','AB-','O+','O-') DEFAULT NULL,
+  `address` text DEFAULT NULL,
+  `father_name` varchar(100) DEFAULT NULL,
+  `father_phone` varchar(15) DEFAULT NULL,
+  `mother_name` varchar(100) DEFAULT NULL,
+  `mother_phone` varchar(15) DEFAULT NULL,
+  `school_id` int(11) DEFAULT NULL,
+  `deleted_by_role` varchar(50) DEFAULT NULL,
+  `deleted_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `deleted_students`
+--
+
+INSERT INTO `deleted_students` (`id`, `student_name`, `email`, `rollno`, `std`, `academic_year`, `dob`, `gender`, `blood_group`, `address`, `father_name`, `father_phone`, `mother_name`, `mother_phone`, `school_id`, `deleted_by_role`, `deleted_at`) VALUES
+(1, 'Rahul Patel', 'rahul@gmail.com', '1', '5th', '2024-2025', '2005-02-02', 'male', 'AB+', 'surat', 'harsh', '6565548720', 'hemina', '6523012304', 3, 'schooladmin', '2025-07-22 11:51:18');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `deleted_teachers`
+--
+
+CREATE TABLE `deleted_teachers` (
+  `id` int(11) NOT NULL,
+  `teacher_name` varchar(100) DEFAULT NULL,
+  `email` varchar(100) DEFAULT NULL,
+  `phone` varchar(15) DEFAULT NULL,
+  `gender` enum('male','female','other') DEFAULT NULL,
+  `dob` date DEFAULT NULL,
+  `blood_group` enum('A+','A-','B+','B-','AB+','AB-','O+','O-') DEFAULT NULL,
+  `address` text DEFAULT NULL,
+  `school_id` int(11) DEFAULT NULL,
+  `qualification` varchar(100) DEFAULT NULL,
+  `subject` varchar(100) DEFAULT NULL,
+  `language_known` varchar(100) DEFAULT NULL,
+  `salary` decimal(10,2) DEFAULT NULL,
+  `std` set('Nursery','Junior','Senior','1','2','3','4','5','6','7','8','9','10','11','12') DEFAULT NULL,
+  `experience` varchar(50) DEFAULT NULL,
+  `batch` enum('Morning','Evening') DEFAULT NULL,
+  `class_teacher` tinyint(1) DEFAULT NULL,
+  `class_teacher_std` varchar(10) DEFAULT NULL,
+  `deleted_by_role` varchar(50) DEFAULT NULL,
+  `deleted_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `deleted_teachers`
+--
+
+INSERT INTO `deleted_teachers` (`id`, `teacher_name`, `email`, `phone`, `gender`, `dob`, `blood_group`, `address`, `school_id`, `qualification`, `subject`, `language_known`, `salary`, `std`, `experience`, `batch`, `class_teacher`, `class_teacher_std`, `deleted_by_role`, `deleted_at`) VALUES
+(1, 'JAY', 'jay@gmail.com', '5674298791', 'male', '2005-11-03', 'AB-', '0', 3, 'BA', 'Account', 'Hindi', 500000.00, 'Nursery,Junior,1', '5', 'Evening', 0, NULL, 'schooladmin', '2025-07-22 11:51:18');
 
 -- --------------------------------------------------------
 
@@ -44,14 +143,6 @@ CREATE TABLE `principal` (
   `batch` enum('Morning','Evening') DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `principal`
---
-
-INSERT INTO `principal` (`id`, `principal_image`, `school_id`, `principal_name`, `email`, `password`, `phone`, `principal_dob`, `gender`, `blood_group`, `address`, `qualification`, `salary`, `batch`) VALUES
-(2, '../../pages/principal/uploads/principal_687e8b89043511.31717142.jpg', 2, 'dev', 'dev@gmail.com', '$2y$10$qmH7IN31FKaH/UJF2Ct9Ne5xtHZTZpx5D0k5iEGChnpWtQX6BeYUm', '8541235678', '2005-03-11', 'Male', 'AB+', 'adajan', 'MA', 50000.00, 'Morning'),
-(3, NULL, 3, 'jay', 'jay@gmail.com', '$2y$10$ASLgyQ8hU8aNusI/O5VhYOyX.DP2OrG72OnS0bMNJaVSO9J4a.T3S', '7405670316', '2001-01-01', 'Others', 'AB+', '19,Nutan Row House', '12th', 45000.00, 'Morning');
-
 -- --------------------------------------------------------
 
 --
@@ -72,14 +163,6 @@ CREATE TABLE `school` (
   `school_std` set('Pre-Primary','Primary (1-5)','Upper Primary (6-8)','Secondary (9-10)','Higher Secondary (11-12)') DEFAULT NULL,
   `address` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `school`
---
-
-INSERT INTO `school` (`id`, `school_logo`, `school_name`, `email`, `phone`, `school_opening`, `school_type`, `education_board`, `school_medium`, `school_category`, `school_std`, `address`) VALUES
-(2, NULL, 'LP SAVANI CANAL ROAD', 'c@gmail.com', '8974561235', '2022-03-11', 'Government', 'State', 'English,Hindi', 'Upper Primary', 'Upper Primary (6-8)', 'surat'),
-(3, NULL, 'citizen', 'citizen@gmail.com', '8521596324', '2005-08-17', 'Private', 'CBSE', 'English', 'Upper Primary', 'Upper Primary (6-8)', 'adajan');
 
 -- --------------------------------------------------------
 
@@ -106,13 +189,6 @@ CREATE TABLE `student` (
   `mother_name` varchar(50) DEFAULT NULL,
   `mother_phone` varchar(10) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `student`
---
-
-INSERT INTO `student` (`id`, `student_image`, `student_name`, `rollno`, `std`, `email`, `password`, `academic_year`, `school_id`, `dob`, `gender`, `blood_group`, `address`, `father_name`, `father_phone`, `mother_name`, `mother_phone`) VALUES
-(4, NULL, 'pooja', '9', '1', 'pooja@gmail.com', '$2y$10$zv3A2vUNw5YBCI4e7oCGK.Jxav87D97a/knxadonYA.tiuvp1/uc2', '2027-2028', 2, '2000-11-22', 'female', 'ab-', 'canal road', 'girishbhai', '7405670316', 'Sita Patel', '7405670316');
 
 -- --------------------------------------------------------
 
@@ -143,14 +219,6 @@ CREATE TABLE `teacher` (
   `class_teacher_std` varchar(50) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `teacher`
---
-
-INSERT INTO `teacher` (`id`, `teacher_image`, `teacher_name`, `phone`, `school_id`, `dob`, `gender`, `blood_group`, `address`, `email`, `password`, `qualification`, `subject`, `language_known`, `salary`, `std`, `experience`, `batch`, `class_teacher`, `class_teacher_std`) VALUES
-(3, '../../pages/teacher/uploads/teacher_687e8e7a0dfc45.80892459.jpg', 'Fenil', '5641237894', 2, '2003-03-11', 'Male', 'O+', 'canal road', 'fenil1@gmail.com', '$2y$10$IbbN2vpfWvOhxi1WvTc6Eu8.UOHLFbArSjuKs.GQOCQbP4vpcuP3i', 'MA', 'account', 'English', 50000.00, '11,12', '3', 'Morning', 1, '11'),
-(4, NULL, 'het', '8521239875', 3, '2005-12-19', 'Male', 'O-', 'saiyadpura', 'het@gmail.com', '$2y$10$3yaRnjoRqo2RE/ezQkRy6e.rOOQJEs.QNiH/yUfq6MLbPq3/0GoN.', 'ca', 'account', 'gujarati', 100000.00, '6,7,8,9,10', '5', 'Evening', 1, '10');
-
 -- --------------------------------------------------------
 
 --
@@ -172,17 +240,29 @@ INSERT INTO `users` (`id`, `role`, `email`, `password`) VALUES
 (1, 'schooladmin', 'fenil@gmail.com', '$2y$10$d3NpW61HsPhfQMhrnQyz0uzEJbkMXRJrQZkPC6pnfls5JA/Ck0bKe'),
 (2, 'teacher', 'swayam@gmail.com', '$2y$10$s18f7OGGbOoMEB1i4eqFSuI5r07Zry8HfpshQvXi9GWR122mK81.y'),
 (3, 'student', 'meet@gmail.com', '$2y$10$Az8jVXsuxHYWC6EfnPTKy.dLTS.YENi5B5bCgMhpNLsKzvC1S9Ahu'),
-(4, 'student', 'ram@gmail.com', '$2y$10$JBzHDObjqBb/tBd86d1V1.N4WnAORx8Y6EVSJFZVKf0bR0Fioq3BW'),
-(5, 'schooladmin', 'dev@gmail.com', '$2y$10$qmH7IN31FKaH/UJF2Ct9Ne5xtHZTZpx5D0k5iEGChnpWtQX6BeYUm'),
-(8, 'teacher', 'fenil1@gmail.com', '$2y$10$IbbN2vpfWvOhxi1WvTc6Eu8.UOHLFbArSjuKs.GQOCQbP4vpcuP3i'),
-(9, 'bmc', 'bmc@gmail.com', '$2y$10$wXqP8OYXqFgKiXGFS9jqnOv3YO2kt.L9Hyw2LEOiBRBdRRM/xKnAy'),
-(10, 'schooladmin', 'jay@gmail.com', '$2y$10$ASLgyQ8hU8aNusI/O5VhYOyX.DP2OrG72OnS0bMNJaVSO9J4a.T3S'),
-(11, 'teacher', 'het@gmail.com', '$2y$10$3yaRnjoRqo2RE/ezQkRy6e.rOOQJEs.QNiH/yUfq6MLbPq3/0GoN.'),
-(12, 'student', 'pooja@gmail.com', '$2y$10$zv3A2vUNw5YBCI4e7oCGK.Jxav87D97a/knxadonYA.tiuvp1/uc2');
+(4, 'student', 'ram@gmail.com', '$2y$10$JBzHDObjqBb/tBd86d1V1.N4WnAORx8Y6EVSJFZVKf0bR0Fioq3BW');
 
 --
 -- Indexes for dumped tables
 --
+
+--
+-- Indexes for table `deleted_principals`
+--
+ALTER TABLE `deleted_principals`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `deleted_students`
+--
+ALTER TABLE `deleted_students`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `deleted_teachers`
+--
+ALTER TABLE `deleted_teachers`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `principal`
@@ -229,6 +309,24 @@ ALTER TABLE `users`
 --
 
 --
+-- AUTO_INCREMENT for table `deleted_principals`
+--
+ALTER TABLE `deleted_principals`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `deleted_students`
+--
+ALTER TABLE `deleted_students`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `deleted_teachers`
+--
+ALTER TABLE `deleted_teachers`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
 -- AUTO_INCREMENT for table `principal`
 --
 ALTER TABLE `principal`
@@ -244,19 +342,19 @@ ALTER TABLE `school`
 -- AUTO_INCREMENT for table `student`
 --
 ALTER TABLE `student`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `teacher`
 --
 ALTER TABLE `teacher`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- Constraints for dumped tables
