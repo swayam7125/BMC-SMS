@@ -19,7 +19,8 @@ $school_id = intval($_GET['id']);
 $errors = [];
 
 // Fetch current school data to populate the form
-$query = "SELECT * FROM school WHERE id = ?";
+// Removed 'school_std' from SELECT query
+$query = "SELECT id, school_logo, school_name, email, phone, school_opening, school_type, education_board, school_medium, school_category, address FROM school WHERE id = ?";
 $stmt_fetch = mysqli_prepare($conn, $query);
 mysqli_stmt_bind_param($stmt_fetch, "i", $school_id);
 mysqli_stmt_execute($stmt_fetch);
@@ -32,7 +33,7 @@ $school = mysqli_fetch_assoc($result);
 $selected_boards = explode(',', $school['education_board'] ?? '');
 $selected_mediums = explode(',', $school['school_medium'] ?? '');
 $selected_categories = explode(',', $school['school_category'] ?? '');
-$selected_stds = explode(',', $school['school_std'] ?? '');
+// Removed $selected_stds = explode(',', $school['school_std'] ?? '');
 $original_logo_path = $school['school_logo'];
 mysqli_stmt_close($stmt_fetch);
 
@@ -48,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $education_board = implode(',', (isset($_POST['education_board']) ? $_POST['education_board'] : []));
     $school_medium = implode(',', (isset($_POST['school_medium']) ? $_POST['school_medium'] : []));
     $school_category = implode(',', (isset($_POST['school_category']) ? $_POST['school_category'] : []));
-    $school_std = implode(',', (isset($_POST['school_std']) ? $_POST['school_std'] : []));
+    // Removed $school_std = implode(',', (isset($_POST['school_std']) ? $_POST['school_std'] : []));
     $logo_path_for_db = $original_logo_path;
 
     // Handle new logo upload
@@ -78,11 +79,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($errors)) {
         try {
-            $update_query = "UPDATE school SET school_logo=?, school_name=?, email=?, phone=?, address=?, school_opening=?, school_type=?, education_board=?, school_medium=?, school_category=?, school_std=? WHERE id=?";
+            // Removed school_std from UPDATE query
+            $update_query = "UPDATE school SET school_logo=?, school_name=?, email=?, phone=?, address=?, school_opening=?, school_type=?, education_board=?, school_medium=?, school_category=? WHERE id=?";
             $stmt = mysqli_prepare($conn, $update_query);
             mysqli_stmt_bind_param(
                 $stmt,
-                "sssssssssssi",
+                "ssssssssssi", // One 's' less for school_std
                 $logo_path_for_db,
                 $school_name,
                 $email,
@@ -93,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $education_board,
                 $school_medium,
                 $school_category,
-                $school_std,
+                // Removed $school_std,
                 $school_id
             );
 
@@ -130,9 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php include_once '../../includes/sidebar/BMC_sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <!-- top bar code -->
                 <?php include_once '../../includes/header.php'; ?>
-                <!-- end of top bar code -->
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Edit School</h1>
@@ -180,11 +180,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                                                                                                                                                                                         foreach ($mediums as $medium): ?><option value="<?php echo $medium; ?>" <?php if (in_array($medium, $selected_mediums)) echo 'selected'; ?>><?php echo $medium; ?></option><?php endforeach; ?></select></div>
                                 </div>
                                 <div class="form-row">
-                                    <div class="form-group col-md-6"><label for="school_category">School Category *</label><select class="form-control multi-select" id="school_category" name="school_category[]" multiple="multiple" required><?php $categories = ['Pre-Primary', 'Primary', 'Upper Primary', 'Secondary', 'Higher Secondary'];
-                                                                                                                                                                                                                                                foreach ($categories as $cat): ?><option value="<?php echo $cat; ?>" <?php if (in_array($cat, $selected_categories)) echo 'selected'; ?>><?php echo $cat; ?></option><?php endforeach; ?></select></div>
-                                    <div class="form-group col-md-6"><label for="school_std">School Standards *</label><select class="form-control multi-select" id="school_std" name="school_std[]" multiple="multiple" required><?php $stds = ['Pre-Primary', 'Primary (1-5)', 'Upper Primary (6-8)', 'Secondary (9-10)', 'Higher Secondary (11-12)'];
-                                                                                                                                                                                                                                    foreach ($stds as $std): ?><option value="<?php echo $std; ?>" <?php if (in_array($std, $selected_stds)) echo 'selected'; ?>><?php echo $std; ?></option><?php endforeach; ?></select></div>
-                                </div>
+                                    <div class="form-group col-md-12"> <label for="school_category">School Category *</label>
+                                        <select class="form-control multi-select" id="school_category" name="school_category[]" multiple="multiple" required>
+                                            <?php $categories = ['Pre-Primary', 'Primary', 'Upper Primary', 'Secondary', 'Higher Secondary'];
+                                            foreach ($categories as $cat): ?>
+                                                <option value="<?php echo $cat; ?>" <?php if (in_array($cat, $selected_categories)) echo 'selected'; ?>><?php echo $cat; ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    </div>
                                 <div class="form-group"><label for="address">Address *</label><textarea class="form-control" name="address" rows="3" required><?php echo htmlspecialchars($school['address']); ?></textarea></div>
                                 <hr>
                                 <div class="form-group mt-4">
@@ -197,13 +201,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </div>
 
-            <!-- Footer -->
             <?php
             include '../../includes/footer.php';
             ?>
-            <!-- End of Footer -->
-
-        </div>
+            </div>
     </div>
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
         aria-hidden="true">
@@ -230,35 +231,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $(document).ready(function() {
             $('.multi-select').select2();
 
-            const categoryToStandardMap = {
-                'Pre-Primary': 'Pre-Primary',
-                'Primary': 'Primary (1-5)',
-                'Upper Primary': 'Upper Primary (6-8)',
-                'Secondary': 'Secondary (9-10)',
-                'Higher Secondary': 'Higher Secondary (11-12)'
-            };
-
-            const categorySelect = $('#school_category');
-            const standardSelect = $('#school_std');
-
-            function updateStandardOptions() {
-                const selectedCategories = categorySelect.val() || [];
-                const allowedStandards = selectedCategories.map(category => categoryToStandardMap[category]);
-                let currentSelectedStandards = standardSelect.val() || [];
-
-                currentSelectedStandards = currentSelectedStandards.filter(std => allowedStandards.includes(std));
-
-                standardSelect.find('option').each(function() {
-                    $(this).prop('disabled', !allowedStandards.includes($(this).val()));
-                });
-
-                standardSelect.val(currentSelectedStandards).trigger('change');
-            }
-
-            categorySelect.on('change', updateStandardOptions);
-
-            // Run on page load to set the initial state
-            updateStandardOptions();
+            // Removed all dynamic dropdown logic for school_std
+            // const categoryToStandardMap = {...};
+            // const categorySelect = $('#school_category');
+            // const standardSelect = $('#school_std');
+            // function updateStandardOptions() {...}
+            // categorySelect.on('change', updateStandardOptions);
+            // updateStandardOptions();
         });
 
         document.getElementById('school_logo').addEventListener('change', function(event) {
@@ -269,4 +248,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </script>
 </body>
 
-</html>
+</html> 

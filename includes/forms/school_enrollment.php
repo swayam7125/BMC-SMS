@@ -24,7 +24,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $education_board = implode(',', (isset($_POST['education_board']) ? $_POST['education_board'] : []));
     $school_medium = implode(',', (isset($_POST['school_medium']) ? $_POST['school_medium'] : []));
     $school_category = implode(',', (isset($_POST['school_category']) ? $_POST['school_category'] : []));
-    $school_std = implode(',', (isset($_POST['school_std']) ? $_POST['school_std'] : []));
     $logo_path_for_db = null;
 
     if (isset($_FILES['school_logo']) && $_FILES['school_logo']['error'] === UPLOAD_ERR_OK) {
@@ -50,11 +49,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($errors)) {
         try {
-            $insert_query = "INSERT INTO school (school_logo, school_name, email, phone, school_opening, school_type, education_board, school_medium, school_category, school_std, address) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            $insert_query = "INSERT INTO school (school_logo, school_name, email, phone, school_opening, school_type, education_board, school_medium, school_category, address) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt = mysqli_prepare($conn, $insert_query);
             mysqli_stmt_bind_param(
                 $stmt,
-                "sssssssssss",
+                "ssssssssss",
                 $logo_path_for_db,
                 $school_name,
                 $email,
@@ -64,7 +63,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $education_board,
                 $school_medium,
                 $school_category,
-                $school_std,
                 $address
             );
 
@@ -150,10 +148,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                                                                                                                                                                                         foreach ($mediums as $medium): ?><option value="<?php echo $medium; ?>"><?php echo $medium; ?></option><?php endforeach; ?></select></div>
                                 </div>
                                 <div class="form-row">
-                                    <div class="form-group col-md-6"><label for="school_category">School Category *</label><select class="form-control multi-select" id="school_category" name="school_category[]" multiple="multiple" required><?php $categories = ['Pre-Primary', 'Primary', 'Upper Primary', 'Secondary', 'Higher Secondary'];
-                                                                                                                                                                                                                                                foreach ($categories as $cat): ?><option value="<?php echo $cat; ?>"><?php echo $cat; ?></option><?php endforeach; ?></select></div>
-                                    <div class="form-group col-md-6"><label for="school_std">School Standards *</label><select class="form-control multi-select" id="school_std" name="school_std[]" multiple="multiple" required><?php $stds = ['Pre-Primary', 'Primary (1-5)', 'Upper Primary (6-8)', 'Secondary (9-10)', 'Higher Secondary (11-12)'];
-                                                                                                                                                                                                                                    foreach ($stds as $std): ?><option value="<?php echo $std; ?>"><?php echo $std; ?></option><?php endforeach; ?></select></div>
+                                    <div class="form-group col-md-12">
+                                        <label for="school_category">School Category *</label>
+                                        <select class="form-control multi-select" id="school_category" name="school_category[]" multiple="multiple" required>
+                                            <?php $categories = ['Pre-Primary', 'Primary(1-5)', 'Upper Primary(6-8)', 'Secondary(9-10)', 'Higher Secondary(11-12)'];
+                                            foreach ($categories as $cat): ?>
+                                                <option value="<?php echo $cat; ?>"><?php echo $cat; ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
                                 </div>
                                 <div class="form-group"><label for="address">Address *</label><textarea class="form-control" name="address" rows="3" required></textarea></div>
                                 <hr>
@@ -194,40 +197,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $(document).ready(function() {
             // Initialize all multi-select dropdowns
             $('.multi-select').select2();
-
-            // --- Dynamic Dropdown Logic ---
-            const categoryToStandardMap = {
-                'Pre-Primary': 'Pre-Primary',
-                'Primary': 'Primary (1-5)',
-                'Upper Primary': 'Upper Primary (6-8)',
-                'Secondary': 'Secondary (9-10)',
-                'Higher Secondary': 'Higher Secondary (11-12)'
-            };
-
-            const categorySelect = $('#school_category');
-            const standardSelect = $('#school_std');
-
-            function updateStandardOptions() {
-                const selectedCategories = categorySelect.val() || [];
-                const allowedStandards = selectedCategories.map(category => categoryToStandardMap[category]);
-                let currentSelectedStandards = standardSelect.val() || [];
-
-                // Unselect any standards that are no longer allowed
-                currentSelectedStandards = currentSelectedStandards.filter(std => allowedStandards.includes(std));
-
-                // Disable or enable options
-                standardSelect.find('option').each(function() {
-                    $(this).prop('disabled', !allowedStandards.includes($(this).val()));
-                });
-
-                // Update selection and trigger UI refresh
-                standardSelect.val(currentSelectedStandards).trigger('change');
-            }
-
-            categorySelect.on('change', updateStandardOptions);
-
-            // Initial setup in case of form validation errors
-            updateStandardOptions();
         });
 
         // Logo preview logic

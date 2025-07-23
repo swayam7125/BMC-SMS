@@ -18,9 +18,10 @@ if ($school_id <= 0) {
 }
 
 // Fetch school data with assigned principal's details
-$query = "SELECT s.*, p.id as principal_id, p.principal_name, p.principal_image 
-          FROM school s 
-          LEFT JOIN principal p ON s.id = p.school_id 
+// Removed 'school_std' from SELECT query
+$query = "SELECT s.id, s.school_logo, s.school_name, s.email, s.phone, s.school_opening, s.school_type, s.education_board, s.school_medium, s.school_category, s.address, p.id as principal_id, p.principal_name, p.principal_image
+          FROM school s
+          LEFT JOIN principal p ON s.id = p.school_id
           WHERE s.id = ?";
 $stmt = mysqli_prepare($conn, $query);
 mysqli_stmt_bind_param($stmt, "i", $school_id);
@@ -123,9 +124,7 @@ $show_default_principal_photo = ($principal_photo_path === null);
         <?php include_once '../../includes/sidebar/BMC_sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <!-- top bar code -->
                 <?php include_once '../../includes/header.php'; ?>
-                <!-- end of top bar code -->
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">School Details</h1>
@@ -212,11 +211,7 @@ $show_default_principal_photo = ($principal_photo_path === null);
                                         <div class="col-sm-5 font-weight-bold">Categories:</div>
                                         <div class="col-sm-7"><?php echo htmlspecialchars(str_replace(',', ', ', $school['school_category'])); ?></div>
                                     </div>
-                                    <div class="row info-row">
-                                        <div class="col-sm-5 font-weight-bold">Standards:</div>
-                                        <div class="col-sm-7"><?php echo htmlspecialchars(str_replace(',', ', ', $school['school_std'])); ?></div>
                                     </div>
-                                </div>
                             </div>
                         </div>
 
@@ -253,12 +248,10 @@ $show_default_principal_photo = ($principal_photo_path === null);
                     </div>
                 </div>
             </div>
-            <!-- Footer -->
             <?php
             include '../../includes/footer.php';
             ?>
-            <!-- End of Footer -->
-        </div>
+            </div>
     </div>
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
         aria-hidden="true">
