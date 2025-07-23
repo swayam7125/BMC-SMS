@@ -20,7 +20,6 @@ if (isset($_COOKIE['encrypted_user_id'])) {
 }
 
 // Fetch user email from the 'users' table using userId
-// This is crucial because other tables might use email for linking if IDs are inconsistent
 if ($userId) {
     $stmt_email = $conn->prepare("SELECT email FROM users WHERE id = ?");
     if ($stmt_email) {
@@ -32,8 +31,6 @@ if ($userId) {
             $userEmail = $user_data['email'];
         }
         $stmt_email->close();
-    } else {
-        error_log("SQL Error (fetch user email prepare): " . $conn->error);
     }
 }
 
@@ -49,25 +46,6 @@ $totalSchools = 0;
 $totalPrincipals = 0;
 $totalTeachers = 0;
 $totalStudents = 0;
-$userName = '';
-$userPhone = '';
-$userImage = '';
-$userAddress = '';
-$userDob = '';
-$userGender = '';
-$userBloodGroup = '';
-$userQualification = '';
-$userSubject = '';
-$userExperience = '';
-$userBatch = '';
-$userStd = '';
-$userRollNo = '';
-$userAcademicYear = '';
-$userFatherName = '';
-$userFatherPhone = '';
-$userMotherName = '';
-$userMotherPhone = '';
-$schoolName = '';
 
 // Fetch data based on user role
 switch ($role) {
@@ -75,10 +53,6 @@ switch ($role) {
         // BMC role sees all global counts
         $sql = "SELECT COUNT(*) AS total FROM school";
         $result = $conn->query($sql);
-        if ($result === FALSE) {
-            // Log or display error, but don't halt execution
-            error_log("SQL Error (school count): " . $conn->error);
-        }
         if ($result && $result->num_rows > 0) {
             $row = $result->fetch_assoc();
             $totalSchools = $row['total'];
@@ -86,9 +60,6 @@ switch ($role) {
 
         $sql = "SELECT COUNT(*) AS total FROM principal";
         $result = $conn->query($sql);
-        if ($result === FALSE) {
-            error_log("SQL Error (principal count): " . $conn->error);
-        }
         if ($result && $result->num_rows > 0) {
             $row = $result->fetch_assoc();
             $totalPrincipals = $row['total'];
@@ -96,9 +67,6 @@ switch ($role) {
 
         $sql = "SELECT COUNT(*) AS total FROM teacher";
         $result = $conn->query($sql);
-        if ($result === FALSE) {
-            error_log("SQL Error (teacher count): " . $conn->error);
-        }
         if ($result && $result->num_rows > 0) {
             $row = $result->fetch_assoc();
             $totalTeachers = $row['total'];
@@ -106,9 +74,6 @@ switch ($role) {
 
         $sql = "SELECT COUNT(*) AS total FROM student";
         $result = $conn->query($sql);
-        if ($result === FALSE) {
-            error_log("SQL Error (student count): " . $conn->error);
-        }
         if ($result && $result->num_rows > 0) {
             $row = $result->fetch_assoc();
             $totalStudents = $row['total'];
@@ -117,59 +82,20 @@ switch ($role) {
 
     case 'schooladmin':
         // School Admin sees data related to their school
-        // First, get the school_id for the logged-in principal using their email
-        $stmt = $conn->prepare("SELECT school_id, principal_name, email, phone, principal_image, address, principal_dob, gender, blood_group, qualification, batch FROM principal WHERE email = ?");
-        if ($stmt === FALSE) {
-            error_log("SQL Error (principal profile prepare): " . $conn->error);
-        } else {
-            $stmt->bind_param("s", $userEmail); // Bind by email
+        $stmt = $conn->prepare("SELECT school_id FROM principal WHERE email = ?");
+        if ($stmt) {
+            $stmt->bind_param("s", $userEmail);
             $stmt->execute();
-            if ($stmt->error) {
-                error_log("SQL Error (principal profile execute): " . $stmt->error);
-            }
             $result = $stmt->get_result();
             if ($result && $result->num_rows > 0) {
                 $principalData = $result->fetch_assoc();
                 $schoolId = $principalData['school_id'];
-                $userName = $principalData['principal_name'];
-                $userEmail = $principalData['email']; // Ensure userEmail is updated from specific table
-                $userPhone = $principalData['phone'];
-                $userImage = !empty($principalData['principal_image']) ? 'pages/principal/uploads/' . basename($principalData['principal_image']) : '/BMC-SMS/assets/images/undraw_profile.svg';
-                $userAddress = $principalData['address'];
-                $userDob = $principalData['principal_dob'];
-                $userGender = $principalData['gender'];
-                $userBloodGroup = $principalData['blood_group'];
-                $userQualification = $principalData['qualification'];
-                $userBatch = $principalData['batch'];
-
-                // Get school name
-                $schoolStmt = $conn->prepare("SELECT school_name FROM school WHERE id = ?");
-                if ($schoolStmt === FALSE) {
-                    error_log("SQL Error (school name prepare): " . $conn->error);
-                } else {
-                    $schoolStmt->bind_param("i", $schoolId);
-                    $schoolStmt->execute();
-                    if ($schoolStmt->error) {
-                        error_log("SQL Error (school name execute): " . $schoolStmt->error);
-                    }
-                    $schoolResult = $schoolStmt->get_result();
-                    if ($schoolResult && $schoolResult->num_rows > 0) {
-                        $schoolData = $schoolResult->fetch_assoc();
-                        $schoolName = $schoolData['school_name'];
-                    }
-                    $schoolStmt->close();
-                }
 
                 // Get total teachers in this school
                 $teacherStmt = $conn->prepare("SELECT COUNT(*) AS total FROM teacher WHERE school_id = ?");
-                if ($teacherStmt === FALSE) {
-                    error_log("SQL Error (teacher count prepare): " . $conn->error);
-                } else {
+                if ($teacherStmt) {
                     $teacherStmt->bind_param("i", $schoolId);
                     $teacherStmt->execute();
-                    if ($teacherStmt->error) {
-                        error_log("SQL Error (teacher count execute): " . $teacherStmt->error);
-                    }
                     $teacherResult = $teacherStmt->get_result();
                     if ($teacherResult && $teacherResult->num_rows > 0) {
                         $teacherRow = $teacherResult->fetch_assoc();
@@ -180,14 +106,9 @@ switch ($role) {
 
                 // Get total students in this school
                 $studentStmt = $conn->prepare("SELECT COUNT(*) AS total FROM student WHERE school_id = ?");
-                if ($studentStmt === FALSE) {
-                    error_log("SQL Error (student count prepare): " . $conn->error);
-                } else {
+                if ($studentStmt) {
                     $studentStmt->bind_param("i", $schoolId);
                     $studentStmt->execute();
-                    if ($studentStmt->error) {
-                        error_log("SQL Error (student count execute): " . $studentStmt->error);
-                    }
                     $studentResult = $studentStmt->get_result();
                     if ($studentResult && $studentResult->num_rows > 0) {
                         $studentRow = $studentResult->fetch_assoc();
@@ -195,71 +116,27 @@ switch ($role) {
                     }
                     $studentStmt->close();
                 }
-            } else {
-                error_log("Debug Info: School Admin - No principal data found for User Email = " . $userEmail);
             }
             $stmt->close();
         }
         break;
 
     case 'teacher':
-        // Teacher sees data related to their school and their own profile
-        // First, get the school_id for the logged-in teacher using their email
-        $stmt = $conn->prepare("SELECT school_id, teacher_name, email, phone, teacher_image, address, dob, gender, blood_group, qualification, subject, experience, batch, std FROM teacher WHERE email = ?");
-        if ($stmt === FALSE) {
-            error_log("SQL Error (teacher profile prepare): " . $conn->error);
-        } else {
-            $stmt->bind_param("s", $userEmail); // Bind by email
+        // Teacher sees data related to their school
+        $stmt = $conn->prepare("SELECT school_id FROM teacher WHERE email = ?");
+        if ($stmt) {
+            $stmt->bind_param("s", $userEmail);
             $stmt->execute();
-            if ($stmt->error) {
-                error_log("SQL Error (teacher profile execute): " . $stmt->error);
-            }
             $result = $stmt->get_result();
             if ($result && $result->num_rows > 0) {
                 $teacherData = $result->fetch_assoc();
                 $schoolId = $teacherData['school_id'];
-                $userName = $teacherData['teacher_name'];
-                $userEmail = $teacherData['email']; // Ensure userEmail is updated from specific table
-                $userPhone = $teacherData['phone'];
-                $userImage = !empty($teacherData['teacher_image']) ? 'pages/teacher/uploads/' . basename($teacherData['teacher_image']) : '/BMC-SMS/assets/images/undraw_profile.svg';
-                $userAddress = $teacherData['address'];
-                $userDob = $teacherData['dob'];
-                $userGender = $teacherData['gender'];
-                $userBloodGroup = $teacherData['blood_group'];
-                $userQualification = $teacherData['qualification'];
-                $userSubject = $teacherData['subject'];
-                $userExperience = $teacherData['experience'];
-                $userBatch = $teacherData['batch'];
-                $userStd = $teacherData['std'];
-
-                // Get school name
-                $schoolStmt = $conn->prepare("SELECT school_name FROM school WHERE id = ?");
-                if ($schoolStmt === FALSE) {
-                    error_log("SQL Error (school name prepare): " . $conn->error);
-                } else {
-                    $schoolStmt->bind_param("i", $schoolId);
-                    $schoolStmt->execute();
-                    if ($schoolStmt->error) {
-                        error_log("SQL Error (school name execute): " . $schoolStmt->error);
-                    }
-                    $schoolResult = $schoolStmt->get_result();
-                    if ($schoolResult && $schoolResult->num_rows > 0) {
-                        $schoolData = $schoolResult->fetch_assoc();
-                        $schoolName = $schoolData['school_name'];
-                    }
-                    $schoolStmt->close();
-                }
 
                 // Get total students in this school
                 $studentStmt = $conn->prepare("SELECT COUNT(*) AS total FROM student WHERE school_id = ?");
-                if ($studentStmt === FALSE) {
-                    error_log("SQL Error (student count prepare): " . $conn->error);
-                } else {
+                if ($studentStmt) {
                     $studentStmt->bind_param("i", $schoolId);
                     $studentStmt->execute();
-                    if ($studentStmt->error) {
-                        error_log("SQL Error (student count execute): " . $studentStmt->error);
-                    }
                     $studentResult = $studentStmt->get_result();
                     if ($studentResult && $studentResult->num_rows > 0) {
                         $studentRow = $studentResult->fetch_assoc();
@@ -267,69 +144,9 @@ switch ($role) {
                     }
                     $studentStmt->close();
                 }
-            } else {
-                error_log("Debug Info: Teacher - No teacher data found for User Email = " . $userEmail);
             }
             $stmt->close();
         }
-        break;
-
-    case 'student':
-        // Student sees their own profile data using their email
-        $stmt = $conn->prepare("SELECT student_name, rollno, std, email, student_image, academic_year, school_id, dob, gender, blood_group, address, father_name, father_phone, mother_name, mother_phone FROM student WHERE email = ?");
-        if ($stmt === FALSE) {
-            error_log("SQL Error (student profile prepare): " . $conn->error);
-        } else {
-            $stmt->bind_param("s", $userEmail); // Bind by email
-            $stmt->execute();
-            if ($stmt->error) {
-                error_log("SQL Error (student profile execute): " . $stmt->error);
-            }
-            $result = $stmt->get_result();
-            if ($result && $result->num_rows > 0) {
-                $studentData = $result->fetch_assoc();
-                $schoolId = $studentData['school_id'];
-                $userName = $studentData['student_name'];
-                $userRollNo = $studentData['rollno'];
-                $userStd = $studentData['std'];
-                $userEmail = $studentData['email']; // Ensure userEmail is updated from specific table
-                $userImage = !empty($studentData['student_image']) ? 'pages/student/uploads/' . basename($studentData['student_image']) : '/BMC-SMS/assets/images/undraw_profile.svg';
-                $userAcademicYear = $studentData['academic_year'];
-                $userDob = $studentData['dob'];
-                $userGender = $studentData['gender'];
-                $userBloodGroup = $studentData['blood_group'];
-                $userAddress = $studentData['address'];
-                $userFatherName = $studentData['father_name'];
-                $userFatherPhone = $studentData['father_phone'];
-                $userMotherName = $studentData['mother_name'];
-                $userMotherPhone = $studentData['mother_phone'];
-
-                // Get school name
-                $schoolStmt = $conn->prepare("SELECT school_name FROM school WHERE id = ?");
-                if ($schoolStmt === FALSE) {
-                    error_log("SQL Error (school name prepare): " . $conn->error);
-                } else {
-                    $schoolStmt->bind_param("i", $schoolId);
-                    $schoolStmt->execute();
-                    if ($schoolStmt->error) {
-                        error_log("SQL Error (school name execute): " . $schoolStmt->error);
-                    }
-                    $schoolResult = $schoolStmt->get_result();
-                    if ($schoolResult && $schoolResult->num_rows > 0) {
-                        $schoolData = $schoolResult->fetch_assoc();
-                        $schoolName = $schoolData['school_name'];
-                    }
-                    $schoolStmt->close();
-                }
-            } else {
-                error_log("Debug Info: Student - No student data found for User Email = " . $userEmail);
-            }
-            $stmt->close();
-        }
-        break;
-
-    default:
-        // Handle other roles or no specific data to display
         break;
 }
 
@@ -370,6 +187,37 @@ $conn->close();
     <!-- Sidebar CSS -->
     <link rel="stylesheet" href="./assets/css/sidebar.css">
 
+    <style>
+        .notification-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #e3e6f0;
+        }
+
+        .notification-item:last-child {
+            border-bottom: none;
+        }
+
+        .notification-icon {
+            font-size: 1.5rem;
+            margin-right: 15px;
+        }
+
+        .notification-content {
+            flex-grow: 1;
+        }
+
+        .notification-title {
+            font-weight: 600;
+        }
+
+        .notification-time {
+            font-size: 0.8rem;
+            color: #858796;
+        }
+    </style>
+
 </head>
 
 <body id="page-top">
@@ -405,7 +253,7 @@ $conn->close();
                     <!-- Content Row - Cards -->
                     <div class="row">
                         <?php if ($role == 'bmc'): ?>
-                            <!-- Clickable Schools Card (BMC only) -->
+                            <!-- All 4 cards for BMC -->
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <a href="./pages/school/school_list.php">
                                     <div class="card border-left-primary shadow h-100 py-2">
@@ -425,7 +273,6 @@ $conn->close();
                                 </a>
                             </div>
 
-                            <!-- Clickable Principals Card (BMC only) -->
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <a href="./pages/principal/principal_list.php">
                                     <div class="card border-left-success shadow h-100 py-2">
@@ -444,10 +291,7 @@ $conn->close();
                                     </div>
                                 </a>
                             </div>
-                        <?php endif; ?>
 
-                        <?php if ($role == 'bmc' || $role == 'schooladmin'): ?>
-                            <!-- Clickable Teachers Card (BMC and School Admin) -->
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <a href="./pages/teacher/teacher_list.php">
                                     <div class="card border-left-info shadow h-100 py-2">
@@ -455,7 +299,7 @@ $conn->close();
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
                                                     <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                                        TOTAL Teachers <?php echo ($role == 'schooladmin' ? 'in My School' : ''); ?></div>
+                                                        TOTAL Teachers</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalTeachers; ?></div>
                                                 </div>
                                                 <div class="col-auto">
@@ -466,10 +310,7 @@ $conn->close();
                                     </div>
                                 </a>
                             </div>
-                        <?php endif; ?>
 
-                        <?php if ($role == 'bmc' || $role == 'schooladmin' || $role == 'teacher'): ?>
-                            <!-- Clickable Students Card (BMC, School Admin, and Teacher) -->
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <a href="./pages/student/student_list.php">
                                     <div class="card border-left-warning shadow h-100 py-2">
@@ -477,7 +318,65 @@ $conn->close();
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
                                                     <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                                        TOTAL Students <?php echo (($role == 'schooladmin' || $role == 'teacher') ? 'in My School' : ''); ?></div>
+                                                        TOTAL Students</div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalStudents; ?></div>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <i class="fas fa-children fa-2x text-gray-300"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                        <?php elseif ($role == 'schooladmin'): ?>
+                            <!-- Teachers and Students cards for School Admin -->
+                            <div class="col-xl-3 col-md-6 mb-4">
+                                <a href="./pages/teacher/teacher_list.php">
+                                    <div class="card border-left-info shadow h-100 py-2">
+                                        <div class="card-body">
+                                            <div class="row no-gutters align-items-center">
+                                                <div class="col mr-2">
+                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                                        TOTAL Teachers in My School</div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalTeachers; ?></div>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <i class="fas fa-person-chalkboard fa-2x text-gray-300"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="col-xl-3 col-md-6 mb-4">
+                                <a href="./pages/student/student_list.php">
+                                    <div class="card border-left-warning shadow h-100 py-2">
+                                        <div class="card-body">
+                                            <div class="row no-gutters align-items-center">
+                                                <div class="col mr-2">
+                                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                                        TOTAL Students in My School</div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalStudents; ?></div>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <i class="fas fa-children fa-2x text-gray-300"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                        <?php elseif ($role == 'teacher'): ?>
+                            <!-- Students Card for Teacher -->
+                            <div class="col-xl-3 col-md-6 mb-4">
+                                <a href="./pages/student/student_list.php">
+                                    <div class="card border-left-warning shadow h-100 py-2">
+                                        <div class="card-body">
+                                            <div class="row no-gutters align-items-center">
+                                                <div class="col mr-2">
+                                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                                        TOTAL Students in My School</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalStudents; ?></div>
                                                 </div>
                                                 <div class="col-auto">
@@ -493,57 +392,51 @@ $conn->close();
 
                     <!-- Content Row - Charts and Calendar -->
                     <div class="row">
-                        <?php if ($role == 'bmc' || $role == 'schooladmin' || $role == 'teacher' || $role == 'student'): ?>
-                            <!-- Area Chart -->
-                            <div class="col-xl-8 col-lg-7">
-                                <div class="card shadow mb-4">
-                                    <!-- Card Header - Dropdown -->
-                                    <div
-                                        class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                                        <h6 class="m-0 font-weight-bold text-primary">Growth Overview</h6>
-                                    </div>
-                                    <!-- Card Body -->
-                                    <div class="card-body">
-                                        <div class="chart-area">
-                                            <canvas id="myAreaChart"></canvas>
-                                        </div>
+                        <!-- Area Chart -->
+                        <div class="col-xl-8 col-lg-7">
+                            <div class="card shadow mb-4">
+                                <div
+                                    class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                                    <h6 class="m-0 font-weight-bold text-primary">Growth Overview</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-area">
+                                        <canvas id="myAreaChart"></canvas>
                                     </div>
                                 </div>
                             </div>
+                        </div>
 
-                            <!-- Pie Chart -->
-                            <div class="col-xl-4 col-lg-5">
-                                <div class="card shadow mb-4">
-                                    <!-- Card Header - Dropdown -->
-                                    <div
-                                        class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                                        <h6 class="m-0 font-weight-bold text-primary">Donut Chart</h6>
+                        <!-- Pie Chart -->
+                        <div class="col-xl-4 col-lg-5">
+                            <div class="card shadow mb-4">
+                                <div
+                                    class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                                    <h6 class="m-0 font-weight-bold text-primary">Donut Chart</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-pie pt-4 pb-2">
+                                        <canvas id="myPieChart"></canvas>
                                     </div>
-                                    <!-- Card Body -->
-                                    <div class="card-body">
-                                        <div class="chart-pie pt-4 pb-2">
-                                            <canvas id="myPieChart"></canvas>
-                                        </div>
-                                        <div class="mt-4 text-center small">
-                                            <span class="mr-2">
-                                                <i class="fas fa-circle text-primary"></i> Direct
-                                            </span>
-                                            <span class="mr-2">
-                                                <i class="fas fa-circle text-success"></i> Social
-                                            </span>
-                                            <span class="mr-2">
-                                                <i class="fas fa-circle text-info"></i> Referral
-                                            </span>
-                                        </div>
+                                    <div class="mt-4 text-center small">
+                                        <span class="mr-2">
+                                            <i class="fas fa-circle text-primary"></i> Direct
+                                        </span>
+                                        <span class="mr-2">
+                                            <i class="fas fa-circle text-success"></i> Social
+                                        </span>
+                                        <span class="mr-2">
+                                            <i class="fas fa-circle text-info"></i> Referral
+                                        </span>
                                     </div>
                                 </div>
                             </div>
-                        <?php endif; ?>
+                        </div>
                     </div>
                     <div class="row">
-                        <!-- Calendar (Visible for all roles) -->
-                        <div class="col-xl-6 col-lg-7">
-                            <div class="card shadow mb-4">
+                        <!-- Calendar -->
+                        <div class="col-xl-6 col-lg-7 mb-4">
+                            <div class="card shadow h-100">
                                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                                     <h6 class="m-0 font-weight-bold text-primary">Calendar</h6>
                                 </div>
@@ -565,6 +458,42 @@ $conn->close();
                                         </div>
                                         <div class="calendar-grid" id="calendar-grid">
                                             <!-- Calendar days will be generated by js -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Notifications Card -->
+                        <div class="col-xl-6 col-lg-5 mb-4">
+                            <div class="card shadow h-100 overflow-y-auto">
+                                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                                    <h6 class="m-0 font-weight-bold text-primary">Notifications</h6>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="list-group list-group-flush">
+                                        <div class="notification-item">
+                                            <i class="fas fa-user-plus notification-icon text-primary"></i>
+                                            <div class="notification-content">
+                                                <div class="notification-title">New student enrolled</div>
+                                                <p class="mb-0">A new student, John Doe, has been enrolled in Class 10.</p>
+                                                <div class="notification-time">3 days ago</div>
+                                            </div>
+                                        </div>
+                                        <div class="notification-item">
+                                            <i class="fas fa-edit notification-icon text-success"></i>
+                                            <div class="notification-content">
+                                                <div class="notification-title">Teacher profile updated</div>
+                                                <p class="mb-0">Jane Smith's profile has been updated.</p>
+                                                <div class="notification-time">1 week ago</div>
+                                            </div>
+                                        </div>
+                                        <div class="notification-item">
+                                            <i class="fas fa-calendar-alt notification-icon text-warning"></i>
+                                            <div class="notification-content">
+                                                <div class="notification-title">School event reminder</div>
+                                                <p class="mb-0">Annual sports day is scheduled for next month.</p>
+                                                <div class="notification-time">2 weeks ago</div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
