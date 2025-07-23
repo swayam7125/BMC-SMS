@@ -2,7 +2,6 @@
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
-// Check if user is logged in
 $role = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
@@ -66,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
-            // 1. Insert into 'users' table
+            // 1. Insert into 'users' table FIRST to get the user_id
             $user_role = 'student';
             $insert_user_query = "INSERT INTO users (role, email, password) VALUES (?, ?, ?)";
             $stmt_user = mysqli_prepare($conn, $insert_user_query);
@@ -74,12 +73,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!mysqli_stmt_execute($stmt_user)) {
                 throw new Exception("User record creation failed: " . mysqli_stmt_error($stmt_user));
             }
+            // Get the last inserted ID from the users table
+            $new_user_id = mysqli_insert_id($conn);
             mysqli_stmt_close($stmt_user);
 
-            // 2. Insert into 'student' table
-            $student_query = "INSERT INTO student (student_image, student_name, rollno, std, email, password, academic_year, school_id, dob, gender, blood_group, address, father_name, father_phone, mother_name, mother_phone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            // 2. Insert into 'student' table using the new_user_id as its primary key
+            // Note: The 'id' column in the student table must now be primary key AND foreign key referencing users.id
+            $student_query = "INSERT INTO student (id, student_image, student_name, rollno, std, email, password, academic_year, school_id, dob, gender, blood_group, address, father_name, father_phone, mother_name, mother_phone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt_student = mysqli_prepare($conn, $student_query);
-            mysqli_stmt_bind_param($stmt_student, "sssssssissssssss", $image_path_for_db, $student_name, $rollno, $std, $email, $hashed_password, $academic_year, $school_id, $dob, $gender, $blood_group, $address, $father_name, $father_phone, $mother_name, $mother_phone);
+            // Add 'i' for the new_user_id (integer) at the beginning of bind_param types
+            mysqli_stmt_bind_param($stmt_student, "isssssssissssssss",
+                $new_user_id, // Pass the ID from the users table
+                $image_path_for_db, $student_name, $rollno, $std, $email, $hashed_password, $academic_year, $school_id, $dob, $gender, $blood_group, $address, $father_name, $father_phone, $mother_name, $mother_phone
+            );
             if (!mysqli_stmt_execute($stmt_student)) {
                 throw new Exception("Student record creation failed: " . mysqli_stmt_error($stmt_student));
             }
@@ -91,6 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (Exception $e) {
             mysqli_rollback($conn);
             if(mysqli_errno($conn) == 1062){
+                // This error is likely now from the 'users' table's unique email constraint
                 $errors[] = "A student with this email already exists.";
             } else { $errors[] = "Database error: " . $e->getMessage(); }
         }

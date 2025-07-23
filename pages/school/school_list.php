@@ -15,6 +15,7 @@ if (!$role) {
 }
 
 // Fetch school data with principal names
+// No changes needed as school data fetching is not directly impacted by user ID changes
 $query =  "SELECT s.id, s.school_name, s.email, s.phone, s.address, p.principal_name 
            FROM school s 
            LEFT JOIN principal p ON s.id = p.school_id
@@ -49,9 +50,7 @@ $result = mysqli_query($conn, $query);
 
             <div id="content">
 
-                <!-- top bar code -->
                 <?php include_once '../../includes/header.php'; ?>
-                <!-- end of top bar code -->
                 <div class="container-fluid">
 
                     <h1 class="h3 mb-2 text-gray-800">School Tables</h1>
@@ -141,12 +140,10 @@ $result = mysqli_query($conn, $query);
 
                 </div>
             </div>
-            <!-- Footer -->
             <?php
             include '../../includes/footer.php';
             ?>
-            <!-- End of Footer -->
-        </div>
+            </div>
     </div>
     <a class="scroll-to-top rounded" href="#page-top">
         <i class="fas fa-angle-up"></i>

@@ -21,50 +21,55 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
 }
 
 $teacher_id = intval($_GET['id']);
-$teacher_email = null;
+$user_id_to_delete = $teacher_id; // Now, teacher_id IS the user_id
 
 // Start transaction to ensure both deletions succeed or fail together
 mysqli_begin_transaction($conn);
 
 try {
-    // 1. Get the teacher's email before deleting the record
-    $query_email = "SELECT email FROM teacher WHERE id = ?";
-    $stmt_email = mysqli_prepare($conn, $query_email);
-    mysqli_stmt_bind_param($stmt_email, "i", $teacher_id);
-    mysqli_stmt_execute($stmt_email);
-    $result_email = mysqli_stmt_get_result($stmt_email);
+    // 1. Verify the user's role before deleting (security check)
+    // This is crucial to prevent deleting the wrong user if an ID is tampered with.
+    $check_user_role_query = "SELECT role FROM users WHERE id = ?";
+    $stmt_check = mysqli_prepare($conn, $check_user_role_query);
+    mysqli_stmt_bind_param($stmt_check, "i", $user_id_to_delete);
+    mysqli_stmt_execute($stmt_check);
+    $result_check = mysqli_stmt_get_result($stmt_check);
+    $user_record = mysqli_fetch_assoc($result_check);
+    mysqli_stmt_close($stmt_check);
 
-    if ($row = mysqli_fetch_assoc($result_email)) {
-        $teacher_email = $row['email'];
-    }
-    mysqli_stmt_close($stmt_email);
-
-    if (!$teacher_email) {
-        throw new Exception("No teacher found with the provided ID.");
+    if (!$user_record || $user_record['role'] !== 'teacher') {
+        throw new Exception("User not found or role mismatch for deletion.");
     }
 
-    // 2. Delete the corresponding user from the 'users' table
-    $delete_user = "DELETE FROM users WHERE email = ? AND role = 'teacher'";
-    $stmt_user = mysqli_prepare($conn, $delete_user);
-    mysqli_stmt_bind_param($stmt_user, "s", $teacher_email);
+    // 2. Fetch teacher_image path for file deletion before the record is cascaded
+    $query_teacher_image = "SELECT teacher_image FROM teacher WHERE id = ?";
+    $stmt_image = mysqli_prepare($conn, $query_teacher_image);
+    mysqli_stmt_bind_param($stmt_image, "i", $teacher_id);
+    mysqli_stmt_execute($stmt_image);
+    $result_image = mysqli_stmt_get_result($stmt_image);
+    $image_data = mysqli_fetch_assoc($result_image);
+    $image_path = $image_data['teacher_image'] ?? null;
+    mysqli_stmt_close($stmt_image);
+
+    // 3. Delete the user record from the 'users' table.
+    // Due to `ON DELETE CASCADE` foreign key on `teacher.id` referencing `users.id`,
+    // the corresponding record in the `teacher` table will be automatically deleted.
+    $delete_user_query = "DELETE FROM users WHERE id = ?";
+    $stmt_user = mysqli_prepare($conn, $delete_user_query);
+    mysqli_stmt_bind_param($stmt_user, "i", $user_id_to_delete);
     if (!mysqli_stmt_execute($stmt_user)) {
-        throw new Exception("Error deleting from users table: " . mysqli_stmt_error($stmt_user));
+        throw new Exception("Error deleting user from users table: " . mysqli_stmt_error($stmt_user));
+    }
+
+    if (mysqli_stmt_affected_rows($stmt_user) === 0) {
+        throw new Exception("User record could not be deleted (already removed?).");
     }
     mysqli_stmt_close($stmt_user);
 
-    // 3. Delete the teacher record from the 'teacher' table
-    $delete_teacher = "DELETE FROM teacher WHERE id = ?";
-    $stmt_teacher = mysqli_prepare($conn, $delete_teacher);
-    mysqli_stmt_bind_param($stmt_teacher, "i", $teacher_id);
-    if (!mysqli_stmt_execute($stmt_teacher)) {
-        throw new Exception("Error deleting from teacher table: " . mysqli_stmt_error($stmt_teacher));
+    // 4. Delete the uploaded image file, if it exists (only if not handled by your DB triggers or another system)
+    if (!empty($image_path) && file_exists($image_path)) {
+        unlink($image_path);
     }
-    
-    // Check if a row was actually deleted
-    if (mysqli_stmt_affected_rows($stmt_teacher) === 0) {
-        throw new Exception("Teacher record could not be deleted (already removed?).");
-    }
-    mysqli_stmt_close($stmt_teacher);
 
     // If all deletions were successful, commit the transaction
     mysqli_commit($conn);
@@ -85,5 +90,4 @@ try {
     // Always close the connection
     mysqli_close($conn);
 }
-
 ?>

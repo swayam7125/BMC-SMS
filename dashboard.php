@@ -8,7 +8,7 @@ include_once "./includes/connect.php"; // Include your database connection file
 
 $role = null;
 $userId = null;
-$userEmail = ''; // Initialize userEmail for consistent fetching
+$userEmail = ''; // Initialize userEmail for consistent fetching (still useful for general info)
 $schoolId = null; // Initialize schoolId
 
 // Retrieve and decrypt user role and ID from cookies
@@ -19,7 +19,7 @@ if (isset($_COOKIE['encrypted_user_id'])) {
     $userId = decrypt_id($_COOKIE['encrypted_user_id']);
 }
 
-// Fetch user email from the 'users' table using userId
+// Fetch user email from the 'users' table using userId (Still useful for displaying, but not for ID-based lookups)
 if ($userId) {
     $stmt_email = $conn->prepare("SELECT email FROM users WHERE id = ?");
     if ($stmt_email) {
@@ -50,7 +50,7 @@ $totalStudents = 0;
 // Fetch data based on user role
 switch ($role) {
     case 'bmc':
-        // BMC role sees all global counts
+        // BMC role sees all global counts (no change needed here as it's not role-specific detail lookup)
         $sql = "SELECT COUNT(*) AS total FROM school";
         $result = $conn->query($sql);
         if ($result && $result->num_rows > 0) {
@@ -82,9 +82,10 @@ switch ($role) {
 
     case 'schooladmin':
         // School Admin sees data related to their school
-        $stmt = $conn->prepare("SELECT school_id FROM principal WHERE email = ?");
+        // MODIFIED: Use userId directly to get school_id from principal table
+        $stmt = $conn->prepare("SELECT school_id FROM principal WHERE id = ?"); // Use ID, not email
         if ($stmt) {
-            $stmt->bind_param("s", $userEmail);
+            $stmt->bind_param("i", $userId); // Bind userId
             $stmt->execute();
             $result = $stmt->get_result();
             if ($result && $result->num_rows > 0) {
@@ -123,9 +124,10 @@ switch ($role) {
 
     case 'teacher':
         // Teacher sees data related to their school
-        $stmt = $conn->prepare("SELECT school_id FROM teacher WHERE email = ?");
+        // MODIFIED: Use userId directly to get school_id from teacher table
+        $stmt = $conn->prepare("SELECT school_id FROM teacher WHERE id = ?"); // Use ID, not email
         if ($stmt) {
-            $stmt->bind_param("s", $userEmail);
+            $stmt->bind_param("i", $userId); // Bind userId
             $stmt->execute();
             $result = $stmt->get_result();
             if ($result && $result->num_rows > 0) {
@@ -148,6 +150,24 @@ switch ($role) {
             $stmt->close();
         }
         break;
+
+    case 'student':
+        // MODIFIED: Student sees data related to their school
+        $stmt = $conn->prepare("SELECT school_id FROM student WHERE id = ?"); // Use ID, not email
+        if ($stmt) {
+            $stmt->bind_param("i", $userId); // Bind userId
+            $stmt->execute();
+            $result = $stmt->get_result();
+            if ($result && $result->num_rows > 0) {
+                $studentData = $result->fetch_assoc();
+                $schoolId = $studentData['school_id'];
+                // Students typically won't see counts of other students/teachers globally.
+                // You might add specific queries here if a student's dashboard needs to show, e.g.,
+                // counts of courses they are enrolled in, or specific notices for their class.
+            }
+            $stmt->close();
+        }
+        break;
 }
 
 // Close the database connection
@@ -166,25 +186,19 @@ $conn->close();
 
     <title>BMC - Dashboard</title>
 
-    <!-- Bootstrap CSS for grid and basic styling -->
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
 
-    <!-- Custom fonts for this template-->
     <link href="./assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link
         href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i"
         rel="stylesheet">
 
-    <!-- Custom styles for this template-->
     <link href="./assets/css/sb-admin-2.min.css" rel="stylesheet">
 
-    <!-- Corrected Calendar styles link -->
     <link rel="stylesheet" href="./assets/css/calender.css">
 
-    <!-- Corrected Font Awesome link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
 
-    <!-- Sidebar CSS -->
     <link rel="stylesheet" href="./assets/css/sidebar.css">
 
     <style>
@@ -221,39 +235,26 @@ $conn->close();
 </head>
 
 <body id="page-top">
-    <!-- Page Wrapper -->
     <div id="wrapper">
 
-        <!-- Sidebar -->
         <?php
         include './includes/sidebar/BMC_sidebar.php';
         ?>
-        <!-- End of Sidebar -->
-
-        <!-- Content Wrapper -->
         <div id="content-wrapper" class="d-flex flex-column">
 
-            <!-- Main Content -->
             <div id="content">
 
-                <!-- Topbar -->
                 <?php
                 include './includes/header.php';
                 ?>
-                <!-- End of Topbar -->
-
-                <!-- Begin Page Content -->
                 <div class="container-fluid">
 
-                    <!-- Page Heading -->
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
                     </div>
 
-                    <!-- Content Row - Cards -->
                     <div class="row">
                         <?php if ($role == 'bmc'): ?>
-                            <!-- All 4 cards for BMC -->
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <a href="./pages/school/school_list.php">
                                     <div class="card border-left-primary shadow h-100 py-2">
@@ -330,7 +331,6 @@ $conn->close();
                                 </a>
                             </div>
                         <?php elseif ($role == 'schooladmin'): ?>
-                            <!-- Teachers and Students cards for School Admin -->
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <a href="./pages/teacher/teacher_list.php">
                                     <div class="card border-left-info shadow h-100 py-2">
@@ -368,7 +368,6 @@ $conn->close();
                                 </a>
                             </div>
                         <?php elseif ($role == 'teacher'): ?>
-                            <!-- Students Card for Teacher -->
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <a href="./pages/student/student_list.php">
                                     <div class="card border-left-warning shadow h-100 py-2">
@@ -387,12 +386,44 @@ $conn->close();
                                     </div>
                                 </a>
                             </div>
+                        <?php elseif ($role == 'student'): ?>
+                             <div class="col-xl-3 col-md-6 mb-4">
+                                <div class="card border-left-primary shadow h-100 py-2">
+                                    <div class="card-body">
+                                        <div class="row no-gutters align-items-center">
+                                            <div class="col mr-2">
+                                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                                    My Current Standard</div>
+                                                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                                    <?php
+                                                        // Fetch student's standard
+                                                        $student_std = 'N/A';
+                                                        $stmt_std = $conn->prepare("SELECT std FROM student WHERE id = ?");
+                                                        if ($stmt_std) {
+                                                            $stmt_std->bind_param("i", $userId);
+                                                            $stmt_std->execute();
+                                                            $result_std = $stmt_std->get_result();
+                                                            if ($result_std && $result_std->num_rows > 0) {
+                                                                $std_data = $result_std->fetch_assoc();
+                                                                $student_std = htmlspecialchars($std_data['std']);
+                                                            }
+                                                            $stmt_std->close();
+                                                        }
+                                                        echo $student_std;
+                                                    ?>
+                                                </div>
+                                            </div>
+                                            <div class="col-auto">
+                                                <i class="fas fa-book-open fa-2x text-gray-300"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         <?php endif; ?>
                     </div>
 
-                    <!-- Content Row - Charts and Calendar -->
                     <div class="row">
-                        <!-- Area Chart -->
                         <div class="col-xl-8 col-lg-7">
                             <div class="card shadow mb-4">
                                 <div
@@ -407,7 +438,6 @@ $conn->close();
                             </div>
                         </div>
 
-                        <!-- Pie Chart -->
                         <div class="col-xl-4 col-lg-5">
                             <div class="card shadow mb-4">
                                 <div
@@ -434,7 +464,6 @@ $conn->close();
                         </div>
                     </div>
                     <div class="row">
-                        <!-- Calendar -->
                         <div class="col-xl-6 col-lg-7 mb-4">
                             <div class="card shadow h-100">
                                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
@@ -457,13 +486,11 @@ $conn->close();
                                             <div>Sat</div>
                                         </div>
                                         <div class="calendar-grid" id="calendar-grid">
-                                            <!-- Calendar days will be generated by js -->
-                                        </div>
+                                            </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <!-- Notifications Card -->
                         <div class="col-xl-6 col-lg-5 mb-4">
                             <div class="card shadow h-100 overflow-y-auto">
                                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
@@ -501,29 +528,16 @@ $conn->close();
                         </div>
                     </div>
                 </div>
-                <!-- /.container-fluid -->
-
-            </div>
-            <!-- End of Main Content -->
-
-            <!-- Footer -->
+                </div>
             <?php
             include './includes/footer.php';
             ?>
-            <!-- End of Footer -->
-
+            </div>
         </div>
-        <!-- End of Content Wrapper -->
-
-    </div>
-    <!-- End of Page Wrapper -->
-
-    <!-- Scroll to Top Button-->
     <a class="scroll-to-top rounded" href="#page-top">
         <i class="fas fa-angle-up"></i>
     </a>
 
-    <!-- Logout Modal-->
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
         aria-hidden="true">
         <div class="modal-dialog" role="document">
@@ -543,26 +557,20 @@ $conn->close();
         </div>
     </div>
 
-    <!-- Bootstrap core JavaScript-->
     <script src="./assets/vendor/jquery/jquery.min.js"></script>
     <script src="./assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 
-    <!-- Core plugin JavaScript-->
     <script src="./assets/vendor/jquery-easing/jquery.easing.min.js"></script>
 
-    <!-- Custom scripts for all pages-->
     <script src="./assets/js/sb-admin-2.min.js"></script>
 
-    <!-- Page level plugins -->
     <script src="./assets/vendor/chart.js/Chart.min.js"></script>
 
-    <!-- Page level custom scripts -->
     <?php if ($role == 'bmc' || $role == 'schooladmin' || $role == 'teacher' || $role == 'student'): ?>
         <script src="./assets/js/demo/chart-area-demo.js"></script>
         <script src="./assets/js/demo/chart-pie-demo.js"></script>
     <?php endif; ?>
 
-    <!-- Calendar Script -->
     <script src="./assets/js/calender.js"></script>
 
 </body>

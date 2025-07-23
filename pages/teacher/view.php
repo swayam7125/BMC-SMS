@@ -38,45 +38,82 @@ if (!$result || mysqli_num_rows($result) == 0) {
 
 $teacher = mysqli_fetch_assoc($result);
 
-// --- UPDATED PHOTO LOGIC (from principal/view.php) ---
-
-function getTeacherPhotoPath($teacher_image, $teacher_id = null)
+// --- Robust Photo/Logo Handling Logic ---
+// This function assumes the image_path stored in the DB is relative to your project's web root (e.g., 'pages/teacher/uploads/photo.jpg')
+function getWebAccessibleImagePath($db_image_path, $base_web_path, $default_sub_folder = '')
 {
-    if (empty($teacher_image)) {
+    if (empty($db_image_path)) {
         return null;
     }
-    // Possible photo directories to check
-    $photo_directories = ["../../pages/teacher/uploads/", "../../assets/images/", "../../uploads/teachers/"];
-    // If it's already a full path, check if it exists
-    if (strpos($teacher_image, '../../') === 0 || strpos($teacher_image, '/') === 0) {
-        if (file_exists($teacher_image) && is_file($teacher_image)) {
-            return $teacher_image;
+
+    // Attempt to make it a full web-accessible path
+    $full_web_path = $base_web_path . ltrim($db_image_path, '/');
+
+    // Check if the file actually exists on the filesystem from the DOCUMENT_ROOT
+    $filesystem_path = $_SERVER['DOCUMENT_ROOT'] . $full_web_path;
+
+    if (file_exists($filesystem_path) && is_file($filesystem_path)) {
+        return $full_web_path;
+    }
+    
+    // Fallback: If DB path is just a filename, try common upload locations
+    // This part is for backward compatibility or if your initial uploads were just filenames
+    $possible_locations = [
+        "pages/{$default_sub_folder}/uploads/",
+        "uploads/{$default_sub_folder}s/",
+        "uploads/",
+    ];
+    
+    foreach ($possible_locations as $location) {
+        // Construct full web path for testing
+        $test_path = $base_web_path . $location . basename($db_image_path);
+        // Construct full filesystem path to check existence
+        $test_filesystem_path = $_SERVER['DOCUMENT_ROOT'] . $test_path;
+
+        if (file_exists($test_filesystem_path) && is_file($test_filesystem_path)) {
+            return $test_path; // Return the web-accessible path
         }
     }
-    // Try different directory combinations
-    foreach ($photo_directories as $dir) {
-        if (file_exists($dir . $teacher_image) && is_file($dir . $teacher_image)) {
-            return $dir . $teacher_image;
-        }
-    }
+
     return null; // No photo found
 }
 
-function getDefaultPhotoPath()
+function getDefaultImagePath($type = 'user', $base_web_path)
 {
-    $default_paths = ["../../assets/img/default-user.jpg", "../../assets/images/default-user.jpg"];
+    // Define BASE_WEB_PATH if it's not already defined (e.g., if this script is accessed directly)
+    if (!defined('BASE_WEB_PATH')) {
+        define('BASE_WEB_PATH', '/BMC-SMS/'); // Adjust as per your actual project setup
+    }
+
+    $default_paths = [
+        "assets/images/default-{$type}.jpg", // Try default-teacher.jpg
+        "assets/img/default-{$type}.jpg",    // Try default-teacher.jpg
+        "assets/images/default-user.jpg",    // Generic user default
+        "assets/img/default-user.jpg",       // Generic user default
+        "assets/images/no-photo.jpg",        // General no photo
+        "assets/img/no-photo.jpg"            // General no photo
+    ];
+
     foreach ($default_paths as $path) {
-        if (file_exists($path)) {
-            return $path;
+        $full_web_path = $base_web_path . $path;
+        $filesystem_path = $_SERVER['DOCUMENT_ROOT'] . $full_web_path;
+        if (file_exists($filesystem_path) && is_file($filesystem_path)) {
+            return $full_web_path;
         }
     }
+
+    // Fallback to a base64 encoded SVG if no file found
     return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 150 150'%3E%3Crect width='150' height='150' fill='%23f8f9fc'/%3E%3Ctext x='75' y='75' text-anchor='middle' dy='0.35em' fill='%23858796' font-family='Arial' font-size='14'%3ENo Photo%3C/text%3E%3C/svg%3E";
 }
 
+// Ensure BASE_WEB_PATH is defined (it should be in header.php, but define for this script's standalone test)
+if (!defined('BASE_WEB_PATH')) {
+    define('BASE_WEB_PATH', '/BMC-SMS/'); // Adjust as per your actual project setup
+}
+
 // Get the actual photo path
-$photo_path = getTeacherPhotoPath($teacher['teacher_image'], $teacher['id']);
-$default_photo = getDefaultPhotoPath();
-$show_default = ($photo_path === null);
+$photo_path = getWebAccessibleImagePath($teacher['teacher_image'], BASE_WEB_PATH, 'teacher');
+$default_photo = getDefaultImagePath('teacher', BASE_WEB_PATH);
 
 
 // Define timings based on batch
@@ -152,9 +189,7 @@ if (!empty($teacher['batch'])) {
         <?php include_once '../../includes/sidebar/BMC_sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <!-- top bar code -->
                 <?php include_once '../../includes/header.php'; ?>
-                <!-- end of top bar code -->
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Teacher Details</h1>
@@ -172,14 +207,14 @@ if (!empty($teacher['batch'])) {
                                 </div>
                                 <div class="card-body">
                                     <div class="photo-container">
-                                        <?php if (!$show_default): ?>
+                                        <?php if ($photo_path): ?>
                                             <img src="<?php echo htmlspecialchars($photo_path); ?>" alt="<?php echo htmlspecialchars($teacher['teacher_name']); ?>" class="view-photo" onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($default_photo); ?>';">
                                         <?php else: ?>
                                             <img src="<?php echo htmlspecialchars($default_photo); ?>" alt="Default Teacher Avatar" class="view-photo" style="opacity: 0.8;">
                                         <?php endif; ?>
                                     </div>
                                     <div class="text-center">
-                                        <small class="text-muted"><?php echo !$show_default ? 'Teacher Photo' : 'Default Avatar'; ?></small>
+                                        <small class="text-muted"><?php echo $photo_path ? 'Teacher Photo' : 'Default Avatar'; ?></small>
                                     </div>
                                 </div>
                             </div>
@@ -344,13 +379,10 @@ if (!empty($teacher['batch'])) {
                 </div>
             </div>
 
-            <!-- Footer -->
             <?php
             include '../../includes/footer.php';
             ?>
-            <!-- End of Footer -->
-
-        </div>
+            </div>
     </div>
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
         aria-hidden="true">

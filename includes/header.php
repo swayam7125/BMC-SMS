@@ -1,15 +1,13 @@
 <?php
-include_once __DIR__ . "../connect.php"; // Ensure this path is correct for your setup
-include_once __DIR__ . "../../encryption.php"; // Ensure this path is correct for your setup
+include_once __DIR__ . "/../includes/connect.php"; // Corrected path to connect.php
+include_once __DIR__ . "/../encryption.php"; // Corrected path to encryption.php
 
 // For debugging - KEEP THIS DURING DEVELOPMENT
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // Define your project's base URL path. THIS IS CRUCIAL.
-// Example 1: If your site is accessed via http://localhost/BMC-SMS/
-// define('BASE_WEB_PATH', '/BMC-SMS/');
-// Example 2: If your site is accessed via http://localhost/ (project in document root)
+// Example: If your site is accessed via http://localhost/BMC-SMS/
 define('BASE_WEB_PATH', '/BMC-SMS/'); // Make sure this matches your actual setup.
 
 // Set default values
@@ -18,101 +16,63 @@ $userName = 'Guest';
 
 // Check if user is logged in via cookie
 if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'])) {
-    $user_id = decrypt_id($_COOKIE['encrypted_user_id']); //
-    $user_role = decrypt_id($_COOKIE['encrypted_user_role']); //
+    $user_id = decrypt_id($_COOKIE['encrypted_user_id']);
+    $user_role = decrypt_id($_COOKIE['encrypted_user_role']);
 
     // Set values from encrypted cookies
     if (isset($_COOKIE['encrypted_user_name'])) {
-        $userName = decrypt_id($_COOKIE['encrypted_user_name']); //
+        $userName = decrypt_id($_COOKIE['encrypted_user_name']);
     }
 
     if (isset($_COOKIE['encrypted_profile_image'])) {
-        $decrypted_image = decrypt_id($_COOKIE['encrypted_profile_image']); // Path like 'pages/student/uploads/687a228bc2425.jpg' or '../../uploads/principals/principal_687b7f94e3b2a2.34091769.png'
+        $decrypted_image_relative_path = decrypt_id($_COOKIE['encrypted_profile_image']); // This path should already be relative from web root (e.g., 'pages/student/uploads/filename.jpg')
+
+        // Construct the full web-accessible path
+        $image_path_for_web = BASE_WEB_PATH . ltrim($decrypted_image_relative_path, '/');
+
+        // Verify if the file actually exists on the server's filesystem
+        // $_SERVER['DOCUMENT_ROOT'] gives the absolute path to your web server's document root
+        $filesystem_path = $_SERVER['DOCUMENT_ROOT'] . $image_path_for_web;
 
         // --- START DEBUGGING CODE FOR IMAGE PATH (Leave this for now) ---
-        // echo "";
         // echo "<pre style='background-color:#f8d7da; color:#721c24; border:1px solid #f5c6cb; padding:10px; margin:10px; white-space:pre-wrap;'>";
-        // echo "RAW Decrypted Image Path from Cookie: " . htmlspecialchars($decrypted_image) . "\n";
+        // echo "Decrypted Image Path from Cookie (Expected Relative): " . htmlspecialchars($decrypted_image_relative_path) . "\n";
+        // echo "Proposed Web-Accessible Path: " . htmlspecialchars($image_path_for_web) . "\n";
+        // echo "Proposed Filesystem Path for file_exists: " . htmlspecialchars($filesystem_path) . "\n";
         // --- END DEBUGGING CODE FOR IMAGE PATH ---
 
-
-        if (!empty($decrypted_image)) {
-            $image_path_for_web = ''; // Initialize to empty
-
-            // The goal is to get a path like 'pages/student/uploads/image.jpg' or 'uploads/principals/image.png'
-            // and prepend BASE_WEB_PATH.
-            // We need to handle two main patterns from your DB:
-            // 1. 'pages/role/uploads/filename.jpg'
-            // 2. '../../uploads/role/filename.jpg' (or '../uploads/role/filename.jpg')
-
-            if (strpos($decrypted_image, 'pages/') === 0) {
-                // Case 1: Path starts with 'pages/' (e.g., 'pages/student/uploads/...')
-                $image_path_for_web = BASE_WEB_PATH . $decrypted_image;
-            } elseif (strpos($decrypted_image, 'uploads/') !== false) {
-                // Case 2: Path contains 'uploads/' but might have '../../' or '../' prefix
-                // Find the first occurrence of 'uploads/'
-                $uploads_pos = strpos($decrypted_image, 'uploads/');
-                if ($uploads_pos !== false) {
-                    $relative_uploads_path = substr($decrypted_image, $uploads_pos); // e.g., 'uploads/principals/image.png'
-                    $image_path_for_web = BASE_WEB_PATH . $relative_uploads_path;
-                } else {
-                    // Fallback if 'uploads/' isn't found, should ideally not happen for DB paths
-                    $image_path_for_web = BASE_WEB_PATH . ltrim($decrypted_image, '/');
-                }
-            } else {
-                // Generic fallback if neither pattern matches, or if it's already an asset path
-                $image_path_for_web = BASE_WEB_PATH . ltrim($decrypted_image, '/');
-            }
-
-            // --- Continue DEBUGGING CODE FOR IMAGE PATH ---
-            // echo "Proposed Web-Accessible Path: " . htmlspecialchars($image_path_for_web) . "\n";
-            // --- END DEBUGGING CODE FOR IMAGE PATH ---
-
-            // Verify if the file actually exists on the server's filesystem
-            $filesystem_path = $_SERVER['DOCUMENT_ROOT'] . $image_path_for_web;
-
-            // --- Continue DEBUGGING CODE FOR IMAGE PATH ---
-            // echo "Proposed Filesystem Path for file_exists: " . htmlspecialchars($filesystem_path) . "\n";
-            // --- END DEBUGGING CODE FOR IMAGE PATH ---
-
-            if (file_exists($filesystem_path) && is_file($filesystem_path)) {
-                $userProfileImage = $image_path_for_web;
-                error_log("Image found: " . $userProfileImage); //
-                // --- Continue DEBUGGING CODE FOR IMAGE PATH ---
-                // echo "RESULT: File EXISTS at Filesystem Path.\n";
-                // --- END DEBUGGING CODE FOR IMAGE PATH ---
-            } else {
-                error_log("Image file not found at filesystem path: " . $filesystem_path . ". Using default profile image."); //
-                $userProfileImage = BASE_WEB_PATH . 'assets/images/undraw_profile.svg'; // Fallback to default
-                // --- Continue DEBUGGING CODE FOR IMAGE PATH ---
-                echo "RESULT: File DOES NOT EXIST at Filesystem Path.\n";
-                // --- END DEBUGGING CODE FOR IMAGE PATH ---
-            }
+        if (!empty($decrypted_image_relative_path) && file_exists($filesystem_path) && is_file($filesystem_path)) {
+            $userProfileImage = $image_path_for_web;
+            error_log("Image found: " . $userProfileImage);
+            // --- START DEBUGGING CODE ---
+            // echo "RESULT: File EXISTS at Filesystem Path.\n";
+            // --- END DEBUGGING CODE ---
         } else {
-            // --- Continue DEBUGGING CODE FOR IMAGE PATH ---
-            echo "Decrypted Image Path is EMPTY.\n";
-            // --- END DEBUGGING CODE FOR IMAGE PATH ---
+            error_log("Image file not found at filesystem path: " . $filesystem_path . ". Using default profile image.");
+            $userProfileImage = BASE_WEB_PATH . 'assets/images/undraw_profile.svg'; // Fallback to default
+            // --- START DEBUGGING CODE ---
+            // echo "RESULT: File DOES NOT EXIST or path is EMPTY. Using default.\n";
+            // --- END DEBUGGING CODE ---
         }
         // --- Finalize DEBUGGING CODE FOR IMAGE PATH ---
-        echo "</pre>";
-        echo "";
+        // echo "</pre>";
         // --- End Finalize DEBUGGING CODE FOR IMAGE PATH ---
     }
 
     // Debug information (keep these for development, remove for production)
-    error_log("User ID: " . $user_id); //
-    error_log("User Role: " . $user_role); //
-    error_log("Username: " . $userName); //
-    error_log("Final Profile Image Path for Display: " . $userProfileImage); //
+    error_log("User ID: " . $user_id);
+    error_log("User Role: " . $user_role);
+    error_log("Username: " . $userName);
+    error_log("Final Profile Image Path for Display: " . $userProfileImage);
 
     // Set defaults if data is missing from cookies or image path is invalid
     if (empty($userName)) {
         $userName = 'Guest';
-        error_log("Using default username: Guest"); //
+        error_log("Using default username: Guest");
     }
 } else {
     // If no user cookies are set, ensure default image and name are used
-    error_log("No user cookies found. Using default profile image and name."); //
+    error_log("No user cookies found. Using default profile image and name.");
 }
 ?>
 <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">

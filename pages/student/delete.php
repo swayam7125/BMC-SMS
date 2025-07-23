@@ -20,53 +20,57 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
     exit;
 }
 
-$student_id = intval($_GET['id']);
-$student_email = null;
+$student_id = intval($_GET['id']); // This student_id is now also the user_id
+$user_id_to_delete = $student_id; // The ID is directly the user ID
 
 // Begin a transaction to ensure atomicity
 mysqli_begin_transaction($conn);
 
 try {
-    // Step 1: Find the student's email from the 'student' table before deletion.
-    $query_email = "SELECT email FROM student WHERE id = ?";
-    $stmt_email = mysqli_prepare($conn, $query_email);
-    mysqli_stmt_bind_param($stmt_email, "i", $student_id);
-    mysqli_stmt_execute($stmt_email);
-    $result_email = mysqli_stmt_get_result($stmt_email);
+    // 1. Verify the user's role before deleting (security check)
+    // This is crucial to prevent deleting the wrong user if an ID is tampered with.
+    $check_user_role_query = "SELECT role FROM users WHERE id = ?";
+    $stmt_check = mysqli_prepare($conn, $check_user_role_query);
+    mysqli_stmt_bind_param($stmt_check, "i", $user_id_to_delete);
+    mysqli_stmt_execute($stmt_check);
+    $result_check = mysqli_stmt_get_result($stmt_check);
+    $user_record = mysqli_fetch_assoc($result_check);
+    mysqli_stmt_close($stmt_check);
 
-    if ($row = mysqli_fetch_assoc($result_email)) {
-        $student_email = $row['email'];
-    }
-    mysqli_stmt_close($stmt_email);
-
-    // If no student was found, throw an error.
-    if (!$student_email) {
-        throw new Exception("No student found with the provided ID.");
+    if (!$user_record || $user_record['role'] !== 'student') {
+        throw new Exception("User not found or role mismatch for deletion.");
     }
 
-    // Step 2: Delete the corresponding user from the 'users' table.
-    // The role check ensures we only delete the student user account.
-    $delete_user = "DELETE FROM users WHERE email = ? AND role = 'student'";
+    // 2. Fetch student_image path for file deletion before the record is cascaded
+    $query_student_image = "SELECT student_image FROM student WHERE id = ?";
+    $stmt_image = mysqli_prepare($conn, $query_student_image);
+    mysqli_stmt_bind_param($stmt_image, "i", $student_id);
+    mysqli_stmt_execute($stmt_image);
+    $result_image = mysqli_stmt_get_result($stmt_image);
+    $image_data = mysqli_fetch_assoc($result_image);
+    $image_path = $image_data['student_image'] ?? null;
+    mysqli_stmt_close($stmt_image);
+
+    // 3. Delete the user record from the 'users' table.
+    // Due to `ON DELETE CASCADE` foreign key on `student.id` referencing `users.id`,
+    // the corresponding record in the `student` table will be automatically deleted.
+    $delete_user = "DELETE FROM users WHERE id = ?";
     $stmt_user = mysqli_prepare($conn, $delete_user);
-    mysqli_stmt_bind_param($stmt_user, "s", $student_email);
+    mysqli_stmt_bind_param($stmt_user, "i", $user_id_to_delete);
     if (!mysqli_stmt_execute($stmt_user)) {
-        throw new Exception("Error deleting from users table: " . mysqli_stmt_error($stmt_user));
+        throw new Exception("Error deleting user from users table: " . mysqli_stmt_error($stmt_user));
+    }
+    
+    // Confirm that a row was actually affected in the users table
+    if (mysqli_stmt_affected_rows($stmt_user) === 0) {
+        throw new Exception("User record could not be deleted (it may have been removed already).");
     }
     mysqli_stmt_close($stmt_user);
 
-    // Step 3: Delete the student record from the 'student' table.
-    $delete_student = "DELETE FROM student WHERE id = ?";
-    $stmt_student = mysqli_prepare($conn, $delete_student);
-    mysqli_stmt_bind_param($stmt_student, "i", $student_id);
-    if (!mysqli_stmt_execute($stmt_student)) {
-        throw new Exception("Error deleting from student table: " . mysqli_stmt_error($stmt_student));
+    // 4. Delete the physical image file, if it exists
+    if (!empty($image_path) && file_exists($image_path)) {
+        unlink($image_path);
     }
-    
-    // Confirm that the student record was actually deleted.
-    if (mysqli_stmt_affected_rows($stmt_student) === 0) {
-        throw new Exception("Student record could not be deleted (it may have been removed already).");
-    }
-    mysqli_stmt_close($stmt_student);
 
     // If both deletions were successful, commit the changes to the database.
     mysqli_commit($conn);

@@ -18,11 +18,10 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
     exit;
 }
 
-$teacher_id = intval($_GET['id']);
+$teacher_id = intval($_GET['id']); // This teacher_id is now also the user ID
 $errors = [];
 
 // Fetch current teacher data
-// UPDATED: Select class_teacher and class_teacher_std
 $query = "SELECT *, class_teacher, class_teacher_std FROM teacher WHERE id = ?";
 $stmt = mysqli_prepare($conn, $query);
 mysqli_stmt_bind_param($stmt, "i", $teacher_id);
@@ -76,6 +75,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = "Please select a standard for the class teacher.";
     }
 
+    // Check if new email already exists for another user (excluding current user)
+    if ($new_email !== $original_email) {
+        $check_email = "SELECT id FROM users WHERE email = ? AND id != ?";
+        $stmt_check = mysqli_prepare($conn, $check_email);
+        mysqli_stmt_bind_param($stmt_check, "si", $new_email, $teacher_id); // teacher_id is now users.id
+        mysqli_stmt_execute($stmt_check);
+        if (mysqli_stmt_get_result($stmt_check)->num_rows > 0) {
+            $errors[] = "This email address is already in use by another account.";
+        }
+        mysqli_stmt_close($stmt_check);
+    }
+
 
     // --- Handle Photo Upload ---
     if (isset($_FILES['teacher_image']) && $_FILES['teacher_image']['error'] === UPLOAD_ERR_OK) {
@@ -92,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if (move_uploaded_file($file['tmp_name'], $destination)) {
                 $image_path_for_db = $destination;
-                if (!empty($original_image_path) && file_exists($original_image_path)) {
+                if (!empty($original_image_path) && file_exists($original_image_path) && $original_image_path !== $destination) { // Only unlink if different
                     unlink($original_image_path);
                 }
             } else {
@@ -106,15 +117,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($errors)) {
         mysqli_begin_transaction($conn);
         try {
+            // UPDATED: If email changes, update users table using the ID (which is the same as teacher_id)
             if ($new_email !== $original_email) {
-                $update_users = "UPDATE users SET email = ? WHERE email = ? AND role = 'teacher'";
+                // The teacher_id is now directly the user_id
+                $update_users = "UPDATE users SET email = ? WHERE id = ? AND role = 'teacher'";
                 $stmt_users = mysqli_prepare($conn, $update_users);
-                mysqli_stmt_bind_param($stmt_users, "ss", $new_email, $original_email);
-                if (!mysqli_stmt_execute($stmt_users)) throw new Exception("Failed to update users table.");
+                mysqli_stmt_bind_param($stmt_users, "si", $new_email, $teacher_id); // Use teacher_id as user ID
+                if (!mysqli_stmt_execute($stmt_users)) {
+                    // Check for duplicate email error from users table (though already checked above)
+                    if (mysqli_errno($conn) == 1062) {
+                        throw new Exception("Another user with this email already exists.");
+                    } else {
+                        throw new Exception("Failed to update users table: " . mysqli_stmt_error($stmt_users));
+                    }
+                }
                 mysqli_stmt_close($stmt_users);
             }
 
-            // UPDATED: Added class_teacher and class_teacher_std to the query
+            // UPDATED: Removed password from the update, and added class_teacher and class_teacher_std to the query
             $update_teacher = "UPDATE teacher SET 
                                  teacher_image = ?, teacher_name = ?, phone = ?, school_id = ?, dob = ?, 
                                  gender = ?, blood_group = ?, address = ?, email = ?, qualification = ?, 
@@ -124,9 +144,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $stmt_update = mysqli_prepare($conn, $update_teacher);
             // UPDATED: Added 'is' for class_teacher and class_teacher_std, and their variables
+            // Ensure type string matches the number of parameters and their types
             mysqli_stmt_bind_param(
                 $stmt_update,
-                "sssissssssssssisisi",
+                "sssissssssssssisisi", // This matches (image, name, phone, school_id, dob, gender, blood_group, address, email, qual, subject, lang_known, salary, std, exp, batch, class_teacher, class_teacher_std, teacher_id)
                 $image_path_for_db,
                 $teacher_name,
                 $phone,
@@ -135,7 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $gender,
                 $blood_group,
                 $address,
-                $new_email,
+                $new_email, // Use new_email here
                 $qualification,
                 $subject,
                 $language_known,
@@ -148,7 +169,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $teacher_id
             );
 
-            if (!mysqli_stmt_execute($stmt_update)) throw new Exception("Failed to update teacher table.");
+            if (!mysqli_stmt_execute($stmt_update)) throw new Exception("Failed to update teacher table: " . mysqli_stmt_error($stmt_update));
             mysqli_stmt_close($stmt_update);
 
             mysqli_commit($conn);
@@ -162,8 +183,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Re-populate $teacher array with POST data if there are errors
     $teacher = $_POST;
-    $teacher['id'] = $teacher_id;
-    $teacher['teacher_image'] = $image_path_for_db;
+    $teacher['id'] = $teacher_id; // Ensure ID is preserved for the form
+    $teacher['teacher_image'] = $image_path_for_db; // Sticky image path
     // NEW: Ensure class_teacher and class_teacher_std are set for repopulation
     $teacher['class_teacher'] = $class_teacher;
     $teacher['class_teacher_std'] = $class_teacher_std;
@@ -192,9 +213,7 @@ $selected_stds = explode(',', $teacher['std']);
         <?php include_once '../../includes/sidebar/BMC_sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <!-- top bar code -->
                 <?php include_once '../../includes/header.php'; ?>
-                <!-- end of top bar code -->
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Edit Teacher</h1>
@@ -305,13 +324,10 @@ $selected_stds = explode(',', $teacher['std']);
                 </div>
             </div>
 
-            <!-- Footer -->
             <?php
             include '../../includes/footer.php';
             ?>
-            <!-- End of Footer -->
-
-        </div>
+            </div>
     </div>
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
         aria-hidden="true">

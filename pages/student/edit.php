@@ -18,7 +18,7 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
     exit;
 }
 
-$student_id = intval($_GET['id']);
+$student_id = intval($_GET['id']); // This student_id is now also the user_id
 $errors = [];
 
 // Fetch current student data to get original details
@@ -63,13 +63,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($new_email) || !filter_var($new_email, FILTER_VALIDATE_EMAIL)) $errors[] = "A valid email is required.";
     if (empty($rollno)) $errors[] = "Roll Number is required.";
 
+    // Check if new email already exists for another user (excluding current user)
     if ($new_email !== $original_email) {
-        $check_email = "SELECT id FROM users WHERE email = ?";
+        $check_email = "SELECT id FROM users WHERE email = ? AND id != ?";
         $stmt_check = mysqli_prepare($conn, $check_email);
-        mysqli_stmt_bind_param($stmt_check, "s", $new_email);
+        mysqli_stmt_bind_param($stmt_check, "si", $new_email, $student_id); // student_id is now users.id
         mysqli_stmt_execute($stmt_check);
         if (mysqli_stmt_get_result($stmt_check)->num_rows > 0) {
-            $errors[] = "This email address is already in use.";
+            $errors[] = "This email address is already in use by another account.";
         }
         mysqli_stmt_close($stmt_check);
     }
@@ -81,15 +82,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $allowed_exts = ['jpg', 'jpeg', 'png', 'gif'];
 
         if (in_array($file_ext, $allowed_exts)) {
-            $target_dir = "../../uploads/students/";
+            $target_dir = "../../pages/student/uploads/"; // Corrected path to be consistent with principal/teacher
             if (!file_exists($target_dir)) mkdir($target_dir, 0777, true);
 
-            $new_filename = uniqid('', true) . '.' . $file_ext;
+            $new_filename = uniqid('student_', true) . '.' . $file_ext; // Add prefix for clarity
             $destination = $target_dir . $new_filename;
 
             if (move_uploaded_file($file['tmp_name'], $destination)) {
                 $image_path_for_db = $destination;
-                if (!empty($original_image_path) && file_exists($original_image_path)) {
+                if (!empty($original_image_path) && file_exists($original_image_path) && $original_image_path !== $destination) {
                     unlink($original_image_path);
                 }
             } else {
@@ -103,29 +104,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($errors)) {
         mysqli_begin_transaction($conn);
         try {
+            // Update the 'users' table ONLY if the email changed.
+            // Student ID is now directly the User ID.
             if ($new_email !== $original_email) {
-                $update_users = "UPDATE users SET email = ? WHERE email = ? AND role = 'student'";
+                $update_users = "UPDATE users SET email = ? WHERE id = ? AND role = 'student'"; // Update by ID
                 $stmt_users = mysqli_prepare($conn, $update_users);
-                mysqli_stmt_bind_param($stmt_users, "ss", $new_email, $original_email);
-                if (!mysqli_stmt_execute($stmt_users)) throw new Exception("Failed to update users table.");
+                mysqli_stmt_bind_param($stmt_users, "si", $new_email, $student_id); // Use student_id as user ID
+                if (!mysqli_stmt_execute($stmt_users)) {
+                     // Check for duplicate email error from users table (though already checked above)
+                    if (mysqli_errno($conn) == 1062) {
+                        throw new Exception("Another user with this email already exists.");
+                    } else {
+                        throw new Exception("Failed to update users table: " . mysqli_stmt_error($stmt_users));
+                    }
+                }
                 mysqli_stmt_close($stmt_users);
             }
 
-            $update_student = "UPDATE student SET 
-                              student_image = ?, student_name = ?, rollno = ?, std = ?, email = ?, academic_year = ?, 
-                              school_id = ?, dob = ?, gender = ?, blood_group = ?, address = ?, 
+            // Update the 'student' table
+            // Removed 'password' from this update as it should only be in 'users' table
+            $update_student = "UPDATE student SET
+                              student_image = ?, student_name = ?, rollno = ?, std = ?, email = ?, academic_year = ?,
+                              school_id = ?, dob = ?, gender = ?, blood_group = ?, address = ?,
                               father_name = ?, father_phone = ?, mother_name = ?, mother_phone = ?
-                              WHERE id = ?";
+                              WHERE id = ?"; // No password here
 
             $stmt_update = mysqli_prepare($conn, $update_student);
             mysqli_stmt_bind_param(
                 $stmt_update,
-                "ssssssissssssssi",
+                "ssssssisssssssi", // Removed 's' for password. Total 15 s, 1 i for student_id
                 $image_path_for_db,
                 $student_name,
                 $rollno,
                 $std,
-                $new_email,
+                $new_email, // Use new_email here
                 $academic_year,
                 $school_id,
                 $dob,
@@ -150,9 +162,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = "Database update failed: " . $e->getMessage();
         }
     }
+    // Repopulate form fields in case of error
     $student = $_POST;
     $student['id'] = $student_id;
-    $student['student_image'] = $original_image_path;
+    $student['student_image'] = $image_path_for_db; // Sticky image path
 }
 
 $schools_query = "SELECT id, school_name FROM school ORDER BY school_name";
@@ -175,9 +188,7 @@ $schools_result = mysqli_query($conn, $schools_query);
         <?php include_once '../../includes/sidebar/BMC_sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <!-- top bar code -->
                 <?php include_once '../../includes/header.php'; ?>
-                <!-- end of top bar code -->
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Edit Student</h1>
@@ -255,13 +266,10 @@ $schools_result = mysqli_query($conn, $schools_query);
                 </div>
             </div>
 
-            <!-- Footer -->
             <?php
             include '../../includes/footer.php';
             ?>
-            <!-- End of Footer -->
-
-        </div>
+            </div>
     </div>
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
         aria-hidden="true">

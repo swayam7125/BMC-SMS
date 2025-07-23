@@ -33,7 +33,7 @@ $selected_boards = explode(',', $school['education_board'] ?? '');
 $selected_mediums = explode(',', $school['school_medium'] ?? '');
 $selected_categories = explode(',', $school['school_category'] ?? '');
 $selected_stds = explode(',', $school['school_std'] ?? '');
-$original_logo_path = $school['school_logo'];
+$original_logo_path = $school['school_logo']; // This path is stored directly in DB
 mysqli_stmt_close($stmt_fetch);
 
 
@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $school_medium = implode(',', (isset($_POST['school_medium']) ? $_POST['school_medium'] : []));
     $school_category = implode(',', (isset($_POST['school_category']) ? $_POST['school_category'] : []));
     $school_std = implode(',', (isset($_POST['school_std']) ? $_POST['school_std'] : []));
-    $logo_path_for_db = $original_logo_path;
+    $logo_path_for_db = $original_logo_path; // Default to original path
 
     // Handle new logo upload
     if (isset($_FILES['school_logo']) && $_FILES['school_logo']['error'] === UPLOAD_ERR_OK) {
@@ -62,8 +62,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $new_filename = uniqid('logo_', true) . '.' . $file_ext;
             $destination = $target_dir . $new_filename;
             if (move_uploaded_file($file['tmp_name'], $destination)) {
-                $logo_path_for_db = $destination;
-                if (!empty($original_logo_path) && file_exists($original_logo_path)) {
+                $logo_path_for_db = $destination; // Store the new path in DB
+
+                // Delete old logo if it exists and is not the new one
+                if (!empty($original_logo_path) && file_exists($original_logo_path) && $original_logo_path !== $destination) {
                     unlink($original_logo_path);
                 }
             } else {
@@ -82,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = mysqli_prepare($conn, $update_query);
             mysqli_stmt_bind_param(
                 $stmt,
-                "sssssssssssi",
+                "sssssssssssi", // Ensure 's' for school_logo_path and all other string fields
                 $logo_path_for_db,
                 $school_name,
                 $email,
@@ -109,6 +111,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $errors[] = "Database error: " . $e->getMessage();
             }
+            // Re-populate form fields if there's an error
+            $school['school_name'] = $school_name;
+            $school['email'] = $email;
+            $school['phone'] = $phone;
+            $school['address'] = $address;
+            $school['school_opening'] = $school_opening;
+            $school['school_type'] = $school_type;
+            $school['education_board'] = $education_board;
+            $school['school_medium'] = $school_medium;
+            $school['school_category'] = $school_category;
+            $school['school_std'] = $school_std;
+            $school['school_logo'] = $logo_path_for_db; // Keep new logo if uploaded for sticky form
+            $selected_boards = explode(',', $education_board);
+            $selected_mediums = explode(',', $school_medium);
+            $selected_categories = explode(',', $school_category);
+            $selected_stds = explode(',', $school_std);
         }
     }
 }
@@ -130,9 +148,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php include_once '../../includes/sidebar/BMC_sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <!-- top bar code -->
                 <?php include_once '../../includes/header.php'; ?>
-                <!-- end of top bar code -->
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Edit School</h1>
@@ -197,13 +213,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </div>
 
-            <!-- Footer -->
             <?php
             include '../../includes/footer.php';
             ?>
-            <!-- End of Footer -->
-
-        </div>
+            </div>
     </div>
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
         aria-hidden="true">

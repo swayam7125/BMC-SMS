@@ -85,18 +85,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
-            // UPDATED: Added batch, class_teacher, and class_teacher_std to the query
+            // 1. Insert into users table FIRST to get the user_id
+            $user_role = 'teacher';
+            $insert_user_query = "INSERT INTO users (role, email, password) VALUES (?, ?, ?)";
+            $stmt_user = mysqli_prepare($conn, $insert_user_query);
+            mysqli_stmt_bind_param($stmt_user, "sss", $user_role, $email, $hashed_password);
+            if (!mysqli_stmt_execute($stmt_user)) {
+                throw new Exception("User record creation failed: " . mysqli_stmt_error($stmt_user));
+            }
+            // Get the last inserted ID from the users table
+            $new_user_id = mysqli_insert_id($conn);
+            mysqli_stmt_close($stmt_user);
+
+            // 2. Insert into 'teacher' table using the new_user_id as its primary key
+            // Note: The 'id' column in the teacher table must now be primary key AND foreign key referencing users.id
             $insert_teacher_query = "INSERT INTO teacher (
-                teacher_image, teacher_name, phone, school_id, dob, gender, blood_group,
+                id, teacher_image, teacher_name, phone, school_id, dob, gender, blood_group,
                 address, email, password, qualification, subject, language_known,
                 salary, std, experience, batch, class_teacher, class_teacher_std
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"; // One more '?' for ID
 
             $stmt_teacher = mysqli_prepare($conn, $insert_teacher_query);
-            // UPDATED: Added 'is' for class_teacher and class_teacher_std, and their variables
+            // Add 'i' for the new_user_id (integer) at the beginning of bind_param types
             mysqli_stmt_bind_param(
                 $stmt_teacher,
-                "sssisssssssssdsssis",
+                "ississsssssssdsssis", // Add 'i' at the start
+                $new_user_id, // Pass the ID from the users table
                 $image_path_for_db,
                 $teacher_name,
                 $phone,
@@ -123,22 +137,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             mysqli_stmt_close($stmt_teacher);
 
-            // Insert into users table (no change here)
-            $user_role = 'teacher';
-            $insert_user_query = "INSERT INTO users (role, email, password) VALUES (?, ?, ?)";
-            $stmt_user = mysqli_prepare($conn, $insert_user_query);
-            mysqli_stmt_bind_param($stmt_user, "sss", $user_role, $email, $hashed_password);
-            if (!mysqli_stmt_execute($stmt_user)) {
-                throw new Exception("User record creation failed: " . mysqli_stmt_error($stmt_user));
-            }
-            mysqli_stmt_close($stmt_user);
-
             mysqli_commit($conn);
             header("Location: ../../pages/teacher/teacher_list.php?success=Teacher enrolled successfully");
             exit();
         } catch (Exception $e) {
             mysqli_rollback($conn);
             if (mysqli_errno($conn) == 1062) {
+                // This error is likely now from the 'users' table's unique email constraint
                 $errors[] = "A teacher with this email or phone number already exists.";
             } else {
                 $errors[] = "Database error: " . $e->getMessage();
@@ -167,7 +172,7 @@ $school_result = mysqli_query($conn, $school_query);
         <?php include_once '../../includes/sidebar/BMC_sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '.././includes/header.php'; ?>
+                <?php include_once '../header.php'; ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Enroll New Teacher</h1>

@@ -31,25 +31,30 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $user_name = '';     // Initialize user name
 
                     // Fetch specific user details based on role
+                    // MODIFIED: Use the user's ID to fetch details from role-specific tables
                     switch ($user['role']) {
                         case 'student':
-                            $detail_query = "SELECT student_image, student_name FROM student WHERE email = ?";
+                            $detail_query = "SELECT student_image, student_name FROM student WHERE id = ?";
                             break;
                         case 'teacher':
-                            $detail_query = "SELECT teacher_image, teacher_name FROM teacher WHERE email = ?";
+                            $detail_query = "SELECT teacher_image, teacher_name FROM teacher WHERE id = ?";
                             break;
-                        case 'schooladmin':
-                            $detail_query = "SELECT principal_image, principal_name FROM principal WHERE email = ?";
+                        case 'schooladmin': // Assuming 'principal' maps to 'schooladmin' role
+                            $detail_query = "SELECT principal_image, principal_name FROM principal WHERE id = ?";
                             break;
                         default:
-                            // Handle other roles or no specific image
+                            // BMC role or other roles might not have a specific image/name in a separate table
+                            // You might set a default image/name for BMC here if needed.
+                            $profile_image = '/BMC-SMS/assets/images/undraw_profile.svg'; // Generic default
+                            $user_name = $email; // Use email as name for BMC if no detail table
                             break;
                     }
 
                     if (isset($detail_query)) {
                         $detail_stmt = mysqli_prepare($conn, $detail_query);
                         if ($detail_stmt) {
-                            mysqli_stmt_bind_param($detail_stmt, "s", $email);
+                            // MODIFIED: Bind the user ID (integer)
+                            mysqli_stmt_bind_param($detail_stmt, "i", $user['id']);
                             mysqli_stmt_execute($detail_stmt);
                             $detail_result = mysqli_stmt_get_result($detail_stmt);
                             if ($detail_result && mysqli_num_rows($detail_result) > 0) {
@@ -74,6 +79,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $encrypted_user_name = encrypt_id($user_name);
 
                     // Set cookies (consider adding secure and httponly flags for production)
+                    // For production, remember to add `secure` and `httponly` for security.
+                    // E.g., setcookie("name", "value", ["expires" => time() + 86400, "path" => "/", "secure" => true, "httponly" => true]);
                     setcookie("encrypted_user_id", $encrypted_id, time() + 86400, "/");
                     setcookie("encrypted_user_role", $encrypted_role, time() + 86400, "/");
                     setcookie("encrypted_profile_image", $encrypted_profile_image, time() + 86400, "/");

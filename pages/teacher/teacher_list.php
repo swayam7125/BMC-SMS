@@ -39,9 +39,7 @@ $result = mysqli_query($conn, $query);
         <?php include_once '../../includes/sidebar/BMC_sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <!-- top bar code -->
                 <?php include_once '../../includes/header.php'; ?>
-                <!-- end of top bar code -->
                 <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">Teacher Tables</h1>
                     <p class="mb-4">Complete list of all teachers in the school management system.</p>
@@ -60,7 +58,7 @@ $result = mysqli_query($conn, $query);
                     <div class="card shadow mb-4">
                         <div class="card-header py-3 d-flex justify-content-between align-items-center">
                             <h6 class="m-0 font-weight-bold text-primary">Teacher DataTable</h6>
-                            <a href="/BMC-SMS/includes/forms/teacher_enrollment.php" class="btn btn-primary btn-icon-split btn-sm disabled">
+                            <a href="/BMC-SMS/includes/forms/teacher_enrollment.php" class="btn btn-primary btn-icon-split btn-sm">
                                 <span class="icon text-white-50"><i class="fas fa-plus"></i></span><span class="text">Add New Teacher</span>
                             </a>
                         </div>
@@ -114,11 +112,8 @@ $result = mysqli_query($conn, $query);
                 </div>
             </div>
 
-            <!-- Footer -->
             <?php include_once '../../includes/footer.php'; ?>
-            <!-- end of footer code -->
-
-        </div>
+            </div>
     </div>
 
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
