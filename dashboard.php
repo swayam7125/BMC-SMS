@@ -181,8 +181,15 @@ switch ($role) {
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <meta name="description" content="">
     <meta name="author" content="">
-
-    <title>BMC - Dashboard</title>
+    <?php if ($role == 'bmc') { ?>
+        <title>BMC - Dashboard</title>
+    <?php }elseif ($role == 'teacher') { ?>
+        <title>Teacher - Dashboard</title>
+    <?php }elseif ($role == 'student') { ?>
+        <title>Student - Dashboard</title>
+    <?php }elseif ($role == 'schooladmin') { ?>
+        <title>School Admin - Dashboard</title>
+    <?php } ?>
 
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
 
@@ -236,7 +243,7 @@ switch ($role) {
     <div id="wrapper">
 
         <?php
-            include './includes/sidebar.php';        
+        include './includes/sidebar.php';
         ?>
         <div id="content-wrapper" class="d-flex flex-column">
 
@@ -385,7 +392,7 @@ switch ($role) {
                                 </a>
                             </div>
                         <?php elseif ($role == 'student'): ?>
-                             <div class="col-xl-3 col-md-6 mb-4">
+                            <div class="col-xl-3 col-md-6 mb-4">
                                 <div class="card border-left-primary shadow h-100 py-2">
                                     <div class="card-body">
                                         <div class="row no-gutters align-items-center">
@@ -394,21 +401,21 @@ switch ($role) {
                                                     My Current Standard</div>
                                                 <div class="h5 mb-0 font-weight-bold text-gray-800">
                                                     <?php
-                                                        // Fetch student's standard
-                                                        $student_std = 'N/A';
-                                                        // This query will now work because the connection is still open.
-                                                        $stmt_std = $conn->prepare("SELECT std FROM student WHERE id = ?");
-                                                        if ($stmt_std) {
-                                                            $stmt_std->bind_param("i", $userId);
-                                                            $stmt_std->execute();
-                                                            $result_std = $stmt_std->get_result();
-                                                            if ($result_std && $result_std->num_rows > 0) {
-                                                                $std_data = $result_std->fetch_assoc();
-                                                                $student_std = htmlspecialchars($std_data['std']);
-                                                            }
-                                                            $stmt_std->close();
+                                                    // Fetch student's standard
+                                                    $student_std = 'N/A';
+                                                    // This query will now work because the connection is still open.
+                                                    $stmt_std = $conn->prepare("SELECT std FROM student WHERE id = ?");
+                                                    if ($stmt_std) {
+                                                        $stmt_std->bind_param("i", $userId);
+                                                        $stmt_std->execute();
+                                                        $result_std = $stmt_std->get_result();
+                                                        if ($result_std && $result_std->num_rows > 0) {
+                                                            $std_data = $result_std->fetch_assoc();
+                                                            $student_std = htmlspecialchars($std_data['std']);
                                                         }
-                                                        echo $student_std;
+                                                        $stmt_std->close();
+                                                    }
+                                                    echo $student_std;
                                                     ?>
                                                 </div>
                                             </div>
@@ -485,7 +492,7 @@ switch ($role) {
                                             <div>Sat</div>
                                         </div>
                                         <div class="calendar-grid" id="calendar-grid">
-                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -527,12 +534,12 @@ switch ($role) {
                         </div>
                     </div>
                 </div>
-                </div>
+            </div>
             <?php
             include './includes/footer.php';
             ?>
-            </div>
         </div>
+    </div>
     <a class="scroll-to-top rounded" href="#page-top">
         <i class="fas fa-angle-up"></i>
     </a>
