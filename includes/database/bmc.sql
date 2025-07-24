@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jul 24, 2025 at 03:06 PM
+-- Generation Time: Jul 24, 2025 at 06:17 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -46,7 +46,8 @@ CREATE TABLE `assignments` (
 --
 
 INSERT INTO `assignments` (`id`, `teacher_id`, `school_id`, `standard`, `subject`, `title`, `description`, `file_path`, `original_filename`, `due_date`, `created_at`) VALUES
-(3, 6, 4, '11', 'maths', 'maths', 'chbjdcj', '/BMC-SMS/pages/assignments/uploads/assign_688223fef08ce9.86748149_INTERNSHIP REGISTRATION FORM JAY (4).pdf', 'INTERNSHIP REGISTRATION FORM JAY (4).pdf', '2025-08-17', '2025-07-24 12:15:58');
+(3, 6, 4, '11', 'maths', 'maths', 'chbjdcj', '/BMC-SMS/pages/assignments/uploads/assign_688223fef08ce9.86748149_INTERNSHIP REGISTRATION FORM JAY (4).pdf', 'INTERNSHIP REGISTRATION FORM JAY (4).pdf', '2025-08-17', '2025-07-24 12:15:58'),
+(4, 6, 4, '11', 'maths', 'E-commerce', 'bla bla bla', '/BMC-SMS/pages/assignments/uploads/assign_688250b98aad84.59696407_Chapter 2- Consumer oriented E-Commerce E-Retailing (1) (1).pdf', 'Chapter 2- Consumer oriented E-Commerce E-Retailing (1) (1).pdf', '2025-08-18', '2025-07-24 15:26:49');
 
 -- --------------------------------------------------------
 
@@ -69,7 +70,8 @@ CREATE TABLE `assignment_submissions` (
 --
 
 INSERT INTO `assignment_submissions` (`id`, `assignment_id`, `student_id`, `file_path`, `original_filename`, `status`, `submitted_at`) VALUES
-(1, 3, 3, '/BMC-SMS/pages/assignments/submit/sub_688226f95aae52.40718307_PROJECT college.pdf', 'PROJECT college.pdf', 'Submitted', '2025-07-24 12:28:41');
+(1, 3, 3, '/BMC-SMS/pages/assignments/submit/sub_688226f95aae52.40718307_PROJECT college.pdf', 'PROJECT college.pdf', 'Submitted', '2025-07-24 12:28:41'),
+(2, 4, 3, '/BMC-SMS/pages/assignments/submit/sub_688250ec596326.79398413_PROJECT college.pdf', 'PROJECT college.pdf', 'Submitted', '2025-07-24 15:27:40');
 
 -- --------------------------------------------------------
 
@@ -246,7 +248,8 @@ CREATE TABLE `leave_applications` (
 
 INSERT INTO `leave_applications` (`id`, `teacher_id`, `from_date`, `to_date`, `reason`, `status`, `applied_on`) VALUES
 (1, 6, '2025-07-30', '2025-08-10', 'My friend\'s marriage', 'Approved', '2025-07-23 17:40:03'),
-(2, 6, '2025-07-31', '2025-08-20', 'swayam marriage', 'Approved', '2025-07-23 17:55:10');
+(2, 6, '2025-07-31', '2025-08-20', 'swayam marriage', 'Approved', '2025-07-23 17:55:10'),
+(3, 6, '2025-07-25', '2025-07-31', 'Admitted in hospital', 'Rejected', '2025-07-24 15:07:15');
 
 -- --------------------------------------------------------
 
@@ -271,7 +274,8 @@ CREATE TABLE `notes` (
 --
 
 INSERT INTO `notes` (`id`, `user_id`, `school_id`, `target_standard`, `title`, `content`, `file_path`, `original_filename`, `created_at`) VALUES
-(3, 6, 4, '11', 'Fee', 'BLAW BLAW', '/BMC-SMS/pages/teacher/uploads/note_6882136a28ca99.45092353_INTERNSHIP REGISTRATION FORM JAY.pdf', 'INTERNSHIP REGISTRATION FORM JAY.pdf', '2025-07-24 11:05:14');
+(3, 6, 4, '11', 'Fee', 'BLAW BLAW', '/BMC-SMS/pages/teacher/uploads/note_6882136a28ca99.45092353_INTERNSHIP REGISTRATION FORM JAY.pdf', 'INTERNSHIP REGISTRATION FORM JAY.pdf', '2025-07-24 11:05:14'),
+(4, 6, 4, '11', 'E-commerce', 'more contant', '/BMC-SMS/pages/teacher/uploads/note_68824bfc04afc6.93915743_Chapter 2- Consumer oriented E-Commerce E-Retailing (1).pdf', 'Chapter 2- Consumer oriented E-Commerce E-Retailing (1).pdf', '2025-07-24 15:06:36');
 
 -- --------------------------------------------------------
 
@@ -582,7 +586,7 @@ CREATE TABLE `teacher` (
 --
 
 INSERT INTO `teacher` (`id`, `teacher_image`, `teacher_name`, `phone`, `school_id`, `dob`, `gender`, `blood_group`, `address`, `email`, `password`, `qualification`, `subject`, `language_known`, `salary`, `std`, `experience`, `batch`, `class_teacher`, `class_teacher_std`) VALUES
-(6, '../../pages/teacher/uploads/teacher_6880cd02b30464.45441036.jpg', 'meet parekh', '9900990099', 4, '2025-07-01', 'Male', 'B-', 'mota varachaa', 'meet@gmail.com', '$2y$10$sdz4DZ5oaMJNrUA9mld44uiBNIIkAQCPjs2XrrnUcl.Bp6wlzYz1a', 'B.A', 'maths', 'english', 100000, '8,9,10,11,12', '10', 'Evening', 1, '11');
+(6, '../../pages/teacher/uploads/teacher_6880cd02b30464.45441036.jpg', 'meet parekh', '9900990099', 4, '2025-07-01', 'Male', 'B+', 'mota varachaa', 'meet@gmail.com', '$2y$10$sdz4DZ5oaMJNrUA9mld44uiBNIIkAQCPjs2XrrnUcl.Bp6wlzYz1a', 'B.A', 'maths', 'english', 100000, '8,9,10,11,12', '10', 'Evening', 1, '11');
 
 -- --------------------------------------------------------
 
@@ -605,7 +609,8 @@ CREATE TABLE `timetables` (
 --
 
 INSERT INTO `timetables` (`id`, `school_id`, `standard`, `class_teacher_id`, `timetable_file`, `original_filename`, `created_at`) VALUES
-(1, 4, '11', 6, '/BMC-SMS/pages/teacher/uploads/timetables/tt_6882190a814100.28997107_INTERNSHIP REGISTRATION FORM JAY.pdf', 'INTERNSHIP REGISTRATION FORM JAY.pdf', '2025-07-24 11:29:14');
+(1, 4, '11', 6, '/BMC-SMS/pages/teacher/uploads/timetables/tt_6882190a814100.28997107_INTERNSHIP REGISTRATION FORM JAY.pdf', 'INTERNSHIP REGISTRATION FORM JAY.pdf', '2025-07-24 11:29:14'),
+(2, 4, '11', 6, '/BMC-SMS/pages/teacher/uploads/timetables/tt_68824bdc56c401.66632629_Chapter 2- Consumer oriented E-Commerce E-Retailing (1).pdf', 'Chapter 2- Consumer oriented E-Commerce E-Retailing (1).pdf', '2025-07-24 15:06:04');
 
 -- --------------------------------------------------------
 
@@ -782,13 +787,13 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `assignments`
 --
 ALTER TABLE `assignments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `assignment_submissions`
 --
 ALTER TABLE `assignment_submissions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `attendance`
@@ -818,13 +823,13 @@ ALTER TABLE `deleted_teachers`
 -- AUTO_INCREMENT for table `leave_applications`
 --
 ALTER TABLE `leave_applications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `notes`
 --
 ALTER TABLE `notes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `principal_timings`
@@ -860,13 +865,13 @@ ALTER TABLE `subjects`
 -- AUTO_INCREMENT for table `timetables`
 --
 ALTER TABLE `timetables`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- Constraints for dumped tables

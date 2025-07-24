@@ -66,8 +66,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && $isClassTeacher) {
         $error = "File upload failed. Please select a valid file.";
     }
 }
-
-$conn->close();
 $pageTitle = 'Send Timetable';
 ?>
 <!DOCTYPE html>
@@ -150,3 +148,6 @@ $pageTitle = 'Send Timetable';
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
 </html>
+<?php
+$conn->close();
+?>

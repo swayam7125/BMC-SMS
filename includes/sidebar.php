@@ -102,7 +102,6 @@ if (!defined('BASE_WEB_PATH')) {
                     </div>
                 </div>
             </li>
-            <!-- UPDATE: Added Academics section for School Admin -->
             <li class="nav-item">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseAcademics">
                     <i class="fas fa-fw fa-book"></i>
@@ -113,12 +112,6 @@ if (!defined('BASE_WEB_PATH')) {
                         <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/academics/manage_subjects.php">Manage Subjects</a>
                     </div>
                 </div>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="/BMC-SMS/pages/academics/view_timetable.php">
-                    <i class="fas fa-fw fa-table-list"></i>
-                    <span>View Timetables</span>
-                </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseLeaveManagement">
@@ -144,18 +137,6 @@ if (!defined('BASE_WEB_PATH')) {
                     </div>
                 </div>
             </li>
-            <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePastData">
-                    <i class="fas fa-fw fa-history"></i>
-                    <span>View Past Data</span>
-                </a>
-                <div id="collapsePastData" class="collapse" data-parent="#accordionSidebar">
-                    <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="/BMC-SMS/pages/past_record/past_teacher.php">Past Teacher List</a>
-                        <a class="collapse-item" href="/BMC-SMS/pages/past_record/past_student.php">Past Student List</a>
-                    </div>
-                </div>
-            </li>
         <?php
             break;
 
@@ -164,17 +145,19 @@ if (!defined('BASE_WEB_PATH')) {
         case 'teacher':
             // Check if the logged-in teacher is a class teacher
             $is_class_teacher = false;
-            if ($user_id && $conn) {
-                $stmt_check = mysqli_prepare($conn, "SELECT class_teacher FROM teacher WHERE id = ?");
-                mysqli_stmt_bind_param($stmt_check, "i", $user_id);
-                mysqli_stmt_execute($stmt_check);
-                $result_check = mysqli_stmt_get_result($stmt_check);
-                if ($teacher_details = mysqli_fetch_assoc($result_check)) {
+            // FIX: Check if $conn object exists and the connection is still alive before using it
+            if ($user_id && isset($conn) && $conn->ping()) {
+                // Use object-oriented style for consistency
+                $stmt_check = $conn->prepare("SELECT class_teacher FROM teacher WHERE id = ?");
+                $stmt_check->bind_param("i", $user_id);
+                $stmt_check->execute();
+                $result_check = $stmt_check->get_result();
+                if ($teacher_details = $result_check->fetch_assoc()) {
                     if ($teacher_details['class_teacher'] == 1) {
                         $is_class_teacher = true;
                     }
                 }
-                mysqli_stmt_close($stmt_check);
+                $stmt_check->close();
             }
     ?>
             <div class="sidebar-heading">Classroom & Actions</div>
@@ -185,7 +168,6 @@ if (!defined('BASE_WEB_PATH')) {
                 </a>
             </li>
             
-            <!-- UPDATE: Added Marks Management section only for Class Teachers -->
             <?php if ($is_class_teacher): ?>
             <li class="nav-item">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseMarks">
@@ -200,6 +182,19 @@ if (!defined('BASE_WEB_PATH')) {
                 </div>
             </li>
             <?php endif; ?>
+
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseAssignments">
+                    <i class="fas fa-fw fa-book-open"></i>
+                    <span>Assignment Management</span>
+                </a>
+                <div id="collapseAssignments" class="collapse" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item" href="/BMC-SMS/pages/assignments/send_assignment.php">Send Assignment</a>
+                        <a class="collapse-item" href="/BMC-SMS/pages/assignments/assignment_history.php">Assignment History</a>
+                    </div>
+                </div>
+            </li>
 
             <li class="nav-item">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseLeave">

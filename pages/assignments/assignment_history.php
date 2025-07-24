@@ -23,10 +23,10 @@ if (!$role || $role !== 'teacher') {
     exit;
 }
 
-// --- NEW: Fetch assignment history for the logged-in teacher ---
+// --- Fetch assignment history for the logged-in teacher ---
 $assignments = [];
 $stmt = $conn->prepare("
-    SELECT 
+    SELECT
         a.id,
         a.title,
         a.standard,
@@ -44,7 +44,6 @@ $stmt->execute();
 $result = $stmt->get_result();
 $assignments = $result->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
-$conn->close();
 
 $pageTitle = 'Teacher - Assignment History';
 ?>
@@ -60,7 +59,7 @@ $pageTitle = 'Teacher - Assignment History';
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
 </head>
 
@@ -74,7 +73,7 @@ $pageTitle = 'Teacher - Assignment History';
                 <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">Sent Assignment History</h1>
                     <p class="mb-4">A record of all assignments you have sent. You can view submission status and details for each.</p>
-                    
+
                     <?php if (isset($_GET['success'])): ?>
                         <div class="alert alert-success">Assignment sent successfully!</div>
                     <?php endif; ?>
@@ -94,7 +93,7 @@ $pageTitle = 'Teacher - Assignment History';
                                             <th>Sent Date</th>
                                             <th>Due Date</th>
                                             <th>Submissions</th>
-                                        </tr>
+                                            <th>Actions</th></tr>
                                     </thead>
                                     <tbody>
                                         <?php if (!empty($assignments)): ?>
@@ -106,11 +105,16 @@ $pageTitle = 'Teacher - Assignment History';
                                                 <td><?php echo date("d-m-Y", strtotime($assignment['created_at'])); ?></td>
                                                 <td><?php echo date("d-m-Y", strtotime($assignment['due_date'])); ?></td>
                                                 <td><?php echo htmlspecialchars($assignment['submission_count']); ?> / <?php echo htmlspecialchars($assignment['total_students']); ?></td>
+                                                <td>
+                                                    <a href="view_submissions.php?id=<?php echo $assignment['id']; ?>" class="btn btn-primary btn-sm" title="View Submissions">
+                                                        <i class="fas fa-eye"></i> View
+                                                    </a>
+                                                </td>
                                             </tr>
                                             <?php endforeach; ?>
                                         <?php else: ?>
                                             <tr>
-                                                <td colspan="6" class="text-center">You have not sent any assignments yet.</td>
+                                                <td colspan="7" class="text-center">You have not sent any assignments yet.</td>
                                             </tr>
                                         <?php endif; ?>
                                     </tbody>
@@ -125,7 +129,8 @@ $pageTitle = 'Teacher - Assignment History';
     </div>
 
     <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
-<div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+    
+    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
         aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
@@ -143,6 +148,7 @@ $pageTitle = 'Teacher - Assignment History';
             </div>
         </div>
     </div>
+
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
@@ -152,3 +158,6 @@ $pageTitle = 'Teacher - Assignment History';
     <script>$(document).ready(function() { $('#dataTable').DataTable({"order": [[3, "desc"]]}); });</script>
 </body>
 </html>
+<?php
+$conn->close();
+?>

@@ -109,8 +109,6 @@ while ($row_history = $result_history->fetch_assoc()) {
     $notesHistory[] = $row_history;
 }
 $stmt_history->close();
-$conn->close();
-
 $pageTitle = 'Send Notes';
 ?>
 <!DOCTYPE html>
@@ -236,3 +234,6 @@ $pageTitle = 'Send Notes';
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
 </html>
+<?php
+$conn->close();
+?>

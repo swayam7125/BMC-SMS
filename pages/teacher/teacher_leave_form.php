@@ -45,7 +45,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && $teacher_id) {
         $stmt->close();
     }
 }
-$conn->close();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -158,3 +157,6 @@ $conn->close();
 
 </body>
 </html>
+<?php
+$conn->close();
+?>

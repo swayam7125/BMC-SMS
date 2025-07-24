@@ -75,7 +75,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     header("Location: assignment_history.php?success=1");
     exit();
 }
-$conn->close();
 $pageTitle = 'Send Assignment';
 ?>
 <!DOCTYPE html>
@@ -173,3 +172,6 @@ $pageTitle = 'Send Assignment';
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
 </html>
+<?php
+$conn->close();
+?>
