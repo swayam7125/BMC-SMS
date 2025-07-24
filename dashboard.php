@@ -13,7 +13,10 @@ $schoolId = null; // Initialize schoolId
 
 // Retrieve and decrypt user role and ID from cookies
 if (isset($_COOKIE['encrypted_user_role'])) {
-    $role = decrypt_id($_COOKIE['encrypted_user_role']);
+    // FIX: Normalize the role by converting to lowercase and trimming whitespace.
+    // This ensures that comparisons like ($role == 'bmc') work correctly even if the cookie stores "Bmc" or " bmc ".
+    $decrypted_role = decrypt_id($_COOKIE['encrypted_user_role']);
+    $role = $decrypted_role ? strtolower(trim($decrypted_role)) : null;
 }
 if (isset($_COOKIE['encrypted_user_id'])) {
     $userId = decrypt_id($_COOKIE['encrypted_user_id']);
@@ -47,10 +50,10 @@ $totalPrincipals = 0;
 $totalTeachers = 0;
 $totalStudents = 0;
 
-// Fetch data based on user role
+// Fetch data based on user role. The switch now uses the normalized $role.
 switch ($role) {
     case 'bmc':
-        // BMC role sees all global counts (no change needed here as it's not role-specific detail lookup)
+        // BMC role sees all global counts
         $sql = "SELECT COUNT(*) AS total FROM school";
         $result = $conn->query($sql);
         if ($result && $result->num_rows > 0) {
@@ -82,10 +85,9 @@ switch ($role) {
 
     case 'schooladmin':
         // School Admin sees data related to their school
-        // MODIFIED: Use userId directly to get school_id from principal table
-        $stmt = $conn->prepare("SELECT school_id FROM principal WHERE id = ?"); // Use ID, not email
+        $stmt = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
         if ($stmt) {
-            $stmt->bind_param("i", $userId); // Bind userId
+            $stmt->bind_param("i", $userId);
             $stmt->execute();
             $result = $stmt->get_result();
             if ($result && $result->num_rows > 0) {
@@ -124,10 +126,9 @@ switch ($role) {
 
     case 'teacher':
         // Teacher sees data related to their school
-        // MODIFIED: Use userId directly to get school_id from teacher table
-        $stmt = $conn->prepare("SELECT school_id FROM teacher WHERE id = ?"); // Use ID, not email
+        $stmt = $conn->prepare("SELECT school_id FROM teacher WHERE id = ?");
         if ($stmt) {
-            $stmt->bind_param("i", $userId); // Bind userId
+            $stmt->bind_param("i", $userId);
             $stmt->execute();
             $result = $stmt->get_result();
             if ($result && $result->num_rows > 0) {
@@ -152,24 +153,22 @@ switch ($role) {
         break;
 
     case 'student':
-        // MODIFIED: Student sees data related to their school
-        $stmt = $conn->prepare("SELECT school_id FROM student WHERE id = ?"); // Use ID, not email
+        // Student sees data related to their school
+        $stmt = $conn->prepare("SELECT school_id FROM student WHERE id = ?");
         if ($stmt) {
-            $stmt->bind_param("i", $userId); // Bind userId
+            $stmt->bind_param("i", $userId);
             $stmt->execute();
             $result = $stmt->get_result();
             if ($result && $result->num_rows > 0) {
                 $studentData = $result->fetch_assoc();
                 $schoolId = $studentData['school_id'];
-                // Students typically won't see counts of other students/teachers globally.
+                // Students typically won't see counts of other students/teachers.
             }
             $stmt->close();
         }
         break;
 }
 
-// FIX: Do NOT close the connection here. It will be closed at the end of the file.
-// $conn->close(); 
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -181,8 +180,21 @@ switch ($role) {
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <meta name="description" content="">
     <meta name="author" content="">
-
-    <title>BMC - Dashboard</title>
+    <?php
+    // FIX: Set a default title and then determine the specific title based on the role.
+    // This is cleaner and ensures a title is always set.
+    $pageTitle = 'Dashboard'; // Default title
+    if ($role == 'bmc') {
+        $pageTitle = 'BMC - Dashboard';
+    } elseif ($role == 'teacher') {
+        $pageTitle = 'Teacher - Dashboard';
+    } elseif ($role == 'student') {
+        $pageTitle = 'Student - Dashboard';
+    } elseif ($role == 'schooladmin') {
+        $pageTitle = 'School Admin - Dashboard';
+    }
+    ?>
+    <title><?php echo htmlspecialchars($pageTitle); ?></title>
 
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
 
@@ -236,7 +248,7 @@ switch ($role) {
     <div id="wrapper">
 
         <?php
-            include './includes/sidebar.php';        
+        include './includes/sidebar.php';
         ?>
         <div id="content-wrapper" class="d-flex flex-column">
 
@@ -385,7 +397,7 @@ switch ($role) {
                                 </a>
                             </div>
                         <?php elseif ($role == 'student'): ?>
-                             <div class="col-xl-3 col-md-6 mb-4">
+                            <div class="col-xl-3 col-md-6 mb-4">
                                 <div class="card border-left-primary shadow h-100 py-2">
                                     <div class="card-body">
                                         <div class="row no-gutters align-items-center">
@@ -394,21 +406,21 @@ switch ($role) {
                                                     My Current Standard</div>
                                                 <div class="h5 mb-0 font-weight-bold text-gray-800">
                                                     <?php
-                                                        // Fetch student's standard
-                                                        $student_std = 'N/A';
-                                                        // This query will now work because the connection is still open.
-                                                        $stmt_std = $conn->prepare("SELECT std FROM student WHERE id = ?");
-                                                        if ($stmt_std) {
-                                                            $stmt_std->bind_param("i", $userId);
-                                                            $stmt_std->execute();
-                                                            $result_std = $stmt_std->get_result();
-                                                            if ($result_std && $result_std->num_rows > 0) {
-                                                                $std_data = $result_std->fetch_assoc();
-                                                                $student_std = htmlspecialchars($std_data['std']);
-                                                            }
-                                                            $stmt_std->close();
+                                                    // Fetch student's standard
+                                                    $student_std = 'N/A';
+                                                    // This query will now work because the connection is still open.
+                                                    $stmt_std = $conn->prepare("SELECT std FROM student WHERE id = ?");
+                                                    if ($stmt_std) {
+                                                        $stmt_std->bind_param("i", $userId);
+                                                        $stmt_std->execute();
+                                                        $result_std = $stmt_std->get_result();
+                                                        if ($result_std && $result_std->num_rows > 0) {
+                                                            $std_data = $result_std->fetch_assoc();
+                                                            $student_std = htmlspecialchars($std_data['std']);
                                                         }
-                                                        echo $student_std;
+                                                        $stmt_std->close();
+                                                    }
+                                                    echo $student_std;
                                                     ?>
                                                 </div>
                                             </div>
@@ -485,7 +497,7 @@ switch ($role) {
                                             <div>Sat</div>
                                         </div>
                                         <div class="calendar-grid" id="calendar-grid">
-                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -527,12 +539,12 @@ switch ($role) {
                         </div>
                     </div>
                 </div>
-                </div>
+            </div>
             <?php
             include './includes/footer.php';
             ?>
-            </div>
         </div>
+    </div>
     <a class="scroll-to-top rounded" href="#page-top">
         <i class="fas fa-angle-up"></i>
     </a>
@@ -576,6 +588,6 @@ switch ($role) {
 
 </html>
 <?php
-// FIX: Close the database connection at the very end of the script.
+// Close the database connection at the very end of the script.
 $conn->close();
 ?>
