@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $qualification = trim($_POST['qualification']);
     $salary = trim($_POST['salary']);
     $password = $_POST['password'];
-    $batch = $_POST['batch']; // ADDED: Retrieve batch
+    $batch = $_POST['batch'];
 
     $image_path_for_db = null;
 
@@ -65,31 +65,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
             // 1. Insert into users table FIRST to get the user_id
-            $user_role = 'schooladmin'; // Assuming principal role maps to 'schooladmin' in users table
+            $user_role = 'schooladmin';
             $insert_user_query = "INSERT INTO users (role, email, password) VALUES (?, ?, ?)";
             $stmt_user = mysqli_prepare($conn, $insert_user_query);
             mysqli_stmt_bind_param($stmt_user, "sss", $user_role, $email, $hashed_password);
             if (!mysqli_stmt_execute($stmt_user)) {
                 throw new Exception("User record creation failed: " . mysqli_stmt_error($stmt_user));
             }
-            // Get the last inserted ID from the users table
             $new_user_id = mysqli_insert_id($conn);
             mysqli_stmt_close($stmt_user);
 
-            // 2. Insert into 'principal' table using the new_user_id as its primary key
-            // Note: The 'id' column in the principal table must now be primary key AND foreign key referencing users.id
+            // 2. Insert into 'principal' table
             $insert_principal_query = "INSERT INTO principal (
                 id, principal_image, school_id, principal_name, email, password, phone,
                 principal_dob, gender, blood_group, address, qualification, salary, batch
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"; // One more '?' for ID
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
             $stmt_principal = mysqli_prepare($conn, $insert_principal_query);
-            // Add 'i' for the new_user_id (integer) at the beginning of bind_param types
+            
+            // --- THIS IS THE CORRECTED LINE ---
+            // The type string now correctly matches the data: i(d), s(tring), i(nteger)...
             mysqli_stmt_bind_param(
-                $stmt_principal, "sissssssssssds", // Add 'i' at the start
-                $new_user_id, // Pass the ID from the users table
-                $image_path_for_db, $school_id, $principal_name, $email, $hashed_password,
-                $phone, $principal_dob, $gender, $blood_group, $address, $qualification, $salary, $batch
+                $stmt_principal, "isssssssssssds", // Corrected from "iis..."
+                $new_user_id,
+                $image_path_for_db, 
+                $school_id, 
+                $principal_name, 
+                $email, 
+                $hashed_password,
+                $phone, 
+                $principal_dob, 
+                $gender, 
+                $blood_group, 
+                $address, 
+                $qualification, 
+                $salary, 
+                $batch
             );
 
             if (!mysqli_stmt_execute($stmt_principal)) {
@@ -104,7 +115,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (Exception $e) {
             mysqli_rollback($conn);
             if(mysqli_errno($conn) == 1062){
-                // This error is likely now from the 'users' table's unique email or phone constraint
                 $errors[] = "A principal with this email or phone number already exists.";
             } else {
                 $errors[] = "Database error: " . $e->getMessage();
@@ -124,17 +134,15 @@ $school_result = mysqli_query($conn, $school_query);
     <title>Enroll Principal - School Management System</title>
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
-    
-    <!-- Corrected Font Awesome link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
     <div id="wrapper">
-    <?php include '../sidebar.php';?>
+        <?php include_once '../../includes/sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '.././header.php'; ?>
+                <?php include_once '../../includes/header.php'; ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Enroll New Principal</h1>
@@ -151,7 +159,7 @@ $school_result = mysqli_query($conn, $school_query);
                                     <div class="col-md-3 text-center">
                                         <label>Photo Preview</label><br>
                                         <img src="../../assets/img/default-user.jpg" alt="Principal Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
-                                        <div class="form-group"><label for="principal_image" class="small btn btn-sm btn-info"><i class="fas fa-upload fa-sm"></i> Upload Photo</label><input type="file" class="d-none" id="principal_image" name="principal_image"></div>
+                                        <div class="form-group"><label for="principal_image" class="small btn btn-sm btn-info"><i class="fas fa-upload fa-sm"></i> Upload Photo</label><input type="file" class="d-none" id="principal_image" name="principal_image" onchange="document.getElementById('imagePreview').src = window.URL.createObjectURL(this.files[0])"></div>
                                     </div>
                                     <div class="col-md-9">
                                         <div class="form-row">
@@ -204,7 +212,7 @@ $school_result = mysqli_query($conn, $school_query);
                     </div>
                 </div>
             </div>
-            <?php include_once '../footer.php'; ?>
+            <?php include_once '../../includes/footer.php'; ?>
         </div>
     </div>
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
@@ -223,9 +231,7 @@ $school_result = mysqli_query($conn, $school_query);
                     <a class="btn btn-primary" href="/BMC-SMS/logout.php">Logout</a>
                 </div>
             </div>
-        </div>
-    </div>
-    <script src="../../assets/vendor/jquery/jquery.min.js"></script>
+                <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script>
