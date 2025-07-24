@@ -2,6 +2,12 @@
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
+// FIX: Define the BASE_WEB_PATH constant if it's not already defined.
+// This ensures that the script has access to the base URL for creating web-accessible paths.
+if (!defined('BASE_WEB_PATH')) {
+    define('BASE_WEB_PATH', '/BMC-SMS/');
+}
+
 $role = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
@@ -22,7 +28,6 @@ if ($principal_id <= 0) {
 }
 
 // Fetch principal data with school information
-// The existing query already selects all fields from principal (p.*), so it will include the new 'batch' field.
 $query = "SELECT p.*, s.school_name, s.address as school_address, s.phone as school_phone, s.email as school_email
           FROM principal p 
           LEFT JOIN school s ON p.school_id = s.id
@@ -40,55 +45,26 @@ if (!$result || mysqli_num_rows($result) == 0) {
 
 $principal = mysqli_fetch_assoc($result);
 
-// Function to get principal photo path with multiple fallback options
-function getPrincipalPhotoPath($principal_image, $principal_id = null)
-{
-    if (empty($principal_image)) {
+function getWebAccessibleImagePath($db_image_path, $base_web_path, $default_sub_folder = '') {
+    if (empty($db_image_path)) {
         return null;
     }
-
-    // Possible photo directories to check
-    $photo_directories = [
-        "../../pages/principal/uploads/", // Primary upload dir
-        "../../assets/images/",
-        "../../uploads/principals/",
-        "../../uploads/",
-        "../../assets/img/principals/",
-        "../../images/principals/",
-        "../../principal_photos/"
-    ];
-
-    // If it's already a full path (like starts with ../..), check if it exists
-    // Note: This needs to be relative to the script's location on the filesystem.
-    // For web paths, consider defining a base path.
-    if (strpos($principal_image, '../../') === 0 || strpos($principal_image, '../') === 0) {
-        // Attempt to resolve relative path to absolute filesystem path
-        // __DIR__ gives the directory of the current script (e.g., /path/to/project/pages/principal/)
-        // We need to go up to the project root and then follow the relative path.
-        // This is tricky and often better handled by storing web-accessible paths in DB.
-        // For simplicity, we'll assume direct web paths or paths relative to BMC-SMS root.
-        $absolute_path_from_script = realpath(__DIR__ . '/' . $principal_image);
-        if ($absolute_path_from_script && file_exists($absolute_path_from_script) && is_file($absolute_path_from_script)) {
-            // Convert to web-accessible path if possible, or return as is if it's already relative to web root
-            return $principal_image; // This might need further adjustment for web display
+    $full_web_path = $base_web_path . ltrim($db_image_path, '/');
+    $filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $full_web_path;
+    if (@file_exists($filesystem_path) && @is_file($filesystem_path)) {
+        return $full_web_path;
+    }
+    $possible_locations = ["pages/{$default_sub_folder}/uploads/", "uploads/{$default_sub_folder}s/", "uploads/"];
+    foreach ($possible_locations as $location) {
+        $test_path = $base_web_path . $location . basename($db_image_path);
+        $test_filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $test_path;
+        if (@file_exists($test_filesystem_path) && @is_file($test_filesystem_path)) {
+            return $test_path;
         }
     }
-    
-    // Try different directory combinations relative to current script's parent (BMC-SMS root generally)
-    foreach ($photo_directories as $dir) {
-        // Construct full filesystem path
-        $full_filesystem_path = realpath(__DIR__ . '/../..' . substr($dir, 2) . basename($principal_image)); // Adjust path from current script
-        if ($full_filesystem_path && file_exists($full_filesystem_path) && is_file($full_filesystem_path)) {
-            // Return web-accessible path relative to BASE_WEB_PATH
-            // Assuming BASE_WEB_PATH is '/BMC-SMS/'
-            return str_replace($_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/', '/BMC-SMS/', $full_filesystem_path);
-        }
-    }
-
-    return null; // No photo found
+    return null;
 }
 
-// Function to get default photo path
 function getDefaultPhotoPath()
 {
     $default_paths = [
@@ -96,8 +72,6 @@ function getDefaultPhotoPath()
         "../../assets/img/default-principal.jpg",
         "../../assets/images/default-user.jpg",
         "../../assets/img/default-user.jpg",
-        "../../assets/images/no-photo.jpg",
-        "../../assets/img/no-photo.jpg"
     ];
 
     foreach ($default_paths as $path) {
@@ -111,27 +85,8 @@ function getDefaultPhotoPath()
 
 
 // Get the actual photo path
-// When storing paths in the DB, it's generally best to store them as web-accessible relative paths from the document root, e.g., 'pages/principal/uploads/filename.jpg'
-// This simplifies photo retrieval dramatically.
-// Assuming getPrincipalPhotoPath now returns a web-accessible path (e.g. starting with /BMC-SMS/)
-$photo_path = $principal['principal_image']; // Assume DB stores the path relative to project root directly (e.g., pages/principal/uploads/...)
-if (!empty($photo_path)) {
-    // Construct the full web-accessible URL
-    $full_web_path = BASE_WEB_PATH . ltrim($photo_path, '/');
-    // Check if the file actually exists on the filesystem
-    $filesystem_path = $_SERVER['DOCUMENT_ROOT'] . $full_web_path;
-
-    if (!file_exists($filesystem_path) || !is_file($filesystem_path)) {
-        $photo_path = null; // Mark as not found if file doesn't exist
-    } else {
-        $photo_path = $full_web_path; // Use the full web-accessible path
-    }
-} else {
-    $photo_path = null; // No image path in DB
-}
-
+$photo_path = getWebAccessibleImagePath($principal['principal_image'], BASE_WEB_PATH, 'principal');
 $default_photo = getDefaultPhotoPath();
-$show_default = ($photo_path === null);
 
 
 // Define timings based on batch
@@ -241,16 +196,10 @@ if (!empty($principal['batch'])) {
                                 </div>
                                 <div class="card-body">
                                     <div class="photo-container">
-                                        <?php if ($photo_path): // Check if a valid web-accessible path was found ?>
-                                            <img src="<?php echo htmlspecialchars($photo_path); ?>"
-                                                alt="<?php echo htmlspecialchars($principal['principal_name']); ?>"
-                                                class="principal-photo"
-                                                onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($default_photo); ?>';">
-                                        <?php else: ?>
-                                            <img src="<?php echo htmlspecialchars($default_photo); ?>"
-                                                alt="Default Principal Avatar" class="principal-photo"
-                                                style="opacity: 0.7;">
-                                        <?php endif; ?>
+                                        <img src="<?php echo htmlspecialchars($photo_path ?? $default_photo); ?>"
+                                             alt="<?php echo htmlspecialchars($principal['principal_name']); ?>"
+                                             class="principal-photo"
+                                             onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($default_photo); ?>';">
                                     </div>
                                     <div class="text-center">
                                         <small class="text-muted">

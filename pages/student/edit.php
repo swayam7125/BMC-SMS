@@ -122,22 +122,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             // Update the 'student' table
-            // Removed 'password' from this update as it should only be in 'users' table
             $update_student = "UPDATE student SET
                               student_image = ?, student_name = ?, rollno = ?, std = ?, email = ?, academic_year = ?,
                               school_id = ?, dob = ?, gender = ?, blood_group = ?, address = ?,
                               father_name = ?, father_phone = ?, mother_name = ?, mother_phone = ?
-                              WHERE id = ?"; // No password here
+                              WHERE id = ?"; 
 
             $stmt_update = mysqli_prepare($conn, $update_student);
+            
+            // FIX: The type definition string now has 16 characters to match the 16 variables.
             mysqli_stmt_bind_param(
                 $stmt_update,
-                "ssssssisssssssi", // Removed 's' for password. Total 15 s, 1 i for student_id
+                "ssssssissssssssi", 
                 $image_path_for_db,
                 $student_name,
                 $rollno,
                 $std,
-                $new_email, // Use new_email here
+                $new_email, 
                 $academic_year,
                 $school_id,
                 $dob,

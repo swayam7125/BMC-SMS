@@ -19,7 +19,6 @@ $school_id = intval($_GET['id']);
 $errors = [];
 
 // Fetch current school data to populate the form
-// Removed 'school_std' from SELECT query
 $query = "SELECT id, school_logo, school_name, email, phone, school_opening, school_type, education_board, school_medium, school_category, address FROM school WHERE id = ?";
 $stmt_fetch = mysqli_prepare($conn, $query);
 mysqli_stmt_bind_param($stmt_fetch, "i", $school_id);
@@ -33,8 +32,7 @@ $school = mysqli_fetch_assoc($result);
 $selected_boards = explode(',', $school['education_board'] ?? '');
 $selected_mediums = explode(',', $school['school_medium'] ?? '');
 $selected_categories = explode(',', $school['school_category'] ?? '');
-$selected_stds = explode(',', $school['school_std'] ?? '');
-$original_logo_path = $school['school_logo']; // This path is stored directly in DB
+$original_logo_path = $school['school_logo']; 
 mysqli_stmt_close($stmt_fetch);
 
 
@@ -49,7 +47,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $education_board = implode(',', (isset($_POST['education_board']) ? $_POST['education_board'] : []));
     $school_medium = implode(',', (isset($_POST['school_medium']) ? $_POST['school_medium'] : []));
     $school_category = implode(',', (isset($_POST['school_category']) ? $_POST['school_category'] : []));
-    $school_std = implode(',', (isset($_POST['school_std']) ? $_POST['school_std'] : []));
     $logo_path_for_db = $original_logo_path; // Default to original path
 
     // Handle new logo upload
@@ -63,9 +60,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $new_filename = uniqid('logo_', true) . '.' . $file_ext;
             $destination = $target_dir . $new_filename;
             if (move_uploaded_file($file['tmp_name'], $destination)) {
-                $logo_path_for_db = $destination; // Store the new path in DB
+                $logo_path_for_db = $destination; 
 
-                // Delete old logo if it exists and is not the new one
                 if (!empty($original_logo_path) && file_exists($original_logo_path) && $original_logo_path !== $destination) {
                     unlink($original_logo_path);
                 }
@@ -81,12 +77,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($errors)) {
         try {
-            // Removed school_std from UPDATE query
             $update_query = "UPDATE school SET school_logo=?, school_name=?, email=?, phone=?, address=?, school_opening=?, school_type=?, education_board=?, school_medium=?, school_category=? WHERE id=?";
             $stmt = mysqli_prepare($conn, $update_query);
+            
+            // FIX: The type definition string now has 11 characters ("ssssssssssi") to match the 11 variables.
             mysqli_stmt_bind_param(
                 $stmt,
-                "sssssssssssi", // Ensure 's' for school_logo_path and all other string fields
+                "ssssssssssi", 
                 $logo_path_for_db,
                 $school_name,
                 $email,
@@ -97,7 +94,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $education_board,
                 $school_medium,
                 $school_category,
-                // Removed $school_std,
                 $school_id
             );
 
@@ -123,12 +119,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $school['education_board'] = $education_board;
             $school['school_medium'] = $school_medium;
             $school['school_category'] = $school_category;
-            $school['school_std'] = $school_std;
-            $school['school_logo'] = $logo_path_for_db; // Keep new logo if uploaded for sticky form
+            $school['school_logo'] = $logo_path_for_db; 
             $selected_boards = explode(',', $education_board);
             $selected_mediums = explode(',', $school_medium);
             $selected_categories = explode(',', $school_category);
-            $selected_stds = explode(',', $school_std);
         }
     }
 }
@@ -142,7 +136,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-    <!-- Corrected Font Awesome link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 </head>
@@ -251,14 +244,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <script>
         $(document).ready(function() {
             $('.multi-select').select2();
-
-            // Removed all dynamic dropdown logic for school_std
-            // const categoryToStandardMap = {...};
-            // const categorySelect = $('#school_category');
-            // const standardSelect = $('#school_std');
-            // function updateStandardOptions() {...}
-            // categorySelect.on('change', updateStandardOptions);
-            // updateStandardOptions();
         });
 
         document.getElementById('school_logo').addEventListener('change', function(event) {
@@ -269,4 +254,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </script>
 </body>
 
-</html> 
+</html>
