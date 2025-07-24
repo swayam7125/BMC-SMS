@@ -93,6 +93,7 @@ if (!empty($searchTerm)) {
     $sql .= " AND (a.title LIKE ? OR a.description LIKE ?)";
     $likeSearchTerm = "%" . $searchTerm . "%";
     $types .= 'ss';
+    $types .= 'ss';
     $params[] = $likeSearchTerm;
     $params[] = $likeSearchTerm;
 }

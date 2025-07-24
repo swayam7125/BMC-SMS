@@ -2,6 +2,12 @@
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
+// FIX: Define the BASE_WEB_PATH constant if it's not already defined.
+// This ensures that the script has access to the base URL for creating web-accessible paths.
+if (!defined('BASE_WEB_PATH')) {
+    define('BASE_WEB_PATH', '/BMC-SMS/');
+}
+
 $role = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
