@@ -41,7 +41,6 @@ $studentStd = $student_info['std'] ?? '';
 $student_info_stmt->close();
 
 // Base SQL to get assignments for the student's class, joining with submissions to check status
-// Assumes table `assignments` and `student_submissions`
 $sql = "
     SELECT 
         a.id, 
@@ -54,14 +53,15 @@ $sql = "
     LEFT JOIN student_submissions ss ON a.id = ss.assignment_id AND ss.student_id = ?
     WHERE a.school_id = ? AND a.class_std = ?
 ";
-$params = ['iii', $userId, $schoolId, $studentStd];
+$types = 'iis';
+$params = [$userId, $schoolId, $studentStd];
 $whereClauses = [];
 
 // Dynamically add WHERE clauses based on filters
 if (!empty($searchTerm)) {
     $whereClauses[] = "(a.title LIKE ? OR a.description LIKE ?)";
     $likeSearchTerm = "%" . $searchTerm . "%";
-    $params[0] .= 'ss';
+    $types .= 'ss';
     $params[] = $likeSearchTerm;
     $params[] = $likeSearchTerm;
 }
@@ -72,7 +72,7 @@ if ($filterStatus !== 'all') {
 
 if ($filterSubject !== 'all') {
     $whereClauses[] = "a.subject = ?";
-    $params[0] .= 's';
+    $types .= 's';
     $params[] = $filterSubject;
 }
 
@@ -85,8 +85,9 @@ $sql .= " ORDER BY a.due_date DESC";
 // Prepare and execute the main query
 $stmt = $conn->prepare($sql);
 if ($stmt) {
-    // Use call_user_func_array for dynamic parameter binding
-    call_user_func_array([$stmt, 'bind_param'], $params);
+    // Use the splat operator (...) for dynamic parameter binding
+    // This correctly passes arguments by reference
+    $stmt->bind_param($types, ...$params);
     $stmt->execute();
     $result = $stmt->get_result();
     $assignments = $result->fetch_all(MYSQLI_ASSOC);
