@@ -73,13 +73,13 @@ if (isset($_COOKIE['encrypted_user_role'])) {
                     </div>
                 </div>
             </li>
-    <?php
+        <?php
             break;
 
 
         // ====== School Admin (Principal) Panel ======
         case 'schooladmin':
-    ?>
+        ?>
             <div class="sidebar-heading">School Management</div>
             <li class="nav-item">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseTeacher">
@@ -106,6 +106,12 @@ if (isset($_COOKIE['encrypted_user_role'])) {
                 </div>
             </li>
             <li class="nav-item">
+                <a class="nav-link" href="/BMC-SMS/pages/academics/view_timetable.php">
+                    <i class="fas fa-fw fa-table-list"></i>
+                    <span>View Timetables</span>
+                </a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseLeaveManagement">
                     <i class="fas fa-fw fa-calendar-alt"></i>
                     <span>Leave Management</span>
@@ -117,7 +123,7 @@ if (isset($_COOKIE['encrypted_user_role'])) {
                     </div>
                 </div>
             </li>
-             <li class="nav-item">
+            <li class="nav-item">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePastData">
                     <i class="fas fa-fw fa-history"></i>
                     <span>View Past Data</span>
@@ -129,19 +135,31 @@ if (isset($_COOKIE['encrypted_user_role'])) {
                     </div>
                 </div>
             </li>
-    <?php
+        <?php
             break;
 
 
         // ====== Teacher Panel ======
         case 'teacher':
-    ?>
+        ?>
             <div class="sidebar-heading">Classroom & Actions</div>
             <li class="nav-item">
                 <a class="nav-link" href="/BMC-SMS/pages/student/student_list.php">
                     <i class="fas fa-fw fa-children"></i>
                     <span>My Students</span>
                 </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseAssignments">
+                    <i class="fas fa-fw fa-book-open"></i>
+                    <span>Manage Assignments</span>
+                </a>
+                <div id="collapseAssignments" class="collapse" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item" href="/BMC-SMS/pages/assignments/send_assignment.php">Send Assignment</a>
+                        <a class="collapse-item" href="/BMC-SMS/pages/assignments/assignment_history.php">Assignment History</a>
+                    </div>
+                </div>
             </li>
             <li class="nav-item">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseLeave">
@@ -167,18 +185,36 @@ if (isset($_COOKIE['encrypted_user_role'])) {
                     </div>
                 </div>
             </li>
-    <?php
+            <li class="nav-item">
+                <a class="nav-link" href="/BMC-SMS/pages/teacher/send_notes.php">
+                    <i class="fas fa-fw fa-paper-plane"></i>
+                    <span>Send Notes</span></a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/BMC-SMS/pages/teacher/send_timetable.php">
+                    <i class="fas fa-fw fa-calendar-days"></i>
+                    <span>Send Timetable</span>
+                </a>
+            </li>
+
+        <?php
             break;
 
 
         // ====== Student Panel ======
         case 'student':
-    ?>
+        ?>
             <div class="sidebar-heading">My Academics</div>
             <li class="nav-item">
                 <a class="nav-link" href="/BMC-SMS/pages/user/profile.php">
                     <i class="fas fa-fw fa-id-card"></i>
                     <span>My Profile</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/BMC-SMS/pages/assignments/view_assignments.php">
+                    <i class="fas fa-fw fa-clipboard-list"></i>
+                    <span>View Assignments</span>
                 </a>
             </li>
             <li class="nav-item">
@@ -191,6 +227,17 @@ if (isset($_COOKIE['encrypted_user_role'])) {
                 <a class="nav-link" href="#">
                     <i class="fas fa-fw fa-file-lines"></i>
                     <span>View Results</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/BMC-SMS/pages/student/view_notes.php">
+                    <i class="fas fa-fw fa-eye"></i>
+                    <span>View Notes</span></a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/BMC-SMS/pages/student/view_timetable.php">
+                    <i class="fas fa-fw fa-table-list"></i>
+                    <span>View Timetable</span>
                 </a>
             </li>
     <?php

@@ -15,9 +15,11 @@ if (!$role) {
 }
 
 $errors = [];
+$batch = $_POST['batch'] ?? '';
+$school_id_posted = $_POST['school_id'] ?? '';
 
-// Handle form submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// Handle form submission only when the main enroll button is clicked
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) {
     // --- Retrieve all form data ---
     $school_id = $_POST['school_id'];
     $principal_name = trim($_POST['principal_name']);
@@ -30,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $qualification = trim($_POST['qualification']);
     $salary = trim($_POST['salary']);
     $password = $_POST['password'];
-    $batch = $_POST['batch'];
+    $timings = $_POST['timings'] ?? [];
 
     $image_path_for_db = null;
 
@@ -57,14 +59,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "A valid email is required.";
     if (empty($password)) $errors[] = "Password is required.";
     if (empty($gender)) $errors[] = "Gender is required.";
-    if (empty($blood_group)) $errors[] = "Blood group is required.";
     
     if (empty($errors)) {
         mysqli_autocommit($conn, false);
         try {
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
-            // 1. Insert into users table FIRST to get the user_id
+            // Step 1. Insert into users table
             $user_role = 'schooladmin';
             $insert_user_query = "INSERT INTO users (role, email, password) VALUES (?, ?, ?)";
             $stmt_user = mysqli_prepare($conn, $insert_user_query);
@@ -75,38 +76,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $new_user_id = mysqli_insert_id($conn);
             mysqli_stmt_close($stmt_user);
 
-            // 2. Insert into 'principal' table
-            $insert_principal_query = "INSERT INTO principal (
-                id, principal_image, school_id, principal_name, email, password, phone,
-                principal_dob, gender, blood_group, address, qualification, salary, batch
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
+            // Step 2. Insert into 'principal' table
+            $insert_principal_query = "INSERT INTO principal (id, principal_image, school_id, principal_name, email, password, phone, principal_dob, gender, blood_group, address, qualification, salary, batch) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt_principal = mysqli_prepare($conn, $insert_principal_query);
-            
-            // --- THIS IS THE CORRECTED LINE ---
-            // The type string now correctly matches the data: i(d), s(tring), i(nteger)...
-            mysqli_stmt_bind_param(
-                $stmt_principal, "isssssssssssds", // Corrected from "iis..."
-                $new_user_id,
-                $image_path_for_db, 
-                $school_id, 
-                $principal_name, 
-                $email, 
-                $hashed_password,
-                $phone, 
-                $principal_dob, 
-                $gender, 
-                $blood_group, 
-                $address, 
-                $qualification, 
-                $salary, 
-                $batch
-            );
-
+            mysqli_stmt_bind_param($stmt_principal, "issssssssssdss", $new_user_id, $image_path_for_db, $school_id, $principal_name, $email, $hashed_password, $phone, $principal_dob, $gender, $blood_group, $address, $qualification, $salary, $batch);
             if (!mysqli_stmt_execute($stmt_principal)) {
                 throw new Exception("Principal record creation failed: " . mysqli_stmt_error($stmt_principal));
             }
             mysqli_stmt_close($stmt_principal);
+
+            // Step 3. Insert into 'principal_timings' table
+            $insert_timing_query = "INSERT INTO principal_timings (principal_id, day_of_week, opens_at, closes_at, is_closed) VALUES (?, ?, ?, ?, ?)";
+            $stmt_timing = mysqli_prepare($conn, $insert_timing_query);
+
+            foreach ($timings as $day => $details) {
+                $is_closed = isset($details['is_closed']) ? 1 : 0;
+                // Convert AM/PM time to 24-hour format for database
+                $opens_at = ($is_closed || empty($details['opens_at'])) ? null : date("H:i:s", strtotime($details['opens_at']));
+                $closes_at = ($is_closed || empty($details['closes_at'])) ? null : date("H:i:s", strtotime($details['closes_at']));
+                mysqli_stmt_bind_param($stmt_timing, "isssi", $new_user_id, $day, $opens_at, $closes_at, $is_closed);
+                if (!mysqli_stmt_execute($stmt_timing)) {
+                    throw new Exception("Failed to save timings for $day: " . mysqli_stmt_error($stmt_timing));
+                }
+            }
+            mysqli_stmt_close($stmt_timing);
             
             mysqli_commit($conn);
             header("Location: ../../pages/principal/principal_list.php?success=Principal enrolled successfully");
@@ -115,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (Exception $e) {
             mysqli_rollback($conn);
             if(mysqli_errno($conn) == 1062){
-                $errors[] = "A principal with this email or phone number already exists.";
+                $errors[] = "A principal with this email already exists.";
             } else {
                 $errors[] = "Database error: " . $e->getMessage();
             }
@@ -123,26 +116,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Fetch schools that don't have a principal yet
-$school_query = "SELECT s.id, s.school_name FROM school s LEFT JOIN principal p ON s.id = p.school_id WHERE p.school_id IS NULL ORDER BY s.school_name";
-$school_result = mysqli_query($conn, $school_query);
+$school_result = [];
+if (!empty($batch)) {
+    $school_query = "SELECT s.id, s.school_name FROM school s WHERE NOT EXISTS (SELECT 1 FROM principal p WHERE p.school_id = s.id AND p.batch = ?) ORDER BY s.school_name";
+    $stmt = mysqli_prepare($conn, $school_query);
+    mysqli_stmt_bind_param($stmt, "s", $batch);
+    mysqli_stmt_execute($stmt);
+    $school_result = mysqli_stmt_get_result($stmt);
+}
+
+$pageTitle = 'Enroll Principal';
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Enroll Principal - School Management System</title>
+    <title><?php echo htmlspecialchars($pageTitle); ?></title>
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-timepicker/1.13.18/jquery.timepicker.min.css" />
 </head>
 <body id="page-top">
     <div id="wrapper">
-        <?php include_once '../../includes/sidebar.php'; ?>
+    <?php include '../sidebar.php';?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
+                <?php include_once '.././header.php'; ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Enroll New Principal</h1>
@@ -154,12 +155,12 @@ $school_result = mysqli_query($conn, $school_query);
                     <div class="card shadow mb-4">
                         <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Principal Information</h6></div>
                         <div class="card-body">
-                             <form method="POST" enctype="multipart/form-data">
+                             <form method="POST" enctype="multipart/form-data" id="principalForm">
                                 <div class="row">
                                     <div class="col-md-3 text-center">
                                         <label>Photo Preview</label><br>
                                         <img src="../../assets/img/default-user.jpg" alt="Principal Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
-                                        <div class="form-group"><label for="principal_image" class="small btn btn-sm btn-info"><i class="fas fa-upload fa-sm"></i> Upload Photo</label><input type="file" class="d-none" id="principal_image" name="principal_image" onchange="document.getElementById('imagePreview').src = window.URL.createObjectURL(this.files[0])"></div>
+                                        <div class="form-group"><label for="principal_image" class="small btn btn-sm btn-info"><i class="fas fa-upload fa-sm"></i> Upload Photo</label><input type="file" class="d-none" id="principal_image" name="principal_image" accept="image/*"></div>
                                     </div>
                                     <div class="col-md-9">
                                         <div class="form-row">
@@ -173,27 +174,71 @@ $school_result = mysqli_query($conn, $school_query);
                                 </div>
                                 <hr>
                                 <div class="form-row">
-                                    <div class="form-group col-md-4"><label for="school_id">Assign to School *</label><select class="form-control" id="school_id" name="school_id" required><option value="">-- Select School --</option><?php while ($school = mysqli_fetch_assoc($school_result)) { $selected = (isset($_POST['school_id']) && $_POST['school_id'] == $school['id']) ? 'selected' : ''; echo "<option value='{$school['id']}' {$selected}>" . htmlspecialchars($school['school_name']) . "</option>"; } if(mysqli_num_rows($school_result) == 0) { echo "<option disabled>No unassigned schools</option>"; } ?></select></div>
-                                    <div class="form-group col-md-4">
+                                    <div class="form-group col-md-6">
                                         <label for="batch">Batch *</label>
-                                        <select class="form-control" id="batch" name="batch" required>
+                                        <select class="form-control" id="batch" name="batch" required onchange="document.getElementById('principalForm').submit()">
                                             <option value="">-- Select Batch --</option>
-                                            <option value="Morning" <?php echo (isset($_POST['batch']) && $_POST['batch'] == 'Morning') ? 'selected' : ''; ?>>Morning</option>
-                                            <option value="Evening" <?php echo (isset($_POST['batch']) && $_POST['batch'] == 'Evening') ? 'selected' : ''; ?>>Evening</option>
+                                            <option value="Morning" <?= ($batch == 'Morning') ? 'selected' : '' ?>>Morning</option>
+                                            <option value="Evening" <?= ($batch == 'Evening') ? 'selected' : '' ?>>Evening</option>
                                         </select>
                                     </div>
-                                    <div class="form-group col-md-4">
-                                        <label>Timings</label>
-                                        <div id="timingDetails" class="border p-2 rounded" style="min-height: 40px;"></div>
+                                    <div class="form-group col-md-6">
+                                        <label for="school_id">School *</label>
+                                        <select class="form-control" id="school_id" name="school_id" required>
+                                            <option value="">-- Select School --</option>
+                                            <?php if (!empty($school_result)) {
+                                                while ($row = mysqli_fetch_assoc($school_result)) {
+                                                    $selected = ($school_id_posted == $row['id']) ? 'selected' : '';
+                                                    echo "<option value='{$row['id']}' $selected>" . htmlspecialchars($row['school_name']) . "</option>";
+                                                }
+                                            } ?>
+                                        </select>
                                     </div>
                                 </div>
+                                <hr>
+                                <h6 class="font-weight-bold text-primary mb-3">Weekly Timings</h6>
+                                <div id="timings-schedule">
+                                    <?php
+                                    $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                                    foreach ($days as $day):
+                                        $posted_day = $_POST['timings'][$day] ?? [];
+                                        $is_closed = isset($posted_day['is_closed']);
+                                        $opens_at = $posted_day['opens_at'] ?? '10:00 AM';
+                                        $closes_at = $posted_day['closes_at'] ?? '08:00 PM';
+                                    ?>
+                                    <div class="form-row align-items-center mb-2 timing-row" data-day="<?php echo $day; ?>">
+                                        <div class="col-md-2">
+                                            <label class="mb-0"><?php echo $day; ?></label>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <div class="custom-control custom-checkbox">
+                                                <input type="checkbox" class="custom-control-input closed-checkbox" id="closed_<?php echo $day; ?>" name="timings[<?php echo $day; ?>][is_closed]" <?php if ($is_closed) echo 'checked'; ?>>
+                                                <label class="custom-control-label" for="closed_<?php echo $day; ?>">Closed</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="input-group">
+                                                <div class="input-group-prepend"><span class="input-group-text small">Opens at</span></div>
+                                                <input type="text" class="form-control timepicker opens-at" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="input-group">
+                                                <div class="input-group-prepend"><span class="input-group-text small">Closes at</span></div>
+                                                <input type="text" class="form-control timepicker closes-at" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                                <hr>
                                 <div class="form-row">
                                     <div class="form-group col-md-6"><label for="phone">Phone</label><input type="tel" class="form-control" id="phone" name="phone" value="<?php echo htmlspecialchars($_POST['phone'] ?? ''); ?>" maxlength="10"></div>
                                     <div class="form-group col-md-6"><label for="principal_dob">Date of Birth</label><input type="date" class="form-control" id="principal_dob" name="principal_dob" value="<?php echo htmlspecialchars($_POST['principal_dob'] ?? ''); ?>"></div>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group col-md-6"><label for="gender">Gender *</label><select class="form-control" id="gender" name="gender" required><option value="">-- Select Gender --</option><option value="Male" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Male') ? 'selected' : ''; ?>>Male</option><option value="Female" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Female') ? 'selected' : ''; ?>>Female</option><option value="Others" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Others') ? 'selected' : ''; ?>>Others</option></select></div>
-                                    <div class="form-group col-md-6"><label for="blood_group">Blood Group *</label><select class="form-control" id="blood_group" name="blood_group" required><option value="">-- Select Blood Group --</option><?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']; foreach ($bg_options as $bg) { $selected = (isset($_POST['blood_group']) && $_POST['blood_group'] == $bg) ? 'selected' : ''; echo "<option value='{$bg}' {$selected}>" . $bg . "</option>"; } ?></select></div>
+                                    <div class="form-group col-md-6"><label for="blood_group">Blood Group</label><select class="form-control" id="blood_group" name="blood_group"><option value="">-- Select Blood Group --</option><?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']; foreach ($bg_options as $bg) { $selected = (isset($_POST['blood_group']) && $_POST['blood_group'] == $bg) ? 'selected' : ''; echo "<option value='{$bg}' {$selected}>" . $bg . "</option>"; } ?></select></div>
                                 </div>
                                 <div class="form-row">
                                      <div class="form-group col-md-6"><label for="qualification">Qualification</label><input type="text" class="form-control" id="qualification" name="qualification" value="<?php echo htmlspecialchars($_POST['qualification'] ?? ''); ?>"></div>
@@ -204,7 +249,7 @@ $school_result = mysqli_query($conn, $school_query);
                                     <textarea class="form-control" id="address" name="address" rows="2"><?php echo htmlspecialchars($_POST['address'] ?? ''); ?></textarea>
                                 </div>
                                 <div class="form-group mt-4">
-                                    <button type="submit" class="btn btn-primary"><i class="fas fa-user-plus"></i> Enroll Principal</button>
+                                    <button type="submit" name="enroll_principal" class="btn btn-primary"><i class="fas fa-user-plus"></i> Enroll Principal</button>
                                     <button type="reset" class="btn btn-secondary"><i class="fas fa-times"></i> Reset Form</button>
                                 </div>
                             </form>
@@ -212,62 +257,55 @@ $school_result = mysqli_query($conn, $school_query);
                     </div>
                 </div>
             </div>
-            <?php include_once '../../includes/footer.php'; ?>
+            <?php include_once '../footer.php'; ?>
         </div>
     </div>
-    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
-        aria-hidden="true">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="exampleModalLabel">Ready to Leave?</h5>
-                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">×</span>
-                    </button>
-                </div>
-                <div class="modal-body">Select "Logout" below if you are ready to end your current session.</div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
-                    <a class="btn btn-primary" href="/BMC-SMS/logout.php">Logout</a>
-                </div>
-            </div>
-                <script src="../../assets/vendor/jquery/jquery.min.js"></script>
+    
+    <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-timepicker/1.13.18/jquery.timepicker.min.js"></script>
+    
     <script>
         $(document).ready(function() {
-            // ADDED: Logic for principal timings
-            const timingDetails = $('#timingDetails');
-            const batchSelect = $('#batch');
+            // Initialize the AM/PM timepicker
+            $('.timepicker').timepicker({
+                timeFormat: 'h:i A', // 'A' shows AM/PM
+                interval: 30, // 30 minute intervals
+                dynamic: false,
+                dropdown: true,
+                scrollbar: true
+            });
 
-            const timings = {
-                principal: {
-                    Morning: `
-                        <div><strong>Mon-Sat:</strong> 7:00 AM - 2:00 PM</div>
-                        <div><strong>Sunday:</strong> 10:00 AM - 12:00 PM</div>
-                    `,
-                    Evening: `
-                        <div><strong>Mon-Sat:</strong> 11:00 AM - 6:00 PM</div>
-                        <div><strong>Sunday:</strong> 10:00 AM - 12:00 PM</div>
-                    `
+            // Image Preview
+            $('#principal_image').on('change', function(event) {
+                if (event.target.files && event.target.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        $('#imagePreview').attr('src', e.target.result);
+                    }
+                    reader.readAsDataURL(event.target.files[0]);
                 }
-            };
+            });
 
-            function updateTimings() {
-                const selectedBatch = batchSelect.val();
-                if (selectedBatch && timings.principal[selectedBatch]) {
-                    timingDetails.html(timings.principal[selectedBatch]);
+            // Timings schedule logic: Disable time inputs when "Closed" is checked
+            $('.closed-checkbox').on('change', function() {
+                const row = $(this).closest('.timing-row');
+                const timeInputs = row.find('.timepicker'); // Target by class now
+                if ($(this).is(':checked')) {
+                    timeInputs.prop('disabled', true);
                 } else {
-                    timingDetails.html('');
+                    timeInputs.prop('disabled', false);
                 }
-            }
-            batchSelect.on('change', updateTimings);
-            updateTimings(); 
-        });
-        document.getElementById('principal_image').addEventListener('change', function(event) {
-            if (event.target.files[0]) {
-                document.getElementById('imagePreview').src = URL.createObjectURL(event.target.files[0]);
-            }
+            });
+
+            // Reset form
+            $('button[type="reset"]').on('click', function() {
+                $('#principalForm')[0].reset();
+                $('#imagePreview').attr('src', '../../assets/img/default-user.jpg');
+                // Re-evaluate the disabled state of time inputs after reset
+                $('.closed-checkbox').trigger('change'); 
+            });
         });
     </script>
 </body>
