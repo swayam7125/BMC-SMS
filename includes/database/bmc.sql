@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jul 24, 2025 at 08:39 AM
+-- Generation Time: Jul 24, 2025 at 10:55 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -20,6 +20,31 @@ SET time_zone = "+00:00";
 --
 -- Database: `bmc`
 --
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `attendance`
+--
+
+CREATE TABLE `attendance` (
+  `attendance_id` int(11) NOT NULL,
+  `student_id` int(11) NOT NULL,
+  `teacher_id` int(11) NOT NULL,
+  `school_id` int(11) NOT NULL,
+  `std` varchar(10) NOT NULL,
+  `attendance_date` date NOT NULL,
+  `status` enum('Present','Absent','Leave') NOT NULL,
+  `remark` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `attendance`
+--
+
+INSERT INTO `attendance` (`attendance_id`, `student_id`, `teacher_id`, `school_id`, `std`, `attendance_date`, `status`, `remark`) VALUES
+(1, 3, 6, 4, '11', '2025-07-24', 'Present', NULL),
+(2, 11, 6, 4, '11', '2025-07-24', 'Absent', NULL);
 
 -- --------------------------------------------------------
 
@@ -244,7 +269,8 @@ CREATE TABLE `student` (
 --
 
 INSERT INTO `student` (`id`, `student_image`, `student_name`, `rollno`, `std`, `email`, `password`, `academic_year`, `school_id`, `dob`, `gender`, `blood_group`, `address`, `father_name`, `father_phone`, `mother_name`, `mother_phone`) VALUES
-(3, NULL, 'devam parekh', '8526548525', '12', 'devam@gmail.com', '$2y$10$vl/hHLMF3ar5GEc6pQJfVexTt3vKCXoAGF/9HcDtgGGDsfKHoXHQu', '2024-2025', 4, '2025-07-11', 'male', 'b+', 'canal road', 'mukesh', '9874522589', 'sunita', '753685124');
+(3, NULL, 'devam parekh', '9', '11', 'devam@gmail.com', '$2y$10$vl/hHLMF3ar5GEc6pQJfVexTt3vKCXoAGF/9HcDtgGGDsfKHoXHQu', '2024-2025', 4, '2025-07-11', 'male', 'b+', 'canal road', 'mukesh', '9874522589', 'sunita', '753685124'),
+(11, '../../pages/student/uploads/student_6881e50218b1f5.49660569.jpg', 'harsh shah', '10', '11', 'harsh@gmail.com', '$2y$10$819fe414Y7sRnMLMDPtoDOnJCkFLE8BNRJaB1zFnh9LIxeLQHHaSa', '2024-2025', 4, '2025-07-08', 'male', 'ab+', 'navyug', 'hemant', '9898440096', 'Sita', '9924976503');
 
 -- --------------------------------------------------------
 
@@ -335,11 +361,21 @@ INSERT INTO `users` (`id`, `role`, `email`, `password`) VALUES
 (3, 'student', 'devam@gmail.com', '$2y$10$vl/hHLMF3ar5GEc6pQJfVexTt3vKCXoAGF/9HcDtgGGDsfKHoXHQu'),
 (6, 'teacher', 'meet@gmail.com', '$2y$10$sdz4DZ5oaMJNrUA9mld44uiBNIIkAQCPjs2XrrnUcl.Bp6wlzYz1a'),
 (8, 'bmc', 'swayam@gmail.com', '$2y$10$T74F9Gb05l.StKcZg2sy/ub6PHeH.l3tT3Lv1JwOZzioXJCdEN0zO'),
-(10, 'schooladmin', 'fenil@gmail.com', '$2y$10$EaSZM1Mq/otD2L1wHMoZdefcPjkOWeXPjePcvdj5WLY/6Lx5DxrJ6');
+(10, 'schooladmin', 'fenil@gmail.com', '$2y$10$EaSZM1Mq/otD2L1wHMoZdefcPjkOWeXPjePcvdj5WLY/6Lx5DxrJ6'),
+(11, 'student', 'harsh@gmail.com', '$2y$10$819fe414Y7sRnMLMDPtoDOnJCkFLE8BNRJaB1zFnh9LIxeLQHHaSa');
 
 --
 -- Indexes for dumped tables
 --
+
+--
+-- Indexes for table `attendance`
+--
+ALTER TABLE `attendance`
+  ADD PRIMARY KEY (`attendance_id`),
+  ADD KEY `student_id` (`student_id`),
+  ADD KEY `teacher_id` (`teacher_id`),
+  ADD KEY `school_id` (`school_id`);
 
 --
 -- Indexes for table `deleted_principals`
@@ -434,6 +470,12 @@ ALTER TABLE `users`
 --
 
 --
+-- AUTO_INCREMENT for table `attendance`
+--
+ALTER TABLE `attendance`
+  MODIFY `attendance_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
 -- AUTO_INCREMENT for table `deleted_principals`
 --
 ALTER TABLE `deleted_principals`
@@ -485,11 +527,19 @@ ALTER TABLE `subjects`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- Constraints for dumped tables
 --
+
+--
+-- Constraints for table `attendance`
+--
+ALTER TABLE `attendance`
+  ADD CONSTRAINT `attendance_ibfk_1` FOREIGN KEY (`student_id`) REFERENCES `student` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `attendance_ibfk_2` FOREIGN KEY (`teacher_id`) REFERENCES `teacher` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `attendance_ibfk_3` FOREIGN KEY (`school_id`) REFERENCES `school` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `leave_applications`

@@ -13,7 +13,7 @@ if (!$role) {
     exit;
 }
 
-// UPDATED: Query now fetches batch, and does not fetch gender
+// Query fetches batch and does not fetch gender
 $query = "SELECT t.id, t.teacher_name, t.email, t.phone, t.subject, t.std, t.batch,
                 sc.school_name 
         FROM teacher t 
@@ -31,14 +31,13 @@ $result = mysqli_query($conn, $query);
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-    <!-- Corrected Font Awesome link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
 </head>
 
 <body id="page-top">
     <div id="wrapper">
-    <?php include '../../includes/sidebar.php';?>
+        <?php include_once '../../includes/sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
@@ -90,7 +89,6 @@ $result = mysqli_query($conn, $query);
                                                 echo "<td>" . htmlspecialchars($row['email'] ?? 'N/A') . "</td>";
                                                 echo "<td>" . htmlspecialchars($row['phone'] ?? 'N/A') . "</td>";
                                                 echo "<td>" . htmlspecialchars($row['school_name'] ?? 'N/A') . "</td>";
-                                                // ADDED: Batch column
                                                 echo "<td>" . htmlspecialchars($row['batch'] ?? 'N/A') . "</td>";
                                                 echo "<td>" . htmlspecialchars($row['subject'] ?? 'N/A') . "</td>";
                                                 echo "<td>" . htmlspecialchars($row['std'] ?? 'N/A') . "</td>";
@@ -102,7 +100,6 @@ $result = mysqli_query($conn, $query);
                                                 echo "</tr>";
                                             }
                                         } else {
-                                            // UPDATED: Colspan is now 9
                                             echo "<tr><td colspan='9' class='text-center'>No teachers found</td></tr>";
                                         }
                                         ?>
@@ -117,28 +114,7 @@ $result = mysqli_query($conn, $query);
             <?php include_once '../../includes/footer.php'; ?>
             </div>
     </div>
-
-    <script src="../../assets/vendor/jquery/jquery.min.js"></script>
-    <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
-    <script src="../../assets/js/sb-admin-2.min.js"></script>
-    <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
-    <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            $('#dataTable').DataTable({
-                "pageLength": 25,
-                "order": [
-                    [0, "asc"]
-                ]
-            });
-        });
-
-        function confirmDelete(id) {
-            $('#confirmDeleteBtn').attr('href', 'delete.php?id=' + id);
-            $('#deleteModal').modal('show');
-        }
-    </script>
+    
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
         aria-hidden="true">
         <div class="modal-dialog" role="document">
@@ -157,6 +133,48 @@ $result = mysqli_query($conn, $query);
             </div>
         </div>
     </div>
+    
+    <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteModalLabel">Confirm Delete</h5>
+                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                </div>
+                <div class="modal-body">Are you sure you want to delete this teacher? This action cannot be undone.
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
+                    <a class="btn btn-danger" id="confirmDeleteBtn" href="#">Delete</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="../../assets/vendor/jquery/jquery.min.js"></script>
+    <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
+    <script src="../../assets/js/sb-admin-2.min.js"></script>
+    <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
+    <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#dataTable').DataTable({
+                "pageLength": 25,
+                "order": [
+                    [0, "asc"]
+                ]
+            });
+        });
+
+        function confirmDelete(id) {
+            // This function finds the modal and sets the correct delete link
+            $('#confirmDeleteBtn').attr('href', 'delete.php?id=' + id);
+            $('#deleteModal').modal('show');
+        }
+    </script>
 </body>
 
 </html>
