@@ -2,93 +2,112 @@
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
-// Check if user is logged in
+// Check if user is logged in and has a valid role
 $role = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
 
+// Redirect to login if not logged in
 if (!$role) {
     header("Location: ../../login.php");
     exit;
 }
 
+// Ensure a valid Principal ID is provided
 if (!isset($_GET['id']) || empty($_GET['id'])) {
-    header("Location: principal_list.php?error=Invalid ID provided");
+    header("Location: principal_list.php?error=Invalid Principal ID provided");
     exit;
 }
 
-$principal_id = intval($_GET['id']); // This principal_id is now also the user_id
-$user_id_to_delete = $principal_id; // The ID is directly the user ID
+$principal_id = intval($_GET['id']);
 
-// Start transaction
+// Start a database transaction to ensure data integrity
 mysqli_begin_transaction($conn);
 
 try {
-    // 1. Verify the user's role before deleting (security check)
-    // This is crucial to prevent deleting the wrong user if an ID is tampered with.
-    $check_user_role_query = "SELECT role, email, password FROM users WHERE id = ?"; // Fetch email for image path and password for audit (if needed)
-    $stmt_check = mysqli_prepare($conn, $check_user_role_query);
-    mysqli_stmt_bind_param($stmt_check, "i", $user_id_to_delete);
-    mysqli_stmt_execute($stmt_check);
-    $result_check = mysqli_stmt_get_result($stmt_check);
-    $user_record = mysqli_fetch_assoc($result_check);
-    mysqli_stmt_close($stmt_check);
+    // Step 1: Fetch the full record of the principal to be deleted
+    // We select all columns needed for the `deleted_principals` table.
+    $query_fetch_principal = "SELECT * FROM principal WHERE id = ?";
+    $stmt_fetch = mysqli_prepare($conn, $query_fetch_principal);
+    mysqli_stmt_bind_param($stmt_fetch, "i", $principal_id);
+    mysqli_stmt_execute($stmt_fetch);
+    $result_principal = mysqli_stmt_get_result($stmt_fetch);
+    $principal_data = mysqli_fetch_assoc($result_principal);
+    mysqli_stmt_close($stmt_fetch);
 
-    if (!$user_record || $user_record['role'] !== 'schooladmin') { // Principal is 'schooladmin' role
-        throw new Exception("User not found or role mismatch for deletion.");
+    // If no principal record is found, throw an error and stop
+    if (!$principal_data) {
+        throw new Exception("Principal with ID $principal_id not found.");
     }
+
+    // Step 2: Insert the fetched data into the `deleted_principals` table for archiving.
+    $query_archive_principal = "INSERT INTO deleted_principals 
+                                (id, principal_name, email, phone, dob, gender, blood_group, address, qualification, salary, batch, school_id, deleted_by_role) 
+                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     
-    $principal_email = $user_record['email']; // Get email from users table
-    // Fetch principal_image for deletion
-    $query_principal_image = "SELECT principal_image FROM principal WHERE id = ?";
-    $stmt_image = mysqli_prepare($conn, $query_principal_image);
-    mysqli_stmt_bind_param($stmt_image, "i", $principal_id);
-    mysqli_stmt_execute($stmt_image);
-    $result_image = mysqli_stmt_get_result($stmt_image);
-    $image_data = mysqli_fetch_assoc($result_image);
-    $image_path = $image_data['principal_image'] ?? null;
-    mysqli_stmt_close($stmt_image);
+    $stmt_archive = mysqli_prepare($conn, $query_archive_principal);
+    mysqli_stmt_bind_param($stmt_archive, "issssssssssis",
+        $principal_data['id'],
+        $principal_data['principal_name'],
+        $principal_data['email'],
+        $principal_data['phone'],
+        $principal_data['principal_dob'], // Note: Mapping 'principal_dob' to 'dob'
+        $principal_data['gender'],
+        $principal_data['blood_group'],
+        $principal_data['address'],
+        $principal_data['qualification'],
+        $principal_data['salary'],
+        $principal_data['batch'],
+        $principal_data['school_id'],
+        $role // The role of the user performing the deletion
+    );
 
-
-    // 2. Delete the user record from the 'users' table.
-    // Due to `ON DELETE CASCADE` foreign key on `principal.id` referencing `users.id`,
-    // the corresponding record in the `principal` table will be automatically deleted.
-    $delete_user_query = "DELETE FROM users WHERE id = ?";
-    $stmt_user = mysqli_prepare($conn, $delete_user_query);
-    mysqli_stmt_bind_param($stmt_user, "i", $user_id_to_delete);
-    if (!mysqli_stmt_execute($stmt_user)) {
-        throw new Exception("Error deleting user from users table: " . mysqli_stmt_error($stmt_user));
+    // Execute the archiving query
+    if (!mysqli_stmt_execute($stmt_archive)) {
+        throw new Exception("Failed to archive principal data: " . mysqli_stmt_error($stmt_archive));
     }
+    mysqli_stmt_close($stmt_archive);
+
+    // Step 3: Delete the user from the 'users' table.
+    // The `ON DELETE CASCADE` constraint on the `principal` table will automatically delete the principal's record.
+    $query_delete_user = "DELETE FROM users WHERE id = ?";
+    $stmt_delete = mysqli_prepare($conn, $query_delete_user);
+    mysqli_stmt_bind_param($stmt_delete, "i", $principal_id);
     
-    // Check if a row was actually deleted from users (implies cascade worked if FK is set)
-    if (mysqli_stmt_affected_rows($stmt_user) === 0) {
-        throw new Exception("User record could not be deleted (already removed?).");
+    if (!mysqli_stmt_execute($stmt_delete)) {
+        throw new Exception("Failed to delete principal from active records: " . mysqli_stmt_error($stmt_delete));
     }
-    mysqli_stmt_close($stmt_user);
 
-    // 3. Delete the uploaded image file, if it exists (only if not handled by your DB triggers or another system)
-    // This part is crucial as ON DELETE CASCADE does not delete actual files.
+    // Verify that a row was actually deleted
+    if (mysqli_stmt_affected_rows($stmt_delete) === 0) {
+        throw new Exception("Principal could not be deleted (record may have already been removed).");
+    }
+    mysqli_stmt_close($stmt_delete);
+
+    // Step 4: Delete the principal's image file from the server
+    $image_path = $principal_data['principal_image'];
     if (!empty($image_path) && file_exists($image_path)) {
         unlink($image_path);
     }
 
-    // If all successful, commit the transaction
+    // If all steps succeeded, commit the transaction to make the changes permanent
     mysqli_commit($conn);
 
-    header("Location: principal_list.php?success=Principal deleted successfully");
+    // Redirect back to the list with a success message
+    header("Location: principal_list.php?success=Principal was successfully deleted and archived.");
     exit;
 
 } catch (Exception $e) {
     // If any step failed, roll back the entire transaction
     mysqli_rollback($conn);
 
-    // Redirect with a detailed error message
+    // Redirect back with an error message
     header("Location: principal_list.php?error=" . urlencode($e->getMessage()));
     exit;
 
 } finally {
-    // Always close the connection
+    // Always close the database connection
     mysqli_close($conn);
 }
 ?>

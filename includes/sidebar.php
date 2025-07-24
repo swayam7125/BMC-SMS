@@ -17,7 +17,7 @@ if (isset($_COOKIE['encrypted_user_role'])) {
         <div class="sidebar-brand-icon rotate-n-15">
             <i class="fas fa-laugh-wink"></i>
         </div>
-        </a>
+    </a>
 
     <hr class="sidebar-divider my-0">
 
@@ -68,8 +68,8 @@ if (isset($_COOKIE['encrypted_user_role'])) {
                 </a>
                 <div id="collapsePastData" class="collapse" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="#">Past School List</a>
-                        <a class="collapse-item" href="#">Past Principal List</a>
+                        <a class="collapse-item" href="/BMC-SMS/pages/past_record/past_school.php">Past School List</a>
+                        <a class="collapse-item" href="/BMC-SMS/pages/past_record/past_principal.php">Past Principal List</a>
                     </div>
                 </div>
             </li>
@@ -114,6 +114,18 @@ if (isset($_COOKIE['encrypted_user_role'])) {
                     <div class="bg-white py-2 collapse-inner rounded">
                         <a class="collapse-item" href="/BMC-SMS/pages/principal/principal_leave_requests.php">Pending Requests</a>
                         <a class="collapse-item" href="/BMC-SMS/pages/principal/principal_leave_history.php">Application History</a>
+                    </div>
+                </div>
+            </li>
+             <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePastData">
+                    <i class="fas fa-fw fa-history"></i>
+                    <span>View Past Data</span>
+                </a>
+                <div id="collapsePastData" class="collapse" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item" href="/BMC-SMS/pages/past_record/past_teacher.php">Past Teacher List</a>
+                        <a class="collapse-item" href="/BMC-SMS/pages/past_record/past_student.php">Past Student List</a>
                     </div>
                 </div>
             </li>
