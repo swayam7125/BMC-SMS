@@ -86,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt_principal = mysqli_prepare($conn, $insert_principal_query);
             // Add 'i' for the new_user_id (integer) at the beginning of bind_param types
             mysqli_stmt_bind_param(
-                $stmt_principal, "iisssssssssds", // Add 'i' at the start
+                $stmt_principal, "sissssssssssds", // Add 'i' at the start
                 $new_user_id, // Pass the ID from the users table
                 $image_path_for_db, $school_id, $principal_name, $email, $hashed_password,
                 $phone, $principal_dob, $gender, $blood_group, $address, $qualification, $salary, $batch

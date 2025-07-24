@@ -1,67 +1,49 @@
 <?php
-include_once __DIR__ . "/../includes/connect.php"; // Corrected path to connect.php
-include_once __DIR__ . "/../encryption.php"; // Corrected path to encryption.php
+// Corrected absolute paths for both files for reliability
+include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/connect.php'; 
+include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/encryption.php'; 
 
 // For debugging - KEEP THIS DURING DEVELOPMENT
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// FIX: Only define the constant if it hasn't been defined already.
-// This prevents a "redeclaration" error when this file is included by other pages.
+// Only define the constant if it hasn't been defined already.
 if (!defined('BASE_WEB_PATH')) {
-    define('BASE_WEB_PATH', '/BMC-SMS/'); // Make sure this matches your actual setup.
+    define('BASE_WEB_PATH', '/BMC-SMS/'); 
 }
 
-// Set default values
-$userProfileImage = BASE_WEB_PATH . 'assets/images/undraw_profile.svg'; // Default image relative to web root
+// Set default values for a logged-out user
 $userName = 'Guest';
-$user_role = 'User'; // Default role
+$user_role = 'User'; 
+$userProfileImage = BASE_WEB_PATH . 'assets/images/undraw_profile.svg';
+$isLoggedIn = false;
 
-// Check if user is logged in via cookie
-if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'])) {
-    $user_id = decrypt_id($_COOKIE['encrypted_user_id']);
+// If the user is logged in, determine their details
+if (isset($_COOKIE['encrypted_user_role'])) {
+    $isLoggedIn = true;
     $user_role = decrypt_id($_COOKIE['encrypted_user_role']);
+    
+    if ($user_role === 'bmc') {
+        $userName = 'BMC Admin';
+    } else {
+        // Fetch specific details for non-BMC users
+        if (isset($_COOKIE['encrypted_user_name'])) {
+            $userName = decrypt_id($_COOKIE['encrypted_user_name']);
+        }
 
-    // Set values from encrypted cookies
-    if (isset($_COOKIE['encrypted_user_name'])) {
-        $userName = decrypt_id($_COOKIE['encrypted_user_name']);
-    }
+        if (isset($_COOKIE['encrypted_profile_image'])) {
+            $decrypted_image_relative_path = decrypt_id($_COOKIE['encrypted_profile_image']);
+            $image_path_for_web = BASE_WEB_PATH . ltrim($decrypted_image_relative_path, '/');
+            $filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $image_path_for_web;
 
-    if (isset($_COOKIE['encrypted_profile_image'])) {
-        $decrypted_image_relative_path = decrypt_id($_COOKIE['encrypted_profile_image']); // This path should already be relative from web root (e.g., 'pages/student/uploads/filename.jpg')
-
-        // Construct the full web-accessible path
-        $image_path_for_web = BASE_WEB_PATH . ltrim($decrypted_image_relative_path, '/');
-
-        // Verify if the file actually exists on the server's filesystem
-        $filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $image_path_for_web;
-
-
-        if (!empty($decrypted_image_relative_path) && file_exists($filesystem_path) && is_file($filesystem_path)) {
-            $userProfileImage = $image_path_for_web;
-            error_log("Image found: " . $userProfileImage);
-        } else {
-            error_log("Image file not found at filesystem path: " . $filesystem_path . ". Using default profile image.");
-            $userProfileImage = BASE_WEB_PATH . 'assets/images/undraw_profile.svg'; // Fallback to default
+            if (!empty($decrypted_image_relative_path) && file_exists($filesystem_path) && is_file($filesystem_path)) {
+                $userProfileImage = $image_path_for_web;
+            }
         }
     }
-
-    // Debug information (keep these for development, remove for production)
-    error_log("User ID: " . $user_id);
-    error_log("User Role: " . $user_role);
-    error_log("Username: " . $userName);
-    error_log("Final Profile Image Path for Display: " . $userProfileImage);
-
-    // Set defaults if data is missing from cookies or image path is invalid
-    if (empty($userName)) {
-        $userName = 'Guest';
-        error_log("Using default username: Guest");
-    }
-} else {
-    // If no user cookies are set, ensure default image and name are used
-    error_log("No user cookies found. Using default profile image and name.");
 }
 ?>
+
 <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
 
     <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
@@ -206,7 +188,8 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
         </li>
 
         <div class="topbar-divider d-none d-sm-block"></div>
-
+        
+        <?php if ($isLoggedIn): ?>
         <li class="nav-item dropdown no-arrow">
             <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-toggle="dropdown"
                 aria-haspopup="true" aria-expanded="false">
@@ -217,38 +200,31 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                      alt="Profile"
                      style="width: 32px; height: 32px; object-fit: cover;">
             </a>
-            <!-- Dropdown - User Information -->
-            <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="userDropdown" style="width: 280px;">
-                <div class="p-3 text-center" style="background-color: #4e73df;">
-                    <img class="img-profile rounded-circle mb-2"
-                         src="<?php echo htmlspecialchars($userProfileImage); ?>"
-                         onerror="this.src='<?php echo BASE_WEB_PATH; ?>assets/images/undraw_profile.svg';"
-                         alt="Profile"
-                         style="width: 80px; height: 80px; object-fit: cover; border: 3px solid #fff;">
-                    <h6 class="font-weight-bold text-white"><?php echo htmlspecialchars($userName); ?></h6>
-                    <p class="mb-0 small text-white-50 text-capitalize"><?php echo htmlspecialchars($user_role); ?></p>
-                </div>
-                <div class="p-2">
-                    <a class="dropdown-item" href="<?php echo BASE_WEB_PATH; ?>pages/user/profile.php">
-                        <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
-                        Profile
-                    </a>
-                    <a class="dropdown-item" href="#">
-                        <i class="fas fa-cogs fa-sm fa-fw mr-2 text-gray-400"></i>
-                        Settings
-                    </a>
-                    <a class="dropdown-item" href="#">
-                        <i class="fas fa-list fa-sm fa-fw mr-2 text-gray-400"></i>
-                        Activity Log
-                    </a>
-                    <div class="dropdown-divider"></div>
-                    <a class="dropdown-item" href="#" data-toggle="modal" data-target="#logoutModal">
-                        <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
-                        Logout
-                    </a>
-                </div>
+            <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="userDropdown">
+                
+                <?php if ($user_role !== 'bmc'): ?>
+                <a class="dropdown-item" href="<?php echo BASE_WEB_PATH; ?>pages/user/profile.php">
+                    <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
+                    Profile
+                </a>
+                <?php endif; ?>
+
+                <a class="dropdown-item" href="#">
+                    <i class="fas fa-cogs fa-sm fa-fw mr-2 text-gray-400"></i>
+                    Settings
+                </a>
+                <a class="dropdown-item" href="#">
+                    <i class="fas fa-list fa-sm fa-fw mr-2 text-gray-400"></i>
+                    Activity Log
+                </a>
+                <div class="dropdown-divider"></div>
+                <a class="dropdown-item" href="#" data-toggle="modal" data-target="#logoutModal">
+                    <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
+                    Logout
+                </a>
             </div>
         </li>
+        <?php endif; ?>
 
     </ul>
 

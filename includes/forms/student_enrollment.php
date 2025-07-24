@@ -3,8 +3,12 @@ include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
 $role = null;
+$userId = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
+}
+if (isset($_COOKIE['encrypted_user_id'])) {
+    $userId = decrypt_id($_COOKIE['encrypted_user_id']);
 }
 
 // Redirect to login if not authenticated
@@ -12,6 +16,24 @@ if (!$role) {
     header("Location: ../../login.php");
     exit;
 }
+
+// --- NEW: Logic to get School Admin's school details ---
+$admin_school_id = null;
+$admin_school_name = null;
+if ($role === 'schooladmin' && $userId) {
+    $stmt = $conn->prepare("SELECT s.id, s.school_name FROM principal p JOIN school s ON p.school_id = s.id WHERE p.id = ?");
+    if($stmt){
+        $stmt->bind_param("i", $userId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($admin_data = $result->fetch_assoc()) {
+            $admin_school_id = $admin_data['id'];
+            $admin_school_name = $admin_data['school_name'];
+        }
+        $stmt->close();
+    }
+}
+// --- End of New Logic ---
 
 $errors = [];
 
@@ -24,7 +46,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email']);
     $password = $_POST['password'];
     $academic_year = $_POST['academic_year'];
-    $school_id = $_POST['school_id'];
+
+    // --- MODIFIED: Get school_id based on role ---
+    $school_id = ($role === 'schooladmin') ? $admin_school_id : $_POST['school_id'];
+    
     $dob = $_POST['dob'];
     $gender = $_POST['gender'];
     $blood_group = $_POST['blood_group'];
@@ -78,13 +103,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             mysqli_stmt_close($stmt_user);
 
             // 2. Insert into 'student' table using the new_user_id as its primary key
-            // Note: The 'id' column in the student table must now be primary key AND foreign key referencing users.id
             $student_query = "INSERT INTO student (id, student_image, student_name, rollno, std, email, password, academic_year, school_id, dob, gender, blood_group, address, father_name, father_phone, mother_name, mother_phone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt_student = mysqli_prepare($conn, $student_query);
-            // Add 'i' for the new_user_id (integer) at the beginning of bind_param types
             mysqli_stmt_bind_param($stmt_student, "isssssssissssssss",
-                $new_user_id, // Pass the ID from the users table
-                $image_path_for_db, $student_name, $rollno, $std, $email, $hashed_password, $academic_year, $school_id, $dob, $gender, $blood_group, $address, $father_name, $father_phone, $mother_name, $mother_phone
+                $new_user_id, $image_path_for_db, $student_name, $rollno, $std, $email, $hashed_password, $academic_year, $school_id, $dob, $gender, $blood_group, $address, $father_name, $father_phone, $mother_name, $mother_phone
             );
             if (!mysqli_stmt_execute($stmt_student)) {
                 throw new Exception("Student record creation failed: " . mysqli_stmt_error($stmt_student));
@@ -97,7 +119,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (Exception $e) {
             mysqli_rollback($conn);
             if(mysqli_errno($conn) == 1062){
-                // This error is likely now from the 'users' table's unique email constraint
                 $errors[] = "A student with this email already exists.";
             } else { $errors[] = "Database error: " . $e->getMessage(); }
         }
@@ -116,14 +137,12 @@ $school_result = mysqli_query($conn, $school_query);
     <title>Enroll Student - School Management System</title>
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
-    <!-- Corrected Font Awesome link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-    
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
     <div id="wrapper">
-    <?php include '../sidebar.php';?>
+    <?php include '../../includes/sidebar.php';?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
@@ -156,7 +175,29 @@ $school_result = mysqli_query($conn, $school_query);
                                 <hr>
                                 <h6 class="text-primary">Academic Details</h6>
                                 <div class="form-row mt-3">
-                                    <div class="form-group col-md-6"><label for="school_id">School *</label><select class="form-control" id="school_id" name="school_id" required><option value="">-- Select School --</option><?php mysqli_data_seek($school_result, 0); while ($school = mysqli_fetch_assoc($school_result)) { $selected = (isset($_POST['school_id']) && $_POST['school_id'] == $school['id']) ? 'selected' : ''; echo "<option value='{$school['id']}' {$selected}>" . htmlspecialchars($school['school_name']) . "</option>"; } ?></select></div>
+                                    <div class="form-group col-md-6">
+                                        <label for="school_id">School *</label>
+                                        
+                                        <?php if ($role === 'schooladmin'): ?>
+                                            <select class="form-control" name="school_id_disabled" disabled>
+                                                <option value="<?php echo $admin_school_id; ?>" selected><?php echo htmlspecialchars($admin_school_name); ?></option>
+                                            </select>
+                                            <input type="hidden" name="school_id" value="<?php echo $admin_school_id; ?>">
+                                        <?php else: ?>
+                                            <select class="form-control" id="school_id" name="school_id" required>
+                                                <option value="">-- Select School --</option>
+                                                <?php 
+                                                if($school_result) {
+                                                    while ($school = mysqli_fetch_assoc($school_result)) {
+                                                        $selected = (isset($_POST['school_id']) && $_POST['school_id'] == $school['id']) ? 'selected' : '';
+                                                        echo "<option value='{$school['id']}' {$selected}>" . htmlspecialchars($school['school_name']) . "</option>";
+                                                    }
+                                                }
+                                                ?>
+                                            </select>
+                                        <?php endif; ?>
+
+                                    </div>
                                     <div class="form-group col-md-6"><label for="academic_year">Academic Year *</label><select class="form-control" id="academic_year" name="academic_year" required><option value="">-- Select Year --</option><?php for ($i = -1; $i < 3; $i++) { $year = date("Y") + $i; $acad_year = $year . '-' . ($year + 1); $selected = (isset($_POST['academic_year']) && $_POST['academic_year'] == $acad_year) ? 'selected' : ''; echo "<option value='{$acad_year}' {$selected}>{$acad_year}</option>"; } ?></select></div>
                                 </div>
                                 <div class="form-row">
@@ -192,24 +233,15 @@ $school_result = mysqli_query($conn, $school_query);
                     </div>
                 </div>
             </div>
-            <?php include_once '../footer.php'; ?>
+            <?php include_once '../../includes/footer.php'; ?>
         </div>
     </div>
-    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
-        aria-hidden="true">
+    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="exampleModalLabel">Ready to Leave?</h5>
-                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">×</span>
-                    </button>
-                </div>
+                <div class="modal-header"><h5 class="modal-title" id="exampleModalLabel">Ready to Leave?</h5><button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button></div>
                 <div class="modal-body">Select "Logout" below if you are ready to end your current session.</div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
-                    <a class="btn btn-primary" href="/BMC-SMS/logout.php">Logout</a>
-                </div>
+                <div class="modal-footer"><button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button><a class="btn btn-primary" href="/BMC-SMS/logout.php">Logout</a></div>
             </div>
         </div>
     </div>
