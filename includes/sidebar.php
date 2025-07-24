@@ -17,8 +17,7 @@ if (isset($_COOKIE['encrypted_user_role'])) {
         <div class="sidebar-brand-icon rotate-n-15">
             <i class="fas fa-laugh-wink"></i>
         </div>
-        <!-- <div class="sidebar-brand-text mx-3">Your Portal</div> -->
-    </a>
+        </a>
 
     <hr class="sidebar-divider my-0">
 
@@ -145,10 +144,16 @@ if (isset($_COOKIE['encrypted_user_role'])) {
                 </div>
             </li>
             <li class="nav-item">
-                <a class="nav-link" href="#">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseAttendance">
                     <i class="fas fa-fw fa-clipboard-user"></i>
                     <span>Manage Attendance</span>
                 </a>
+                <div id="collapseAttendance" class="collapse" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item" href="/BMC-SMS/pages/teacher/add_attendance.php">Add Attendance</a>
+                        <a class="collapse-item" href="/BMC-SMS/pages/teacher/view_attendance.php">View Attendance</a>
+                    </div>
+                </div>
             </li>
     <?php
             break;
@@ -165,7 +170,7 @@ if (isset($_COOKIE['encrypted_user_role'])) {
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" href="#">
+                <a class="nav-link" href="/BMC-SMS/pages/student/view_attendance.php">
                     <i class="fas fa-fw fa-book-open-reader"></i>
                     <span>View Attendance</span>
                 </a>
