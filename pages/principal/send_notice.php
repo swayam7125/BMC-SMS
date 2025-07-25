@@ -168,7 +168,8 @@ $pageTitle = 'Send School Notice';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-            <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/custom.css">
 
     <style>
         .select2-container--default .select2-selection--multiple {

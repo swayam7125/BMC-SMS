@@ -21,6 +21,8 @@ if ($role !== 'schooladmin') {
 
     <!-- Corrected Font Awesome link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link rel="stylesheet" href="../../assets/css/custom.css">
+
 </head>
 <body id="page-top">
     <div id="wrapper">
