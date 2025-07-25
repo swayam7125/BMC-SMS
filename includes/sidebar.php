@@ -267,7 +267,7 @@ if (!defined('BASE_WEB_PATH')) {
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" href="#">
+                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/student/view_my_marks.php">
                     <i class="fas fa-fw fa-file-lines"></i>
                     <span>View Results</span>
                 </a>

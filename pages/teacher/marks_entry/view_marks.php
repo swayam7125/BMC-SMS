@@ -62,7 +62,7 @@ $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
                                 <div class="form-group col-md-2 d-flex align-items-end"><button type="button" id="viewReportBtn" class="btn btn-info btn-block"><i class="fas fa-eye mr-1"></i> View Report</button></div>
                             </div>
                             <hr>
-                            <div class="table-responsive" id="marks-report-container" style="display:none;"><table class="table table-bordered" width="100%" cellspacing="0"><thead id="marks-report-header"></thead><tbody id="marks-report-body"></tbody></table></div>
+                            <div class="table-responsive" id="marks-report-container" style="display:none;"><table class="table table-bordered table-hover" width="100%" cellspacing="0"><thead id="marks-report-header"></thead><tbody id="marks-report-body"></tbody></table></div>
                         </div>
                     </div>
                 </div>
@@ -70,21 +70,12 @@ $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
             <?php include '../../../includes/footer.php'; ?>
         </div>
     </div>
-    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
-        aria-hidden="true">
+    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="exampleModalLabel">Ready to Leave?</h5>
-                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">×</span>
-                    </button>
-                </div>
+                <div class="modal-header"><h5 class="modal-title" id="exampleModalLabel">Ready to Leave?</h5><button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button></div>
                 <div class="modal-body">Select "Logout" below if you are ready to end your current session.</div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
-                    <a class="btn btn-primary" href="/BMC-SMS/logout.php">Logout</a>
-                </div>
+                <div class="modal-footer"><button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button><a class="btn btn-primary" href="/BMC-SMS/logout.php">Logout</a></div>
             </div>
         </div>
     </div>
@@ -98,14 +89,19 @@ $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
             const academicYear = $('#academic_year').val();
             const classStd = '<?php echo $class_teacher_std; ?>';
             if (examType && academicYear) {
-                $('#marks-report-body').html('<tr><td colspan="10" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading report...</td></tr>');
+                $('#marks-report-body').html('<tr><td colspan="15" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading report...</td></tr>');
                 $('#marks-report-container').slideDown();
                 $.ajax({
                     url: 'get_marks_report.php', type: 'POST', data: { class_std: classStd, exam_type: examType, academic_year: academicYear }, dataType: 'json',
                     success: function(response) {
                         $('#marks-report-header').empty(); $('#marks-report-body').empty();
                         if (response.success) {
-                            let headerRow = '<tr><th>Roll No</th><th>Student Name</th>'; response.subjects.forEach(subject => { headerRow += `<th>${subject}</th>`; }); headerRow += '</tr>'; $('#marks-report-header').html(headerRow);
+                            // --- MODIFIED: Removed background colors from headers ---
+                            let headerRow = '<tr><th>Roll No</th><th>Student Name</th>';
+                            response.subjects.forEach(subject => { headerRow += `<th>${subject}</th>`; });
+                            headerRow += '<th>Total Obtained</th><th>Total Possible</th><th>Percentage</th><th>Status</th></tr>';
+                            $('#marks-report-header').html(headerRow);
+
                             if (response.students.length > 0) {
                                 response.students.forEach(student => {
                                     let row = `<tr><td>${student.rollno}</td><td>${student.student_name}</td>`;
@@ -113,12 +109,29 @@ $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
                                         const marks = student.marks[subject] !== undefined ? student.marks[subject] : '<span class="text-muted">N/A</span>';
                                         row += `<td>${marks}</td>`;
                                     });
-                                    row += `</tr>`; $('#marks-report-body').append(row);
+                                    // --- MODIFIED: Removed background colors from cells ---
+                                    row += `<td><strong>${student.total_obtained}</strong></td>`;
+                                    row += `<td>${student.total_possible}</td>`;
+                                    row += `<td><strong class="text-primary">${student.percentage}%</strong></td>`;
+                                    
+                                    let statusClass = 'badge-secondary'; // Default for N/A
+                                    if (student.status === 'Pass') {
+                                        statusClass = 'badge-success';
+                                    } else if (student.status === 'Fail') {
+                                        statusClass = 'badge-danger'; // Red for Fail
+                                    }
+                                    // --- MODIFIED: Removed background color from cell, keeping only the badge color ---
+                                    row += `<td class="font-weight-bold"><span class="badge ${statusClass}" style="font-size: 0.9rem;">${student.status}</span></td>`;
+                                    
+                                    row += `</tr>`;
+                                    $('#marks-report-body').append(row);
                                 });
-                            } else { $('#marks-report-body').html(`<tr><td colspan="${response.subjects.length + 2}" class="text-center">No marks found for the selected criteria.</td></tr>`); }
-                        } else { $('#marks-report-body').html(`<tr><td colspan="10" class="text-center text-danger">${response.message}</td></tr>`); }
+                            } else { 
+                                $('#marks-report-body').html(`<tr><td colspan="${response.subjects.length + 6}" class="text-center">No marks found for the selected criteria.</td></tr>`); 
+                            }
+                        } else { $('#marks-report-body').html(`<tr><td colspan="15" class="text-center text-danger">${response.message}</td></tr>`); }
                     },
-                    error: function() { $('#marks-report-header').empty(); $('#marks-report-body').html('<tr><td colspan="10" class="text-center text-danger">Error fetching marks data. Please try again.</td></tr>'); }
+                    error: function() { $('#marks-report-header').empty(); $('#marks-report-body').html('<tr><td colspan="15" class="text-center text-danger">Error fetching marks data. Please try again.</td></tr>'); }
                 });
             } else { alert('Please select both Exam Type and Academic Year.'); }
         });

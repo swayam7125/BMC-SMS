@@ -10,7 +10,6 @@ if (isset($_POST['class_std']) && isset($_POST['exam_type']) && isset($_POST['ac
     $academic_year = $_POST['academic_year'];
 
     try {
-        // --- FIX: Fetch subjects for the specific standard first ---
         $subjects_query = "SELECT s.subject_name 
                            FROM standard_subjects ss
                            JOIN subjects s ON ss.subject_id = s.subject_id
@@ -34,7 +33,6 @@ if (isset($_POST['class_std']) && isset($_POST['exam_type']) && isset($_POST['ac
         }
         $response['subjects'] = $subjects;
 
-        // First, get all students for the class to ensure everyone is listed
         $student_query = "SELECT id, student_name, rollno FROM student WHERE std = ? ORDER BY rollno";
         $stmt_students = mysqli_prepare($conn, $student_query);
         mysqli_stmt_bind_param($stmt_students, "s", $class_std);
@@ -47,7 +45,12 @@ if (isset($_POST['class_std']) && isset($_POST['exam_type']) && isset($_POST['ac
                 'id' => $student_row['id'],
                 'student_name' => $student_row['student_name'],
                 'rollno' => $student_row['rollno'],
-                'marks' => [] // Initialize marks array
+                'marks' => [],
+                'total_obtained' => 0,
+                'total_possible' => 0,
+                'percentage' => 0,
+                // --- NEW: Initialize status field ---
+                'status' => 'N/A'
             ];
         }
         mysqli_stmt_close($stmt_students);
@@ -56,8 +59,9 @@ if (isset($_POST['class_std']) && isset($_POST['exam_type']) && isset($_POST['ac
             $student_ids = array_keys($students);
             $placeholders = implode(',', array_fill(0, count($student_ids), '?'));
             
-            // Now, fetch the marks for these students based on the criteria
-            $marks_query = "SELECT student_id, subject_name, marks_obtained FROM student_marks WHERE exam_type = ? AND academic_year = ? AND student_id IN ($placeholders)";
+            $marks_query = "SELECT student_id, subject_name, marks_obtained, total_marks 
+                            FROM student_marks 
+                            WHERE exam_type = ? AND academic_year = ? AND student_id IN ($placeholders)";
             $stmt_marks = mysqli_prepare($conn, $marks_query);
             
             $types = 'ss' . str_repeat('i', count($student_ids));
@@ -70,9 +74,20 @@ if (isset($_POST['class_std']) && isset($_POST['exam_type']) && isset($_POST['ac
             while ($mark_row = mysqli_fetch_assoc($marks_result)) {
                 if (isset($students[$mark_row['student_id']])) {
                     $students[$mark_row['student_id']]['marks'][$mark_row['subject_name']] = $mark_row['marks_obtained'];
+                    $students[$mark_row['student_id']]['total_obtained'] += $mark_row['marks_obtained'];
+                    $students[$mark_row['student_id']]['total_possible'] += $mark_row['total_marks'];
                 }
             }
             mysqli_stmt_close($stmt_marks);
+
+            foreach ($students as $student_id => $student_data) {
+                if ($student_data['total_possible'] > 0) {
+                    $percentage = ($student_data['total_obtained'] / $student_data['total_possible']) * 100;
+                    $students[$student_id]['percentage'] = round($percentage, 2);
+                    // --- NEW: Determine Pass/Fail status ---
+                    $students[$student_id]['status'] = ($percentage >= 33) ? 'Pass' : 'Fail';
+                }
+            }
         }
 
         $response['success'] = true;
