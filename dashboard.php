@@ -210,38 +210,7 @@ switch ($role) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
 
     <link rel="stylesheet" href="./assets/css/sidebar.css">
-
-    <style>
-        .notification-item {
-            display: flex;
-            align-items: center;
-            padding: 15px;
-            border-bottom: 1px solid #e3e6f0;
-        }
-
-        .notification-item:last-child {
-            border-bottom: none;
-        }
-
-        .notification-icon {
-            font-size: 1.5rem;
-            margin-right: 15px;
-        }
-
-        .notification-content {
-            flex-grow: 1;
-        }
-
-        .notification-title {
-            font-weight: 600;
-        }
-
-        .notification-time {
-            font-size: 0.8rem;
-            color: #858796;
-        }
-    </style>
-
+    <link rel="stylesheet" href="./assets/css/notification_window.css">
 </head>
 
 <body id="page-top">
@@ -266,7 +235,7 @@ switch ($role) {
                     <div class="row">
                         <?php if ($role == 'bmc'): ?>
                             <div class="col-xl-3 col-md-6 mb-4">
-                                <a href="./pages/school/school_list.php">
+                                <a class="card-link" href="./pages/school/school_list.php">
                                     <div class="card border-left-primary shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
@@ -285,7 +254,7 @@ switch ($role) {
                             </div>
 
                             <div class="col-xl-3 col-md-6 mb-4">
-                                <a href="./pages/principal/principal_list.php">
+                                <a class="card-link" href="./pages/principal/principal_list.php">
                                     <div class="card border-left-success shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
@@ -304,7 +273,7 @@ switch ($role) {
                             </div>
 
                             <div class="col-xl-3 col-md-6 mb-4">
-                                <a href="./pages/teacher/teacher_list.php">
+                                <a class="card-link" href="./pages/teacher/teacher_list.php">
                                     <div class="card border-left-info shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
@@ -323,7 +292,7 @@ switch ($role) {
                             </div>
 
                             <div class="col-xl-3 col-md-6 mb-4">
-                                <a href="./pages/student/student_list.php">
+                                <a class="card-link" href="./pages/student/student_list.php">
                                     <div class="card border-left-warning shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
@@ -342,7 +311,7 @@ switch ($role) {
                             </div>
                         <?php elseif ($role == 'schooladmin'): ?>
                             <div class="col-xl-3 col-md-6 mb-4">
-                                <a href="./pages/teacher/teacher_list.php">
+                                <a class="card-link" href="./pages/teacher/teacher_list.php">
                                     <div class="card border-left-info shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
@@ -360,7 +329,7 @@ switch ($role) {
                                 </a>
                             </div>
                             <div class="col-xl-3 col-md-6 mb-4">
-                                <a href="./pages/student/student_list.php">
+                                <a class="card-link" href="./pages/student/student_list.php">
                                     <div class="card border-left-warning shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
@@ -379,14 +348,16 @@ switch ($role) {
                             </div>
                         <?php elseif ($role == 'teacher'): ?>
                             <div class="col-xl-3 col-md-6 mb-4">
-                                <a href="./pages/student/student_list.php">
+                                <a class="card-link" href="./pages/student/student_list.php">
                                     <div class="card border-left-warning shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
                                                     <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                                                         TOTAL Students in My School</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalStudents; ?></div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                                        <?php echo $totalStudents; ?>
+                                                    </div>
                                                 </div>
                                                 <div class="col-auto">
                                                     <i class="fas fa-children fa-2x text-gray-300"></i>
@@ -398,38 +369,41 @@ switch ($role) {
                             </div>
                         <?php elseif ($role == 'student'): ?>
                             <div class="col-xl-3 col-md-6 mb-4">
-                                <div class="card border-left-primary shadow h-100 py-2">
-                                    <div class="card-body">
-                                        <div class="row no-gutters align-items-center">
-                                            <div class="col mr-2">
-                                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                                    My Current Standard</div>
-                                                <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                                    <?php
-                                                    // Fetch student's standard
-                                                    $student_std = 'N/A';
-                                                    // This query will now work because the connection is still open.
-                                                    $stmt_std = $conn->prepare("SELECT std FROM student WHERE id = ?");
-                                                    if ($stmt_std) {
-                                                        $stmt_std->bind_param("i", $userId);
-                                                        $stmt_std->execute();
-                                                        $result_std = $stmt_std->get_result();
-                                                        if ($result_std && $result_std->num_rows > 0) {
-                                                            $std_data = $result_std->fetch_assoc();
-                                                            $student_std = htmlspecialchars($std_data['std']);
+                                <a class="card-link" href="./pages/student/student_profile.php">
+                                    <div class="card border-left-primary shadow h-100 py-2">
+                                        <div class="card-body">
+                                            <div class="row no-gutters align-items-center">
+                                                <div class="col mr-2">
+                                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                                        My Current Standard
+                                                    </div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                                        <?php
+                                                        // Fetch student's standard
+                                                        $student_std = '0';
+                                                        // This query will now work because the connection is still open.
+                                                        $stmt_std = $conn->prepare("SELECT std FROM student WHERE id = ?");
+                                                        if ($stmt_std) {
+                                                            $stmt_std->bind_param("i", $userId);
+                                                            $stmt_std->execute();
+                                                            $result_std = $stmt_std->get_result();
+                                                            if ($result_std && $result_std->num_rows > 0) {
+                                                                $std_data = $result_std->fetch_assoc();
+                                                                $student_std = htmlspecialchars($std_data['std']);
+                                                            }
+                                                            $stmt_std->close();
                                                         }
-                                                        $stmt_std->close();
-                                                    }
-                                                    echo $student_std;
-                                                    ?>
+                                                        echo $student_std;
+                                                        ?>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div class="col-auto">
-                                                <i class="fas fa-book-open fa-2x text-gray-300"></i>
+                                                <div class="col-auto">
+                                                    <i class="fas fa-book-open fa-2x text-gray-300"></i>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
+                                </a>
                             </div>
                         <?php endif; ?>
                     </div>
