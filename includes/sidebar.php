@@ -70,6 +70,18 @@ if (!defined('BASE_WEB_PATH')) {
                     </div>
                 </div>
             </li>
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePastData">
+                    <i class="fas fa-fw fa-history"></i>
+                    <span>View Past Data</span>
+                </a>
+                <div id="collapsePastData" class="collapse" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item" href="/BMC-SMS/pages/past_record/past_school.php">Past school List</a>
+                        <a class="collapse-item" href="/BMC-SMS/pages/past_record/past_principal.php">Past principal List</a>
+                    </div>
+                </div>
+            </li>
         <?php
             break;
 
