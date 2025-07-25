@@ -20,7 +20,7 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
 $principal_id = intval($_GET['id']);
 $errors = [];
 
-// --- FETCH EXISTING DATA ---
+//FETCH EXISTING DATA ---
 $principal = null;
 $timings = [];
 
@@ -69,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $image_path_for_db = $original_image_path;
 
-    // --- Handle Photo Upload ---
+    //Handle Photo Upload ---
     if (isset($_FILES['principal_image']) && $_FILES['principal_image']['error'] === UPLOAD_ERR_OK) {
         $file = $_FILES['principal_image'];
         $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
@@ -88,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else { $errors[] = "Invalid file type. Only JPG, JPEG, PNG, and GIF are allowed."; }
     }
 
-    // --- Validation ---
+    //Validation ---
     if (empty($school_id)) $errors[] = "A school must be selected.";
     if (empty($principal_name)) $errors[] = "Principal name is required.";
     if (empty($new_batch)) $errors[] = "Batch selection is required.";
@@ -137,21 +137,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!mysqli_stmt_execute($stmt_principal_update)) throw new Exception("Error updating principal record: " . mysqli_stmt_error($stmt_principal_update));
             mysqli_stmt_close($stmt_principal_update);
 
-            $upsert_timing_query = "
-                INSERT INTO principal_timings (principal_id, day_of_week, opens_at, closes_at, is_closed) 
-                VALUES (?, ?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE 
-                opens_at = VALUES(opens_at), 
-                closes_at = VALUES(closes_at), 
-                is_closed = VALUES(is_closed)
-            ";
+            $upsert_timing_query = "INSERT INTO principal_timings (principal_id, day_of_week, opens_at, closes_at, is_closed) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE opens_at = VALUES(opens_at), closes_at = VALUES(closes_at), is_closed = VALUES(is_closed)";
             $stmt_timing_upsert = mysqli_prepare($conn, $upsert_timing_query);
             
             foreach ($posted_timings as $day => $details) {
                 $is_closed = isset($details['is_closed']) ? 1 : 0;
-                // Convert AM/PM time back to 24-hour format for database
-                $opens_at = ($is_closed || empty($details['opens_at'])) ? null : date("H:i:s", strtotime($details['opens_at']));
-                $closes_at = ($is_closed || empty($details['closes_at'])) ? null : date("H:i:s", strtotime($details['closes_at']));
+                $opens_at = ($is_closed || empty($details['opens_at'])) ? null : $details['opens_at'];
+                $closes_at = ($is_closed || empty($details['closes_at'])) ? null : $details['closes_at'];
                 
                 mysqli_stmt_bind_param($stmt_timing_upsert, "isssi", $principal_id, $day, $opens_at, $closes_at, $is_closed);
                 
@@ -197,8 +189,7 @@ $schools_result = mysqli_query($conn, $schools_query);
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">    
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-timepicker/1.13.18/jquery.timepicker.min.css" />
+    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
     <div id="wrapper">
@@ -262,8 +253,8 @@ $schools_result = mysqli_query($conn, $schools_query);
                                     foreach ($days as $day):
                                         $day_timing = $timings[$day] ?? [];
                                         $is_closed = !empty($day_timing['is_closed']);
-                                        $opens_at = !empty($day_timing['opens_at']) ? date("h:i A", strtotime($day_timing['opens_at'])) : '10:00 AM';
-                                        $closes_at = !empty($day_timing['closes_at']) ? date("h:i A", strtotime($day_timing['closes_at'])) : '08:00 PM';
+                                        $opens_at = !empty($day_timing['opens_at']) ? date("H:i", strtotime($day_timing['opens_at'])) : '10:00';
+                                        $closes_at = !empty($day_timing['closes_at']) ? date("H:i", strtotime($day_timing['closes_at'])) : '20:00';
                                     ?>
                                     <div class="form-row align-items-center mb-2 timing-row" data-day="<?php echo $day; ?>">
                                         <div class="col-md-2"><label class="mb-0"><?php echo $day; ?></label></div>
@@ -276,13 +267,13 @@ $schools_result = mysqli_query($conn, $schools_query);
                                         <div class="col-md-3">
                                             <div class="input-group">
                                                 <div class="input-group-prepend"><span class="input-group-text small">Opens at</span></div>
-                                                <input type="text" class="form-control timepicker opens-at" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                <input type="time" class="form-control opens-at" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
                                             </div>
                                         </div>
                                         <div class="col-md-3">
                                             <div class="input-group">
                                                 <div class="input-group-prepend"><span class="input-group-text small">Closes at</span></div>
-                                                <input type="text" class="form-control timepicker closes-at" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                <input type="time" class="form-control closes-at" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
                                             </div>
                                         </div>
                                     </div>
@@ -327,19 +318,9 @@ $schools_result = mysqli_query($conn, $schools_query);
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-timepicker/1.13.18/jquery.timepicker.min.js"></script>
     
     <script>
         $(document).ready(function() {
-            // Initialize the AM/PM timepicker
-            $('.timepicker').timepicker({
-                timeFormat: 'h:i A', // 'A' shows AM/PM
-                interval: 30,
-                dynamic: false,
-                dropdown: true,
-                scrollbar: true
-            });
-            
             // Image preview script
             document.getElementById('principal_image').addEventListener('change', function(event) {
                 if (event.target.files[0]) {
@@ -350,9 +331,12 @@ $schools_result = mysqli_query($conn, $schools_query);
             // Checkbox logic to disable/enable time inputs
             $('.closed-checkbox').on('change', function() {
                 const row = $(this).closest('.timing-row');
-                const timeInputs = row.find('.timepicker'); // Target by class
+                const timeInputs = row.find('input[type="time"]'); // Target by type
                 timeInputs.prop('disabled', $(this).is(':checked'));
             });
+
+            // Trigger on page load to set initial state
+            $('.closed-checkbox').trigger('change');
         });
     </script>
 </body>

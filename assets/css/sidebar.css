@@ -1,7 +1,35 @@
+/* Make the sidebar sticky to the top of the viewport */
 #accordionSidebar {
   position: -webkit-sticky; /* For Safari */
   position: sticky;
   top: 0;
-  height: 100vh; /* Full viewport height */
-  /* overflow-y: auto; Add scroll to sidebar if content is long */
+  height: 100vh;
+}
+
+/* --- Responsive Custom Sidebar --- */
+
+/* These styles apply ONLY to screens 768px and wider */
+@media (min-width: 768px) {
+
+    /* 1. Set the new width for the EXPANDED sidebar */
+    #accordionSidebar {
+        width: 280px !important;
+    }
+
+    /* 2. Make links inside the sidebar use the full width */
+    #accordionSidebar .nav-item .nav-link {
+        width: 100%;
+    }
+
+    /* 3. Set the new width for the COLLAPSED sidebar */
+    #accordionSidebar.toggled {
+        width: 120px !important;
+        overflow: hidden; /* Prevents text from spilling out */
+    }
+    
+    /* 4. THE FIX: Keep icon and text on the same line in the collapsed sidebar */
+    .sidebar.toggled .nav-item .nav-link span {
+        display: inline !important; /* Forces the text to stay next to the icon */
+        margin-left: 0.5rem;      /* Adds a small space between the icon and text */
+    }
 }

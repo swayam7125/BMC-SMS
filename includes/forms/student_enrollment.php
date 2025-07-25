@@ -17,7 +17,7 @@ if (!$role) {
     exit;
 }
 
-// --- NEW: Logic to get School Admin's school details ---
+//Logic to get School Admin's school details ---
 $admin_school_id = null;
 $admin_school_name = null;
 if ($role === 'schooladmin' && $userId) {
@@ -33,13 +33,12 @@ if ($role === 'schooladmin' && $userId) {
         $stmt->close();
     }
 }
-// --- End of New Logic ---
 
 $errors = [];
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // --- Retrieve all form data ---
+    //Retrieve all form data ---
     $student_name = trim($_POST['student_name']);
     $rollno = trim($_POST['rollno']);
     $std = trim($_POST['std']);
@@ -47,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'];
     $academic_year = $_POST['academic_year'];
 
-    // --- MODIFIED: Get school_id based on role ---
+    //Get school_id based on role ---
     $school_id = ($role === 'schooladmin') ? $admin_school_id : $_POST['school_id'];
     
     $dob = $_POST['dob'];
@@ -61,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     $image_path_for_db = null;
 
-    // --- Handle Photo Upload ---
+    //Handle Photo Upload ---
     if (isset($_FILES['student_image']) && $_FILES['student_image']['error'] === UPLOAD_ERR_OK) {
         $file = $_FILES['student_image'];
         $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
@@ -77,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else { $errors[] = "Invalid file type. Only JPG, JPEG, PNG, and GIF are allowed."; }
     }
 
-    // --- Validation ---
+    //Validation ---
     if (empty($student_name)) $errors[] = "Student name is required.";
     if (empty($school_id)) $errors[] = "A school must be selected.";
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "A valid email is required.";
