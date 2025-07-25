@@ -55,6 +55,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && $teacher_id) {
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
      <!-- Corrected Font Awesome link -->
      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+             <link rel="stylesheet" href="../../assets/css/sidebar.css">
+
 </head>
 <body id="page-top">
     <div id="wrapper">

@@ -166,6 +166,8 @@ $selected_stds = explode(',', $teacher['std']);
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+            <link rel="stylesheet" href="../../assets/css/sidebar.css">
+
 </head>
 <body id="page-top">
     <div id="wrapper">

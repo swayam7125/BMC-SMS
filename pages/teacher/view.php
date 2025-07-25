@@ -72,6 +72,8 @@ if (!empty($photo_path) && !file_exists($photo_path)) {
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
+            <link rel="stylesheet" href="../../assets/css/sidebar.css">
+
     <style>
         .view-photo { width: 150px; height: 150px; object-fit: cover; border-radius: 10px; border: 3px solid #e3e6f0; }
         .info-label { font-weight: bold; color: #5a5c69; }
