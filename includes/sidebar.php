@@ -67,6 +67,12 @@ if (!defined('BASE_WEB_PATH')) {
                 </div>
             </li>
             <li class="nav-item">
+                <a class="nav-link" href="/BMC-SMS/pages/bmc/send_notice.php">
+                    <i class="fas fa-fw fa-bullhorn"></i>
+                    <span>Send Notice</span>
+                </a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePastData">
                     <i class="fas fa-fw fa-history"></i>
                     <span>View Past Data</span>
@@ -107,6 +113,18 @@ if (!defined('BASE_WEB_PATH')) {
                     <div class="bg-white py-2 collapse-inner rounded">
                         <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>includes/forms/student_enrollment.php">Enroll Student</a>
                         <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/student/student_list.php">Student List</a>
+                    </div>
+                </div>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseNotices">
+                    <i class="fas fa-fw fa-bullhorn"></i>
+                    <span>Notices</span>
+                </a>
+                <div id="collapseNotices" class="collapse" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item" href="/BMC-SMS/pages/principal/send_notice.php">Send School Notice</a>
+                        <a class="collapse-item" href="/BMC-SMS/pages/principal/view_notice.php">View BMC Notices</a>
                     </div>
                 </div>
             </li>
@@ -234,6 +252,12 @@ if (!defined('BASE_WEB_PATH')) {
                     <span>Send Notes</span></a>
             </li>
             <li class="nav-item">
+                 <a class="nav-link" href="/BMC-SMS/pages/teacher/view_notice.php">
+                    <i class="fas fa-fw fa-bell"></i>
+                    <span>View School Notices</span>
+                </a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link" href="/BMC-SMS/pages/teacher/send_timetable.php">
                     <i class="fas fa-fw fa-calendar-days"></i>
                     <span>Send Timetable</span>
@@ -270,6 +294,12 @@ if (!defined('BASE_WEB_PATH')) {
                 <a class="nav-link" href="#">
                     <i class="fas fa-fw fa-file-lines"></i>
                     <span>View Results</span>
+                </a>
+            </li>
+             <li class="nav-item">
+                <a class="nav-link" href="/BMC-SMS/pages/student/view_notice.php">
+                    <i class="fas fa-fw fa-bell"></i>
+                    <span>View School Notices</span>
                 </a>
             </li>
             <li class="nav-item">
