@@ -1,8 +1,4 @@
 <?php
-// We don't need to include 'encryption.php' here because the main
-// page (like dashboard.php) already includes it before this sidebar is loaded.
-
-// Initialize role to null
 $role = null;
 $user_id = null;
 

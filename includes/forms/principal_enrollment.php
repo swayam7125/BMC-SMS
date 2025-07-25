@@ -91,9 +91,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
 
             foreach ($timings as $day => $details) {
                 $is_closed = isset($details['is_closed']) ? 1 : 0;
-                // Convert AM/PM time to 24-hour format for database
-                $opens_at = ($is_closed || empty($details['opens_at'])) ? null : date("H:i:s", strtotime($details['opens_at']));
-                $closes_at = ($is_closed || empty($details['closes_at'])) ? null : date("H:i:s", strtotime($details['closes_at']));
+                $opens_at = ($is_closed || empty($details['opens_at'])) ? null : $details['opens_at'];
+                $closes_at = ($is_closed || empty($details['closes_at'])) ? null : $details['closes_at'];
                 mysqli_stmt_bind_param($stmt_timing, "isssi", $new_user_id, $day, $opens_at, $closes_at, $is_closed);
                 if (!mysqli_stmt_execute($stmt_timing)) {
                     throw new Exception("Failed to save timings for $day: " . mysqli_stmt_error($stmt_timing));
@@ -124,19 +123,16 @@ if (!empty($batch)) {
     mysqli_stmt_execute($stmt);
     $school_result = mysqli_stmt_get_result($stmt);
 }
-
-$pageTitle = 'Enroll Principal';
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title><?php echo htmlspecialchars($pageTitle); ?></title>
+    <title>Enroll Principal - School Management System</title>
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">    
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-timepicker/1.13.18/jquery.timepicker.min.css" />
+    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
     <div id="wrapper">
@@ -203,13 +199,12 @@ $pageTitle = 'Enroll Principal';
                                     foreach ($days as $day):
                                         $posted_day = $_POST['timings'][$day] ?? [];
                                         $is_closed = isset($posted_day['is_closed']);
-                                        $opens_at = $posted_day['opens_at'] ?? '10:00 AM';
-                                        $closes_at = $posted_day['closes_at'] ?? '08:00 PM';
+                                        // Use 24-hour format for default values to match input type="time"
+                                        $opens_at = $posted_day['opens_at'] ?? '10:00';
+                                        $closes_at = $posted_day['closes_at'] ?? '20:00';
                                     ?>
                                     <div class="form-row align-items-center mb-2 timing-row" data-day="<?php echo $day; ?>">
-                                        <div class="col-md-2">
-                                            <label class="mb-0"><?php echo $day; ?></label>
-                                        </div>
+                                        <div class="col-md-2"><label class="mb-0"><?php echo $day; ?></label></div>
                                         <div class="col-md-2">
                                             <div class="custom-control custom-checkbox">
                                                 <input type="checkbox" class="custom-control-input closed-checkbox" id="closed_<?php echo $day; ?>" name="timings[<?php echo $day; ?>][is_closed]" <?php if ($is_closed) echo 'checked'; ?>>
@@ -219,13 +214,13 @@ $pageTitle = 'Enroll Principal';
                                         <div class="col-md-3">
                                             <div class="input-group">
                                                 <div class="input-group-prepend"><span class="input-group-text small">Opens at</span></div>
-                                                <input type="text" class="form-control timepicker opens-at" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                <input type="time" class="form-control opens-at" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
                                             </div>
                                         </div>
                                         <div class="col-md-3">
                                             <div class="input-group">
                                                 <div class="input-group-prepend"><span class="input-group-text small">Closes at</span></div>
-                                                <input type="text" class="form-control timepicker closes-at" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                <input type="time" class="form-control closes-at" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
                                             </div>
                                         </div>
                                     </div>
@@ -264,19 +259,9 @@ $pageTitle = 'Enroll Principal';
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-timepicker/1.13.18/jquery.timepicker.min.js"></script>
     
     <script>
         $(document).ready(function() {
-            // Initialize the AM/PM timepicker
-            $('.timepicker').timepicker({
-                timeFormat: 'h:i A', // 'A' shows AM/PM
-                interval: 30, // 30 minute intervals
-                dynamic: false,
-                dropdown: true,
-                scrollbar: true
-            });
-
             // Image Preview
             $('#principal_image').on('change', function(event) {
                 if (event.target.files && event.target.files[0]) {
@@ -291,7 +276,7 @@ $pageTitle = 'Enroll Principal';
             // Timings schedule logic: Disable time inputs when "Closed" is checked
             $('.closed-checkbox').on('change', function() {
                 const row = $(this).closest('.timing-row');
-                const timeInputs = row.find('.timepicker'); // Target by class now
+                const timeInputs = row.find('input[type="time"]');
                 if ($(this).is(':checked')) {
                     timeInputs.prop('disabled', true);
                 } else {
@@ -306,6 +291,9 @@ $pageTitle = 'Enroll Principal';
                 // Re-evaluate the disabled state of time inputs after reset
                 $('.closed-checkbox').trigger('change'); 
             });
+
+            // Trigger the change on page load to set the initial state
+            $('.closed-checkbox').trigger('change');
         });
     </script>
 </body>
