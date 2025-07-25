@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jul 24, 2025 at 06:17 PM
+-- Generation Time: Jul 25, 2025 at 10:40 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -224,7 +224,10 @@ CREATE TABLE `deleted_teachers` (
 
 INSERT INTO `deleted_teachers` (`id`, `teacher_name`, `email`, `phone`, `gender`, `dob`, `blood_group`, `address`, `school_id`, `qualification`, `subject`, `language_known`, `salary`, `std`, `experience`, `batch`, `class_teacher`, `class_teacher_std`, `deleted_by_role`, `deleted_at`) VALUES
 (1, 'JAY', 'jay@gmail.com', '5674298791', 'male', '2005-11-03', 'AB-', '0', 3, 'BA', 'Account', 'Hindi', 500000.00, 'Nursery,Junior,1', '5', 'Evening', 0, NULL, 'schooladmin', '2025-07-22 11:51:18'),
-(12, 'ram', 'ram@gmail.com', '5545875655', 'male', '2005-03-11', 'AB+', 'surat', 4, 'MA', 'English', 'English', 100000.00, '5,6', '5', 'Morning', 0, NULL, 'schooladmin', '2025-07-24 09:34:16');
+(12, 'ram', 'ram@gmail.com', '5545875655', 'male', '2005-03-11', 'AB+', 'surat', 4, 'MA', 'English', 'English', 100000.00, '5,6', '5', 'Morning', 0, NULL, 'schooladmin', '2025-07-24 09:34:16'),
+(16, 'Ved', 'ved@gmail.com', '9854785239', 'male', '2020-02-02', 'AB+', 'sf', 4, 'pca', 'so', 'hindi', 34000.00, 'Junior,1', '3', 'Morning', 0, NULL, 'schooladmin', '2025-07-24 18:48:45'),
+(17, 'Harshit Sharma', 'harshit@gmail.com', '9853620174', 'male', '2021-02-06', 'AB-', 'nh', 4, 'ka', 'jh', 'ds', 10000.00, 'Junior,4', '2', 'Morning', 0, NULL, 'schooladmin', '2025-07-24 18:56:59'),
+(18, 'sfd', 'a@gmail.com', '9852320000', 'male', '2024-02-02', 'B-', 'f', 4, 's', 's', 'sd', 12000.00, '3', '2', 'Morning', 0, NULL, 'schooladmin', '2025-07-24 19:02:40');
 
 -- --------------------------------------------------------
 
@@ -327,13 +330,13 @@ CREATE TABLE `principal_timings` (
 --
 
 INSERT INTO `principal_timings` (`timing_id`, `principal_id`, `day_of_week`, `opens_at`, `closes_at`, `is_closed`) VALUES
-(1, 10, 'Monday', '06:00:00', '20:00:00', 0),
+(1, 10, 'Monday', '06:00:00', '17:00:00', 0),
 (2, 10, 'Tuesday', '10:00:00', '20:00:00', 0),
 (3, 10, 'Wednesday', '10:00:00', '20:00:00', 0),
 (4, 10, 'Thursday', '10:00:00', '20:00:00', 0),
 (5, 10, 'Friday', '10:00:00', '20:00:00', 0),
-(6, 10, 'Saturday', '10:00:00', '20:00:00', 0),
-(7, 10, 'Sunday', '10:00:00', '20:00:00', 0);
+(6, 10, 'Saturday', NULL, NULL, 1),
+(7, 10, 'Sunday', NULL, NULL, 1);
 
 -- --------------------------------------------------------
 
@@ -586,7 +589,35 @@ CREATE TABLE `teacher` (
 --
 
 INSERT INTO `teacher` (`id`, `teacher_image`, `teacher_name`, `phone`, `school_id`, `dob`, `gender`, `blood_group`, `address`, `email`, `password`, `qualification`, `subject`, `language_known`, `salary`, `std`, `experience`, `batch`, `class_teacher`, `class_teacher_std`) VALUES
-(6, '../../pages/teacher/uploads/teacher_6880cd02b30464.45441036.jpg', 'meet parekh', '9900990099', 4, '2025-07-01', 'Male', 'B+', 'mota varachaa', 'meet@gmail.com', '$2y$10$sdz4DZ5oaMJNrUA9mld44uiBNIIkAQCPjs2XrrnUcl.Bp6wlzYz1a', 'B.A', 'maths', 'english', 100000, '8,9,10,11,12', '10', 'Evening', 1, '11');
+(6, '../../pages/teacher/uploads/teacher_6880cd02b30464.45441036.jpg', 'Meet Patel', '9900990099', 4, '2025-07-01', 'Male', 'O+', 'mota varachaa', 'meet@gmail.com', '$2y$10$sdz4DZ5oaMJNrUA9mld44uiBNIIkAQCPjs2XrrnUcl.Bp6wlzYz1a', 'B.A', 'maths', 'english', 100000, '8,9,10,11,12', '10', 'Evening', 1, '11');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `teacher_timings`
+--
+
+CREATE TABLE `teacher_timings` (
+  `timing_id` int(11) NOT NULL,
+  `teacher_id` int(11) NOT NULL,
+  `day_of_week` enum('Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday') NOT NULL,
+  `opens_at` time DEFAULT NULL,
+  `closes_at` time DEFAULT NULL,
+  `is_closed` tinyint(1) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `teacher_timings`
+--
+
+INSERT INTO `teacher_timings` (`timing_id`, `teacher_id`, `day_of_week`, `opens_at`, `closes_at`, `is_closed`) VALUES
+(8, 6, 'Monday', '11:04:00', '18:00:00', 0),
+(9, 6, 'Tuesday', '10:00:00', '18:00:00', 0),
+(10, 6, 'Wednesday', '10:00:00', '21:04:00', 0),
+(11, 6, 'Thursday', '10:00:00', '18:00:00', 0),
+(12, 6, 'Friday', '10:00:00', '18:00:00', 0),
+(13, 6, 'Saturday', '10:00:00', '18:00:00', 0),
+(14, 6, 'Sunday', NULL, NULL, 1);
 
 -- --------------------------------------------------------
 
@@ -765,6 +796,13 @@ ALTER TABLE `teacher`
   ADD KEY `school_id` (`school_id`);
 
 --
+-- Indexes for table `teacher_timings`
+--
+ALTER TABLE `teacher_timings`
+  ADD PRIMARY KEY (`timing_id`),
+  ADD UNIQUE KEY `uq_teacher_day` (`teacher_id`,`day_of_week`);
+
+--
 -- Indexes for table `timetables`
 --
 ALTER TABLE `timetables`
@@ -817,7 +855,7 @@ ALTER TABLE `deleted_students`
 -- AUTO_INCREMENT for table `deleted_teachers`
 --
 ALTER TABLE `deleted_teachers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
 --
 -- AUTO_INCREMENT for table `leave_applications`
@@ -835,7 +873,7 @@ ALTER TABLE `notes`
 -- AUTO_INCREMENT for table `principal_timings`
 --
 ALTER TABLE `principal_timings`
-  MODIFY `timing_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `timing_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 
 --
 -- AUTO_INCREMENT for table `school`
@@ -862,6 +900,12 @@ ALTER TABLE `subjects`
   MODIFY `subject_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
 --
+-- AUTO_INCREMENT for table `teacher_timings`
+--
+ALTER TABLE `teacher_timings`
+  MODIFY `timing_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=36;
+
+--
 -- AUTO_INCREMENT for table `timetables`
 --
 ALTER TABLE `timetables`
@@ -871,7 +915,7 @@ ALTER TABLE `timetables`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
 --
 -- Constraints for dumped tables
@@ -950,6 +994,12 @@ ALTER TABLE `student_marks`
 ALTER TABLE `teacher`
   ADD CONSTRAINT `fk_teacher_user_id` FOREIGN KEY (`id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `teacher_ibfk_1` FOREIGN KEY (`school_id`) REFERENCES `school` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `teacher_timings`
+--
+ALTER TABLE `teacher_timings`
+  ADD CONSTRAINT `fk_timing_teacher_id` FOREIGN KEY (`teacher_id`) REFERENCES `teacher` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `timetables`
