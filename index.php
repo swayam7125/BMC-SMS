@@ -24,10 +24,10 @@ if ($role) {
             header("Location: dashboard.php");
             break;
         case 'teacher':
-            header("Location: teacher-dashboard.php");
+            header("Location: dashboard.php");
             break;
         case 'schooladmin':
-            header("Location: schooladmin-dashboard.php");
+            header("Location: dashboard.php");
             break;
         case 'bmc':
             header("Location: dashboard.php");

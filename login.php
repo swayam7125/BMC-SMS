@@ -87,7 +87,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     setcookie("encrypted_user_name", $encrypted_user_name, time() + 86400, "/");
 
 
-                    header("Location: dashboard.php");
+                    header("Location: index.php");
                     exit();
                 } else {
                     $error_message = "Invalid email or password"; // Generic message
