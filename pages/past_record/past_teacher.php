@@ -37,7 +37,7 @@ $result = mysqli_query($conn, $query);
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
-    <link rel="stylesheet" href="../../assets/css/custom.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 
 
 </head>
@@ -171,4 +171,5 @@ $result = mysqli_query($conn, $query);
     </script>
 
 </body>
+
 </html>

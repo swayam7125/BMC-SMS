@@ -27,20 +27,20 @@ if (!$role || $role !== 'student') {
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_FILES['assignment_file'])) {
     $assignment_id = $_POST['assignment_id'];
     $student_id = $userId;
-    
+
     $filePathForDB = null;
     $originalFilename = null;
 
     if (isset($_FILES['assignment_file']) && $_FILES['assignment_file']['error'] == 0) {
         $originalFilename = basename($_FILES["assignment_file"]["name"]);
-        
+
         $uploadDirServer = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/assignments/submit/';
         $uploadDirWeb = '/BMC-SMS/pages/assignments/submit/';
 
         if (!is_dir($uploadDirServer)) {
             mkdir($uploadDirServer, 0777, true);
         }
-        
+
         $storageFilename = uniqid('sub_', true) . '_' . $originalFilename;
         $serverFilePath = $uploadDirServer . $storageFilename;
 
@@ -139,14 +139,31 @@ $pageTitle = 'Student - My Assignments';
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400i,600,700" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../../assets/css/custom.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
 
     <style>
-        .assignment-card { transition: all 0.2s ease-in-out; }
-        .assignment-card:not(.submitted) { cursor: pointer; }
-        .assignment-card:not(.submitted):hover { transform: translateY(-5px); box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15) !important; }
-        .assignment-card.submitted { cursor: not-allowed; background-color: #f8f9fc; }
-        .assignment-card.submitted .text-primary { color: #858796 !important; }
+        .assignment-card {
+            transition: all 0.2s ease-in-out;
+        }
+
+        .assignment-card:not(.submitted) {
+            cursor: pointer;
+        }
+
+        .assignment-card:not(.submitted):hover {
+            transform: translateY(-5px);
+            box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15) !important;
+        }
+
+        .assignment-card.submitted {
+            cursor: not-allowed;
+            background-color: #f8f9fc;
+        }
+
+        .assignment-card.submitted .text-primary {
+            color: #858796 !important;
+        }
     </style>
 </head>
 
@@ -166,7 +183,7 @@ $pageTitle = 'Student - My Assignments';
                     <?php if (isset($_GET['submission']) && $_GET['submission'] == 'error'): ?>
                         <div class="alert alert-danger">There was an error submitting your assignment. Please try again.</div>
                     <?php endif; ?>
-                    
+
                     <div class="card shadow mb-4">
                         <div class="card-body">
                             <form action="view_assignments.php" method="GET" class="form-row align-items-center">
@@ -271,7 +288,7 @@ $pageTitle = 'Student - My Assignments';
             </div>
         </div>
     </div>
-    
+
     <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
 
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
@@ -296,25 +313,26 @@ $pageTitle = 'Student - My Assignments';
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.4.1/jquery.easing.min.js"></script>
-    
-    <script src="../../assets/js/sb-admin-2.min.js"></script>
-    
-    <script>
-    // JavaScript to pass assignment info to the upload modal
-    $('#uploadModal').on('show.bs.modal', function (event) {
-        var button = $(event.relatedTarget);
-        var assignmentId = button.data('assignment-id');
-        var assignmentTitle = button.data('assignment-title');
-        var modal = $(this);
-        modal.find('#modalAssignmentTitle').text(assignmentTitle);
-        modal.find('#modalAssignmentId').val(assignmentId);
-    });
 
-    // To show the selected filename in the file input
-    $('.custom-file-input').on('change', function() {
-        var fileName = $(this).val().split('\\').pop();
-        $(this).siblings('.custom-file-label').addClass("selected").html(fileName);
-    });
+    <script src="../../assets/js/sb-admin-2.min.js"></script>
+
+    <script>
+        // JavaScript to pass assignment info to the upload modal
+        $('#uploadModal').on('show.bs.modal', function(event) {
+            var button = $(event.relatedTarget);
+            var assignmentId = button.data('assignment-id');
+            var assignmentTitle = button.data('assignment-title');
+            var modal = $(this);
+            modal.find('#modalAssignmentTitle').text(assignmentTitle);
+            modal.find('#modalAssignmentId').val(assignmentId);
+        });
+
+        // To show the selected filename in the file input
+        $('.custom-file-input').on('change', function() {
+            var fileName = $(this).val().split('\\').pop();
+            $(this).siblings('.custom-file-label').addClass("selected").html(fileName);
+        });
     </script>
 </body>
+
 </html>

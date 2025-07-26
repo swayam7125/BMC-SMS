@@ -4,14 +4,14 @@ include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
 $response = [
-    'success' => false, 
-    'marks' => [], 
+    'success' => false,
+    'marks' => [],
     'message' => 'An error occurred.',
     'percentage' => 0,
     'total_obtained' => 0,
     'total_possible' => 0,
     // --- NEW: Add status to the response ---
-    'status' => 'N/A' 
+    'status' => 'N/A'
 ];
 
 $role = null;
@@ -79,7 +79,6 @@ if (isset($_POST['exam_type']) && isset($_POST['academic_year'])) {
         $response['total_possible'] = $total_possible;
         $response['percentage'] = round($percentage, 2);
         $response['message'] = 'Marks loaded successfully.';
-
     } catch (Exception $e) {
         $response['message'] = 'Database error: ' . $e->getMessage();
     }
@@ -88,4 +87,3 @@ if (isset($_POST['exam_type']) && isset($_POST['academic_year'])) {
 }
 
 echo json_encode($response);
-?>

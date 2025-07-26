@@ -40,7 +40,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $title = $_POST['title'];
     $description = $_POST['description'];
     $due_date = $_POST['due_date'];
-    
+
     $filePathForDB = null;
     $originalFilename = null;
 
@@ -57,7 +57,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             // This will now correctly create the 'uploads' directory inside 'pages/assignments/'
             mkdir($uploadDirServer, 0777, true);
         }
-        
+
         $storageFilename = uniqid('assign_', true) . '_' . $originalFilename;
         $serverFilePath = $uploadDirServer . $storageFilename;
 
@@ -65,7 +65,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $filePathForDB = $uploadDirWeb . $storageFilename;
         }
     }
-    
+
     // CORRECTED INSERT statement to match the columns you need to add
     $insert_stmt = $conn->prepare("INSERT INTO assignments (teacher_id, school_id, standard, subject, title, description, due_date, file_path, original_filename) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $insert_stmt->bind_param("iisssssss", $userId, $schoolId, $standard, $subject, $title, $description, $due_date, $filePathForDB, $originalFilename);
@@ -79,6 +79,7 @@ $pageTitle = 'Send Assignment';
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
@@ -86,9 +87,11 @@ $pageTitle = 'Send Assignment';
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400i,600,700" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../../assets/css/custom.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
 
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -109,7 +112,7 @@ $pageTitle = 'Send Assignment';
                                         <select class="form-control" id="standard" name="standard" required>
                                             <option value="">-- Select Standard --</option>
                                             <?php foreach ($availableStandards as $std): ?>
-                                            <option value="<?php echo htmlspecialchars(trim($std)); ?>">Standard <?php echo htmlspecialchars(trim($std)); ?></option>
+                                                <option value="<?php echo htmlspecialchars(trim($std)); ?>">Standard <?php echo htmlspecialchars(trim($std)); ?></option>
                                             <?php endforeach; ?>
                                         </select>
                                     </div>
@@ -118,7 +121,7 @@ $pageTitle = 'Send Assignment';
                                         <select class="form-control" id="subject" name="subject" required>
                                             <option value="">-- Select Subject --</option>
                                             <?php foreach ($availableSubjects as $sub): ?>
-                                            <option value="<?php echo htmlspecialchars(trim($sub)); ?>"><?php echo htmlspecialchars(trim($sub)); ?></option>
+                                                <option value="<?php echo htmlspecialchars(trim($sub)); ?>"><?php echo htmlspecialchars(trim($sub)); ?></option>
                                             <?php endforeach; ?>
                                         </select>
                                     </div>
@@ -173,6 +176,7 @@ $pageTitle = 'Send Assignment';
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.4.1/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
+
 </html>
 <?php
 $conn->close();

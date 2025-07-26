@@ -39,4 +39,3 @@ if ($role) {
 // If no valid role, redirect to login
 header("Location: login.php");
 exit;
-?>

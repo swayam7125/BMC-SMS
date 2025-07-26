@@ -8,7 +8,8 @@ if (!defined('BASE_WEB_PATH')) {
     define('BASE_WEB_PATH', '/BMC-SMS/');
 }
 
-function getWebAccessibleImagePath($db_image_path, $base_web_path, $default_sub_folder = '') {
+function getWebAccessibleImagePath($db_image_path, $base_web_path, $default_sub_folder = '')
+{
     if (empty($db_image_path)) {
         return null;
     }
@@ -46,7 +47,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
     $table_name = '';
     $image_field = '';
     $name_field = '';
-    
+
     switch ($user_role) {
         case 'teacher':
             $table_name = 'teacher';
@@ -78,7 +79,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
             mysqli_stmt_bind_param($stmt, "i", $user_id);
             mysqli_stmt_execute($stmt);
             $result = mysqli_stmt_get_result($stmt);
-            
+
             if (mysqli_num_rows($result) > 0) {
                 $user_data = mysqli_fetch_assoc($result);
             } else {
@@ -96,6 +97,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>User Profile - School Management System</title>
@@ -103,17 +105,42 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <style>
-        .profile-photo { width: 150px; height: 150px; object-fit: cover; border-radius: 10px; border: 3px solid #e3e6f0; box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15); }
-        .info-row { margin-bottom: 1rem; }
-        .info-label { font-weight: bold; color: #5a5c69; }
-        .info-value { color: #858796; }
-        .salary-display { font-size: 1.2em; font-weight: bold; color: #1cc88a; }
+        .profile-photo {
+            width: 150px;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 3px solid #e3e6f0;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        }
+
+        .info-row {
+            margin-bottom: 1rem;
+        }
+
+        .info-label {
+            font-weight: bold;
+            color: #5a5c69;
+        }
+
+        .info-value {
+            color: #858796;
+        }
+
+        .salary-display {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #1cc88a;
+        }
     </style>
 </head>
+
 <body id="page-top">
     <div id="wrapper">
-    <?php include '../../includes/sidebar.php';?>
+        <?php include '../../includes/sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
@@ -144,15 +171,15 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                                         <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-camera mr-2"></i>Profile Photo</h6>
                                     </div>
                                     <div class="card-body text-center">
-                                        <?php 
-                                            $defaultImagePath = BASE_WEB_PATH . 'assets/img/default-user.jpg';
-                                            $imagePathFromDB = $user_data[$image_field] ?? '';
-                                            $profileImagePath = getWebAccessibleImagePath($imagePathFromDB, BASE_WEB_PATH, $user_role) ?? $defaultImagePath;
+                                        <?php
+                                        $defaultImagePath = BASE_WEB_PATH . 'assets/img/default-user.jpg';
+                                        $imagePathFromDB = $user_data[$image_field] ?? '';
+                                        $profileImagePath = getWebAccessibleImagePath($imagePathFromDB, BASE_WEB_PATH, $user_role) ?? $defaultImagePath;
                                         ?>
-                                        <img src="<?php echo htmlspecialchars($profileImagePath); ?>" 
-                                             class="profile-photo mb-3" 
-                                             alt="Profile Photo"
-                                             onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($defaultImagePath); ?>';">
+                                        <img src="<?php echo htmlspecialchars($profileImagePath); ?>"
+                                            class="profile-photo mb-3"
+                                            alt="Profile Photo"
+                                            onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($defaultImagePath); ?>';">
                                         <h4 class="text-primary font-weight-bold"><?php echo htmlspecialchars($user_data[$name_field] ?? 'N/A'); ?></h4>
                                         <p class="text-muted text-capitalize"><?php echo htmlspecialchars($user_role); ?></p>
                                     </div>
@@ -276,4 +303,5 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
+
 </html>

@@ -111,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt_users = mysqli_prepare($conn, $update_users);
                 mysqli_stmt_bind_param($stmt_users, "si", $new_email, $student_id); // Use student_id as user ID
                 if (!mysqli_stmt_execute($stmt_users)) {
-                     // Check for duplicate email error from users table (though already checked above)
+                    // Check for duplicate email error from users table (though already checked above)
                     if (mysqli_errno($conn) == 1062) {
                         throw new Exception("Another user with this email already exists.");
                     } else {
@@ -126,10 +126,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                               student_image = ?, student_name = ?, rollno = ?, std = ?, email = ?, academic_year = ?,
                               school_id = ?, dob = ?, gender = ?, blood_group = ?, address = ?,
                               father_name = ?, father_phone = ?, mother_name = ?, mother_phone = ?
-                              WHERE id = ?"; 
+                              WHERE id = ?";
 
             $stmt_update = mysqli_prepare($conn, $update_student);
-            
+
             // FIX: The type definition string now has 16 characters to match the 16 variables.
             mysqli_stmt_bind_param(
                 $stmt_update,
@@ -138,7 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $student_name,
                 $rollno,
                 $std,
-                $new_email, 
+                $new_email,
                 $academic_year,
                 $school_id,
                 $dob,
@@ -183,13 +183,14 @@ $schools_result = mysqli_query($conn, $schools_query);
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-            <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 
 </head>
 
 <body id="page-top">
     <div id="wrapper">
-    <?php include '../../includes/sidebar.php';?>
+        <?php include '../../includes/sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
@@ -273,7 +274,7 @@ $schools_result = mysqli_query($conn, $schools_query);
             <?php
             include '../../includes/footer.php';
             ?>
-            </div>
+        </div>
     </div>
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
         aria-hidden="true">

@@ -12,18 +12,20 @@ if ($role !== 'schooladmin') {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Teacher Leave Requests</title>
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
-            <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
 
     <!-- Corrected Font Awesome link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-    <link rel="stylesheet" href="../../assets/css/custom.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -69,8 +71,8 @@ if ($role !== 'schooladmin') {
                                                 echo "<td>" . htmlspecialchars($row['applied_on']) . "</td>";
                                                 // Action Buttons
                                                 echo '<td>
-                                                        <a href="update_leave_status.php?id='. $row['id'] .'&action=approve" class="btn btn-success btn-sm">Approve</a>
-                                                        <a href="update_leave_status.php?id='. $row['id'] .'&action=reject" class="btn btn-danger btn-sm">Reject</a>
+                                                        <a href="update_leave_status.php?id=' . $row['id'] . '&action=approve" class="btn btn-success btn-sm">Approve</a>
+                                                        <a href="update_leave_status.php?id=' . $row['id'] . '&action=reject" class="btn btn-danger btn-sm">Reject</a>
                                                       </td>';
                                                 echo "</tr>";
                                             }
@@ -111,4 +113,5 @@ if ($role !== 'schooladmin') {
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
+
 </html>

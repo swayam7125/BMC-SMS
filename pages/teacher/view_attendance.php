@@ -34,7 +34,7 @@ if (!$teacherDetails || empty($teacherDetails['class_teacher_std'])) {
     $errorMessage = "Access Denied: You are not assigned as a class teacher.";
 } else {
     $view_date = isset($_GET['view_date']) ? $_GET['view_date'] : date('Y-m-d');
-    
+
     $att_stmt = $conn->prepare(
         "SELECT s.rollno, s.student_name, a.status 
          FROM attendance a
@@ -50,6 +50,7 @@ if (!$teacherDetails || empty($teacherDetails['class_teacher_std'])) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -60,9 +61,11 @@ if (!$teacherDetails || empty($teacherDetails['class_teacher_std'])) {
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
-            <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -100,20 +103,20 @@ if (!$teacherDetails || empty($teacherDetails['class_teacher_std'])) {
                                         <tbody>
                                             <?php if (!empty($attendance_records)): ?>
                                                 <?php foreach ($attendance_records as $record): ?>
-                                                <tr>
-                                                    <td><?php echo htmlspecialchars($record['rollno']); ?></td>
-                                                    <td><?php echo htmlspecialchars($record['student_name']); ?></td>
-                                                    <td>
-                                                        <?php
+                                                    <tr>
+                                                        <td><?php echo htmlspecialchars($record['rollno']); ?></td>
+                                                        <td><?php echo htmlspecialchars($record['student_name']); ?></td>
+                                                        <td>
+                                                            <?php
                                                             $status = htmlspecialchars($record['status']);
                                                             $badge_class = 'badge-secondary';
                                                             if ($status == 'Present') $badge_class = 'badge-success';
                                                             if ($status == 'Absent') $badge_class = 'badge-danger';
                                                             if ($status == 'Leave') $badge_class = 'badge-warning';
                                                             echo "<span class='badge {$badge_class}'>{$status}</span>";
-                                                        ?>
-                                                    </td>
-                                                </tr>
+                                                            ?>
+                                                        </td>
+                                                    </tr>
                                                 <?php endforeach; ?>
                                             <?php else: ?>
                                                 <tr>
@@ -162,4 +165,5 @@ if (!$teacherDetails || empty($teacherDetails['class_teacher_std'])) {
         });
     </script>
 </body>
+
 </html>

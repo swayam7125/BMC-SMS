@@ -64,6 +64,7 @@ $pageTitle = 'View Submissions';
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
@@ -72,8 +73,10 @@ $pageTitle = 'View Submissions';
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../../assets/css/custom.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -143,8 +146,17 @@ $pageTitle = 'View Submissions';
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
-    <script>$(document).ready(function() { $('#dataTable').DataTable({"order": [[0, "asc"]]}); });</script>
+    <script>
+        $(document).ready(function() {
+            $('#dataTable').DataTable({
+                "order": [
+                    [0, "asc"]
+                ]
+            });
+        });
+    </script>
 </body>
+
 </html>
 <?php
 $conn->close();

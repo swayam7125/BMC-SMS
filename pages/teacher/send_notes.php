@@ -81,7 +81,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_note'])) {
         if (!is_dir($uploadDirServer)) {
             mkdir($uploadDirServer, 0777, true);
         }
-        
+
         $storageFilename = uniqid('note_', true) . '_' . $originalFilename;
         $serverFilePath = $uploadDirServer . $storageFilename;
 
@@ -113,6 +113,7 @@ $pageTitle = 'Send Notes';
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
@@ -120,9 +121,11 @@ $pageTitle = 'Send Notes';
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400i,600,700" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-            <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -210,7 +213,7 @@ $pageTitle = 'Send Notes';
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
-    
+
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
         aria-hidden="true">
         <div class="modal-dialog" role="document">
@@ -229,12 +232,13 @@ $pageTitle = 'Send Notes';
             </div>
         </div>
     </div>
-    
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.4.1/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
+
 </html>
 <?php
 $conn->close();

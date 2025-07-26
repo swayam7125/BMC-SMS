@@ -151,7 +151,7 @@ if (!defined('BASE_WEB_PATH')) {
                     </div>
                 </div>
             </li>
-             <li class="nav-item">
+            <li class="nav-item">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePastData">
                     <i class="fas fa-fw fa-history"></i>
                     <span>View Past Data</span>
@@ -185,7 +185,7 @@ if (!defined('BASE_WEB_PATH')) {
                 }
                 $stmt_check->close();
             }
-    ?>
+        ?>
             <div class="sidebar-heading">Classroom & Actions</div>
             <li class="nav-item">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/student/student_list.php">
@@ -193,20 +193,20 @@ if (!defined('BASE_WEB_PATH')) {
                     <span>My Students</span>
                 </a>
             </li>
-            
+
             <?php if ($is_class_teacher): ?>
-            <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseMarks">
-                    <i class="fas fa-fw fa-marker"></i>
-                    <span>Marks Management</span>
-                </a>
-                <div id="collapseMarks" class="collapse" data-parent="#accordionSidebar">
-                    <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/marks_entry/marks_entry.php">Enter Marks</a>
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/marks_entry/view_marks.php">View Marks</a>
+                <li class="nav-item">
+                    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseMarks">
+                        <i class="fas fa-fw fa-marker"></i>
+                        <span>Marks Management</span>
+                    </a>
+                    <div id="collapseMarks" class="collapse" data-parent="#accordionSidebar">
+                        <div class="bg-white py-2 collapse-inner rounded">
+                            <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/marks_entry/marks_entry.php">Enter Marks</a>
+                            <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/marks_entry/view_marks.php">View Marks</a>
+                        </div>
                     </div>
-                </div>
-            </li>
+                </li>
             <?php endif; ?>
 
             <li class="nav-item">
@@ -252,7 +252,7 @@ if (!defined('BASE_WEB_PATH')) {
                     <span>Send Notes</span></a>
             </li>
             <li class="nav-item">
-                 <a class="nav-link" href="/BMC-SMS/pages/teacher/view_notice.php">
+                <a class="nav-link" href="/BMC-SMS/pages/teacher/view_notice.php">
                     <i class="fas fa-fw fa-bell"></i>
                     <span>View School Notices</span>
                 </a>
@@ -296,7 +296,7 @@ if (!defined('BASE_WEB_PATH')) {
                     <span>View Results</span>
                 </a>
             </li>
-             <li class="nav-item">
+            <li class="nav-item">
                 <a class="nav-link" href="/BMC-SMS/pages/student/view_notice.php">
                     <i class="fas fa-fw fa-bell"></i>
                     <span>View School Notices</span>

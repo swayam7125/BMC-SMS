@@ -61,7 +61,8 @@ $pageTitle = 'Teacher - Assignment History';
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../../assets/css/custom.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
 
 </head>
 
@@ -95,24 +96,25 @@ $pageTitle = 'Teacher - Assignment History';
                                             <th>Sent Date</th>
                                             <th>Due Date</th>
                                             <th>Submissions</th>
-                                            <th>Actions</th></tr>
+                                            <th>Actions</th>
+                                        </tr>
                                     </thead>
                                     <tbody>
                                         <?php if (!empty($assignments)): ?>
                                             <?php foreach ($assignments as $assignment): ?>
-                                            <tr>
-                                                <td><?php echo htmlspecialchars($assignment['title']); ?></td>
-                                                <td>Standard <?php echo htmlspecialchars($assignment['standard']); ?></td>
-                                                <td><?php echo htmlspecialchars($assignment['subject']); ?></td>
-                                                <td><?php echo date("d-m-Y", strtotime($assignment['created_at'])); ?></td>
-                                                <td><?php echo date("d-m-Y", strtotime($assignment['due_date'])); ?></td>
-                                                <td><?php echo htmlspecialchars($assignment['submission_count']); ?> / <?php echo htmlspecialchars($assignment['total_students']); ?></td>
-                                                <td>
-                                                    <a href="view_submissions.php?id=<?php echo $assignment['id']; ?>" class="btn btn-primary btn-sm" title="View Submissions">
-                                                        <i class="fas fa-eye"></i> View
-                                                    </a>
-                                                </td>
-                                            </tr>
+                                                <tr>
+                                                    <td><?php echo htmlspecialchars($assignment['title']); ?></td>
+                                                    <td>Standard <?php echo htmlspecialchars($assignment['standard']); ?></td>
+                                                    <td><?php echo htmlspecialchars($assignment['subject']); ?></td>
+                                                    <td><?php echo date("d-m-Y", strtotime($assignment['created_at'])); ?></td>
+                                                    <td><?php echo date("d-m-Y", strtotime($assignment['due_date'])); ?></td>
+                                                    <td><?php echo htmlspecialchars($assignment['submission_count']); ?> / <?php echo htmlspecialchars($assignment['total_students']); ?></td>
+                                                    <td>
+                                                        <a href="view_submissions.php?id=<?php echo $assignment['id']; ?>" class="btn btn-primary btn-sm" title="View Submissions">
+                                                            <i class="fas fa-eye"></i> View
+                                                        </a>
+                                                    </td>
+                                                </tr>
                                             <?php endforeach; ?>
                                         <?php else: ?>
                                             <tr>
@@ -131,7 +133,7 @@ $pageTitle = 'Teacher - Assignment History';
     </div>
 
     <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
-    
+
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
         aria-hidden="true">
         <div class="modal-dialog" role="document">
@@ -157,8 +159,17 @@ $pageTitle = 'Teacher - Assignment History';
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
-    <script>$(document).ready(function() { $('#dataTable').DataTable({"order": [[3, "desc"]]}); });</script>
+    <script>
+        $(document).ready(function() {
+            $('#dataTable').DataTable({
+                "order": [
+                    [3, "desc"]
+                ]
+            });
+        });
+    </script>
 </body>
+
 </html>
 <?php
 $conn->close();

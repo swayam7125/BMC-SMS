@@ -26,13 +26,13 @@ if (isset($_POST['marks']) && isset($_POST['class_std']) && isset($_POST['exam_t
     mysqli_stmt_bind_param($stmt_school, "i", $teacher_id);
     mysqli_stmt_execute($stmt_school);
     $school_result = mysqli_stmt_get_result($stmt_school);
-    
+
     if (mysqli_num_rows($school_result) == 0) {
         $response['message'] = 'Could not identify your school.';
         echo json_encode($response);
         exit;
     }
-    
+
     $school_data = mysqli_fetch_assoc($school_result);
     $school_id = $school_data['school_id'];
     mysqli_stmt_close($stmt_school);
@@ -56,9 +56,19 @@ if (isset($_POST['marks']) && isset($_POST['class_std']) && isset($_POST['exam_t
                 if (is_numeric($marks) && $marks >= 0 && $marks <= 100) {
                     // FIXED: Corrected binding - subject name should be 's' (string), not 'i' (integer)
                     // Parameters: student_id(i), school_id(i), academic_year(s), std(s), exam_type(s), subject_name(s), marks_obtained(d), teacher_id(i)
-                    mysqli_stmt_bind_param($stmt, "iissssdi", 
-                        $student_id, $school_id, $academic_year, $class_std, $exam_type, $subject, $marks, $teacher_id);
-                    
+                    mysqli_stmt_bind_param(
+                        $stmt,
+                        "iissssdi",
+                        $student_id,
+                        $school_id,
+                        $academic_year,
+                        $class_std,
+                        $exam_type,
+                        $subject,
+                        $marks,
+                        $teacher_id
+                    );
+
                     if (mysqli_stmt_execute($stmt)) {
                         $saved_count++;
                     } else {
@@ -67,9 +77,9 @@ if (isset($_POST['marks']) && isset($_POST['class_std']) && isset($_POST['exam_t
                 }
             }
         }
-        
+
         mysqli_stmt_close($stmt);
-        
+
         if ($saved_count > 0 && empty($error_details)) {
             mysqli_commit($conn);
             $response['success'] = true;
@@ -83,7 +93,6 @@ if (isset($_POST['marks']) && isset($_POST['class_std']) && isset($_POST['exam_t
             mysqli_rollback($conn);
             $response['message'] = 'Failed to save marks: ' . implode(', ', $error_details);
         }
-
     } catch (Exception $e) {
         mysqli_rollback($conn);
         $response['message'] = 'Database error: ' . $e->getMessage();
@@ -93,4 +102,3 @@ if (isset($_POST['marks']) && isset($_POST['class_std']) && isset($_POST['exam_t
 }
 
 echo json_encode($response);
-?>

@@ -48,25 +48,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && $teacher_id) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Apply for Leave</title>
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
-     <!-- Corrected Font Awesome link -->
-     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-             <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <!-- Corrected Font Awesome link -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 
 </head>
+
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; // Include the dynamic sidebar ?>
+        <?php include '../../includes/sidebar.php'; // Include the dynamic sidebar 
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include '../../includes/header.php'; // Include the header ?>
+                <?php include '../../includes/header.php'; // Include the header 
+                ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Apply for Leave</h1>
-                    <?php echo $message; // Display success/error message ?>
+                    <?php echo $message; // Display success/error message 
+                    ?>
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
                             <h6 class="m-0 font-weight-bold text-primary">Leave Application Form</h6>
@@ -158,6 +164,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && $teacher_id) {
     </script>
 
 </body>
+
 </html>
 <?php
 $conn->close();

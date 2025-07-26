@@ -65,7 +65,7 @@ if ($role == 'teacher') {
     $types .= "s"; // Identifier is stored as varchar
 } else {
     // If role is not matched, prevent fetching any notices
-    $sql .= " AND 1=0"; 
+    $sql .= " AND 1=0";
 }
 
 $sql .= " ORDER BY c.created_at DESC";
@@ -75,7 +75,7 @@ if ($stmt && !empty($params)) {
     $stmt->bind_param($types, ...$params);
 }
 
-if($stmt){
+if ($stmt) {
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
@@ -88,6 +88,7 @@ $pageTitle = 'View School Notices';
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
@@ -95,9 +96,11 @@ $pageTitle = 'View School Notices';
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400i,600,700" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-            <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -111,7 +114,7 @@ $pageTitle = 'View School Notices';
                             <h6 class="m-0 font-weight-bold text-primary">Notice Feed</h6>
                         </div>
                         <div class="card-body">
-                           <?php if (empty($notices)): ?>
+                            <?php if (empty($notices)): ?>
                                 <div class="text-center">No notices have been sent to you yet.</div>
                             <?php else: ?>
                                 <?php foreach ($notices as $notice): ?>
@@ -131,7 +134,7 @@ $pageTitle = 'View School Notices';
                                         </div>
                                     </div>
                                 <?php endforeach; ?>
-                           <?php endif; ?>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -162,7 +165,8 @@ $pageTitle = 'View School Notices';
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <?php
-$conn->close();
-?>
+    $conn->close();
+    ?>
 </body>
+
 </html>

@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['assign_subjects'])) {
             // Now, insert the new set of subjects
             $insert_query = "INSERT INTO standard_subjects (standard, subject_id) VALUES (?, ?)";
             $stmt_insert = mysqli_prepare($conn, $insert_query);
-            
+
             foreach ($subject_ids as $subject_id) {
                 mysqli_stmt_bind_param($stmt_insert, "si", $standard, $subject_id);
                 mysqli_stmt_execute($stmt_insert);
@@ -77,6 +77,7 @@ $standards = ['Nursery', 'Junior', 'Senior', '1', '2', '3', '4', '5', '6', '7', 
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Manage Subjects - School Management System</title>
@@ -85,8 +86,10 @@ $standards = ['Nursery', 'Junior', 'Senior', '1', '2', '3', '4', '5', '6', '7', 
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="../../assets/css/custom.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -97,7 +100,7 @@ $standards = ['Nursery', 'Junior', 'Senior', '1', '2', '3', '4', '5', '6', '7', 
                     <h1 class="h3 mb-4 text-gray-800">Manage Standard Subjects</h1>
 
                     <?php if (!empty($errors)): ?>
-                        <div class="alert alert-danger"><?php foreach ($errors as $error) echo "<p class='mb-0'>".htmlspecialchars($error)."</p>"; ?></div>
+                        <div class="alert alert-danger"><?php foreach ($errors as $error) echo "<p class='mb-0'>" . htmlspecialchars($error) . "</p>"; ?></div>
                     <?php endif; ?>
                     <?php if ($success_message): ?>
                         <div class="alert alert-success"><?php echo htmlspecialchars($success_message); ?></div>
@@ -157,7 +160,9 @@ $standards = ['Nursery', 'Junior', 'Senior', '1', '2', '3', '4', '5', '6', '7', 
                                             </thead>
                                             <tbody>
                                                 <?php if (empty($all_assignments)): ?>
-                                                    <tr><td colspan="2" class="text-center">No subjects have been assigned yet.</td></tr>
+                                                    <tr>
+                                                        <td colspan="2" class="text-center">No subjects have been assigned yet.</td>
+                                                    </tr>
                                                 <?php else: ?>
                                                     <?php foreach ($all_assignments as $assignment): ?>
                                                         <tr>
@@ -178,7 +183,7 @@ $standards = ['Nursery', 'Junior', 'Senior', '1', '2', '3', '4', '5', '6', '7', 
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
-    
+
     <!-- Add New Subject Modal -->
     <div class="modal fade" id="addSubjectModal" tabindex="-1" role="dialog">
         <div class="modal-dialog" role="document">
@@ -227,61 +232,68 @@ $standards = ['Nursery', 'Junior', 'Senior', '1', '2', '3', '4', '5', '6', '7', 
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
-    $(document).ready(function() {
-        $('.multi-select').select2({
-            placeholder: "Choose subjects...",
-            width: '100%'
-        });
+        $(document).ready(function() {
+            $('.multi-select').select2({
+                placeholder: "Choose subjects...",
+                width: '100%'
+            });
 
-        // When a standard is selected, fetch its currently assigned subjects
-        $('#standard').change(function() {
-            const selectedStandard = $(this).val();
-            if (selectedStandard) {
-                $.ajax({
-                    url: 'ajax_handler.php',
-                    type: 'POST',
-                    data: { action: 'get_subjects_for_standard', standard: selectedStandard },
-                    dataType: 'json',
-                    success: function(response) {
-                        if (response.success) {
-                            $('#subject_ids').val(response.subject_ids).trigger('change');
+            // When a standard is selected, fetch its currently assigned subjects
+            $('#standard').change(function() {
+                const selectedStandard = $(this).val();
+                if (selectedStandard) {
+                    $.ajax({
+                        url: 'ajax_handler.php',
+                        type: 'POST',
+                        data: {
+                            action: 'get_subjects_for_standard',
+                            standard: selectedStandard
+                        },
+                        dataType: 'json',
+                        success: function(response) {
+                            if (response.success) {
+                                $('#subject_ids').val(response.subject_ids).trigger('change');
+                            }
                         }
-                    }
-                });
-            } else {
-                $('#subject_ids').val(null).trigger('change');
-            }
-        });
+                    });
+                } else {
+                    $('#subject_ids').val(null).trigger('change');
+                }
+            });
 
-        // Handle saving a new subject from the modal
-        $('#saveNewSubjectBtn').click(function() {
-            const subjectName = $('#new_subject_name').val().trim();
-            if (subjectName) {
-                $.ajax({
-                    url: 'ajax_handler.php',
-                    type: 'POST',
-                    data: { action: 'add_subject', subject_name: subjectName },
-                    dataType: 'json',
-                    success: function(response) {
-                        if (response.success) {
-                            // Add the new subject to the dropdown
-                            const newOption = new Option(response.subject.subject_name, response.subject.subject_id, false, false);
-                            $('#subject_ids').append(newOption);
-                            $('#addSubjectModal').modal('hide');
-                            $('#new_subject_name').val('');
-                        } else {
-                            $('#modal-message').html(`<div class="alert alert-danger">${response.message}</div>`);
+            // Handle saving a new subject from the modal
+            $('#saveNewSubjectBtn').click(function() {
+                const subjectName = $('#new_subject_name').val().trim();
+                if (subjectName) {
+                    $.ajax({
+                        url: 'ajax_handler.php',
+                        type: 'POST',
+                        data: {
+                            action: 'add_subject',
+                            subject_name: subjectName
+                        },
+                        dataType: 'json',
+                        success: function(response) {
+                            if (response.success) {
+                                // Add the new subject to the dropdown
+                                const newOption = new Option(response.subject.subject_name, response.subject.subject_id, false, false);
+                                $('#subject_ids').append(newOption);
+                                $('#addSubjectModal').modal('hide');
+                                $('#new_subject_name').val('');
+                            } else {
+                                $('#modal-message').html(`<div class="alert alert-danger">${response.message}</div>`);
+                            }
+                        },
+                        error: function() {
+                            $('#modal-message').html('<div class="alert alert-danger">An error occurred.</div>');
                         }
-                    },
-                    error: function() {
-                        $('#modal-message').html('<div class="alert alert-danger">An error occurred.</div>');
-                    }
-                });
-            } else {
-                alert('Please enter a subject name.');
-            }
+                    });
+                } else {
+                    alert('Please enter a subject name.');
+                }
+            });
         });
-    });
     </script>
 </body>
+
 </html>

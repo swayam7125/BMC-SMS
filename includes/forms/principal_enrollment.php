@@ -48,8 +48,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
             $destination = $target_dir . $new_filename;
             if (move_uploaded_file($file['tmp_name'], $destination)) {
                 $image_path_for_db = $destination;
-            } else { $errors[] = "Failed to move uploaded file."; }
-        } else { $errors[] = "Invalid file type. Only JPG, JPEG, PNG, and GIF are allowed."; }
+            } else {
+                $errors[] = "Failed to move uploaded file.";
+            }
+        } else {
+            $errors[] = "Invalid file type. Only JPG, JPEG, PNG, and GIF are allowed.";
+        }
     }
 
     // --- Validation ---
@@ -59,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "A valid email is required.";
     if (empty($password)) $errors[] = "Password is required.";
     if (empty($gender)) $errors[] = "Gender is required.";
-    
+
     if (empty($errors)) {
         mysqli_autocommit($conn, false);
         try {
@@ -99,14 +103,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
                 }
             }
             mysqli_stmt_close($stmt_timing);
-            
+
             mysqli_commit($conn);
             header("Location: ../../pages/principal/principal_list.php?success=Principal enrolled successfully");
             exit();
-
         } catch (Exception $e) {
             mysqli_rollback($conn);
-            if(mysqli_errno($conn) == 1062){
+            if (mysqli_errno($conn) == 1062) {
                 $errors[] = "A principal with this email already exists.";
             } else {
                 $errors[] = "Database error: " . $e->getMessage();
@@ -126,6 +129,7 @@ if (!empty($batch)) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Enroll Principal - School Management System</title>
@@ -133,11 +137,14 @@ if (!empty($batch)) {
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../../assets/css/custom.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link rel="icon" type="image/x-icon" href="../../assets/img/favicon.ico">
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
-    <?php include '../sidebar.php';?>
+        <?php include '../sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '.././header.php'; ?>
@@ -147,12 +154,16 @@ if (!empty($batch)) {
                         <a href="../../pages/principal/principal_list.php" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to List</a>
                     </div>
                     <?php if (!empty($errors)): ?>
-                    <div class="alert alert-danger"><ul class="mb-0"><?php foreach ($errors as $error): ?><li><?php echo htmlspecialchars($error); ?></li><?php endforeach; ?></ul></div>
+                        <div class="alert alert-danger">
+                            <ul class="mb-0"><?php foreach ($errors as $error): ?><li><?php echo htmlspecialchars($error); ?></li><?php endforeach; ?></ul>
+                        </div>
                     <?php endif; ?>
                     <div class="card shadow mb-4">
-                        <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Principal Information</h6></div>
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">Principal Information</h6>
+                        </div>
                         <div class="card-body">
-                             <form method="POST" enctype="multipart/form-data" id="principalForm">
+                            <form method="POST" enctype="multipart/form-data" id="principalForm">
                                 <div class="row">
                                     <div class="col-md-3 text-center">
                                         <label>Photo Preview</label><br>
@@ -204,27 +215,27 @@ if (!empty($batch)) {
                                         $opens_at = $posted_day['opens_at'] ?? '10:00';
                                         $closes_at = $posted_day['closes_at'] ?? '20:00';
                                     ?>
-                                    <div class="form-row align-items-center mb-2 timing-row" data-day="<?php echo $day; ?>">
-                                        <div class="col-md-2"><label class="mb-0"><?php echo $day; ?></label></div>
-                                        <div class="col-md-2">
-                                            <div class="custom-control custom-checkbox">
-                                                <input type="checkbox" class="custom-control-input closed-checkbox" id="closed_<?php echo $day; ?>" name="timings[<?php echo $day; ?>][is_closed]" <?php if ($is_closed) echo 'checked'; ?>>
-                                                <label class="custom-control-label" for="closed_<?php echo $day; ?>">Closed</label>
+                                        <div class="form-row align-items-center mb-2 timing-row" data-day="<?php echo $day; ?>">
+                                            <div class="col-md-2"><label class="mb-0"><?php echo $day; ?></label></div>
+                                            <div class="col-md-2">
+                                                <div class="custom-control custom-checkbox">
+                                                    <input type="checkbox" class="custom-control-input closed-checkbox" id="closed_<?php echo $day; ?>" name="timings[<?php echo $day; ?>][is_closed]" <?php if ($is_closed) echo 'checked'; ?>>
+                                                    <label class="custom-control-label" for="closed_<?php echo $day; ?>">Closed</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="input-group">
+                                                    <div class="input-group-prepend"><span class="input-group-text small">Opens at</span></div>
+                                                    <input type="time" class="form-control opens-at" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="input-group">
+                                                    <div class="input-group-prepend"><span class="input-group-text small">Closes at</span></div>
+                                                    <input type="time" class="form-control closes-at" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div class="col-md-3">
-                                            <div class="input-group">
-                                                <div class="input-group-prepend"><span class="input-group-text small">Opens at</span></div>
-                                                <input type="time" class="form-control opens-at" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <div class="input-group">
-                                                <div class="input-group-prepend"><span class="input-group-text small">Closes at</span></div>
-                                                <input type="time" class="form-control closes-at" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
-                                            </div>
-                                        </div>
-                                    </div>
                                     <?php endforeach; ?>
                                 </div>
                                 <hr>
@@ -233,12 +244,23 @@ if (!empty($batch)) {
                                     <div class="form-group col-md-6"><label for="principal_dob">Date of Birth</label><input type="date" class="form-control" id="principal_dob" name="principal_dob" value="<?php echo htmlspecialchars($_POST['principal_dob'] ?? ''); ?>"></div>
                                 </div>
                                 <div class="form-row">
-                                    <div class="form-group col-md-6"><label for="gender">Gender *</label><select class="form-control" id="gender" name="gender" required><option value="">-- Select Gender --</option><option value="Male" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Male') ? 'selected' : ''; ?>>Male</option><option value="Female" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Female') ? 'selected' : ''; ?>>Female</option><option value="Others" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Others') ? 'selected' : ''; ?>>Others</option></select></div>
-                                    <div class="form-group col-md-6"><label for="blood_group">Blood Group</label><select class="form-control" id="blood_group" name="blood_group"><option value="">-- Select Blood Group --</option><?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']; foreach ($bg_options as $bg) { $selected = (isset($_POST['blood_group']) && $_POST['blood_group'] == $bg) ? 'selected' : ''; echo "<option value='{$bg}' {$selected}>" . $bg . "</option>"; } ?></select></div>
+                                    <div class="form-group col-md-6"><label for="gender">Gender *</label><select class="form-control" id="gender" name="gender" required>
+                                            <option value="">-- Select Gender --</option>
+                                            <option value="Male" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Male') ? 'selected' : ''; ?>>Male</option>
+                                            <option value="Female" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Female') ? 'selected' : ''; ?>>Female</option>
+                                            <option value="Others" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Others') ? 'selected' : ''; ?>>Others</option>
+                                        </select></div>
+                                    <div class="form-group col-md-6"><label for="blood_group">Blood Group</label><select class="form-control" id="blood_group" name="blood_group">
+                                            <option value="">-- Select Blood Group --</option><?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+                                                                                                foreach ($bg_options as $bg) {
+                                                                                                    $selected = (isset($_POST['blood_group']) && $_POST['blood_group'] == $bg) ? 'selected' : '';
+                                                                                                    echo "<option value='{$bg}' {$selected}>" . $bg . "</option>";
+                                                                                                } ?>
+                                        </select></div>
                                 </div>
                                 <div class="form-row">
-                                     <div class="form-group col-md-6"><label for="qualification">Qualification</label><input type="text" class="form-control" id="qualification" name="qualification" value="<?php echo htmlspecialchars($_POST['qualification'] ?? ''); ?>"></div>
-                                     <div class="form-group col-md-6"><label for="salary">Salary</label><input type="number" class="form-control" id="salary" name="salary" value="<?php echo htmlspecialchars($_POST['salary'] ?? ''); ?>" step="0.01" min="0"></div>
+                                    <div class="form-group col-md-6"><label for="qualification">Qualification</label><input type="text" class="form-control" id="qualification" name="qualification" value="<?php echo htmlspecialchars($_POST['qualification'] ?? ''); ?>"></div>
+                                    <div class="form-group col-md-6"><label for="salary">Salary</label><input type="number" class="form-control" id="salary" name="salary" value="<?php echo htmlspecialchars($_POST['salary'] ?? ''); ?>" step="0.01" min="0"></div>
                                 </div>
                                 <div class="form-group">
                                     <label for="address">Address</label>
@@ -256,12 +278,12 @@ if (!empty($batch)) {
             <?php include_once '../footer.php'; ?>
         </div>
     </div>
-    
+
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 
-    
+
     <script>
         $(document).ready(function() {
             // Image Preview
@@ -291,7 +313,7 @@ if (!empty($batch)) {
                 $('#principalForm')[0].reset();
                 $('#imagePreview').attr('src', '../../assets/img/default-user.jpg');
                 // Re-evaluate the disabled state of time inputs after reset
-                $('.closed-checkbox').trigger('change'); 
+                $('.closed-checkbox').trigger('change');
             });
 
             // Trigger the change on page load to set the initial state
@@ -299,4 +321,5 @@ if (!empty($batch)) {
         });
     </script>
 </body>
+
 </html>

@@ -17,7 +17,8 @@ if (!defined('BASE_WEB_PATH')) {
  * @param string $default_sub_folder A hint for the user type (e.g., 'teacher', 'student').
  * @return string|null A valid, web-accessible image path or null if not found.
  */
-function getWebAccessibleImagePath($db_image_path, $base_web_path, $default_sub_folder = '') {
+function getWebAccessibleImagePath($db_image_path, $base_web_path, $default_sub_folder = '')
+{
     if (empty($db_image_path)) {
         return null;
     }
@@ -28,14 +29,14 @@ function getWebAccessibleImagePath($db_image_path, $base_web_path, $default_sub_
     if (@file_exists($filesystem_path) && @is_file($filesystem_path)) {
         return $full_web_path;
     }
-    
+
     // Fallback: If the path is relative or just a filename, try common locations
     $possible_locations = [
         "pages/{$default_sub_folder}/uploads/",
         "uploads/{$default_sub_folder}s/",
         "uploads/",
     ];
-    
+
     foreach ($possible_locations as $location) {
         $test_path = $base_web_path . $location . basename($db_image_path);
         $test_filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $test_path;
@@ -63,7 +64,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
     $table_name = '';
     $image_field = '';
     $name_field = '';
-    
+
     switch ($user_role) {
         case 'teacher':
             $table_name = 'teacher';
@@ -108,7 +109,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                 // The target directory should be relative to the project root for consistency
                 $target_dir = "pages/{$user_role}/uploads/";
                 $full_target_dir = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . BASE_WEB_PATH . $target_dir;
-                
+
                 if (!file_exists($full_target_dir)) {
                     mkdir($full_target_dir, 0777, true);
                 }
@@ -137,10 +138,10 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                                     address = ?,
                                     {$image_field} = ?
                                  WHERE id = ?";
-                
+
                 $stmt = mysqli_prepare($conn, $update_query);
                 mysqli_stmt_bind_param($stmt, "sssssssi", $name, $phone, $dob, $gender, $blood_group, $address, $new_image_path, $user_id);
-                
+
                 if (mysqli_stmt_execute($stmt)) {
                     // Redirect to profile page with a success message
                     header("Location: profile.php?success=Profile updated successfully!");
@@ -149,7 +150,6 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                     throw new Exception("Database update failed: " . mysqli_stmt_error($stmt));
                 }
                 mysqli_stmt_close($stmt);
-
             } catch (Exception $e) {
                 $errors[] = "Database error: " . $e->getMessage();
             }
@@ -163,7 +163,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
         mysqli_stmt_bind_param($stmt, "i", $user_id);
         mysqli_stmt_execute($stmt);
         $result = mysqli_stmt_get_result($stmt);
-        
+
         if (mysqli_num_rows($result) > 0) {
             $user_data = mysqli_fetch_assoc($result);
         } else {
@@ -174,7 +174,6 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
     } catch (Exception $e) {
         $errors[] = "Database query failed: " . $e->getMessage();
     }
-
 } else {
     // Redirect to login if cookies are not set
     header("Location: ../../login.php");
@@ -183,6 +182,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Edit Profile - School Management System</title>
@@ -190,10 +190,13 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
-    <?php include '../../includes/sidebar.php';?>
+        <?php include '../../includes/sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
@@ -216,17 +219,17 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                                     <!-- Photo Preview -->
                                     <div class="col-md-4 text-center">
                                         <?php
-                                            // FIX: Use the robust function to get the correct path for the preview image.
-                                            $default_image_path = BASE_WEB_PATH . 'assets/img/default-user.jpg';
-                                            $imagePathFromDB = $user_data[$image_field] ?? '';
-                                            $current_image_web_path = getWebAccessibleImagePath($imagePathFromDB, BASE_WEB_PATH, $user_role) ?? $default_image_path;
+                                        // FIX: Use the robust function to get the correct path for the preview image.
+                                        $default_image_path = BASE_WEB_PATH . 'assets/img/default-user.jpg';
+                                        $imagePathFromDB = $user_data[$image_field] ?? '';
+                                        $current_image_web_path = getWebAccessibleImagePath($imagePathFromDB, BASE_WEB_PATH, $user_role) ?? $default_image_path;
                                         ?>
-                                        <img src="<?php echo htmlspecialchars($current_image_web_path); ?>" 
-                                             alt="Profile Photo" 
-                                             id="imagePreview" 
-                                             class="img-thumbnail mb-2" 
-                                             style="width: 150px; height: 150px; object-fit: cover;"
-                                             onerror="this.src='<?php echo htmlspecialchars($default_image_path); ?>';">
+                                        <img src="<?php echo htmlspecialchars($current_image_web_path); ?>"
+                                            alt="Profile Photo"
+                                            id="imagePreview"
+                                            class="img-thumbnail mb-2"
+                                            style="width: 150px; height: 150px; object-fit: cover;"
+                                            onerror="this.src='<?php echo htmlspecialchars($default_image_path); ?>';">
                                         <div class="form-group">
                                             <label for="profile_image" class="btn btn-sm btn-info">
                                                 <i class="fas fa-upload fa-sm"></i> Change Photo
@@ -272,7 +275,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                                         <textarea class="form-control" id="address" name="address" rows="1"><?php echo htmlspecialchars($user_data['address'] ?? ''); ?></textarea>
                                     </div>
                                 </div>
-                                
+
                                 <div class="mt-4">
                                     <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-2"></i>Save Changes</button>
                                     <a href="profile.php" class="btn btn-secondary">Cancel</a>
@@ -320,4 +323,5 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
         });
     </script>
 </body>
+
 </html>

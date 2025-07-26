@@ -5,4 +5,3 @@ setcookie("encrypted_user_role", "", time() - 3600, "/");
 
 header("Location: login.php");
 exit;
-?>

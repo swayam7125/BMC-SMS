@@ -51,14 +51,14 @@ function getWebAccessibleImagePath($db_image_path, $base_web_path, $default_sub_
     if (file_exists($filesystem_path) && is_file($filesystem_path)) {
         return $full_web_path;
     }
-    
+
     // Fallback: If DB path is just a filename, try common upload locations
     $possible_locations = [
         "pages/{$default_sub_folder}/uploads/",
         "uploads/{$default_sub_folder}s/",
         "uploads/",
     ];
-    
+
     foreach ($possible_locations as $location) {
         $test_path = $base_web_path . $location . basename($db_image_path);
         $test_filesystem_path = $_SERVER['DOCUMENT_ROOT'] . $test_path;
@@ -106,8 +106,8 @@ $default_principal_photo = getDefaultImagePath('principal', BASE_WEB_PATH);
     <!-- Corrected Font Awesome link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-            <link rel="stylesheet" href="../../assets/css/sidebar.css">
-
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <style>
         .view-image {
             width: 150px;
@@ -146,7 +146,7 @@ $default_principal_photo = getDefaultImagePath('principal', BASE_WEB_PATH);
 
 <body id="page-top">
     <div id="wrapper">
-    <?php include '../../includes/sidebar.php';?>
+        <?php include '../../includes/sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
@@ -236,7 +236,7 @@ $default_principal_photo = getDefaultImagePath('principal', BASE_WEB_PATH);
                                         <div class="col-sm-5 font-weight-bold">Categories:</div>
                                         <div class="col-sm-7"><?php echo htmlspecialchars(str_replace(',', ', ', $school['school_category'])); ?></div>
                                     </div>
-                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -246,7 +246,8 @@ $default_principal_photo = getDefaultImagePath('principal', BASE_WEB_PATH);
                                     <h6 class="m-0 font-weight-bold text-success"><i class="fas fa-user-tie"></i> Principal Information</h6>
                                 </div>
                                 <div class="card-body text-center d-flex flex-column justify-content-center">
-                                    <?php if (!empty($school['principal_user_id'])): // Use principal_user_id from the query result ?>
+                                    <?php if (!empty($school['principal_user_id'])): // Use principal_user_id from the query result 
+                                    ?>
                                         <div class="photo-container">
                                             <?php if ($principal_photo_web_path): ?>
                                                 <img src="<?php echo htmlspecialchars($principal_photo_web_path); ?>" alt="<?php echo htmlspecialchars($school['principal_name']); ?>" class="view-image view-photo" onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($default_principal_photo); ?>';">
@@ -276,8 +277,8 @@ $default_principal_photo = getDefaultImagePath('principal', BASE_WEB_PATH);
             <?php
             include '../../includes/footer.php';
             ?>
-            </div>
-            </div>
+        </div>
+    </div>
     </div>
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
         aria-hidden="true">

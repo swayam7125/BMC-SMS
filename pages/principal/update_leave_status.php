@@ -32,4 +32,3 @@ if (isset($_GET['id']) && isset($_GET['action'])) {
 // Redirect back to the requests page
 header("Location: principal_leave_requests.php");
 exit;
-?>

@@ -20,7 +20,7 @@ if (isset($_POST['class_std']) && isset($_POST['exam_type']) && isset($_POST['ac
         mysqli_stmt_bind_param($stmt_subjects, "s", $class_std);
         mysqli_stmt_execute($stmt_subjects);
         $subjects_result = mysqli_stmt_get_result($stmt_subjects);
-        
+
         $subjects = [];
         while ($row = mysqli_fetch_assoc($subjects_result)) {
             $subjects[] = $row['subject_name'];
@@ -40,7 +40,7 @@ if (isset($_POST['class_std']) && isset($_POST['exam_type']) && isset($_POST['ac
         mysqli_stmt_bind_param($stmt_students, "s", $class_std);
         mysqli_stmt_execute($stmt_students);
         $students_result = mysqli_stmt_get_result($stmt_students);
-        
+
         $students = [];
         while ($student_row = mysqli_fetch_assoc($students_result)) {
             $students[$student_row['id']] = [
@@ -55,20 +55,20 @@ if (isset($_POST['class_std']) && isset($_POST['exam_type']) && isset($_POST['ac
         if (!empty($students)) {
             $student_ids = array_keys($students);
             $placeholders = implode(',', array_fill(0, count($student_ids), '?'));
-            
+
             // Fetch existing marks from your `student_marks` table
             $marks_query = "SELECT student_id, subject_name, marks_obtained FROM student_marks WHERE exam_type = ? AND academic_year = ? AND student_id IN ($placeholders)";
             $stmt_marks = mysqli_prepare($conn, $marks_query);
-            
+
             $types = 'ss' . str_repeat('i', count($student_ids));
             $params = array_merge([$exam_type, $academic_year], $student_ids);
             mysqli_stmt_bind_param($stmt_marks, $types, ...$params);
-            
+
             mysqli_stmt_execute($stmt_marks);
             $marks_result = mysqli_stmt_get_result($stmt_marks);
 
             while ($mark_row = mysqli_fetch_assoc($marks_result)) {
-                if(isset($students[$mark_row['student_id']])) {
+                if (isset($students[$mark_row['student_id']])) {
                     $students[$mark_row['student_id']]['marks'][$mark_row['subject_name']] = $mark_row['marks_obtained'];
                 }
             }
@@ -78,7 +78,6 @@ if (isset($_POST['class_std']) && isset($_POST['exam_type']) && isset($_POST['ac
         $response['success'] = true;
         $response['students'] = array_values($students);
         $response['message'] = 'Students and subjects loaded successfully.';
-
     } catch (Exception $e) {
         $response['message'] = 'Database error: ' . $e->getMessage();
     }
@@ -87,4 +86,3 @@ if (isset($_POST['class_std']) && isset($_POST['exam_type']) && isset($_POST['ac
 }
 
 echo json_encode($response);
-?>

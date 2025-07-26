@@ -51,7 +51,7 @@ $stmt_timings = mysqli_prepare($conn, $query_timings);
 mysqli_stmt_bind_param($stmt_timings, "i", $principal_id);
 mysqli_stmt_execute($stmt_timings);
 $result_timings = mysqli_stmt_get_result($stmt_timings);
-while($row = mysqli_fetch_assoc($result_timings)){
+while ($row = mysqli_fetch_assoc($result_timings)) {
     $timings[$row['day_of_week']] = $row;
 }
 mysqli_stmt_close($stmt_timings);
@@ -70,6 +70,7 @@ if (!empty($photo_path) && !file_exists($photo_path)) {
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>View Principal - <?php echo htmlspecialchars($principal['principal_name']); ?></title>
@@ -78,18 +79,39 @@ if (!empty($photo_path) && !file_exists($photo_path)) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
-    <link rel="stylesheet" href="../../assets/css/custom.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <style>
-        .principal-photo { width: 150px; height: 150px; object-fit: cover; border-radius: 10px; border: 3px solid #e3e6f0; }
-        .info-label { font-weight: bold; color: #5a5c69; }
-        .info-value { color: #3a3b45; }
-        .card-body hr { margin-top: 0.75rem; margin-bottom: 0.75rem; }
-        .table-timings th { width: 35%; }
+        .principal-photo {
+            width: 150px;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 3px solid #e3e6f0;
+        }
+
+        .info-label {
+            font-weight: bold;
+            color: #5a5c69;
+        }
+
+        .info-value {
+            color: #3a3b45;
+        }
+
+        .card-body hr {
+            margin-top: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .table-timings th {
+            width: 35%;
+        }
     </style>
 </head>
+
 <body id="page-top">
     <div id="wrapper">
-    <?php include '../../includes/sidebar.php';?>
+        <?php include '../../includes/sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
@@ -104,7 +126,9 @@ if (!empty($photo_path) && !file_exists($photo_path)) {
                     <div class="row">
                         <div class="col-lg-4 mb-4">
                             <div class="card shadow h-100">
-                                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-camera"></i> Principal Photo</h6></div>
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-camera"></i> Principal Photo</h6>
+                                </div>
                                 <div class="card-body text-center">
                                     <img src="<?php echo htmlspecialchars($photo_path); ?>" alt="<?php echo htmlspecialchars($principal['principal_name']); ?>" class="principal-photo">
                                 </div>
@@ -112,34 +136,90 @@ if (!empty($photo_path) && !file_exists($photo_path)) {
                         </div>
                         <div class="col-lg-8 mb-4">
                             <div class="card shadow h-100">
-                                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-user-tie"></i> Basic Information</h6></div>
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-user-tie"></i> Basic Information</h6>
+                                </div>
                                 <div class="card-body">
-                                    <div class="row"><div class="col-sm-4 info-label">Name:</div><div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['principal_name'] ?? 'N/A'); ?></div></div><hr>
-                                    <div class="row"><div class="col-sm-4 info-label">Email:</div><div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['email']); ?></div></div><hr>
-                                    <div class="row"><div class="col-sm-4 info-label">Phone:</div><div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['phone']); ?></div></div><hr>
-                                    <div class="row"><div class="col-sm-4 info-label">DOB:</div><div class="col-sm-8 info-value"><?php echo htmlspecialchars(date("d M Y", strtotime($principal['principal_dob']))); ?></div></div><hr>
-                                    <div class="row"><div class="col-sm-4 info-label">Gender:</div><div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['gender']); ?></div></div><hr>
-                                    <div class="row"><div class="col-sm-4 info-label">Blood Group:</div><div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['blood_group']); ?></div></div><hr>
-                                    <div class="row"><div class="col-sm-4 info-label">Qualification:</div><div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['qualification']); ?></div></div><hr>
-                                    <div class="row"><div class="col-sm-4 info-label">Salary:</div><div class="col-sm-8 info-value font-weight-bold text-success">₹<?php echo number_format($principal['salary'], 2); ?></div></div><hr>
-                                    <div class="row"><div class="col-sm-4 info-label">Address:</div><div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['address']); ?></div></div>
+                                    <div class="row">
+                                        <div class="col-sm-4 info-label">Name:</div>
+                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['principal_name'] ?? 'N/A'); ?></div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-sm-4 info-label">Email:</div>
+                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['email']); ?></div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-sm-4 info-label">Phone:</div>
+                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['phone']); ?></div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-sm-4 info-label">DOB:</div>
+                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars(date("d M Y", strtotime($principal['principal_dob']))); ?></div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-sm-4 info-label">Gender:</div>
+                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['gender']); ?></div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-sm-4 info-label">Blood Group:</div>
+                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['blood_group']); ?></div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-sm-4 info-label">Qualification:</div>
+                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['qualification']); ?></div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-sm-4 info-label">Salary:</div>
+                                        <div class="col-sm-8 info-value font-weight-bold text-success">₹<?php echo number_format($principal['salary'], 2); ?></div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-sm-4 info-label">Address:</div>
+                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['address']); ?></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                         <div class="col-lg-6 mb-4">
                             <div class="card shadow h-100">
-                                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-info"><i class="fas fa-school"></i> School Information</h6></div>
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-info"><i class="fas fa-school"></i> School Information</h6>
+                                </div>
                                 <div class="card-body">
-                                    <div class="row"><div class="col-sm-4 info-label">School Name:</div><div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['school_name']); ?></div></div><hr>
-                                    <div class="row"><div class="col-sm-4 info-label">School Email:</div><div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['school_email']); ?></div></div><hr>
-                                    <div class="row"><div class="col-sm-4 info-label">School Phone:</div><div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['school_phone']); ?></div></div><hr>
-                                    <div class="row"><div class="col-sm-4 info-label">School Address:</div><div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['school_address']); ?></div></div>
+                                    <div class="row">
+                                        <div class="col-sm-4 info-label">School Name:</div>
+                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['school_name']); ?></div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-sm-4 info-label">School Email:</div>
+                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['school_email']); ?></div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-sm-4 info-label">School Phone:</div>
+                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['school_phone']); ?></div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-sm-4 info-label">School Address:</div>
+                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['school_address']); ?></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                         <div class="col-lg-6 mb-4">
                             <div class="card shadow h-100">
-                                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-success"><i class="fas fa-clock"></i> Batch & Timings</h6></div>
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-success"><i class="fas fa-clock"></i> Batch & Timings</h6>
+                                </div>
                                 <div class="card-body">
                                     <div class="row mb-3">
                                         <div class="col-sm-4 info-label">Assigned Batch:</div>
@@ -158,18 +238,18 @@ if (!empty($photo_path) && !file_exists($photo_path)) {
                                                 foreach ($days as $day):
                                                     $day_timing = $timings[$day] ?? null;
                                                 ?>
-                                                <tr>
-                                                    <th><?php echo $day; ?></th>
-                                                    <td>
-                                                        <?php if ($day_timing && !empty($day_timing['is_closed'])): ?>
-                                                            <span class="badge badge-secondary">Closed</span>
-                                                        <?php elseif ($day_timing && !empty($day_timing['opens_at'])): ?>
-                                                            <?php echo date("g:i A", strtotime($day_timing['opens_at'])); ?> - <?php echo date("g:i A", strtotime($day_timing['closes_at'])); ?>
-                                                        <?php else: ?>
-                                                            <span class="text-muted">Not Set</span>
-                                                        <?php endif; ?>
-                                                    </td>
-                                                </tr>
+                                                    <tr>
+                                                        <th><?php echo $day; ?></th>
+                                                        <td>
+                                                            <?php if ($day_timing && !empty($day_timing['is_closed'])): ?>
+                                                                <span class="badge badge-secondary">Closed</span>
+                                                            <?php elseif ($day_timing && !empty($day_timing['opens_at'])): ?>
+                                                                <?php echo date("g:i A", strtotime($day_timing['opens_at'])); ?> - <?php echo date("g:i A", strtotime($day_timing['closes_at'])); ?>
+                                                            <?php else: ?>
+                                                                <span class="text-muted">Not Set</span>
+                                                            <?php endif; ?>
+                                                        </td>
+                                                    </tr>
                                                 <?php endforeach; ?>
                                             </tbody>
                                         </table>
@@ -191,7 +271,9 @@ if (!empty($photo_path) && !file_exists($photo_path)) {
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
-                <div class="modal-header"><h5 class="modal-title" id="exampleModalLabel">Ready to Leave?</h5><button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button></div>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Ready to Leave?</h5><button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                </div>
                 <div class="modal-body">Select "Logout" below if you are ready to end your current session.</div>
                 <div class="modal-footer"><button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button><a class="btn btn-primary" href="/BMC-SMS/logout.php">Logout</a></div>
             </div>
@@ -202,4 +284,5 @@ if (!empty($photo_path) && !file_exists($photo_path)) {
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
+
 </html>

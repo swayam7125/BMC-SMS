@@ -46,9 +46,11 @@ try {
                                  qualification, subject, language_known, salary, std, experience, batch, 
                                  class_teacher, class_teacher_std, deleted_by_role) 
                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-    
+
     $stmt_archive = mysqli_prepare($conn, $query_archive_teacher);
-    mysqli_stmt_bind_param($stmt_archive, "isssssssisssisssiss",
+    mysqli_stmt_bind_param(
+        $stmt_archive,
+        "isssssssisssisssiss",
         $teacher_data['id'],
         $teacher_data['teacher_name'],
         $teacher_data['email'],
@@ -81,7 +83,7 @@ try {
     $query_delete_user = "DELETE FROM users WHERE id = ?";
     $stmt_delete = mysqli_prepare($conn, $query_delete_user);
     mysqli_stmt_bind_param($stmt_delete, "i", $teacher_id);
-    
+
     if (!mysqli_stmt_execute($stmt_delete)) {
         throw new Exception("Failed to delete user record: " . mysqli_stmt_error($stmt_delete));
     }
@@ -104,7 +106,6 @@ try {
     // Redirect back to the teacher list with a success message
     header("Location: teacher_list.php?success=Teacher was successfully deleted and archived.");
     exit;
-
 } catch (Exception $e) {
     // If any step failed, roll back all database changes to prevent partial data loss
     mysqli_rollback($conn);
@@ -112,9 +113,7 @@ try {
     // Redirect back to the teacher list with a detailed error message
     header("Location: teacher_list.php?error=" . urlencode($e->getMessage()));
     exit;
-
 } finally {
     // Always close the database connection
     mysqli_close($conn);
 }
-?>

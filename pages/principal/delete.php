@@ -45,9 +45,11 @@ try {
     $query_archive_principal = "INSERT INTO deleted_principals 
                                 (id, principal_name, email, phone, dob, gender, blood_group, address, qualification, salary, batch, school_id, deleted_by_role) 
                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-    
+
     $stmt_archive = mysqli_prepare($conn, $query_archive_principal);
-    mysqli_stmt_bind_param($stmt_archive, "issssssssssis",
+    mysqli_stmt_bind_param(
+        $stmt_archive,
+        "issssssssssis",
         $principal_data['id'],
         $principal_data['principal_name'],
         $principal_data['email'],
@@ -74,7 +76,7 @@ try {
     $query_delete_user = "DELETE FROM users WHERE id = ?";
     $stmt_delete = mysqli_prepare($conn, $query_delete_user);
     mysqli_stmt_bind_param($stmt_delete, "i", $principal_id);
-    
+
     if (!mysqli_stmt_execute($stmt_delete)) {
         throw new Exception("Failed to delete principal from active records: " . mysqli_stmt_error($stmt_delete));
     }
@@ -97,7 +99,6 @@ try {
     // Redirect back to the list with a success message
     header("Location: principal_list.php?success=Principal was successfully deleted and archived.");
     exit;
-
 } catch (Exception $e) {
     // If any step failed, roll back the entire transaction
     mysqli_rollback($conn);
@@ -105,9 +106,7 @@ try {
     // Redirect back with an error message
     header("Location: principal_list.php?error=" . urlencode($e->getMessage()));
     exit;
-
 } finally {
     // Always close the database connection
     mysqli_close($conn);
 }
-?>

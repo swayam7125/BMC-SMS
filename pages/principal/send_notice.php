@@ -30,7 +30,7 @@ $stmt_school->execute();
 $result_school = $stmt_school->get_result();
 if ($row_school = $result_school->fetch_assoc()) {
     $schoolId = $row_school['school_id'];
-    
+
     // Fetch standards
     $std_stmt = $conn->prepare("SELECT DISTINCT std FROM student WHERE school_id = ? ORDER BY std");
     $std_stmt->bind_param("i", $schoolId);
@@ -55,7 +55,7 @@ $stmt_school->close();
 
 // --- FORM PROCESSING ---
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
-    
+
     if (empty($_POST['send_to_group'])) {
         die("Error: Please select a recipient group from the 'Send To' dropdown.");
     }
@@ -63,7 +63,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
     $title = $_POST['title'];
     $content = $_POST['content'];
     $send_to_group = $_POST['send_to_group'];
-    
+
     // --- FILE UPLOAD ---
     $filePathForDB = null;
     $originalFilename = null;
@@ -72,7 +72,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
         $uploadDirServer = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/principal/uploads/';
         $uploadDirWeb = '/BMC-SMS/pages/principal/uploads/';
         if (!is_dir($uploadDirServer)) mkdir($uploadDirServer, 0777, true);
-        
+
         $storageFilename = uniqid('notice_', true) . '_' . $originalFilename;
         $serverFilePath = $uploadDirServer . $storageFilename;
         if (move_uploaded_file($_FILES["notice_file"]["tmp_name"], $serverFilePath)) {
@@ -91,7 +91,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
         $stmt_content->close();
 
         // --- FIX STARTS HERE ---
-        
+
         // 2. Prepare the recipient statement ONCE.
         $stmt_recipient = $conn->prepare("INSERT INTO school_notice_recipients (notice_id, recipient_type, recipient_identifier) VALUES (?, ?, ?)");
 
@@ -141,12 +141,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
                 }
             }
         }
-        
+
         // --- FIX ENDS HERE ---
-        
+
         $stmt_recipient->close();
         $conn->commit();
-
     } catch (Exception $e) {
         $conn->rollback();
         die("Failed to send notice: " . $e->getMessage());
@@ -160,6 +159,7 @@ $pageTitle = 'Send School Notice';
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
@@ -169,14 +169,16 @@ $pageTitle = 'Send School Notice';
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
-    <link rel="stylesheet" href="../../assets/css/custom.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 
     <style>
         .select2-container--default .select2-selection--multiple {
-            border: 1px solid #d1d3e2; height: auto;
+            border: 1px solid #d1d3e2;
+            height: auto;
         }
     </style>
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -191,7 +193,7 @@ $pageTitle = 'Send School Notice';
                         </div>
                         <div class="card-body">
                             <form method="POST" action="send_notice.php" enctype="multipart/form-data">
-                                
+
                                 <div class="form-group">
                                     <label for="send_to_group">Send To</label>
                                     <select class="form-control" id="send_to_group" name="send_to_group" required>
@@ -221,7 +223,7 @@ $pageTitle = 'Send School Notice';
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
-                                
+
                                 <div class="form-group">
                                     <label for="title">Title</label>
                                     <input type="text" class="form-control" id="title" name="title" required>
@@ -280,7 +282,7 @@ $pageTitle = 'Send School Notice';
                 var teacherGroup = $('#teacher_group');
                 var studentGroup = $('#student_group');
 
-                switch(selectedGroup) {
+                switch (selectedGroup) {
                     case 'both':
                         teacherGroup.hide();
                         studentGroup.hide();
@@ -314,4 +316,5 @@ $pageTitle = 'Send School Notice';
         });
     </script>
 </body>
+
 </html>

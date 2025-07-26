@@ -7,6 +7,7 @@ $teacher_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encryp
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Leave Application History</title>
@@ -14,15 +15,19 @@ $teacher_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encryp
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
     <!-- Corrected Font Awesome link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-            <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 
 </head>
+
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; // Includes the sidebar ?>
+        <?php include '../../includes/sidebar.php'; // Includes the sidebar 
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include '../../includes/header.php'; // Includes the header ?>
+                <?php include '../../includes/header.php'; // Includes the header 
+                ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Leave Application History</h1>
                     <div class="card shadow mb-4">
@@ -64,7 +69,7 @@ $teacher_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encryp
                                                     echo "<td>" . htmlspecialchars($row['to_date']) . "</td>";
                                                     echo "<td>" . htmlspecialchars($row['reason']) . "</td>";
                                                     echo "<td>" . htmlspecialchars(date('d-m-Y H:i', strtotime($row['applied_on']))) . "</td>";
-                                                    echo '<td><span class="badge badge-'. $status_color .' p-2">' . htmlspecialchars($row['status']) . '</span></td>';
+                                                    echo '<td><span class="badge badge-' . $status_color . ' p-2">' . htmlspecialchars($row['status']) . '</span></td>';
                                                     echo "</tr>";
                                                 }
                                             } else {
@@ -106,4 +111,5 @@ $teacher_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encryp
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
+
 </html>
