@@ -75,35 +75,9 @@ if (!empty($photo_path) && !file_exists($photo_path)) {
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link rel="stylesheet" href="../../assets/css/profile.css">
+    <link rel="stylesheet" href="../../assets/css/teacher_view.css">
 
-
-    <style>
-        .view-photo {
-            width: 150px;
-            height: 150px;
-            object-fit: cover;
-            border-radius: 10px;
-            border: 3px solid #e3e6f0;
-        }
-
-        .info-label {
-            font-weight: bold;
-            color: #5a5c69;
-        }
-
-        .info-value {
-            color: #3a3b45;
-        }
-
-        .card-body hr {
-            margin-top: 0.75rem;
-            margin-bottom: 0.75rem;
-        }
-
-        .table-timings th {
-            width: 35%;
-        }
-    </style>
 </head>
 
 <body id="page-top">

@@ -108,40 +108,7 @@ $default_principal_photo = getDefaultImagePath('principal', BASE_WEB_PATH);
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-    <style>
-        .view-image {
-            width: 150px;
-            height: 150px;
-            border-radius: 10px;
-            border: 3px solid #e3e6f0;
-            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
-        }
-
-        .view-photo {
-            object-fit: cover;
-        }
-
-        .view-logo {
-            object-fit: contain;
-            padding: 5px;
-        }
-
-        .photo-container {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 1rem;
-        }
-
-        .info-row {
-            border-bottom: 1px solid #e3e6f0;
-            padding-top: 0.75rem;
-            padding-bottom: 0.75rem;
-        }
-
-        .info-row:last-child {
-            border-bottom: none;
-        }
-    </style>
+    <link rel="stylesheet" href="../../assets/css/school_view.css">
 </head>
 
 <body id="page-top">

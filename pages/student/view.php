@@ -138,38 +138,9 @@ $default_photo = getDefaultImagePath('student', BASE_WEB_PATH);
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link rel="stylesheet" href="../../assets/css/profile.css">
+    <link rel="stylesheet" href="../../assets/css/student_view.css">
 
-
-    <style>
-        .student-photo {
-            width: 150px;
-            height: 150px;
-            object-fit: cover;
-            border-radius: 10px;
-            border: 3px solid #e3e6f0;
-            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
-        }
-
-        .photo-placeholder {
-            width: 150px;
-            height: 150px;
-            background-color: #f8f9fc;
-            border: 2px dashed #d1d3e2;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #858796;
-            font-size: 14px;
-            text-align: center;
-        }
-
-        .photo-container {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 20px;
-        }
-    </style>
 </head>
 
 <body id="page-top">
