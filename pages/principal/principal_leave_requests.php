@@ -20,7 +20,6 @@ if ($role !== 'schooladmin') {
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
 
-    <!-- Corrected Font Awesome link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 
@@ -72,7 +71,7 @@ if ($role !== 'schooladmin') {
                                                 // Action Buttons
                                                 echo '<td>
                                                         <a href="update_leave_status.php?id=' . $row['id'] . '&action=approve" class="btn btn-success btn-sm">Approve</a>
-                                                        <a href="update_leave_status.php?id=' . $row['id'] . '&action=reject" class="btn btn-danger btn-sm">Reject</a>
+                                                        <button type="button" class="btn btn-danger btn-sm reject-btn" data-toggle="modal" data-target="#rejectionModal" data-id="' . $row['id'] . '">Reject</button>
                                                       </td>';
                                                 echo "</tr>";
                                             }
@@ -91,6 +90,7 @@ if ($role !== 'schooladmin') {
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
+
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
         aria-hidden="true">
         <div class="modal-dialog" role="document">
@@ -109,9 +109,48 @@ if ($role !== 'schooladmin') {
             </div>
         </div>
     </div>
+
+    <div class="modal fade" id="rejectionModal" tabindex="-1" role="dialog" aria-labelledby="rejectionModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="rejectionModalLabel">Reason for Rejection</h5>
+                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                </div>
+                <form action="update_leave_status.php" method="POST">
+                    <div class="modal-body">
+                        <p>Please provide a reason for rejecting this leave application.</p>
+                        <input type="hidden" name="leave_id" id="leave_id_input">
+                        <input type="hidden" name="action" value="reject">
+                        <div class="form-group">
+                            <label for="rejection_reason_textarea">Rejection Reason</label>
+                            <textarea class="form-control" id="rejection_reason_textarea" name="rejection_reason"
+                                rows="4" required></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
+                        <button class="btn btn-danger" type="submit">Submit Rejection</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
+
+    <script>
+    // Pass the leave application ID to the hidden input field in the rejection modal
+    $(document).on("click", ".reject-btn", function() {
+        var leaveId = $(this).data('id');
+        $("#rejectionModal .modal-body #leave_id_input").val(leaveId);
+    });
+    </script>
 </body>
 
 </html>
