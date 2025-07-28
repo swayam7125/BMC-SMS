@@ -152,6 +152,18 @@ if (!defined('BASE_WEB_PATH')) {
                 </div>
             </li>
             <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseTeacherAttendance">
+                    <i class="fas fa-fw fa-clipboard-user"></i>
+                    <span>Manage Attendance</span>
+                </a>
+                <div id="collapseTeacherAttendance" class="collapse" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/principal/teacher_attendence.php">Add/Update Attendance</a>
+                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_teacher_attendence.php">View Attendance Records</a>
+                    </div>
+                </div>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePastData">
                     <i class="fas fa-fw fa-history"></i>
                     <span>View Past Data</span>

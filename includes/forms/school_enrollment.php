@@ -156,9 +156,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <div class="form-group col-md-12">
                                         <label for="school_category">School Category *</label>
                                         <select class="form-control multi-select" id="school_category" name="school_category[]" multiple="multiple" required>
-                                            <?php $categories = ['Pre-Primary', 'Primary(1-5)', 'Upper Primary(6-8)', 'Secondary(9-10)', 'Higher Secondary(11-12)'];
-                                            foreach ($categories as $cat): ?>
-                                                <option value="<?php echo $cat; ?>"><?php echo $cat; ?></option>
+                                            <?php 
+                                            // The key is the value sent to the DB, the value is the text shown to the user.
+                                            $categories_map = [
+                                                'Pre-Primary' => 'Pre-Primary',
+                                                'Primary' => 'Primary (1-5)',
+                                                'Upper Primary' => 'Upper Primary (6-8)',
+                                                'Secondary' => 'Secondary (9-10)',
+                                                'Higher Secondary' => 'Higher Secondary (11-12)'
+                                            ];
+                                            foreach ($categories_map as $value => $text): ?>
+                                                <option value="<?php echo htmlspecialchars($value); ?>"><?php echo htmlspecialchars($text); ?></option>
                                             <?php endforeach; ?>
                                         </select>
                                     </div>

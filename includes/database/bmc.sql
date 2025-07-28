@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jul 25, 2025 at 01:52 PM
+-- Generation Time: Jul 28, 2025 at 11:30 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -243,18 +243,21 @@ CREATE TABLE `leave_applications` (
   `to_date` date NOT NULL,
   `reason` text NOT NULL,
   `status` varchar(20) NOT NULL DEFAULT 'Pending',
-  `applied_on` timestamp NOT NULL DEFAULT current_timestamp()
+  `applied_on` timestamp NOT NULL DEFAULT current_timestamp(),
+  `rejection_reason` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `leave_applications`
 --
 
-INSERT INTO `leave_applications` (`id`, `teacher_id`, `from_date`, `to_date`, `reason`, `status`, `applied_on`) VALUES
-(1, 6, '2025-07-30', '2025-08-10', 'My friend\'s marriage', 'Approved', '2025-07-23 17:40:03'),
-(2, 6, '2025-07-31', '2025-08-20', 'swayam marriage', 'Approved', '2025-07-23 17:55:10'),
-(3, 6, '2025-07-26', '2025-07-30', 'Marriage', 'Rejected', '2025-07-25 07:45:29'),
-(4, 6, '2025-07-25', '2025-07-25', 'fgdgvbdfvc', 'Approved', '2025-07-25 11:04:58');
+INSERT INTO `leave_applications` (`id`, `teacher_id`, `from_date`, `to_date`, `reason`, `status`, `applied_on`, `rejection_reason`) VALUES
+(1, 6, '2025-07-30', '2025-08-10', 'My friend\'s marriage', 'Approved', '2025-07-23 17:40:03', NULL),
+(2, 6, '2025-07-31', '2025-08-20', 'swayam marriage', 'Approved', '2025-07-23 17:55:10', NULL),
+(3, 6, '2025-07-26', '2025-07-30', 'Marriage', 'Rejected', '2025-07-25 07:45:29', 'Because you don\'t deserve'),
+(4, 6, '2025-07-25', '2025-07-25', 'fgdgvbdfvc', 'Approved', '2025-07-25 11:04:58', NULL),
+(5, 6, '2025-08-01', '2025-08-17', 'I\'m Sick', 'Rejected', '2025-07-28 08:31:40', 'You\'re telling lie'),
+(6, 6, '2025-07-28', '2025-08-01', 'dcnjdkjcdckdcdk', 'Rejected', '2025-07-28 09:17:10', 'njcdmcdcd cdcdcdc dm.cdc dcd mcd c mdc md c dc d mcmdm c,d c d c,d mcdm ,cm,dc m,dmcdm,cv m,dmdm,clkm dlv,dfkjnhvnjkmvhfjkm,l.poio-');
 
 -- --------------------------------------------------------
 
@@ -303,7 +306,36 @@ CREATE TABLE `notice` (
 
 INSERT INTO `notice` (`id`, `user_id`, `title`, `content`, `file_path`, `original_filename`, `created_at`) VALUES
 (1, 8, 'Internship', 'Complete Internship', '/BMC-SMS/pages/bmc/uploads/notice_68834a91915150.91659686_INTERNSHIP REGISTRATION FORM JAY (4) (1).pdf', 'INTERNSHIP REGISTRATION FORM JAY (4) (1).pdf', '2025-07-25 09:12:49'),
-(2, 8, 'Day 6 Test', 'waoaz', '/BMC-SMS/pages/bmc/uploads/notice_688362673aef16.92057394_INTERNSHIP REGISTRATION FORM JAY (4) (1) (1) (1).pdf', 'INTERNSHIP REGISTRATION FORM JAY (4) (1) (1) (1).pdf', '2025-07-25 10:54:31');
+(2, 8, 'Day 6 Test', 'waoaz', '/BMC-SMS/pages/bmc/uploads/notice_688362673aef16.92057394_INTERNSHIP REGISTRATION FORM JAY (4) (1) (1) (1).pdf', 'INTERNSHIP REGISTRATION FORM JAY (4) (1) (1) (1).pdf', '2025-07-25 10:54:31'),
+(3, 8, 'Devam ', 'parekh', '/BMC-SMS/pages/bmc/uploads/notice_6887332e030931.00260915_UI-UX_Fenil_74.pdf', 'UI-UX_Fenil_74.pdf', '2025-07-28 08:22:06'),
+(4, 8, 'Harsh', 'Shah', '/BMC-SMS/pages/bmc/uploads/notice_6887347bbbd760.91586774_UI-UX_Fenil_74.pdf', 'UI-UX_Fenil_74.pdf', '2025-07-28 08:27:39');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `notifications`
+--
+
+CREATE TABLE `notifications` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `message` varchar(255) NOT NULL,
+  `link` varchar(255) DEFAULT NULL,
+  `is_read` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `type` varchar(50) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `notifications`
+--
+
+INSERT INTO `notifications` (`id`, `user_id`, `message`, `link`, `is_read`, `created_at`, `type`) VALUES
+(1, 10, 'New notice from BMC: Devam ', '/pages/principal/view_notice.php', 1, '2025-07-28 08:22:06', 'new_notice'),
+(2, 10, 'New notice from BMC: Harsh', '/pages/principal/view_notice.php', 1, '2025-07-28 08:27:39', 'new_notice'),
+(3, 10, 'New leave request from meet parekh', '/pages/principal/principal_leave_requests.php', 1, '2025-07-28 08:31:40', 'leave_request'),
+(4, 10, 'New leave request from meet parekh', '/pages/principal/principal_leave_requests.php', 1, '2025-07-28 09:17:10', 'leave_request'),
+(5, 6, 'Your leave application has been Rejected.', '/pages/teacher/teacher_leave_history.php', 1, '2025-07-28 09:18:01', 'leave_status');
 
 -- --------------------------------------------------------
 
@@ -832,6 +864,13 @@ ALTER TABLE `notice`
   ADD KEY `user_id` (`user_id`);
 
 --
+-- Indexes for table `notifications`
+--
+ALTER TABLE `notifications`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `user_id` (`user_id`);
+
+--
 -- Indexes for table `principal`
 --
 ALTER TABLE `principal`
@@ -968,7 +1007,7 @@ ALTER TABLE `deleted_teachers`
 -- AUTO_INCREMENT for table `leave_applications`
 --
 ALTER TABLE `leave_applications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `notes`
@@ -980,7 +1019,13 @@ ALTER TABLE `notes`
 -- AUTO_INCREMENT for table `notice`
 --
 ALTER TABLE `notice`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `notifications`
+--
+ALTER TABLE `notifications`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `principal_timings`
@@ -1078,6 +1123,12 @@ ALTER TABLE `notes`
 --
 ALTER TABLE `notice`
   ADD CONSTRAINT `notice_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `notifications`
+--
+ALTER TABLE `notifications`
+  ADD CONSTRAINT `notifications_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `principal`

@@ -137,6 +137,8 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
         color: #1cc88a;
     }
     </style>
+    <link rel="stylesheet" href="../../assets/css/profile.css">
+
 </head>
 
 <body id="page-top">
