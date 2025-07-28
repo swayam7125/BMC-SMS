@@ -145,18 +145,6 @@ if (!defined('BASE_WEB_PATH')) {
             <div class="bg-white py-2 collapse-inner rounded">
                 <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/academics/manage_subjects.php">Manage
                     Subjects</a>
-            </div>
-        </div>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseAcademics">
-            <i class="fas fa-fw fa-book"></i>
-            <span>Academics</span>
-        </a>
-        <div id="collapseAcademics" class="collapse" data-parent="#accordionSidebar">
-            <div class="bg-white py-2 collapse-inner rounded">
-                <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/academics/manage_subjects.php">Manage
-                    Subjects</a>
                 <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/academics/manage_timetable.php">Manage
                     Timetable</a>
             </div>
