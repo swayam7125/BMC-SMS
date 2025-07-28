@@ -244,17 +244,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            $('.multi-select').select2();
-        });
-
-        document.getElementById('school_logo').addEventListener('change', function(event) {
-            if (event.target.files[0]) {
-                document.getElementById('logoPreview').src = URL.createObjectURL(event.target.files[0]);
-            }
-        });
-    </script>
+    <script src="../../assets/js/custom_school_scripts.js"></script>
 </body>
 
 </html>

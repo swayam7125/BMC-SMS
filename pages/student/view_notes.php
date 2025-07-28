@@ -156,7 +156,7 @@ $pageTitle = 'View Notes';
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
-                                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                <table class="table table-bordered" id="notesTable " width="100%" cellspacing="0">
                                     <thead>
                                         <tr>
                                             <th>From</th>
@@ -228,15 +228,7 @@ $pageTitle = 'View Notes';
     <script src="https://cdn.datatables.net/1.10.21/js/dataTables.bootstrap4.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 
-    <script>
-        $(document).ready(function() {
-            $('#dataTable').DataTable({
-                "order": [
-                    [4, "desc"]
-                ]
-            });
-        });
-    </script>
+    <script src="../../assets/js/custom_student_scripts.js"></script>
 </body>
 </html>
 <?php 

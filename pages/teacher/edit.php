@@ -308,41 +308,8 @@ $selected_stds = explode(',', $teacher['std']);
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            $('.multi-select').select2();
-
-            // Class Teacher checkbox logic
-            const isClassTeacherCheckbox = $('#class_teacher');
-            const classTeacherStdGroup = $('#classTeacherStdGroup');
-
-            function toggleClassTeacherStd() {
-                if (isClassTeacherCheckbox.is(':checked')) {
-                    classTeacherStdGroup.show();
-                    $('#class_teacher_std').prop('required', true);
-                } else {
-                    classTeacherStdGroup.hide();
-                    $('#class_teacher_std').prop('required', false).val('');
-                }
-            }
-            isClassTeacherCheckbox.on('change', toggleClassTeacherStd);
-            toggleClassTeacherStd(); // Initial check
-
-            // Image Preview
-            $('#teacher_image').on('change', function(event) {
-                if (event.target.files[0]) {
-                    $('#imagePreview').attr('src', URL.createObjectURL(event.target.files[0]));
-                }
-            });
-
-            // Timings schedule logic
-            $('.closed-checkbox').on('change', function() {
-                const row = $(this).closest('.timing-row');
-                const timeInputs = row.find('input[type="time"]');
-                timeInputs.prop('disabled', $(this).is(':checked'));
-            }).trigger('change'); // Trigger on page load
-        });
-    </script>
+    <script src="../../assets/js/custom_teacher_scripts.js"></script>
+    
 </body>
 
 </html>
