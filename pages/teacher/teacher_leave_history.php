@@ -13,7 +13,6 @@ $teacher_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encryp
     <title>Leave Application History</title>
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
-    <!-- Corrected Font Awesome link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
@@ -43,13 +42,14 @@ $teacher_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encryp
                                             <th>To Date</th>
                                             <th>Reason</th>
                                             <th>Applied On</th>
-                                            <th>Status</th>
+                                            <th>Status & Rejection Reason</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <?php
                                         if ($teacher_id) {
-                                            $stmt = $conn->prepare("SELECT from_date, to_date, reason, applied_on, status FROM leave_applications WHERE teacher_id = ? ORDER BY applied_on DESC");
+                                            // Updated query to fetch rejection_reason
+                                            $stmt = $conn->prepare("SELECT from_date, to_date, reason, applied_on, status, rejection_reason FROM leave_applications WHERE teacher_id = ? ORDER BY applied_on DESC");
                                             $stmt->bind_param("i", $teacher_id);
                                             $stmt->execute();
                                             $result = $stmt->get_result();
@@ -69,7 +69,13 @@ $teacher_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encryp
                                                     echo "<td>" . htmlspecialchars($row['to_date']) . "</td>";
                                                     echo "<td>" . htmlspecialchars($row['reason']) . "</td>";
                                                     echo "<td>" . htmlspecialchars(date('d-m-Y H:i', strtotime($row['applied_on']))) . "</td>";
-                                                    echo '<td><span class="badge badge-' . $status_color . ' p-2">' . htmlspecialchars($row['status']) . '</span></td>';
+                                                    // Display status and rejection reason if available
+                                                    echo '<td>
+                                                            <span class="badge badge-' . $status_color . ' p-2">' . htmlspecialchars($row['status']) . '</span>';
+                                                    if ($row['status'] == 'Rejected' && !empty($row['rejection_reason'])) {
+                                                        echo '<br><small class="text-muted mt-1"><strong>Reason:</strong> ' . htmlspecialchars($row['rejection_reason']) . '</small>';
+                                                    }
+                                                    echo '</td>';
                                                     echo "</tr>";
                                                 }
                                             } else {
