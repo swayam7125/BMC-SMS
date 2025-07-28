@@ -47,7 +47,7 @@ $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
 
 </head>
 
-<body id="page-top">
+<body id="page-top" data-class-std="<?php echo htmlspecialchars($class_teacher_std); ?>">
     <div id="wrapper">
         <?php include '../../../includes/sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
@@ -101,7 +101,7 @@ $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
     <script src="../../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../../assets/js/sb-admin-2.min.js"></script>
     <script src="../../../assets/js/custom_marks_scripts.js"></script>
-    
+
 </body>
 
 </html>
