@@ -26,22 +26,67 @@ if (isset($_COOKIE['encrypted_user_role'])) {
     if ($user_role === 'bmc') {
         $userName = 'BMC Admin';
     } else {
-        // Fetch specific details for non-BMC users
         if (isset($_COOKIE['encrypted_user_name'])) {
             $userName = decrypt_id($_COOKIE['encrypted_user_name']);
         }
-
         if (isset($_COOKIE['encrypted_profile_image'])) {
             $decrypted_image_relative_path = decrypt_id($_COOKIE['encrypted_profile_image']);
             $image_path_for_web = BASE_WEB_PATH . ltrim($decrypted_image_relative_path, '/');
             $filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $image_path_for_web;
-
             if (!empty($decrypted_image_relative_path) && file_exists($filesystem_path) && is_file($filesystem_path)) {
                 $userProfileImage = $image_path_for_web;
             }
         }
     }
 }
+
+
+// --- START: Dynamic Notification Logic ---
+$notifications = [];
+$unread_count = 0;
+$current_user_id = null;
+
+if ($isLoggedIn && isset($_COOKIE['encrypted_user_id'])) {
+    $current_user_id = decrypt_id($_COOKIE['encrypted_user_id']);
+    // The calling script MUST ensure $conn is open and valid.
+    if ($current_user_id && isset($conn)) {
+        $stmt_notifications = $conn->prepare("SELECT id, message, link, type, created_at FROM notifications WHERE user_id = ? AND is_read = 0 ORDER BY created_at DESC LIMIT 5");
+        $stmt_notifications->bind_param("i", $current_user_id);
+        $stmt_notifications->execute();
+        $result_notifications = $stmt_notifications->get_result();
+        while ($row = $result_notifications->fetch_assoc()) {
+            $notifications[] = $row;
+        }
+        $stmt_notifications->close();
+
+        $stmt_count = $conn->prepare("SELECT COUNT(*) as unread_count FROM notifications WHERE user_id = ? AND is_read = 0");
+        $stmt_count->bind_param("i", $current_user_id);
+        $stmt_count->execute();
+        $unread_count = $stmt_count->get_result()->fetch_assoc()['unread_count'];
+        $stmt_count->close();
+    }
+}
+
+function getNotificationIcon($type) {
+    switch ($type) {
+        case 'leave_request':
+            return 'fas fa-calendar-plus text-white';
+        case 'new_notice': // BMC notice
+            return 'fas fa-file-alt text-white';
+        case 'leave_status':
+            return 'fas fa-check-circle text-white';
+        case 'school_notice': // Principal notice
+            return 'fas fa-chalkboard-teacher text-white';
+        case 'new_timetable': // New timetable
+            return 'fas fa-table text-white';
+        case 'new_notes': // New notes
+            return 'fas fa-sticky-note text-white';
+        default:
+            return 'fas fa-bell text-white';
+    }
+}
+// --- END: Dynamic Notification Logic ---
+
 ?>
 
 <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
@@ -86,52 +131,51 @@ if (isset($_COOKIE['encrypted_user_role'])) {
         </li>
 
         <li class="nav-item dropdown no-arrow mx-1">
-            <a class="nav-link dropdown-toggle" href="#" id="alertsDropdown" role="button" data-toggle="dropdown"
-                aria-haspopup="true" aria-expanded="false">
+            <a class="nav-link dropdown-toggle" href="#" id="alertsDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                 <i class="fas fa-bell fa-fw"></i>
-                <span class="badge badge-danger badge-counter">3+</span>
+                <?php if ($unread_count > 0): ?>
+                    <span class="badge badge-danger badge-counter">
+                        <?php echo ($unread_count > 5) ? '5+' : $unread_count; ?>
+                    </span>
+                <?php endif; ?>
             </a>
-            <div class="dropdown-list dropdown-menu dropdown-menu-right shadow animated--grow-in"
-                aria-labelledby="alertsDropdown">
+            <div class="dropdown-list dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="alertsDropdown">
                 <h6 class="dropdown-header">
                     Alerts Center
                 </h6>
-                <a class="dropdown-item d-flex align-items-center" href="#">
-                    <div class="mr-3">
-                        <div class="icon-circle bg-primary">
-                            <i class="fas fa-file-alt text-white"></i>
+
+                <?php if (empty($notifications)): ?>
+                    <a class="dropdown-item d-flex align-items-center" href="#">
+                        <div class="mr-3">
+                            <div class="icon-circle bg-secondary">
+                                <i class="fas fa-info-circle text-white"></i>
+                            </div>
                         </div>
-                    </div>
-                    <div>
-                        <div class="small text-gray-500">December 12, 2019</div>
-                        <span class="font-weight-bold">A new monthly report is ready to download!</span>
-                    </div>
-                </a>
-                <a class="dropdown-item d-flex align-items-center" href="#">
-                    <div class="mr-3">
-                        <div class="icon-circle bg-success">
-                            <i class="fas fa-donate text-white"></i>
+                        <div>
+                            <div class="small text-gray-500"><?php echo date('F j, Y'); ?></div>
+                            No new notifications.
                         </div>
-                    </div>
-                    <div>
-                        <div class="small text-gray-500">December 7, 2019</div>
-                        $290.29 has been deposited into your account!
-                    </div>
-                </a>
-                <a class="dropdown-item d-flex align-items-center" href="#">
-                    <div class="mr-3">
-                        <div class="icon-circle bg-warning">
-                            <i class="fas fa-exclamation-triangle text-white"></i>
-                        </div>
-                    </div>
-                    <div>
-                        <div class="small text-gray-500">December 2, 2019</div>
-                        Spending Alert: We've noticed unusually high spending for your account.
-                    </div>
-                </a>
+                    </a>
+                <?php else: ?>
+                    <?php foreach ($notifications as $notification): ?>
+                        <a class="dropdown-item d-flex align-items-center" href="<?php echo htmlspecialchars(BASE_WEB_PATH . ltrim($notification['link'], '/')) . '?notif_id=' . $notification['id']; ?>">
+                            <div class="mr-3">
+                                <div class="icon-circle bg-primary">
+                                    <i class="<?php echo getNotificationIcon($notification['type']); ?>"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="small text-gray-500"><?php echo date('F j, Y', strtotime($notification['created_at'])); ?></div>
+                                <span class="font-weight-bold"><?php echo htmlspecialchars($notification['message']); ?></span>
+                            </div>
+                        </a>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+                
                 <a class="dropdown-item text-center small text-gray-500" href="#">Show All Alerts</a>
             </div>
         </li>
+
 
         <li class="nav-item dropdown no-arrow mx-1">
             <a class="nav-link dropdown-toggle" href="#" id="messagesDropdown" role="button" data-toggle="dropdown"
@@ -227,5 +271,4 @@ if (isset($_COOKIE['encrypted_user_role'])) {
         <?php endif; ?>
 
     </ul>
-
 </nav>

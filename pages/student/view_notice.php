@@ -2,6 +2,19 @@
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
 
+// --- START: MARK NOTIFICATION AS READ ---
+if (isset($_GET['notif_id']) && is_numeric($_GET['notif_id'])) {
+    $notification_id = $_GET['notif_id'];
+    $current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+    if ($current_user_id) {
+        $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?");
+        $stmt_mark_read->bind_param("ii", $notification_id, $current_user_id);
+        $stmt_mark_read->execute();
+        $stmt_mark_read->close();
+    }
+}
+// --- END: MARK NOTIFICATION AS READ ---
+
 $role = null;
 $userId = null;
 $schoolId = null;
@@ -21,7 +34,7 @@ if (!$role || !$userId) {
     exit;
 }
 
-// Fetch user-specific data (school_id, std for students, or just school_id for teachers)
+// Fetch user-specific data
 if ($role == 'student') {
     $stmt = $conn->prepare("SELECT school_id, std FROM student WHERE id = ?");
     $stmt->bind_param("i", $userId);
@@ -45,7 +58,7 @@ if ($role == 'student') {
 
 $notices = [];
 
-// New query to join content and recipient tables
+// Corrected query to fetch notices
 $sql = "SELECT DISTINCT c.title, c.content, c.file_path, c.original_filename, c.created_at
         FROM school_notices_content c
         JOIN school_notice_recipients r ON c.id = r.notice_id
@@ -58,24 +71,20 @@ $types = "i";
 if ($role == 'teacher') {
     $sql .= " AND r.recipient_type = 'teacher' AND r.recipient_identifier = ?";
     $params[] = $userId;
-    $types .= "s"; // Identifier is stored as varchar
+    $types .= "i";
 } elseif ($role == 'student' && $studentStd) {
     $sql .= " AND r.recipient_type = 'standard' AND r.recipient_identifier = ?";
     $params[] = $studentStd;
-    $types .= "s"; // Identifier is stored as varchar
+    $types .= "s";
 } else {
-    // If role is not matched, prevent fetching any notices
     $sql .= " AND 1=0";
 }
 
 $sql .= " ORDER BY c.created_at DESC";
 
 $stmt = $conn->prepare($sql);
-if ($stmt && !empty($params)) {
+if ($stmt && !empty($params) && $params[0] !== null) {
     $stmt->bind_param($types, ...$params);
-}
-
-if ($stmt) {
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
@@ -84,12 +93,10 @@ if ($stmt) {
     $stmt->close();
 }
 
-
 $pageTitle = 'View School Notices';
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
@@ -99,9 +106,7 @@ $pageTitle = 'View School Notices';
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-
 </head>
-
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -128,7 +133,7 @@ $pageTitle = 'View School Notices';
                                             <p class="card-text"><?php echo nl2br(htmlspecialchars($notice['content'])); ?></p>
                                             <?php if ($notice['file_path']): ?>
                                                 <hr>
-                                                <a href="<?php echo htmlspecialchars($notice['file_path']); ?>" class="btn btn-success btn-sm" download="<?php echo htmlspecialchars($notice['original_filename']); ?>">
+                                                <a href="<?php echo htmlspecialchars(BASE_WEB_PATH . ltrim($notice['file_path'], '/')); ?>" class="btn btn-success btn-sm" download="<?php echo htmlspecialchars($notice['original_filename']); ?>">
                                                     <i class="fas fa-download"></i> Download Attachment
                                                 </a>
                                             <?php endif; ?>
@@ -143,8 +148,7 @@ $pageTitle = 'View School Notices';
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
-    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
-        aria-hidden="true">
+    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
@@ -165,8 +169,9 @@ $pageTitle = 'View School Notices';
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <?php
-    $conn->close();
+    if (isset($conn)) {
+        $conn->close();
+    }
     ?>
 </body>
-
 </html>

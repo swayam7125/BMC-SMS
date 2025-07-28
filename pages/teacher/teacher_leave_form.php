@@ -39,6 +39,38 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && $teacher_id) {
         $stmt->bind_param("isss", $teacher_id, $from_date, $to_date, $reason);
         if ($stmt->execute()) {
             $message = '<div class="alert alert-success">Leave application submitted successfully!</div>';
+
+            // --- START: Notification Logic ---
+            // Find the principal of the teacher's school to notify them.
+            $stmt_school = $conn->prepare("SELECT school_id FROM teacher WHERE id = ?");
+            $stmt_school->bind_param("i", $teacher_id);
+            $stmt_school->execute();
+            $teacher_data = $stmt_school->get_result()->fetch_assoc();
+            $stmt_school->close();
+
+            if ($teacher_data) {
+                $school_id = $teacher_data['school_id'];
+                
+                // Find the principal for this school
+                $stmt_principal = $conn->prepare("SELECT id FROM principal WHERE school_id = ?");
+                $stmt_principal->bind_param("i", $school_id);
+                $stmt_principal->execute();
+                $principal_data = $stmt_principal->get_result()->fetch_assoc();
+                $stmt_principal->close();
+
+                if ($principal_data) {
+                    $principal_user_id = $principal_data['id'];
+                    $leave_message = "New leave request from " . htmlspecialchars($teacher_name);
+                    $link = "/pages/principal/principal_leave_requests.php";
+                    $type = 'leave_request';
+
+                    $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");
+                    $stmt_notify->bind_param("isss", $principal_user_id, $leave_message, $link, $type);
+                    $stmt_notify->execute();
+                    $stmt_notify->close();
+                }
+            }
+            // --- END: Notification Logic ---
         } else {
             $message = '<div class="alert alert-danger">Error submitting application.</div>';
         }
@@ -54,7 +86,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && $teacher_id) {
     <title>Apply for Leave</title>
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
-    <!-- Corrected Font Awesome link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">

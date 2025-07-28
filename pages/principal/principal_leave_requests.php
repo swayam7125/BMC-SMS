@@ -2,10 +2,21 @@
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 
+// Mark notification as read if notif_id is present in the URL
+if (isset($_GET['notif_id']) && is_numeric($_GET['notif_id'])) {
+    $notification_id = $_GET['notif_id'];
+    $current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+    if ($current_user_id) {
+        $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?");
+        $stmt_mark_read->bind_param("ii", $notification_id, $current_user_id);
+        $stmt_mark_read->execute();
+        $stmt_mark_read->close();
+    }
+}
+
 // Ensure user is a schooladmin
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : '';
 if ($role !== 'schooladmin') {
-    // Redirect non-admins away
     header("Location: /BMC-SMS/dashboard.php");
     exit;
 }
@@ -19,10 +30,8 @@ if ($role !== 'schooladmin') {
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
-
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-
 </head>
 
 <body id="page-top">
@@ -53,21 +62,21 @@ if ($role !== 'schooladmin') {
                                     </thead>
                                     <tbody>
                                         <?php
-                                        // Join leave_applications and teacher tables to get the teacher's name
+                                        // Fetch pending leave applications
                                         $query = "SELECT l.id, t.teacher_name, l.from_date, l.to_date, l.reason, l.applied_on
                                                   FROM leave_applications l
                                                   JOIN teacher t ON l.teacher_id = t.id
                                                   WHERE l.status = 'Pending'
                                                   ORDER BY l.applied_on ASC";
                                         $result = $conn->query($query);
-                                        if ($result->num_rows > 0) {
+                                        if ($result && $result->num_rows > 0) {
                                             while ($row = $result->fetch_assoc()) {
                                                 echo "<tr>";
                                                 echo "<td>" . htmlspecialchars($row['teacher_name']) . "</td>";
                                                 echo "<td>" . htmlspecialchars($row['from_date']) . "</td>";
                                                 echo "<td>" . htmlspecialchars($row['to_date']) . "</td>";
                                                 echo "<td>" . htmlspecialchars($row['reason']) . "</td>";
-                                                echo "<td>" . htmlspecialchars($row['applied_on']) . "</td>";
+                                                echo "<td>" . htmlspecialchars(date('d-m-Y H:i', strtotime($row['applied_on']))) . "</td>";
                                                 // Action Buttons
                                                 echo '<td>
                                                         <a href="update_leave_status.php?id=' . $row['id'] . '&action=approve" class="btn btn-success btn-sm">Approve</a>
@@ -84,13 +93,40 @@ if ($role !== 'schooladmin') {
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
 
+    <div class="modal fade" id="rejectionModal" tabindex="-1" role="dialog" aria-labelledby="rejectionModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="rejectionModalLabel">Reason for Rejection</h5>
+                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                </div>
+                <form action="update_leave_status.php" method="POST">
+                    <div class="modal-body">
+                        <p>Please provide a reason for rejecting this leave application.</p>
+                        <input type="hidden" name="leave_id" id="leave_id_input">
+                        <input type="hidden" name="action" value="reject">
+                        <div class="form-group">
+                            <label for="rejection_reason_textarea">Rejection Reason</label>
+                            <textarea class="form-control" id="rejection_reason_textarea" name="rejection_reason" rows="4" required></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
+                        <button class="btn btn-danger" type="submit">Submit Rejection</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
         aria-hidden="true">
         <div class="modal-dialog" role="document">
@@ -110,41 +146,10 @@ if ($role !== 'schooladmin') {
         </div>
     </div>
 
-    <div class="modal fade" id="rejectionModal" tabindex="-1" role="dialog" aria-labelledby="rejectionModalLabel"
-        aria-hidden="true">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="rejectionModalLabel">Reason for Rejection</h5>
-                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">×</span>
-                    </button>
-                </div>
-                <form action="update_leave_status.php" method="POST">
-                    <div class="modal-body">
-                        <p>Please provide a reason for rejecting this leave application.</p>
-                        <input type="hidden" name="leave_id" id="leave_id_input">
-                        <input type="hidden" name="action" value="reject">
-                        <div class="form-group">
-                            <label for="rejection_reason_textarea">Rejection Reason</label>
-                            <textarea class="form-control" id="rejection_reason_textarea" name="rejection_reason"
-                                rows="4" required></textarea>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
-                        <button class="btn btn-danger" type="submit">Submit Rejection</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script src="../../assets/js/custom_principal.js"></script>
 
 </body>
-
 </html>
