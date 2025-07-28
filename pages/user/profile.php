@@ -59,6 +59,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
             $image_field = 'student_image';
             $name_field = 'student_name';
             break;
+        case 'schooladmin':
         case 'principal':
             $table_name = 'principal';
             $image_field = 'principal_image';
@@ -108,33 +109,33 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <style>
-        .profile-photo {
-            width: 150px;
-            height: 150px;
-            object-fit: cover;
-            border-radius: 10px;
-            border: 3px solid #e3e6f0;
-            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
-        }
+    .profile-photo {
+        width: 150px;
+        height: 150px;
+        object-fit: cover;
+        border-radius: 10px;
+        border: 3px solid #e3e6f0;
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+    }
 
-        .info-row {
-            margin-bottom: 1rem;
-        }
+    .info-row {
+        margin-bottom: 1rem;
+    }
 
-        .info-label {
-            font-weight: bold;
-            color: #5a5c69;
-        }
+    .info-label {
+        font-weight: bold;
+        color: #5a5c69;
+    }
 
-        .info-value {
-            color: #858796;
-        }
+    .info-value {
+        color: #858796;
+    }
 
-        .salary-display {
-            font-size: 1.2em;
-            font-weight: bold;
-            color: #1cc88a;
-        }
+    .salary-display {
+        font-size: 1.2em;
+        font-weight: bold;
+        color: #1cc88a;
+    }
     </style>
 </head>
 
@@ -155,126 +156,148 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
 
                     <!-- Display Success/Error Messages -->
                     <?php if ($success_message_from_url): ?>
-                        <div class="alert alert-success"><?php echo $success_message_from_url; ?></div>
+                    <div class="alert alert-success"><?php echo $success_message_from_url; ?></div>
                     <?php endif; ?>
                     <?php if ($error_message_from_url): ?>
-                        <div class="alert alert-danger"><?php echo $error_message_from_url; ?></div>
+                    <div class="alert alert-danger"><?php echo $error_message_from_url; ?></div>
                     <?php endif; ?>
 
                     <?php if (!empty($error_message)): ?>
-                        <div class="alert alert-danger"><?php echo htmlspecialchars($error_message); ?></div>
+                    <div class="alert alert-danger"><?php echo htmlspecialchars($error_message); ?></div>
                     <?php elseif ($user_data): ?>
-                        <div class="row">
-                            <div class="col-lg-4 mb-4">
-                                <div class="card shadow h-100">
-                                    <div class="card-header py-3">
-                                        <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-camera mr-2"></i>Profile Photo</h6>
-                                    </div>
-                                    <div class="card-body text-center">
-                                        <?php
+                    <div class="row">
+                        <div class="col-lg-4 mb-4">
+                            <div class="card shadow h-100">
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-primary"><i
+                                            class="fas fa-camera mr-2"></i>Profile Photo</h6>
+                                </div>
+                                <div class="card-body text-center">
+                                    <?php
                                         $defaultImagePath = BASE_WEB_PATH . 'assets/img/default-user.jpg';
                                         $imagePathFromDB = $user_data[$image_field] ?? '';
                                         $profileImagePath = getWebAccessibleImagePath($imagePathFromDB, BASE_WEB_PATH, $user_role) ?? $defaultImagePath;
                                         ?>
-                                        <img src="<?php echo htmlspecialchars($profileImagePath); ?>"
-                                            class="profile-photo mb-3"
-                                            alt="Profile Photo"
-                                            onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($defaultImagePath); ?>';">
-                                        <h4 class="text-primary font-weight-bold"><?php echo htmlspecialchars($user_data[$name_field] ?? 'N/A'); ?></h4>
-                                        <p class="text-muted text-capitalize"><?php echo htmlspecialchars($user_role); ?></p>
-                                    </div>
+                                    <img src="<?php echo htmlspecialchars($profileImagePath); ?>"
+                                        class="profile-photo mb-3" alt="Profile Photo"
+                                        onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($defaultImagePath); ?>';">
+                                    <h4 class="text-primary font-weight-bold">
+                                        <?php echo htmlspecialchars($user_data[$name_field] ?? 'N/A'); ?></h4>
+                                    <p class="text-muted text-capitalize"><?php echo htmlspecialchars($user_role); ?>
+                                    </p>
                                 </div>
                             </div>
-                            <div class="col-lg-8 mb-4">
-                                <div class="card shadow h-100">
-                                    <div class="card-header py-3">
-                                        <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-user-tie mr-2"></i>Basic Information</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="row info-row">
-                                            <div class="col-sm-4 info-label">Email:</div>
-                                            <div class="col-sm-8 info-value"><?php echo htmlspecialchars($user_data['email'] ?? 'N/A'); ?></div>
-                                        </div>
-                                        <hr>
-                                        <div class="row info-row">
-                                            <div class="col-sm-4 info-label">Phone:</div>
-                                            <div class="col-sm-8 info-value"><?php echo htmlspecialchars($user_data['phone'] ?? 'N/A'); ?></div>
-                                        </div>
-                                        <hr>
-                                        <div class="row info-row">
-                                            <div class="col-sm-4 info-label">Date of Birth:</div>
-                                            <div class="col-sm-8 info-value"><?php echo !empty($user_data['dob']) ? htmlspecialchars(date('F j, Y', strtotime($user_data['dob']))) : 'N/A'; ?></div>
-                                        </div>
-                                        <hr>
-                                        <div class="row info-row">
-                                            <div class="col-sm-4 info-label">Gender:</div>
-                                            <div class="col-sm-8 info-value"><?php echo htmlspecialchars($user_data['gender'] ?? 'N/A'); ?></div>
-                                        </div>
-                                        <hr>
-                                        <div class="row info-row">
-                                            <div class="col-sm-4 info-label">Blood Group:</div>
-                                            <div class="col-sm-8 info-value"><?php echo htmlspecialchars($user_data['blood_group'] ?? 'N/A'); ?></div>
-                                        </div>
-                                        <hr>
-                                        <div class="row info-row">
-                                            <div class="col-sm-4 info-label">Address:</div>
-                                            <div class="col-sm-8 info-value"><?php echo htmlspecialchars($user_data['address'] ?? 'N/A'); ?></div>
-                                        </div>
-                                    </div>
+                        </div>
+                        <div class="col-lg-8 mb-4">
+                            <div class="card shadow h-100">
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-primary"><i
+                                            class="fas fa-user-tie mr-2"></i>Basic Information</h6>
                                 </div>
-                            </div>
-                            <div class="col-12 mb-4">
-                                <div class="card shadow">
-                                    <div class="card-header py-3">
-                                        <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-briefcase mr-2"></i>Professional Information</h6>
+                                <div class="card-body">
+                                    <div class="row info-row">
+                                        <div class="col-sm-4 info-label">Email:</div>
+                                        <div class="col-sm-8 info-value">
+                                            <?php echo htmlspecialchars($user_data['email'] ?? 'N/A'); ?></div>
                                     </div>
-                                    <div class="card-body">
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <div class="row info-row">
-                                                    <div class="col-sm-5 info-label">School:</div>
-                                                    <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['school_name'] ?? 'N/A'); ?></div>
-                                                </div>
-                                            </div>
-                                            <?php if ($user_role === 'teacher' || $user_role === 'principal'): ?>
-                                                <div class="col-md-6">
-                                                    <div class="row info-row">
-                                                        <div class="col-sm-5 info-label">Qualification:</div>
-                                                        <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['qualification'] ?? 'N/A'); ?></div>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <div class="row info-row">
-                                                        <div class="col-sm-5 info-label">Batch:</div>
-                                                        <div class="col-sm-7 info-value"><span class="badge badge-<?php echo ($user_data['batch'] ?? '') === 'Morning' ? 'info' : 'warning'; ?>"><?php echo htmlspecialchars($user_data['batch'] ?? 'N/A'); ?></span></div>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <div class="row info-row">
-                                                        <div class="col-sm-5 info-label">Salary:</div>
-                                                        <div class="col-sm-7 info-value salary-display">₹<?php echo number_format($user_data['salary'] ?? 0, 2); ?></div>
-                                                    </div>
-                                                </div>
-                                            <?php endif; ?>
-                                            <?php if ($user_role === 'teacher'): ?>
-                                                <div class="col-md-6">
-                                                    <div class="row info-row">
-                                                        <div class="col-sm-5 info-label">Subject:</div>
-                                                        <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['subject'] ?? 'N/A'); ?></div>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <div class="row info-row">
-                                                        <div class="col-sm-5 info-label">Experience:</div>
-                                                        <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['experience'] ?? '0'); ?> years</div>
-                                                    </div>
-                                                </div>
-                                            <?php endif; ?>
+                                    <hr>
+                                    <div class="row info-row">
+                                        <div class="col-sm-4 info-label">Phone:</div>
+                                        <div class="col-sm-8 info-value">
+                                            <?php echo htmlspecialchars($user_data['phone'] ?? 'N/A'); ?></div>
+                                    </div>
+                                    <hr>
+                                    <div class="row info-row">
+                                        <div class="col-sm-4 info-label">Date of Birth:</div>
+                                        <div class="col-sm-8 info-value">
+                                            <?php echo !empty($user_data['dob']) ? htmlspecialchars(date('F j, Y', strtotime($user_data['dob']))) : 'N/A'; ?>
                                         </div>
+                                    </div>
+                                    <hr>
+                                    <div class="row info-row">
+                                        <div class="col-sm-4 info-label">Gender:</div>
+                                        <div class="col-sm-8 info-value">
+                                            <?php echo htmlspecialchars($user_data['gender'] ?? 'N/A'); ?></div>
+                                    </div>
+                                    <hr>
+                                    <div class="row info-row">
+                                        <div class="col-sm-4 info-label">Blood Group:</div>
+                                        <div class="col-sm-8 info-value">
+                                            <?php echo htmlspecialchars($user_data['blood_group'] ?? 'N/A'); ?></div>
+                                    </div>
+                                    <hr>
+                                    <div class="row info-row">
+                                        <div class="col-sm-4 info-label">Address:</div>
+                                        <div class="col-sm-8 info-value">
+                                            <?php echo htmlspecialchars($user_data['address'] ?? 'N/A'); ?></div>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                        <div class="col-12 mb-4">
+                            <div class="card shadow">
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-primary"><i
+                                            class="fas fa-briefcase mr-2"></i>Professional Information</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="row info-row">
+                                                <div class="col-sm-5 info-label">School:</div>
+                                                <div class="col-sm-7 info-value">
+                                                    <?php echo htmlspecialchars($user_data['school_name'] ?? 'N/A'); ?>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <?php if ($user_role === 'teacher' || $user_role === 'principal'): ?>
+                                        <div class="col-md-6">
+                                            <div class="row info-row">
+                                                <div class="col-sm-5 info-label">Qualification:</div>
+                                                <div class="col-sm-7 info-value">
+                                                    <?php echo htmlspecialchars($user_data['qualification'] ?? 'N/A'); ?>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="row info-row">
+                                                <div class="col-sm-5 info-label">Batch:</div>
+                                                <div class="col-sm-7 info-value"><span
+                                                        class="badge badge-<?php echo ($user_data['batch'] ?? '') === 'Morning' ? 'info' : 'warning'; ?>"><?php echo htmlspecialchars($user_data['batch'] ?? 'N/A'); ?></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="row info-row">
+                                                <div class="col-sm-5 info-label">Salary:</div>
+                                                <div class="col-sm-7 info-value salary-display">
+                                                    ₹<?php echo number_format($user_data['salary'] ?? 0, 2); ?></div>
+                                            </div>
+                                        </div>
+                                        <?php endif; ?>
+                                        <?php if ($user_role === 'teacher'): ?>
+                                        <div class="col-md-6">
+                                            <div class="row info-row">
+                                                <div class="col-sm-5 info-label">Subject:</div>
+                                                <div class="col-sm-7 info-value">
+                                                    <?php echo htmlspecialchars($user_data['subject'] ?? 'N/A'); ?>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="row info-row">
+                                                <div class="col-sm-5 info-label">Experience:</div>
+                                                <div class="col-sm-7 info-value">
+                                                    <?php echo htmlspecialchars($user_data['experience'] ?? '0'); ?>
+                                                    years</div>
+                                            </div>
+                                        </div>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <?php endif; ?>
                 </div>
             </div>
