@@ -2,6 +2,20 @@
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
 
+// --- START: Mark notification as read ---
+if (isset($_GET['notif_id']) && is_numeric($_GET['notif_id'])) {
+    $notification_id = $_GET['notif_id'];
+    $current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+
+    if ($current_user_id) {
+        $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?");
+        $stmt_mark_read->bind_param("ii", $notification_id, $current_user_id);
+        $stmt_mark_read->execute();
+        $stmt_mark_read->close();
+    }
+}
+// --- END: Mark notification as read ---
+
 $role = null;
 $userId = null;
 
@@ -38,7 +52,7 @@ if ($stmt) {
     }
     $stmt->close();
 }
-$conn->close();
+// **FIX: REMOVED a premature $conn->close(); from here.**
 
 $pageTitle = 'View Notices';
 ?>
@@ -156,3 +170,9 @@ $pageTitle = 'View Notices';
 </body>
 
 </html>
+<?php
+// You can close the connection here at the very end of the script, or let PHP handle it automatically.
+if (isset($conn) && $conn->ping()) {
+    $conn->close();
+}
+?>

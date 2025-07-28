@@ -29,13 +29,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
     if (isset($_FILES['notice_file']) && $_FILES['notice_file']['error'] == 0) {
         $originalFilename = basename($_FILES["notice_file"]["name"]);
 
-        // --- CORRECTED PATHS ---
-        // Server path for moving the file
         $uploadDirServer = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/bmc/uploads/';
-        // Web path for storing in the database
         $uploadDirWeb = '/BMC-SMS/pages/bmc/uploads/';
 
-        // Create directory if it doesn't exist
         if (!is_dir($uploadDirServer)) {
             mkdir($uploadDirServer, 0777, true);
         }
@@ -52,6 +48,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
     $stmt->bind_param("issss", $userId, $title, $content, $filePathForDB, $originalFilename);
     $stmt->execute();
     $stmt->close();
+
+    // --- START: Notification Logic ---
+    // Create notifications for all school admins (principals)
+    $message = "New notice from BMC: " . substr($title, 0, 50);
+    $link = "/pages/principal/view_notice.php";
+    $type = 'new_notice';
+
+    // Get all user IDs for principals
+    $stmt_principals = $conn->prepare("SELECT id FROM users WHERE role = 'schooladmin'");
+    $stmt_principals->execute();
+    $result_principals = $stmt_principals->get_result();
+    
+    $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");
+    
+    while ($principal = $result_principals->fetch_assoc()) {
+        $principal_id = $principal['id'];
+        $stmt_notify->bind_param("isss", $principal_id, $message, $link, $type);
+        $stmt_notify->execute();
+    }
+    $stmt_principals->close();
+    $stmt_notify->close();
+    // --- END: Notification Logic ---
+
 
     header("Location: send_notice.php?success=1");
     exit();
