@@ -71,10 +71,16 @@ function getNotificationIcon($type) {
     switch ($type) {
         case 'leave_request':
             return 'fas fa-calendar-plus text-white';
-        case 'new_notice':
+        case 'new_notice': // BMC notice
             return 'fas fa-file-alt text-white';
         case 'leave_status':
             return 'fas fa-check-circle text-white';
+        case 'school_notice': // Principal notice
+            return 'fas fa-chalkboard-teacher text-white';
+        case 'new_timetable': // New timetable
+            return 'fas fa-table text-white';
+        case 'new_notes': // New notes
+            return 'fas fa-sticky-note text-white';
         default:
             return 'fas fa-bell text-white';
     }
@@ -265,5 +271,4 @@ function getNotificationIcon($type) {
         <?php endif; ?>
 
     </ul>
-
 </nav>

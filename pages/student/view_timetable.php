@@ -2,7 +2,19 @@
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
 
-// (Get user info from cookies - same as your view_notes.php)
+// --- START: MARK AS READ LOGIC ---
+if (isset($_GET['notif_id']) && is_numeric($_GET['notif_id'])) {
+    $notification_id = $_GET['notif_id'];
+    $current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+    if ($current_user_id) {
+        $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?");
+        $stmt_mark_read->bind_param("ii", $notification_id, $current_user_id);
+        $stmt_mark_read->execute();
+        $stmt_mark_read->close();
+    }
+}
+// --- END: MARK AS READ LOGIC ---
+
 if (isset($_COOKIE['encrypted_user_role'])) {
     $decrypted_role = decrypt_id($_COOKIE['encrypted_user_role']);
     $role = $decrypted_role ? strtolower(trim($decrypted_role)) : null;
@@ -15,7 +27,7 @@ if (!$role || !$userId) {
     exit;
 }
 
-// --- FETCH USER-SPECIFIC DATA (school_id, std) ---
+// Fetch user-specific data
 $schoolId = null;
 $studentStd = null;
 switch ($role) {
@@ -46,9 +58,8 @@ switch ($role) {
         break;
 }
 
-// Build the SQL query to fetch timetables based on the user's role
+// Build the SQL query to fetch timetables
 $timetables = [];
-// --- MODIFIED: Query now joins with the 'teacher' table to get the name ---
 $base_sql = "SELECT tt.standard, tt.timetable_file, tt.original_filename, tt.created_at, t.teacher_name as uploader
              FROM timetables tt
              JOIN teacher t ON tt.class_teacher_id = t.id";
@@ -67,9 +78,6 @@ switch ($role) {
         $params = [$schoolId];
         $types = "i";
         break;
-    case 'bmc':
-        // No filter for BMC admin
-        break;
 }
 $base_sql .= " ORDER BY tt.created_at DESC";
 
@@ -85,7 +93,7 @@ if ($stmt) {
     }
     $stmt->close();
 }
-$conn->close();
+// **FIX: The line "$conn->close();" was REMOVED from here.**
 $pageTitle = 'View Timetable';
 ?>
 <!DOCTYPE html>
@@ -100,7 +108,6 @@ $pageTitle = 'View Timetable';
     <link rel="stylesheet" href="https://cdn.datatables.net/1.10.21/css/dataTables.bootstrap4.min.css">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
-
 </head>
 
 <body id="page-top">
@@ -133,7 +140,7 @@ $pageTitle = 'View Timetable';
                                                 <td><?php echo htmlspecialchars($tt['uploader']); ?></td>
                                                 <td><?php echo date('d-m-Y H:i', strtotime($tt['created_at'])); ?></td>
                                                 <td>
-                                                    <a href="<?php echo htmlspecialchars($tt['timetable_file']); ?>" class="btn btn-success btn-sm" download="<?php echo htmlspecialchars($tt['original_filename']); ?>">
+                                                    <a href="<?php echo htmlspecialchars(BASE_WEB_PATH . ltrim($tt['timetable_file'], '/')); ?>" class="btn btn-success btn-sm" download="<?php echo htmlspecialchars($tt['original_filename']); ?>">
                                                         <i class="fas fa-download"></i> Download
                                                     </a>
                                                 </td>
@@ -186,10 +193,14 @@ $pageTitle = 'View Timetable';
             $('#dataTable').DataTable({
                 "order": [
                     [2, "desc"]
-                ] // Sort by 'Date Uploaded' column
+                ]
             });
         });
     </script>
 </body>
-
 </html>
+<?php 
+if (isset($conn)) {
+    $conn->close();
+}
+?>

@@ -2,6 +2,19 @@
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
 
+// --- START: MARK AS READ LOGIC ---
+if (isset($_GET['notif_id']) && is_numeric($_GET['notif_id'])) {
+    $notification_id = $_GET['notif_id'];
+    $current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+    if ($current_user_id) {
+        $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?");
+        $stmt_mark_read->bind_param("ii", $notification_id, $current_user_id);
+        $stmt_mark_read->execute();
+        $stmt_mark_read->close();
+    }
+}
+// --- END: MARK AS READ LOGIC ---
+
 $role = null;
 $userId = null;
 $schoolId = null;
@@ -56,13 +69,13 @@ $types = "i";
 
 // Add condition based on user role
 if ($role == 'teacher') {
-    $sql .= " AND r.recipient_type = 'teacher' AND r.recipient_identifier = ?";
+    $sql .= " AND r.recipient_type = 'teacher' AND (r.recipient_identifier = ? OR r.recipient_identifier = 'all')";
     $params[] = $userId;
-    $types .= "s"; // Identifier is stored as varchar
+    $types .= "s";
 } elseif ($role == 'student' && $studentStd) {
-    $sql .= " AND r.recipient_type = 'standard' AND r.recipient_identifier = ?";
+    $sql .= " AND r.recipient_type = 'standard' AND (r.recipient_identifier = ? OR r.recipient_identifier = 'all')";
     $params[] = $studentStd;
-    $types .= "s"; // Identifier is stored as varchar
+    $types .= "s";
 } else {
     // If role is not matched, prevent fetching any notices
     $sql .= " AND 1=0";
@@ -71,11 +84,8 @@ if ($role == 'teacher') {
 $sql .= " ORDER BY c.created_at DESC";
 
 $stmt = $conn->prepare($sql);
-if ($stmt && !empty($params)) {
+if ($stmt && !empty($params) && $params[0] !== null) { // Ensure schoolId is not null
     $stmt->bind_param($types, ...$params);
-}
-
-if ($stmt) {
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
@@ -83,6 +93,7 @@ if ($stmt) {
     }
     $stmt->close();
 }
+
 
 $pageTitle = 'View School Notices';
 ?>
@@ -127,7 +138,7 @@ $pageTitle = 'View School Notices';
                                             <p class="card-text"><?php echo nl2br(htmlspecialchars($notice['content'])); ?></p>
                                             <?php if ($notice['file_path']): ?>
                                                 <hr>
-                                                <a href="<?php echo htmlspecialchars($notice['file_path']); ?>" class="btn btn-success btn-sm" download="<?php echo htmlspecialchars($notice['original_filename']); ?>">
+                                                <a href="<?php echo htmlspecialchars(BASE_WEB_PATH . ltrim($notice['file_path'], '/')); ?>" class="btn btn-success btn-sm" download="<?php echo htmlspecialchars($notice['original_filename']); ?>">
                                                     <i class="fas fa-download"></i> Download Attachment
                                                 </a>
                                             <?php endif; ?>
