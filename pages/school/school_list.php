@@ -92,7 +92,7 @@ $result = mysqli_query($conn, $query);
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
-                                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                <table class="table table-bordered" id="schoolListTable" width="100%" cellspacing="0">
                                     <thead>
                                         <tr>
                                             <th>School ID</th>
@@ -202,24 +202,7 @@ $result = mysqli_query($conn, $query);
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
 
-    <script>
-        // Call the dataTables jQuery plugin
-        $(document).ready(function() {
-            $('#dataTable').DataTable({
-                "pageLength": 10,
-                "order": [
-                    [0, "asc"]
-                ]
-            });
-        });
-
-        // Delete confirmation function
-        function confirmDelete(id) {
-            // Corrected path for delete action if needed, assuming delete script is in the same folder
-            $('#confirmDeleteBtn').attr('href', 'delete.php?id=' + id);
-            $('#deleteModal').modal('show');
-        }
-    </script>
+    <script src="../../assets/js/custom_school_scripts.js"></script>
 
 </body>
 

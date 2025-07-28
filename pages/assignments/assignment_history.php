@@ -87,7 +87,7 @@ $pageTitle = 'Teacher - Assignment History';
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
-                                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                <table class="table table-bordered" id="assignmentHistoryTable" width="100%" cellspacing="0">
                                     <thead>
                                         <tr>
                                             <th>Title</th>
@@ -159,15 +159,7 @@ $pageTitle = 'Teacher - Assignment History';
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            $('#dataTable').DataTable({
-                "order": [
-                    [3, "desc"]
-                ]
-            });
-        });
-    </script>
+    <script src="../../assets/js/assignment.js"></script>
 </body>
 
 </html>

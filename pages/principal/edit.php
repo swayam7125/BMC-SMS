@@ -331,27 +331,8 @@ $schools_result = mysqli_query($conn, $schools_query);
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
+    <script src="../../assets/js/custom_principal.js"></script>
 
-    <script>
-        $(document).ready(function() {
-            // Image preview script
-            document.getElementById('principal_image').addEventListener('change', function(event) {
-                if (event.target.files[0]) {
-                    document.getElementById('imagePreview').src = URL.createObjectURL(event.target.files[0]);
-                }
-            });
-
-            // Checkbox logic to disable/enable time inputs
-            $('.closed-checkbox').on('change', function() {
-                const row = $(this).closest('.timing-row');
-                const timeInputs = row.find('input[type="time"]'); // Target by type
-                timeInputs.prop('disabled', $(this).is(':checked'));
-            });
-
-            // Trigger on page load to set initial state
-            $('.closed-checkbox').trigger('change');
-        });
-    </script>
 </body>
 
 </html>

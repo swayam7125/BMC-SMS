@@ -170,7 +170,7 @@ $pageTitle = 'View Timetable';
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
-                                <table class="table table-bordered timetable-table">
+                                <table class="table table-bordered" id="timetableTable " width="100%" cellspacing="0">
                                     <thead>
                                         <tr class="bg-primary text-white">
                                             <th>Period</th>
@@ -259,6 +259,8 @@ $pageTitle = 'View Timetable';
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
+
+    <script src="../../assets/js/custom_student_scripts.js"></script>
 </body>
 
 </html>

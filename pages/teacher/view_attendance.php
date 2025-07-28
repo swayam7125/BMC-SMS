@@ -92,7 +92,7 @@ if (!$teacherDetails || empty($teacherDetails['class_teacher_std'])) {
                                 </form>
 
                                 <div class="table-responsive">
-                                    <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                    <table class="table table-bordered" id="teacherListTable " width="100%" cellspacing="0">
                                         <thead>
                                             <tr>
                                                 <th>Roll No</th>
@@ -159,11 +159,8 @@ if (!$teacherDetails || empty($teacherDetails['class_teacher_std'])) {
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            $('#dataTable').DataTable();
-        });
-    </script>
+    <script src="../../assets/js/custom_teacher_scripts.js"></script>
+
 </body>
 
 </html>

@@ -167,24 +167,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && $teacher_id) {
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const fromDateInput = document.getElementById('from_date');
-            const toDateInput = document.getElementById('to_date');
-
-            const today = new Date().toISOString().split('T')[0];
-            fromDateInput.setAttribute('min', today);
-            toDateInput.setAttribute('min', today);
-
-            fromDateInput.addEventListener('change', function() {
-                const selectedFromDate = this.value;
-                toDateInput.setAttribute('min', selectedFromDate);
-                if (toDateInput.value < selectedFromDate) {
-                    toDateInput.value = '';
-                }
-            });
-        });
-    </script>
+    <script src="../../assets/js/custom_teacher_scripts.js"></script>
 
 </body>
 

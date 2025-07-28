@@ -311,29 +311,7 @@ $pageTitle = 'Student - My Assignments';
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.4.1/jquery.easing.min.js"></script>
 
     <script src="../../assets/js/sb-admin-2.min.js"></script>
-
-    <script>
-    // JavaScript to pass assignment info to the upload modal
-    $('#uploadModal').on('show.bs.modal', function(event) {
-        var button = $(event.relatedTarget);
-        var assignmentId = button.data('assignment-id');
-        var assignmentTitle = button.data('assignment-title');
-        var modal = $(this);
-        modal.find('#modalAssignmentTitle').text(assignmentTitle);
-        modal.find('#modalAssignmentId').val(assignmentId);
-    });
-
-    // To show the selected filename in the file input
-    $('.custom-file-input').on('change', function() {
-        var fileName = $(this).val().split('\\').pop();
-        $(this).siblings('.custom-file-label').addClass("selected").html(fileName);
-    });
-
-    // Prevent modal from opening when clicking the download button
-    $('.assignment-card .btn-download').on('click', function(event) {
-        event.stopPropagation();
-    });
-    </script>
+    <script src="../../assets/js/assignment.js"></script>
 </body>
 
 </html>
