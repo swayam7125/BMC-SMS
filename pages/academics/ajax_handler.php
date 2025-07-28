@@ -18,7 +18,7 @@ if (isset($_POST['action'])) {
                     $stmt = mysqli_prepare($conn, $query);
                     mysqli_stmt_bind_param($stmt, "s", $subject_name);
                     mysqli_stmt_execute($stmt);
-                    
+
                     if (mysqli_stmt_affected_rows($stmt) > 0) {
                         $new_id = mysqli_insert_id($conn);
                         $response['success'] = true;
@@ -32,7 +32,7 @@ if (isset($_POST['action'])) {
                         mysqli_stmt_execute($stmt_check);
                         $result = mysqli_stmt_get_result($stmt_check);
                         if ($existing_subject = mysqli_fetch_assoc($result)) {
-                             $response['message'] = 'Subject already exists.';
+                            $response['message'] = 'Subject already exists.';
                         } else {
                             $response['message'] = 'Failed to add subject.';
                         }

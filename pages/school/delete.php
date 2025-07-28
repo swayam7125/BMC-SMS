@@ -60,18 +60,18 @@ try {
     $school_res = mysqli_query($conn, "SELECT * FROM school WHERE id = $school_id");
     if (mysqli_num_rows($school_res) > 0) {
         $school_data = mysqli_fetch_assoc($school_res);
-        
+
         // Archive the school record into the new table
         $archive_sc_stmt = mysqli_prepare($conn, "INSERT INTO deleted_schools (id, school_logo, school_name, email, phone, school_opening, school_type, education_board, school_medium, school_category, address, deleted_by_role) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         mysqli_stmt_bind_param($archive_sc_stmt, "isssssssssss", $school_data['id'], $school_data['school_logo'], $school_data['school_name'], $school_data['email'], $school_data['phone'], $school_data['school_opening'], $school_data['school_type'], $school_data['education_board'], $school_data['school_medium'], $school_data['school_category'], $school_data['address'], $role);
         mysqli_stmt_execute($archive_sc_stmt);
         mysqli_stmt_close($archive_sc_stmt);
-        
+
         // Delete the school's logo file from the server
         if (!empty($school_data['school_logo']) && file_exists($school_data['school_logo'])) {
             unlink($school_data['school_logo']);
         }
-        
+
         // Delete the school from the active `school` table
         $delete_school_stmt = mysqli_prepare($conn, "DELETE FROM school WHERE id = ?");
         mysqli_stmt_bind_param($delete_school_stmt, "i", $school_id);
@@ -82,7 +82,6 @@ try {
     // If all steps were successful, commit the transaction
     mysqli_commit($conn);
     header("Location: school_list.php?success=School and all associated records have been successfully deleted and archived.");
-
 } catch (Exception $e) {
     // If any step failed, roll back all database changes
     mysqli_rollback($conn);
@@ -91,4 +90,3 @@ try {
     mysqli_close($conn);
 }
 exit;
-?>

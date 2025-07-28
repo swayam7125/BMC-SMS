@@ -44,9 +44,11 @@ try {
     $query_archive_student = "INSERT INTO deleted_students 
                                 (id, student_name, email, rollno, std, academic_year, dob, gender, blood_group, address, father_name, father_phone, mother_name, mother_phone, school_id, deleted_by_role) 
                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-    
+
     $stmt_archive = mysqli_prepare($conn, $query_archive_student);
-    mysqli_stmt_bind_param($stmt_archive, "issssssssssssiis",
+    mysqli_stmt_bind_param(
+        $stmt_archive,
+        "issssssssssssiis",
         $student_data['id'],
         $student_data['student_name'],
         $student_data['email'],
@@ -76,7 +78,7 @@ try {
     $query_delete_user = "DELETE FROM users WHERE id = ?";
     $stmt_delete = mysqli_prepare($conn, $query_delete_user);
     mysqli_stmt_bind_param($stmt_delete, "i", $student_id);
-    
+
     if (!mysqli_stmt_execute($stmt_delete)) {
         throw new Exception("Failed to delete user record: " . mysqli_stmt_error($stmt_delete));
     }
@@ -99,7 +101,6 @@ try {
     // Redirect back to the student list with a success message
     header("Location: student_list.php?success=Student was successfully deleted and archived.");
     exit;
-
 } catch (Exception $e) {
     // If any step failed, roll back all database changes to prevent partial data loss
     mysqli_rollback($conn);
@@ -107,9 +108,7 @@ try {
     // Redirect back to the student list with a detailed error message
     header("Location: student_list.php?error=" . urlencode($e->getMessage()));
     exit;
-
 } finally {
     // Always close the database connection
     mysqli_close($conn);
 }
-?>

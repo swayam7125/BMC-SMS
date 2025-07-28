@@ -1,0 +1,21 @@
+.assignment-card {
+  transition: all 0.2s ease-in-out;
+}
+
+.assignment-card:not(.submitted) {
+  cursor: pointer;
+}
+
+.assignment-card:not(.submitted):hover {
+  transform: translateY(-5px);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.assignment-card.submitted {
+  cursor: not-allowed;
+  background-color: #f8f9fc;
+}
+
+.assignment-card.submitted .text-primary {
+  color: #858796 !important;
+}

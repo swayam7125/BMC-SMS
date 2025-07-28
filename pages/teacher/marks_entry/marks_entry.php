@@ -39,6 +39,7 @@ $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Marks Entry - School Management System</title>
@@ -46,9 +47,11 @@ $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-            <link rel="stylesheet" href="../../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../../assets/css/scrollbar_hidden.css">
 
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../../includes/sidebar.php'; ?>
@@ -77,10 +80,10 @@ $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
                                         <option value="term_1">Term 1</option>
                                         <option value="term_2">Term 2</option>
                                         <?php
-                                            $final_exam_disabled = (in_array($class_teacher_std, ['10', '12'])) ? 'disabled' : '';
+                                        $final_exam_disabled = (in_array($class_teacher_std, ['10', '12'])) ? 'disabled' : '';
                                         ?>
                                         <option value="final_exam" <?php echo $final_exam_disabled; ?>>
-                                            Final Exam <?php if($final_exam_disabled) echo '(Not Applicable)'; ?>
+                                            Final Exam <?php if ($final_exam_disabled) echo '(Not Applicable)'; ?>
                                         </option>
                                     </select>
                                 </div>
@@ -99,7 +102,7 @@ $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
                                 <input type="hidden" name="class_std" value="<?php echo htmlspecialchars($class_teacher_std); ?>">
                                 <input type="hidden" name="exam_type_hidden" id="exam_type_hidden">
                                 <input type="hidden" name="academic_year_hidden" id="academic_year_hidden">
-                                
+
                                 <div class="table-responsive" id="marks-table-container" style="display:none;">
                                     <table class="table table-bordered" width="100%" cellspacing="0">
                                         <thead id="marks-table-header"></thead>
@@ -137,75 +140,89 @@ $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
     <script src="../../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../../assets/js/sb-admin-2.min.js"></script>
     <script>
-    function loadStudents() {
-        const academicYear = $('#academic_year').val();
-        const examType = $('#exam_type').val();
-        const classStd = '<?php echo $class_teacher_std; ?>';
-        
-        $('#academic_year_hidden').val(academicYear);
-        $('#exam_type_hidden').val(examType);
+        function loadStudents() {
+            const academicYear = $('#academic_year').val();
+            const examType = $('#exam_type').val();
+            const classStd = '<?php echo $class_teacher_std; ?>';
 
-        if (academicYear && examType) {
-            $('#students-list-body').html('<tr><td colspan="10" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>');
-            $('#marks-table-container').slideDown();
+            $('#academic_year_hidden').val(academicYear);
+            $('#exam_type_hidden').val(examType);
 
-            $.ajax({
-                url: 'get_students_for_marks.php',
-                type: 'POST',
-                data: { class_std: classStd, exam_type: examType, academic_year: academicYear },
-                dataType: 'json',
-                success: function(response) {
-                    $('#marks-table-header').empty();
-                    $('#students-list-body').empty();
+            if (academicYear && examType) {
+                $('#students-list-body').html('<tr><td colspan="10" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>');
+                $('#marks-table-container').slideDown();
 
-                    if (response.success) {
-                        let headerRow = '<tr><th>Roll No</th><th>Student Name</th>';
-                        response.subjects.forEach(subject => { headerRow += `<th>${subject}</th>`; });
-                        headerRow += '</tr>';
-                        $('#marks-table-header').html(headerRow);
+                $.ajax({
+                    url: 'get_students_for_marks.php',
+                    type: 'POST',
+                    data: {
+                        class_std: classStd,
+                        exam_type: examType,
+                        academic_year: academicYear
+                    },
+                    dataType: 'json',
+                    success: function(response) {
+                        $('#marks-table-header').empty();
+                        $('#students-list-body').empty();
 
-                        if (response.students.length > 0) {
-                            response.students.forEach(student => {
-                                let row = `<tr><td>${student.rollno}</td><td>${student.student_name}</td>`;
-                                response.subjects.forEach(subject => {
-                                    const marks = student.marks[subject] || '';
-                                    row += `<td><input type="number" class="form-control" name="marks[${student.id}][${subject}]" value="${marks}" min="0" max="100" placeholder="N/A"></td>`;
-                                });
-                                row += `</tr>`;
-                                $('#students-list-body').append(row);
+                        if (response.success) {
+                            let headerRow = '<tr><th>Roll No</th><th>Student Name</th>';
+                            response.subjects.forEach(subject => {
+                                headerRow += `<th>${subject}</th>`;
                             });
-                        } else {
-                             $('#students-list-body').html(`<tr><td colspan="${response.subjects.length + 2}" class="text-center">No students found for this class.</td></tr>`);
-                        }
-                    } else {
-                         $('#students-list-body').html(`<tr><td colspan="10" class="text-center text-danger">${response.message}</td></tr>`);
-                    }
-                },
-                error: function() {
-                    $('#students-list-body').html('<tr><td colspan="10" class="text-center text-danger">Error fetching data. Please try again.</td></tr>');
-                }
-            });
-        } else {
-            alert('Please select an Exam Type and provide an Academic Year.');
-            $('#marks-table-container').slideUp();
-        }
-    }
+                            headerRow += '</tr>';
+                            $('#marks-table-header').html(headerRow);
 
-    $(document).ready(function() {
-        $('#loadStudentsBtn').click(loadStudents);
-        $('#marksForm').submit(function(e) {
-            e.preventDefault();
-            $.ajax({
-                url: 'save_marks.php', type: 'POST', data: $(this).serialize(), dataType: 'json',
-                success: function(response) {
-                    let messageBox = `<div class="alert alert-${response.success ? 'success' : 'danger'} alert-dismissible fade show" role="alert">${response.message}<button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span></button></div>`;
-                    $('#message-container').html(messageBox);
-                    $('html, body').animate({ scrollTop: 0 }, 'slow');
-                },
-                error: function() { $('#message-container').html('<div class="alert alert-danger">An unknown error occurred.</div>'); }
+                            if (response.students.length > 0) {
+                                response.students.forEach(student => {
+                                    let row = `<tr><td>${student.rollno}</td><td>${student.student_name}</td>`;
+                                    response.subjects.forEach(subject => {
+                                        const marks = student.marks[subject] || '';
+                                        row += `<td><input type="number" class="form-control" name="marks[${student.id}][${subject}]" value="${marks}" min="0" max="100" placeholder="N/A"></td>`;
+                                    });
+                                    row += `</tr>`;
+                                    $('#students-list-body').append(row);
+                                });
+                            } else {
+                                $('#students-list-body').html(`<tr><td colspan="${response.subjects.length + 2}" class="text-center">No students found for this class.</td></tr>`);
+                            }
+                        } else {
+                            $('#students-list-body').html(`<tr><td colspan="10" class="text-center text-danger">${response.message}</td></tr>`);
+                        }
+                    },
+                    error: function() {
+                        $('#students-list-body').html('<tr><td colspan="10" class="text-center text-danger">Error fetching data. Please try again.</td></tr>');
+                    }
+                });
+            } else {
+                alert('Please select an Exam Type and provide an Academic Year.');
+                $('#marks-table-container').slideUp();
+            }
+        }
+
+        $(document).ready(function() {
+            $('#loadStudentsBtn').click(loadStudents);
+            $('#marksForm').submit(function(e) {
+                e.preventDefault();
+                $.ajax({
+                    url: 'save_marks.php',
+                    type: 'POST',
+                    data: $(this).serialize(),
+                    dataType: 'json',
+                    success: function(response) {
+                        let messageBox = `<div class="alert alert-${response.success ? 'success' : 'danger'} alert-dismissible fade show" role="alert">${response.message}<button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span></button></div>`;
+                        $('#message-container').html(messageBox);
+                        $('html, body').animate({
+                            scrollTop: 0
+                        }, 'slow');
+                    },
+                    error: function() {
+                        $('#message-container').html('<div class="alert alert-danger">An unknown error occurred.</div>');
+                    }
+                });
             });
         });
-    });
     </script>
 </body>
+
 </html>

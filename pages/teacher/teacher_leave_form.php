@@ -39,6 +39,38 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && $teacher_id) {
         $stmt->bind_param("isss", $teacher_id, $from_date, $to_date, $reason);
         if ($stmt->execute()) {
             $message = '<div class="alert alert-success">Leave application submitted successfully!</div>';
+
+            // --- START: Notification Logic ---
+            // Find the principal of the teacher's school to notify them.
+            $stmt_school = $conn->prepare("SELECT school_id FROM teacher WHERE id = ?");
+            $stmt_school->bind_param("i", $teacher_id);
+            $stmt_school->execute();
+            $teacher_data = $stmt_school->get_result()->fetch_assoc();
+            $stmt_school->close();
+
+            if ($teacher_data) {
+                $school_id = $teacher_data['school_id'];
+                
+                // Find the principal for this school
+                $stmt_principal = $conn->prepare("SELECT id FROM principal WHERE school_id = ?");
+                $stmt_principal->bind_param("i", $school_id);
+                $stmt_principal->execute();
+                $principal_data = $stmt_principal->get_result()->fetch_assoc();
+                $stmt_principal->close();
+
+                if ($principal_data) {
+                    $principal_user_id = $principal_data['id'];
+                    $leave_message = "New leave request from " . htmlspecialchars($teacher_name);
+                    $link = "/pages/principal/principal_leave_requests.php";
+                    $type = 'leave_request';
+
+                    $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");
+                    $stmt_notify->bind_param("isss", $principal_user_id, $leave_message, $link, $type);
+                    $stmt_notify->execute();
+                    $stmt_notify->close();
+                }
+            }
+            // --- END: Notification Logic ---
         } else {
             $message = '<div class="alert alert-danger">Error submitting application.</div>';
         }
@@ -48,25 +80,30 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && $teacher_id) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Apply for Leave</title>
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
-     <!-- Corrected Font Awesome link -->
-     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-             <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 
 </head>
+
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; // Include the dynamic sidebar ?>
+        <?php include '../../includes/sidebar.php'; // Include the dynamic sidebar 
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include '../../includes/header.php'; // Include the header ?>
+                <?php include '../../includes/header.php'; // Include the header 
+                ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Apply for Leave</h1>
-                    <?php echo $message; // Display success/error message ?>
+                    <?php echo $message; // Display success/error message 
+                    ?>
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
                             <h6 class="m-0 font-weight-bold text-primary">Leave Application Form</h6>
@@ -135,21 +172,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && $teacher_id) {
             const fromDateInput = document.getElementById('from_date');
             const toDateInput = document.getElementById('to_date');
 
-            // 1. Set the minimum date for the 'From Date' to today
-            // Gets today's date in YYYY-MM-DD format
             const today = new Date().toISOString().split('T')[0];
             fromDateInput.setAttribute('min', today);
-            toDateInput.setAttribute('min', today); // Also set 'To Date' min initially
+            toDateInput.setAttribute('min', today);
 
-            // 2. Add an event listener to the 'From Date' input
-            // This will update the 'To Date' whenever the 'From Date' changes
             fromDateInput.addEventListener('change', function() {
                 const selectedFromDate = this.value;
-
-                // Set the minimum date for the 'To Date' to be the selected 'From Date'
                 toDateInput.setAttribute('min', selectedFromDate);
-
-                // If the current 'To Date' is now before the new minimum 'From Date', clear it
                 if (toDateInput.value < selectedFromDate) {
                     toDateInput.value = '';
                 }
@@ -158,6 +187,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && $teacher_id) {
     </script>
 
 </body>
+
 </html>
 <?php
 $conn->close();

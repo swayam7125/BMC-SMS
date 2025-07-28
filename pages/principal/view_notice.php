@@ -2,6 +2,20 @@
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
 
+// --- START: Mark notification as read ---
+if (isset($_GET['notif_id']) && is_numeric($_GET['notif_id'])) {
+    $notification_id = $_GET['notif_id'];
+    $current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+
+    if ($current_user_id) {
+        $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?");
+        $stmt_mark_read->bind_param("ii", $notification_id, $current_user_id);
+        $stmt_mark_read->execute();
+        $stmt_mark_read->close();
+    }
+}
+// --- END: Mark notification as read ---
+
 $role = null;
 $userId = null;
 
@@ -30,7 +44,7 @@ $sql = "SELECT
          ORDER BY n.created_at DESC";
 
 $stmt = $conn->prepare($sql);
-if($stmt){
+if ($stmt) {
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
@@ -38,12 +52,13 @@ if($stmt){
     }
     $stmt->close();
 }
-$conn->close();
+// **FIX: REMOVED a premature $conn->close(); from here.**
 
 $pageTitle = 'View Notices';
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
@@ -52,8 +67,8 @@ $pageTitle = 'View Notices';
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.10.21/css/dataTables.bootstrap4.min.css">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-            <link rel="stylesheet" href="../../assets/css/sidebar.css">
-
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
 
 <body id="page-top">
@@ -113,7 +128,7 @@ $pageTitle = 'View Notices';
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
-    
+
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
         aria-hidden="true">
         <div class="modal-dialog" role="document">
@@ -131,7 +146,7 @@ $pageTitle = 'View Notices';
                 </div>
             </div>
         </div>
-    </div>    
+    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -139,16 +154,25 @@ $pageTitle = 'View Notices';
     <script src="https://cdn.datatables.net/1.10.21/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.10.21/js/dataTables.bootstrap4.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
-    
+
     <script>
         $(document).ready(function() {
             $('#dataTable').DataTable({
-                "order": [[ 3, "desc" ]],
-                "dom":  "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-                        "<'row'<'col-sm-12'tr>>" +
-                        "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
+                "order": [
+                    [3, "desc"]
+                ],
+                "dom": "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+                    "<'row'<'col-sm-12'tr>>" +
+                    "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
             });
         });
     </script>
 </body>
+
 </html>
+<?php
+// You can close the connection here at the very end of the script, or let PHP handle it automatically.
+if (isset($conn) && $conn->ping()) {
+    $conn->close();
+}
+?>

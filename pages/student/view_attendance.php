@@ -49,6 +49,7 @@ foreach ($attendance_records as $record) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -59,9 +60,10 @@ foreach ($attendance_records as $record) {
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
-            <link rel="stylesheet" href="../../assets/css/sidebar.css">
-
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -73,18 +75,35 @@ foreach ($attendance_records as $record) {
 
                     <div class="row mb-4">
                         <div class="col-md-4 mb-4">
-                            <div class="card border-left-success shadow h-100 py-2"><div class="card-body"><div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Present</div><div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $summary['Present']; ?> Days</div></div></div>
+                            <div class="card border-left-success shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Present</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $summary['Present']; ?> Days</div>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-md-4 mb-4">
-                            <div class="card border-left-danger shadow h-100 py-2"><div class="card-body"><div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Total Absent</div><div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $summary['Absent']; ?> Days</div></div></div>
+                            <div class="card border-left-danger shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Total Absent</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $summary['Absent']; ?> Days</div>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-md-4 mb-4">
-                            <div class="card border-left-warning shadow h-100 py-2"><div class="card-body"><div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Total Leave</div><div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $summary['Leave']; ?> Days</div></div></div>
+                            <div class="card border-left-warning shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Total Leave</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $summary['Leave']; ?> Days</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                     <div class="card shadow mb-4">
-                        <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Attendance History</h6></div>
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">Attendance History</h6>
+                        </div>
                         <div class="card-body">
                             <form method="GET" action="" class="form-inline mb-4">
                                 <div class="form-group mr-2">
@@ -103,26 +122,33 @@ foreach ($attendance_records as $record) {
                             </form>
                             <div class="table-responsive">
                                 <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                                    <thead><tr><th>Date</th><th>Status</th></tr></thead>
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
                                     <tbody>
                                         <?php if (!empty($attendance_records)): ?>
                                             <?php foreach ($attendance_records as $record): ?>
-                                            <tr>
-                                                <td><?php echo date("l, F j, Y", strtotime($record['attendance_date'])); ?></td>
-                                                <td>
-                                                    <?php
+                                                <tr>
+                                                    <td><?php echo date("l, F j, Y", strtotime($record['attendance_date'])); ?></td>
+                                                    <td>
+                                                        <?php
                                                         $status = htmlspecialchars($record['status']);
                                                         $badge_class = 'badge-secondary';
                                                         if ($status == 'Present') $badge_class = 'badge-success';
                                                         if ($status == 'Absent') $badge_class = 'badge-danger';
                                                         if ($status == 'Leave') $badge_class = 'badge-warning';
                                                         echo "<span class='badge {$badge_class}'>{$status}</span>";
-                                                    ?>
-                                                </td>
-                                            </tr>
+                                                        ?>
+                                                    </td>
+                                                </tr>
                                             <?php endforeach; ?>
                                         <?php else: ?>
-                                            <tr><td colspan="2" class="text-center">No attendance records found for the selected period.</td></tr>
+                                            <tr>
+                                                <td colspan="2" class="text-center">No attendance records found for the selected period.</td>
+                                            </tr>
                                         <?php endif; ?>
                                     </tbody>
                                 </table>
@@ -134,7 +160,7 @@ foreach ($attendance_records as $record) {
             <?php include_once '../../includes/footer.php'; ?>
         </div>
     </div>
-    
+
     <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
 
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
@@ -162,9 +188,12 @@ foreach ($attendance_records as $record) {
     <script>
         $(document).ready(function() {
             $('#dataTable').DataTable({
-                "order": [[ 0, "desc" ]] // Order by date descending
+                "order": [
+                    [0, "desc"]
+                ] // Order by date descending
             });
         });
     </script>
 </body>
+
 </html>

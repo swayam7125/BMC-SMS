@@ -32,7 +32,7 @@ $school = mysqli_fetch_assoc($result);
 $selected_boards = explode(',', $school['education_board'] ?? '');
 $selected_mediums = explode(',', $school['school_medium'] ?? '');
 $selected_categories = explode(',', $school['school_category'] ?? '');
-$original_logo_path = $school['school_logo']; 
+$original_logo_path = $school['school_logo'];
 mysqli_stmt_close($stmt_fetch);
 
 
@@ -60,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $new_filename = uniqid('logo_', true) . '.' . $file_ext;
             $destination = $target_dir . $new_filename;
             if (move_uploaded_file($file['tmp_name'], $destination)) {
-                $logo_path_for_db = $destination; 
+                $logo_path_for_db = $destination;
 
                 if (!empty($original_logo_path) && file_exists($original_logo_path) && $original_logo_path !== $destination) {
                     unlink($original_logo_path);
@@ -79,11 +79,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $update_query = "UPDATE school SET school_logo=?, school_name=?, email=?, phone=?, address=?, school_opening=?, school_type=?, education_board=?, school_medium=?, school_category=? WHERE id=?";
             $stmt = mysqli_prepare($conn, $update_query);
-            
+
             // FIX: The type definition string now has 11 characters ("ssssssssssi") to match the 11 variables.
             mysqli_stmt_bind_param(
                 $stmt,
-                "ssssssssssi", 
+                "ssssssssssi",
                 $logo_path_for_db,
                 $school_name,
                 $email,
@@ -119,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $school['education_board'] = $education_board;
             $school['school_medium'] = $school_medium;
             $school['school_category'] = $school_category;
-            $school['school_logo'] = $logo_path_for_db; 
+            $school['school_logo'] = $logo_path_for_db;
             $selected_boards = explode(',', $education_board);
             $selected_mediums = explode(',', $school_medium);
             $selected_categories = explode(',', $school_category);
@@ -138,13 +138,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-            <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 
 </head>
 
 <body id="page-top">
     <div id="wrapper">
-    <?php include '../../includes/sidebar.php';?>
+        <?php include '../../includes/sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
@@ -203,7 +204,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                             <?php endforeach; ?>
                                         </select>
                                     </div>
-                                    </div>
+                                </div>
                                 <div class="form-group"><label for="address">Address *</label><textarea class="form-control" name="address" rows="3" required><?php echo htmlspecialchars($school['address']); ?></textarea></div>
                                 <hr>
                                 <div class="form-group mt-4">
@@ -219,8 +220,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php
             include '../../includes/footer.php';
             ?>
-            </div>
-            </div>
+        </div>
+    </div>
     </div>
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
         aria-hidden="true">

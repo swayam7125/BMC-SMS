@@ -12,16 +12,19 @@ if ($role !== 'schooladmin') {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Leave Application History</title>
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
-            <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
 
-    <!-- Corrected Font Awesome link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -44,13 +47,13 @@ if ($role !== 'schooladmin') {
                                             <th>From Date</th>
                                             <th>To Date</th>
                                             <th>Reason</th>
-                                            <th>Status</th>
+                                            <th>Status & Rejection Reason</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <?php
-                                        // Fetch all leave applications that are NOT 'Pending'
-                                        $query = "SELECT t.teacher_name, l.from_date, l.to_date, l.reason, l.status
+                                        // Fetch all leave applications that are NOT 'Pending', including rejection_reason
+                                        $query = "SELECT t.teacher_name, l.from_date, l.to_date, l.reason, l.status, l.rejection_reason
                                                   FROM leave_applications l
                                                   JOIN teacher t ON l.teacher_id = t.id
                                                   WHERE l.status IN ('Approved', 'Rejected')
@@ -66,7 +69,13 @@ if ($role !== 'schooladmin') {
                                                 echo "<td>" . htmlspecialchars($row['from_date']) . "</td>";
                                                 echo "<td>" . htmlspecialchars($row['to_date']) . "</td>";
                                                 echo "<td>" . htmlspecialchars($row['reason']) . "</td>";
-                                                echo '<td><span class="badge badge-'. $status_color .' p-2">' . htmlspecialchars($row['status']) . '</span></td>';
+                                                // Display status and rejection reason if available
+                                                echo '<td>
+                                                        <span class="badge badge-' . $status_color . ' p-2">' . htmlspecialchars($row['status']) . '</span>';
+                                                if ($row['status'] == 'Rejected' && !empty($row['rejection_reason'])) {
+                                                    echo '<br><small class="text-muted mt-1"><strong>Reason:</strong> ' . htmlspecialchars($row['rejection_reason']) . '</small>';
+                                                }
+                                                echo '</td>';
                                                 echo "</tr>";
                                             }
                                         } else {
@@ -106,4 +115,5 @@ if ($role !== 'schooladmin') {
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
+
 </html>

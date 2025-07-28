@@ -28,18 +28,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
 
     if (isset($_FILES['notice_file']) && $_FILES['notice_file']['error'] == 0) {
         $originalFilename = basename($_FILES["notice_file"]["name"]);
-        
-        // --- CORRECTED PATHS ---
-        // Server path for moving the file
+
         $uploadDirServer = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/bmc/uploads/';
-        // Web path for storing in the database
         $uploadDirWeb = '/BMC-SMS/pages/bmc/uploads/';
 
-        // Create directory if it doesn't exist
         if (!is_dir($uploadDirServer)) {
             mkdir($uploadDirServer, 0777, true);
         }
-        
+
         $storageFilename = uniqid('notice_', true) . '_' . $originalFilename;
         $serverFilePath = $uploadDirServer . $storageFilename;
 
@@ -52,6 +48,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
     $stmt->bind_param("issss", $userId, $title, $content, $filePathForDB, $originalFilename);
     $stmt->execute();
     $stmt->close();
+
+    // --- START: Notification Logic ---
+    // Create notifications for all school admins (principals)
+    $message = "New notice from BMC: " . substr($title, 0, 50);
+    $link = "/pages/principal/view_notice.php";
+    $type = 'new_notice';
+
+    // Get all user IDs for principals
+    $stmt_principals = $conn->prepare("SELECT id FROM users WHERE role = 'schooladmin'");
+    $stmt_principals->execute();
+    $result_principals = $stmt_principals->get_result();
+    
+    $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");
+    
+    while ($principal = $result_principals->fetch_assoc()) {
+        $principal_id = $principal['id'];
+        $stmt_notify->bind_param("isss", $principal_id, $message, $link, $type);
+        $stmt_notify->execute();
+    }
+    $stmt_principals->close();
+    $stmt_notify->close();
+    // --- END: Notification Logic ---
+
 
     header("Location: send_notice.php?success=1");
     exit();
@@ -71,6 +90,7 @@ $pageTitle = 'Send Notice';
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
@@ -78,9 +98,10 @@ $pageTitle = 'Send Notice';
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400i,600,700" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-            <link rel="stylesheet" href="../../assets/css/sidebar.css">
-
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -152,7 +173,7 @@ $pageTitle = 'Send Notice';
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
-    
+
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
         aria-hidden="true">
         <div class="modal-dialog" role="document">
@@ -171,12 +192,13 @@ $pageTitle = 'Send Notice';
             </div>
         </div>
     </div>
-    
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.4.1/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
+
 </html>
 <?php
 $conn->close();

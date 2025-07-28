@@ -2,6 +2,19 @@
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 
+// --- START: Mark notification as read ---
+if (isset($_GET['notif_id']) && is_numeric($_GET['notif_id'])) {
+    $notification_id = $_GET['notif_id'];
+    $current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+    if ($current_user_id) {
+        $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?");
+        $stmt_mark_read->bind_param("ii", $notification_id, $current_user_id);
+        $stmt_mark_read->execute();
+        $stmt_mark_read->close();
+    }
+}
+// --- END: Mark notification as read ---
+
 // Get the logged-in teacher's ID from the cookie
 $teacher_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
 ?>
@@ -12,17 +25,16 @@ $teacher_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encryp
     <title>Leave Application History</title>
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
-    <!-- Corrected Font Awesome link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-            <link rel="stylesheet" href="../../assets/css/sidebar.css">
-
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; // Includes the sidebar ?>
+        <?php include '../../includes/sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include '../../includes/header.php'; // Includes the header ?>
+                <?php include '../../includes/header.php'; ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Leave Application History</h1>
                     <div class="card shadow mb-4">
@@ -39,19 +51,19 @@ $teacher_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encryp
                                             <th>Reason</th>
                                             <th>Applied On</th>
                                             <th>Status</th>
+                                            <th>Admin Remark</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <?php
                                         if ($teacher_id) {
-                                            $stmt = $conn->prepare("SELECT from_date, to_date, reason, applied_on, status FROM leave_applications WHERE teacher_id = ? ORDER BY applied_on DESC");
+                                            $stmt = $conn->prepare("SELECT from_date, to_date, reason, applied_on, status, rejection_reason FROM leave_applications WHERE teacher_id = ? ORDER BY applied_on DESC");
                                             $stmt->bind_param("i", $teacher_id);
                                             $stmt->execute();
                                             $result = $stmt->get_result();
 
-                                            if ($result->num_rows > 0) {
+                                            if ($result && $result->num_rows > 0) {
                                                 while ($row = $result->fetch_assoc()) {
-                                                    // Set badge color based on status
                                                     $status_color = 'secondary'; // Default for Pending
                                                     if ($row['status'] == 'Approved') {
                                                         $status_color = 'success';
@@ -64,11 +76,15 @@ $teacher_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encryp
                                                     echo "<td>" . htmlspecialchars($row['to_date']) . "</td>";
                                                     echo "<td>" . htmlspecialchars($row['reason']) . "</td>";
                                                     echo "<td>" . htmlspecialchars(date('d-m-Y H:i', strtotime($row['applied_on']))) . "</td>";
-                                                    echo '<td><span class="badge badge-'. $status_color .' p-2">' . htmlspecialchars($row['status']) . '</span></td>';
+                                                    echo '<td><span class="badge badge-' . $status_color . ' p-2">' . htmlspecialchars($row['status']) . '</span></td>';
+                                                    
+                                                    $remark = (!empty($row['rejection_reason'])) ? htmlspecialchars($row['rejection_reason']) : 'N/A';
+                                                    echo "<td>" . $remark . "</td>";
+
                                                     echo "</tr>";
                                                 }
                                             } else {
-                                                echo '<tr><td colspan="5" class="text-center">You have not applied for any leave yet.</td></tr>';
+                                                echo '<tr><td colspan="6" class="text-center">You have not applied for any leave yet.</td></tr>';
                                             }
                                             $stmt->close();
                                         }

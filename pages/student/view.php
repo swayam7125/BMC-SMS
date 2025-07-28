@@ -57,7 +57,7 @@ function getWebAccessibleImagePath($db_image_path, $base_web_path, $default_sub_
     if (file_exists($filesystem_path) && is_file($filesystem_path)) {
         return $full_web_path;
     }
-    
+
     // Fallback: If DB path is just a filename, try common upload locations
     // This part is for backward compatibility or if your initial uploads were just filenames
     $possible_locations = [
@@ -65,7 +65,7 @@ function getWebAccessibleImagePath($db_image_path, $base_web_path, $default_sub_
         "uploads/{$default_sub_folder}s/",
         "uploads/",
     ];
-    
+
     foreach ($possible_locations as $location) {
         // Construct full web path for testing
         $test_path = $base_web_path . $location . basename($db_image_path);
@@ -132,49 +132,21 @@ $default_photo = getDefaultImagePath('student', BASE_WEB_PATH);
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i"
         rel="stylesheet">
 
-        <!-- Corrected Font Awesome link -->
+    <!-- Corrected Font Awesome link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <!-- Custom styles -->
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-            <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link rel="stylesheet" href="../../assets/css/profile.css">
+    <link rel="stylesheet" href="../../assets/css/student_view.css">
 
-
-    <style>
-        .student-photo {
-            width: 150px;
-            height: 150px;
-            object-fit: cover;
-            border-radius: 10px;
-            border: 3px solid #e3e6f0;
-            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
-        }
-
-        .photo-placeholder {
-            width: 150px;
-            height: 150px;
-            background-color: #f8f9fc;
-            border: 2px dashed #d1d3e2;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #858796;
-            font-size: 14px;
-            text-align: center;
-        }
-
-        .photo-container {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 20px;
-        }
-    </style>
 </head>
 
 <body id="page-top">
     <div id="wrapper">
 
-    <?php include '../../includes/sidebar.php';?>
+        <?php include '../../includes/sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
 
             <div id="content">
@@ -205,7 +177,8 @@ $default_photo = getDefaultImagePath('student', BASE_WEB_PATH);
                                 </div>
                                 <div class="card-body">
                                     <div class="photo-container">
-                                        <?php if ($photo_path): // Check if a valid web-accessible path was found ?>
+                                        <?php if ($photo_path): // Check if a valid web-accessible path was found 
+                                        ?>
                                             <img src="<?php echo htmlspecialchars($photo_path); ?>"
                                                 alt="<?php echo htmlspecialchars($student['student_name']); ?>"
                                                 class="student-photo"
@@ -404,12 +377,12 @@ $default_photo = getDefaultImagePath('student', BASE_WEB_PATH);
                     </div>
 
                 </div>
-                </div>
+            </div>
             <?php
             include '../../includes/footer.php';
             ?>
-            </div>
         </div>
+    </div>
     <a class="scroll-to-top rounded" href="#page-top">
         <i class="fas fa-angle-up"></i>
     </a>

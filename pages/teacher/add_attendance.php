@@ -102,6 +102,7 @@ if (empty($errorMessage)) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -112,9 +113,11 @@ if (empty($errorMessage)) {
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
-            <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -146,47 +149,47 @@ if (empty($errorMessage)) {
                                 </form>
 
                                 <?php if (!empty($students)): ?>
-                                <form method="POST" action="add_attendance.php?attendance_date=<?php echo $attendance_date_display; ?>">
-                                    <input type="hidden" name="attendance_date" value="<?php echo $attendance_date_display; ?>">
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                                            <thead>
-                                                <tr>
-                                                    <th>Roll No</th>
-                                                    <th>Student Name</th>
-                                                    <th>Status</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php foreach ($students as $student): ?>
-                                                <tr>
-                                                    <td><?php echo htmlspecialchars($student['rollno']); ?></td>
-                                                    <td><?php echo htmlspecialchars($student['student_name']); ?></td>
-                                                    <td>
-                                                        <?php
-                                                            // ★ MODIFIED: Determine the student's current status, defaulting to 'Present'
-                                                            $current_status = $existing_attendance[$student['id']] ?? 'Present';
-                                                        ?>
-                                                        <div class="form-check form-check-inline">
-                                                            <input class="form-check-input" type="radio" name="attendance[<?php echo $student['id']; ?>]" id="present_<?php echo $student['id']; ?>" value="Present" <?php if ($current_status == 'Present') echo 'checked'; ?>>
-                                                            <label class="form-check-label" for="present_<?php echo $student['id']; ?>">Present</label>
-                                                        </div>
-                                                        <div class="form-check form-check-inline">
-                                                            <input class="form-check-input" type="radio" name="attendance[<?php echo $student['id']; ?>]" id="absent_<?php echo $student['id']; ?>" value="Absent" <?php if ($current_status == 'Absent') echo 'checked'; ?>>
-                                                            <label class="form-check-label" for="absent_<?php echo $student['id']; ?>">Absent</label>
-                                                        </div>
-                                                        <div class="form-check form-check-inline">
-                                                            <input class="form-check-input" type="radio" name="attendance[<?php echo $student['id']; ?>]" id="leave_<?php echo $student['id']; ?>" value="Leave" <?php if ($current_status == 'Leave') echo 'checked'; ?>>
-                                                            <label class="form-check-label" for="leave_<?php echo $student['id']; ?>">Leave</label>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                                <?php endforeach; ?>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <button type="submit" class="btn btn-success mt-3">Save Attendance</button>
-                                </form>
+                                    <form method="POST" action="add_attendance.php?attendance_date=<?php echo $attendance_date_display; ?>">
+                                        <input type="hidden" name="attendance_date" value="<?php echo $attendance_date_display; ?>">
+                                        <div class="table-responsive">
+                                            <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Roll No</th>
+                                                        <th>Student Name</th>
+                                                        <th>Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <?php foreach ($students as $student): ?>
+                                                        <tr>
+                                                            <td><?php echo htmlspecialchars($student['rollno']); ?></td>
+                                                            <td><?php echo htmlspecialchars($student['student_name']); ?></td>
+                                                            <td>
+                                                                <?php
+                                                                // ★ MODIFIED: Determine the student's current status, defaulting to 'Present'
+                                                                $current_status = $existing_attendance[$student['id']] ?? 'Present';
+                                                                ?>
+                                                                <div class="form-check form-check-inline">
+                                                                    <input class="form-check-input" type="radio" name="attendance[<?php echo $student['id']; ?>]" id="present_<?php echo $student['id']; ?>" value="Present" <?php if ($current_status == 'Present') echo 'checked'; ?>>
+                                                                    <label class="form-check-label" for="present_<?php echo $student['id']; ?>">Present</label>
+                                                                </div>
+                                                                <div class="form-check form-check-inline">
+                                                                    <input class="form-check-input" type="radio" name="attendance[<?php echo $student['id']; ?>]" id="absent_<?php echo $student['id']; ?>" value="Absent" <?php if ($current_status == 'Absent') echo 'checked'; ?>>
+                                                                    <label class="form-check-label" for="absent_<?php echo $student['id']; ?>">Absent</label>
+                                                                </div>
+                                                                <div class="form-check form-check-inline">
+                                                                    <input class="form-check-input" type="radio" name="attendance[<?php echo $student['id']; ?>]" id="leave_<?php echo $student['id']; ?>" value="Leave" <?php if ($current_status == 'Leave') echo 'checked'; ?>>
+                                                                    <label class="form-check-label" for="leave_<?php echo $student['id']; ?>">Leave</label>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    <?php endforeach; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <button type="submit" class="btn btn-success mt-3">Save Attendance</button>
+                                    </form>
                                 <?php else: ?>
                                     <p>No students found for your class.</p>
                                 <?php endif; ?>
@@ -198,7 +201,7 @@ if (empty($errorMessage)) {
             <?php include_once '../../includes/footer.php'; ?>
         </div>
     </div>
-    
+
     <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
 
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
@@ -233,4 +236,5 @@ if (empty($errorMessage)) {
         });
     </script>
 </body>
+
 </html>
