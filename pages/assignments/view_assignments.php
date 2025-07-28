@@ -93,7 +93,6 @@ if (!empty($searchTerm)) {
     $sql .= " AND (a.title LIKE ? OR a.description LIKE ?)";
     $likeSearchTerm = "%" . $searchTerm . "%";
     $types .= 'ss';
-    $types .= 'ss';
     $params[] = $likeSearchTerm;
     $params[] = $likeSearchTerm;
 }
@@ -122,7 +121,9 @@ $subject_stmt->execute();
 $subject_result = $subject_stmt->get_result();
 $subjects = array_column($subject_result->fetch_all(MYSQLI_ASSOC), 'subject');
 $subject_stmt->close();
-$conn->close();
+
+// ★ CORRECTION: DO NOT close the connection here. It has been moved to the end of the file.
+// $conn->close(); 
 
 $pageTitle = 'Student - My Assignments';
 ?>
@@ -155,37 +156,47 @@ $pageTitle = 'Student - My Assignments';
                     <h1 class="h3 mb-4 text-gray-800">My Assignments</h1>
 
                     <?php if (isset($_GET['submission']) && $_GET['submission'] == 'success'): ?>
-                        <div class="alert alert-success">Assignment submitted successfully!</div>
+                    <div class="alert alert-success">Assignment submitted successfully!</div>
                     <?php endif; ?>
                     <?php if (isset($_GET['submission']) && $_GET['submission'] == 'error'): ?>
-                        <div class="alert alert-danger">There was an error submitting your assignment. Please try again.</div>
+                    <div class="alert alert-danger">There was an error submitting your assignment. Please try again.
+                    </div>
                     <?php endif; ?>
 
                     <div class="card shadow mb-4">
                         <div class="card-body">
                             <form action="view_assignments.php" method="GET" class="form-row align-items-center">
                                 <div class="col-md-5 mb-2 mb-md-0">
-                                    <input type="text" name="search" class="form-control" placeholder="Search by title..." value="<?php echo htmlspecialchars($searchTerm); ?>">
+                                    <input type="text" name="search" class="form-control"
+                                        placeholder="Search by title..."
+                                        value="<?php echo htmlspecialchars($searchTerm); ?>">
                                 </div>
                                 <div class="col-md-2 mb-2 mb-md-0">
                                     <select name="status" class="form-control">
-                                        <option value="all" <?php if ($filterStatus == 'all') echo 'selected'; ?>>All Statuses</option>
-                                        <option value="pending" <?php if ($filterStatus == 'pending') echo 'selected'; ?>>Pending</option>
-                                        <option value="submitted" <?php if ($filterStatus == 'submitted') echo 'selected'; ?>>Submitted</option>
+                                        <option value="all" <?php if ($filterStatus == 'all') echo 'selected'; ?>>All
+                                            Statuses</option>
+                                        <option value="pending"
+                                            <?php if ($filterStatus == 'pending') echo 'selected'; ?>>Pending</option>
+                                        <option value="submitted"
+                                            <?php if ($filterStatus == 'submitted') echo 'selected'; ?>>Submitted
+                                        </option>
                                     </select>
                                 </div>
                                 <div class="col-md-2 mb-2 mb-md-0">
                                     <select name="subject" class="form-control">
-                                        <option value="all" <?php if ($filterSubject == 'all') echo 'selected'; ?>>All Subjects</option>
+                                        <option value="all" <?php if ($filterSubject == 'all') echo 'selected'; ?>>All
+                                            Subjects</option>
                                         <?php foreach ($subjects as $subject): ?>
-                                            <option value="<?php echo htmlspecialchars($subject); ?>" <?php if ($filterSubject == $subject) echo 'selected'; ?>>
-                                                <?php echo htmlspecialchars($subject); ?>
-                                            </option>
+                                        <option value="<?php echo htmlspecialchars($subject); ?>"
+                                            <?php if ($filterSubject == $subject) echo 'selected'; ?>>
+                                            <?php echo htmlspecialchars($subject); ?>
+                                        </option>
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
                                 <div class="col-md-3">
-                                    <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-search fa-sm"></i> Filter</button>
+                                    <button type="submit" class="btn btn-primary btn-block"><i
+                                            class="fas fa-search fa-sm"></i> Filter</button>
                                 </div>
                             </form>
                         </div>
@@ -193,43 +204,48 @@ $pageTitle = 'Student - My Assignments';
 
                     <div id="assignment-list">
                         <?php if (!empty($assignments)): ?>
-                            <?php foreach ($assignments as $assignment): ?>
-                                <div class="card shadow mb-4 assignment-card <?php echo $assignment['submitted'] ? 'submitted' : ''; ?>"
-                                    <?php if (!$assignment['submitted']): ?>
-                                    data-toggle="modal"
-                                    data-target="#uploadModal"
-                                    data-assignment-id="<?php echo htmlspecialchars($assignment['id']); ?>"
-                                    data-assignment-title="<?php echo htmlspecialchars($assignment['title']); ?>"
-                                    <?php endif; ?>>
-                                    <div class="card-body">
-                                        <div class="d-flex w-100 justify-content-between">
-                                            <div>
-                                                <h5 class="mb-1 text-primary"><?php echo htmlspecialchars($assignment['title']); ?></h5>
-                                                <h6 class="text-muted small"><?php echo htmlspecialchars($assignment['subject']); ?> | Assigned by: <?php echo htmlspecialchars($assignment['teacher_name']); ?></h6>
-                                            </div>
-                                            <?php if ($assignment['submitted']): ?>
-                                                <span class="badge badge-success p-2 align-self-start">Submitted</span>
-                                            <?php else: ?>
-                                                <span class="badge badge-warning p-2 align-self-start">Pending</span>
-                                            <?php endif; ?>
-                                        </div>
-                                        <p class="mb-1"><?php echo nl2br(htmlspecialchars($assignment['description'])); ?></p>
-                                        <small class="text-muted">Due: <?php echo date("F j, Y", strtotime($assignment['due_date'])); ?></small>
-                                        <?php if ($assignment['file_path']): ?>
-                                            <a href="<?php echo htmlspecialchars($assignment['file_path']); ?>" class="btn btn-sm btn-outline-secondary float-right" download="<?php echo htmlspecialchars($assignment['original_filename']); ?>">
-                                                <i class="fas fa-download"></i> Download Attachment
-                                            </a>
-                                        <?php endif; ?>
+                        <?php foreach ($assignments as $assignment): ?>
+                        <div class="card shadow mb-4 assignment-card <?php echo $assignment['submitted'] ? 'submitted' : ''; ?>"
+                            <?php if (!$assignment['submitted']): ?> data-toggle="modal" data-target="#uploadModal"
+                            data-assignment-id="<?php echo htmlspecialchars($assignment['id']); ?>"
+                            data-assignment-title="<?php echo htmlspecialchars($assignment['title']); ?>"
+                            <?php endif; ?>>
+                            <div class="card-body">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <div>
+                                        <h5 class="mb-1 text-primary">
+                                            <?php echo htmlspecialchars($assignment['title']); ?></h5>
+                                        <h6 class="text-muted small">
+                                            <?php echo htmlspecialchars(ucfirst($assignment['subject'])); ?> | Assigned
+                                            by: <?php echo htmlspecialchars($assignment['teacher_name']); ?></h6>
                                     </div>
+                                    <?php if ($assignment['submitted']): ?>
+                                    <span class="badge badge-success p-2 align-self-start">Submitted</span>
+                                    <?php else: ?>
+                                    <span class="badge badge-warning p-2 align-self-start">Pending</span>
+                                    <?php endif; ?>
                                 </div>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <div class="card shadow mb-4">
-                                <div class="card-body text-center">
-                                    <p class="lead text-gray-800">No assignments found.</p>
-                                    <a href="view_assignments.php" class="btn btn-secondary">Clear Filters</a>
-                                </div>
+                                <p class="mb-1"><?php echo nl2br(htmlspecialchars($assignment['description'])); ?></p>
+                                <small class="text-muted">Due:
+                                    <?php echo date("F j, Y", strtotime($assignment['due_date'])); ?></small>
+                                <?php if ($assignment['file_path']): ?>
+                                <a href="<?php echo htmlspecialchars($assignment['file_path']); ?>"
+                                    class="btn btn-sm btn-outline-secondary float-right"
+                                    download="<?php echo htmlspecialchars($assignment['original_filename']); ?>"
+                                    onclick="event.stopPropagation();">
+                                    <i class="fas fa-download"></i> Download Attachment
+                                </a>
+                                <?php endif; ?>
                             </div>
+                        </div>
+                        <?php endforeach; ?>
+                        <?php else: ?>
+                        <div class="card shadow mb-4">
+                            <div class="card-body text-center">
+                                <p class="lead text-gray-800">No assignments found.</p>
+                                <a href="view_assignments.php" class="btn btn-secondary">Clear Filters</a>
+                            </div>
+                        </div>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -238,13 +254,15 @@ $pageTitle = 'Student - My Assignments';
         </div>
     </div>
 
-    <div class="modal fade" id="uploadModal" tabindex="-1" role="dialog" aria-labelledby="uploadModalLabel" aria-hidden="true">
+    <div class="modal fade" id="uploadModal" tabindex="-1" role="dialog" aria-labelledby="uploadModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <form action="view_assignments.php" method="POST" enctype="multipart/form-data">
                     <div class="modal-header">
                         <h5 class="modal-title" id="uploadModalLabel">Submit Assignment</h5>
-                        <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                        <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span
+                                aria-hidden="true">×</span></button>
                     </div>
                     <div class="modal-body">
                         <p>You are submitting for: <strong id="modalAssignmentTitle"></strong></p>
@@ -252,7 +270,8 @@ $pageTitle = 'Student - My Assignments';
                         <div class="form-group">
                             <label for="submissionFile">Upload your file</label>
                             <div class="custom-file">
-                                <input type="file" class="custom-file-input" id="submissionFile" name="assignment_file" required>
+                                <input type="file" class="custom-file-input" id="submissionFile" name="assignment_file"
+                                    required>
                                 <label class="custom-file-label" for="submissionFile">Choose file...</label>
                             </div>
                         </div>
@@ -294,22 +313,33 @@ $pageTitle = 'Student - My Assignments';
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 
     <script>
-        // JavaScript to pass assignment info to the upload modal
-        $('#uploadModal').on('show.bs.modal', function(event) {
-            var button = $(event.relatedTarget);
-            var assignmentId = button.data('assignment-id');
-            var assignmentTitle = button.data('assignment-title');
-            var modal = $(this);
-            modal.find('#modalAssignmentTitle').text(assignmentTitle);
-            modal.find('#modalAssignmentId').val(assignmentId);
-        });
+    // JavaScript to pass assignment info to the upload modal
+    $('#uploadModal').on('show.bs.modal', function(event) {
+        var button = $(event.relatedTarget);
+        var assignmentId = button.data('assignment-id');
+        var assignmentTitle = button.data('assignment-title');
+        var modal = $(this);
+        modal.find('#modalAssignmentTitle').text(assignmentTitle);
+        modal.find('#modalAssignmentId').val(assignmentId);
+    });
 
-        // To show the selected filename in the file input
-        $('.custom-file-input').on('change', function() {
-            var fileName = $(this).val().split('\\').pop();
-            $(this).siblings('.custom-file-label').addClass("selected").html(fileName);
-        });
+    // To show the selected filename in the file input
+    $('.custom-file-input').on('change', function() {
+        var fileName = $(this).val().split('\\').pop();
+        $(this).siblings('.custom-file-label').addClass("selected").html(fileName);
+    });
+
+    // Prevent modal from opening when clicking the download button
+    $('.assignment-card .btn-download').on('click', function(event) {
+        event.stopPropagation();
+    });
     </script>
 </body>
 
 </html>
+<?php
+// ★ CORRECTION: The connection is now closed at the very end of the file.
+if (isset($conn)) {
+    $conn->close();
+}
+?>

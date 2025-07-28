@@ -24,15 +24,13 @@ $school_id = $stmt_school->get_result()->fetch_assoc()['school_id'];
 $stmt_school->close();
 
 if ($school_id) {
-    // Fetch all teachers and subjects for the school
+    // Fetch all teachers for the school to populate dropdowns
     $teachers_stmt = $conn->prepare("SELECT id, teacher_name FROM teacher WHERE school_id = ? ORDER BY teacher_name");
     $teachers_stmt->bind_param("i", $school_id);
     $teachers_stmt->execute();
     $teachers = $teachers_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-    $subjects = $conn->query("SELECT subject_id, subject_name FROM subjects ORDER BY subject_name")->fetch_all(MYSQLI_ASSOC);
-
-    // Fetch all unique standards in the school
+    // Fetch all unique standards in the school for the main selector
     $standards_stmt = $conn->prepare("SELECT DISTINCT std FROM student WHERE school_id = ? ORDER BY CAST(std AS UNSIGNED)");
     $standards_stmt->bind_param("i", $school_id);
     $standards_stmt->execute();
@@ -55,17 +53,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_timetable'])) {
     foreach ($timetable_entries as $day => $periods) {
         foreach ($periods as $period_num => $details) {
             if (!empty($details['subject']) && !empty($details['teacher'])) {
-                $stmt->bind_param("isssisss", $school_id, $standard_to_save, $day, $period_num, $details['subject'], $details['teacher'], $details['start_time'], $details['end_time']);
+                // --- ★ FIX: Corrected the type definition string here ---
+                // Old: "isssisss"
+                // New: "issisiss"
+                $stmt->bind_param("issisiss", $school_id, $standard_to_save, $day, $period_num, $details['subject'], $details['teacher'], $details['start_time'], $details['end_time']);
                 $stmt->execute();
             }
         }
     }
     $stmt->close();
     $successMessage = "Timetable for Standard $standard_to_save has been saved!";
+    $selected_std = $standard_to_save;
 }
 
-// Fetch existing timetable data if a standard is selected
+// Fetch existing timetable data and relevant subjects IF a standard is selected
 if ($selected_std) {
+    $subjects_stmt = $conn->prepare("
+        SELECT s.subject_name 
+        FROM standard_subjects ss
+        JOIN subjects s ON ss.subject_id = s.subject_id
+        WHERE ss.standard = ?
+        ORDER BY s.subject_name ASC
+    ");
+    $subjects_stmt->bind_param("s", $selected_std);
+    $subjects_stmt->execute();
+    $subjects = $subjects_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $subjects_stmt->close();
+
     $existing_stmt = $conn->prepare("SELECT * FROM school_timetable WHERE school_id = ? AND standard = ?");
     $existing_stmt->bind_param("is", $school_id, $selected_std);
     $existing_stmt->execute();
@@ -73,10 +87,11 @@ if ($selected_std) {
     while ($row = $result->fetch_assoc()) {
         $timetable_data[$row['day_of_week']][$row['period_number']] = $row;
     }
+    $existing_stmt->close();
 }
 
 $days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-$total_periods = 2; // Define the number of periods per day
+$total_periods = 1;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -85,9 +100,6 @@ $total_periods = 2; // Define the number of periods per day
     <title>Manage Timetable</title>
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
-    <!-- Corrected Font Awesome link -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-
     <style>
     .table-responsive {
         overflow-x: auto;
@@ -204,28 +216,9 @@ $total_periods = 2; // Define the number of periods per day
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
-
-    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
-        aria-hidden="true">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="exampleModalLabel">Ready to Leave?</h5>
-                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">×</span>
-                    </button>
-                </div>
-                <div class="modal-body">Select "Logout" below if you are ready to end your current session.</div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
-                    <a class="btn btn-primary" href="/BMC-SMS/logout.php">Logout</a>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
 
 </html>

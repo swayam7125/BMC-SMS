@@ -42,7 +42,7 @@ if (!defined('BASE_WEB_PATH')) {
         // ====== BMC Admin Panel ======
         case 'bmc':
     ?>
-    <div class="sidebar-heading">Admin Controls</div>
+    <div class="sidebar-heading font-weight-semibold">Admin Controls</div>
     <li class="nav-item">
         <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseSchool">
             <i class="fas fa-fw fa-school"></i>
@@ -95,7 +95,7 @@ if (!defined('BASE_WEB_PATH')) {
         // ====== School Admin (Principal) Panel ======
         case 'schooladmin':
         ?>
-    <div class="sidebar-heading">School Management</div>
+    <div class="sidebar-heading font-weight-semibold">School Management</div>
     <li class="nav-item">
         <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseTeacher">
             <i class="fas fa-fw fa-person-chalkboard"></i>
@@ -136,18 +136,7 @@ if (!defined('BASE_WEB_PATH')) {
             </div>
         </div>
     </li>
-    <li class="nav-item">
-        <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseAcademics">
-            <i class="fas fa-fw fa-book"></i>
-            <span>Academics</span>
-        </a>
-        <div id="collapseAcademics" class="collapse" data-parent="#accordionSidebar">
-            <div class="bg-white py-2 collapse-inner rounded">
-                <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/academics/manage_subjects.php">Manage
-                    Subjects</a>
-            </div>
-        </div>
-    </li>
+
     <li class="nav-item">
         <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseAcademics">
             <i class="fas fa-fw fa-book"></i>
@@ -222,7 +211,7 @@ if (!defined('BASE_WEB_PATH')) {
                 $stmt_check->close();
             }
         ?>
-    <div class="sidebar-heading">Classroom & Actions</div>
+    <div class="sidebar-heading font-weight-semibold">Classroom & Actions</div>
     <li class="nav-item">
         <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/student/student_list.php">
             <i class="fas fa-fw fa-children"></i>
@@ -281,6 +270,12 @@ if (!defined('BASE_WEB_PATH')) {
         </a>
     </li>
     <li class="nav-item">
+        <a class="nav-link" href="/BMC-SMS/pages/student/view_timetable.php">
+            <i class="fas fa-fw fa-calendar-week"></i>
+            <span>View Timetable</span>
+        </a>
+    </li>
+    <li class="nav-item">
         <a class="nav-link" href="/BMC-SMS/pages/teacher/send_notes.php">
             <i class="fas fa-fw fa-paper-plane"></i>
             <span>Send Notes</span></a>
@@ -291,12 +286,6 @@ if (!defined('BASE_WEB_PATH')) {
             <span>View School Notices</span>
         </a>
     </li>
-    <li class="nav-item">
-        <a class="nav-link" href="/BMC-SMS/pages/teacher/send_timetable.php">
-            <i class="fas fa-fw fa-calendar-days"></i>
-            <span>Send Timetable</span>
-        </a>
-    </li>
 
     <?php
             break;
@@ -305,7 +294,7 @@ if (!defined('BASE_WEB_PATH')) {
         // ====== Student Panel ======
         case 'student':
         ?>
-    <div class="sidebar-heading">My Academics</div>
+    <div class="sidebar-heading font-weight-semibold">My Academics</div>
     <li class="nav-item">
         <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/user/profile.php">
             <i class="fas fa-fw fa-id-card"></i>
