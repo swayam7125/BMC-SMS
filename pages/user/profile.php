@@ -107,35 +107,8 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-    <style>
-        .profile-photo {
-            width: 150px;
-            height: 150px;
-            object-fit: cover;
-            border-radius: 10px;
-            border: 3px solid #e3e6f0;
-            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
-        }
+    <link rel="stylesheet" href="../../assets/css/profile.css">
 
-        .info-row {
-            margin-bottom: 1rem;
-        }
-
-        .info-label {
-            font-weight: bold;
-            color: #5a5c69;
-        }
-
-        .info-value {
-            color: #858796;
-        }
-
-        .salary-display {
-            font-size: 1.2em;
-            font-weight: bold;
-            color: #1cc88a;
-        }
-    </style>
 </head>
 
 <body id="page-top">

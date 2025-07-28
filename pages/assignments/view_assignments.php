@@ -141,30 +141,7 @@ $pageTitle = 'Student - My Assignments';
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
-
-    <style>
-        .assignment-card {
-            transition: all 0.2s ease-in-out;
-        }
-
-        .assignment-card:not(.submitted) {
-            cursor: pointer;
-        }
-
-        .assignment-card:not(.submitted):hover {
-            transform: translateY(-5px);
-            box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15) !important;
-        }
-
-        .assignment-card.submitted {
-            cursor: not-allowed;
-            background-color: #f8f9fc;
-        }
-
-        .assignment-card.submitted .text-primary {
-            color: #858796 !important;
-        }
-    </style>
+    <link rel="stylesheet" href="../../assets/css/view_assignments.css">
 </head>
 
 <body id="page-top">
