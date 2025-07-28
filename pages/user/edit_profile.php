@@ -310,18 +310,8 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
-    <script>
-        // Preview the new image when a file is selected
-        document.getElementById('profile_image').addEventListener('change', function(event) {
-            if (event.target.files && event.target.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    document.getElementById('imagePreview').src = e.target.result;
-                }
-                reader.readAsDataURL(event.target.files[0]);
-            }
-        });
-    </script>
+    <script src="../../assets/js/custom_user_script.js"></script>
+    
 </body>
 
 </html>

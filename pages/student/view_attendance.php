@@ -121,7 +121,7 @@ foreach ($attendance_records as $record) {
                                 <button type="submit" class="btn btn-primary">Filter</button>
                             </form>
                             <div class="table-responsive">
-                                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                <table class="table table-bordered" id="attendanceTable " width="100%" cellspacing="0">
                                     <thead>
                                         <tr>
                                             <th>Date</th>
@@ -185,15 +185,7 @@ foreach ($attendance_records as $record) {
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            $('#dataTable').DataTable({
-                "order": [
-                    [0, "desc"]
-                ] // Order by date descending
-            });
-        });
-    </script>
+    <script src="../../assets/js/custom_student_scripts.js"></script>
 </body>
 
 </html>

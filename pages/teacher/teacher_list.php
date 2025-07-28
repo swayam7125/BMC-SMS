@@ -68,7 +68,7 @@ $result = mysqli_query($conn, $query);
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
-                                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                <table class="table table-bordered" id="teacherListTable " width="100%" cellspacing="0">
                                     <thead>
                                         <tr>
                                             <th>ID</th>
@@ -162,22 +162,8 @@ $result = mysqli_query($conn, $query);
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            $('#dataTable').DataTable({
-                "pageLength": 25,
-                "order": [
-                    [0, "asc"]
-                ]
-            });
-        });
-
-        function confirmDelete(id) {
-            // This function finds the modal and sets the correct delete link
-            $('#confirmDeleteBtn').attr('href', 'delete.php?id=' + id);
-            $('#deleteModal').modal('show');
-        }
-    </script>
+    <script src="../../assets/js/custom_teacher_scripts.js"></script>
+    
 </body>
 
 </html>

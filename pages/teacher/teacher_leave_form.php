@@ -136,32 +136,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && $teacher_id) {
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const fromDateInput = document.getElementById('from_date');
-            const toDateInput = document.getElementById('to_date');
-
-            // 1. Set the minimum date for the 'From Date' to today
-            // Gets today's date in YYYY-MM-DD format
-            const today = new Date().toISOString().split('T')[0];
-            fromDateInput.setAttribute('min', today);
-            toDateInput.setAttribute('min', today); // Also set 'To Date' min initially
-
-            // 2. Add an event listener to the 'From Date' input
-            // This will update the 'To Date' whenever the 'From Date' changes
-            fromDateInput.addEventListener('change', function() {
-                const selectedFromDate = this.value;
-
-                // Set the minimum date for the 'To Date' to be the selected 'From Date'
-                toDateInput.setAttribute('min', selectedFromDate);
-
-                // If the current 'To Date' is now before the new minimum 'From Date', clear it
-                if (toDateInput.value < selectedFromDate) {
-                    toDateInput.value = '';
-                }
-            });
-        });
-    </script>
+    <script src="../../assets/js/custom_teacher_scripts.js"></script>
 
 </body>
 

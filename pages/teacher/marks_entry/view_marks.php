@@ -100,78 +100,8 @@ $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
     <script src="../../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../../assets/js/sb-admin-2.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            $('#viewReportBtn').click(function() {
-                const examType = $('#exam_type').val();
-                const academicYear = $('#academic_year').val();
-                const classStd = '<?php echo $class_teacher_std; ?>';
-                if (examType && academicYear) {
-                    $('#marks-report-body').html('<tr><td colspan="15" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading report...</td></tr>');
-                    $('#marks-report-container').slideDown();
-                    $.ajax({
-                        url: 'get_marks_report.php',
-                        type: 'POST',
-                        data: {
-                            class_std: classStd,
-                            exam_type: examType,
-                            academic_year: academicYear
-                        },
-                        dataType: 'json',
-                        success: function(response) {
-                            $('#marks-report-header').empty();
-                            $('#marks-report-body').empty();
-                            if (response.success) {
-                                // --- MODIFIED: Removed background colors from headers ---
-                                let headerRow = '<tr><th>Roll No</th><th>Student Name</th>';
-                                response.subjects.forEach(subject => {
-                                    headerRow += `<th>${subject}</th>`;
-                                });
-                                headerRow += '<th>Total Obtained</th><th>Total Possible</th><th>Percentage</th><th>Status</th></tr>';
-                                $('#marks-report-header').html(headerRow);
-
-                                if (response.students.length > 0) {
-                                    response.students.forEach(student => {
-                                        let row = `<tr><td>${student.rollno}</td><td>${student.student_name}</td>`;
-                                        response.subjects.forEach(subject => {
-                                            const marks = student.marks[subject] !== undefined ? student.marks[subject] : '<span class="text-muted">N/A</span>';
-                                            row += `<td>${marks}</td>`;
-                                        });
-                                        // --- MODIFIED: Removed background colors from cells ---
-                                        row += `<td><strong>${student.total_obtained}</strong></td>`;
-                                        row += `<td>${student.total_possible}</td>`;
-                                        row += `<td><strong class="text-primary">${student.percentage}%</strong></td>`;
-
-                                        let statusClass = 'badge-secondary'; // Default for N/A
-                                        if (student.status === 'Pass') {
-                                            statusClass = 'badge-success';
-                                        } else if (student.status === 'Fail') {
-                                            statusClass = 'badge-danger'; // Red for Fail
-                                        }
-                                        // --- MODIFIED: Removed background color from cell, keeping only the badge color ---
-                                        row += `<td class="font-weight-bold"><span class="badge ${statusClass}" style="font-size: 0.9rem;">${student.status}</span></td>`;
-
-                                        row += `</tr>`;
-                                        $('#marks-report-body').append(row);
-                                    });
-                                } else {
-                                    $('#marks-report-body').html(`<tr><td colspan="${response.subjects.length + 6}" class="text-center">No marks found for the selected criteria.</td></tr>`);
-                                }
-                            } else {
-                                $('#marks-report-body').html(`<tr><td colspan="15" class="text-center text-danger">${response.message}</td></tr>`);
-                            }
-                        },
-                        error: function() {
-                            $('#marks-report-header').empty();
-                            $('#marks-report-body').html('<tr><td colspan="15" class="text-center text-danger">Error fetching marks data. Please try again.</td></tr>');
-                        }
-                    });
-                } else {
-                    alert('Please select both Exam Type and Academic Year.');
-                }
-            });
-        });
-    </script>
+    <script src="../../../assets/js/custom_marks_scripts.js"></script>
+    
 </body>
 
 </html>

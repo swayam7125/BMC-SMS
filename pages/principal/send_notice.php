@@ -268,53 +268,8 @@ $pageTitle = 'Send School Notice';
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            // Initialize all multi-select dropdowns with Select2
-            $('.multi-select').select2({
-                placeholder: "Select one or more options",
-                allowClear: true
-            });
-
-            // Handle showing/hiding the specific recipient dropdowns
-            $('#send_to_group').on('change', function() {
-                var selectedGroup = $(this).val();
-                var teacherGroup = $('#teacher_group');
-                var studentGroup = $('#student_group');
-
-                switch (selectedGroup) {
-                    case 'both':
-                        teacherGroup.hide();
-                        studentGroup.hide();
-                        break;
-                    case 'teacher':
-                        teacherGroup.show();
-                        studentGroup.hide();
-                        break;
-                    case 'student':
-                        teacherGroup.hide();
-                        studentGroup.show();
-                        break;
-                    default:
-                        teacherGroup.hide();
-                        studentGroup.hide();
-                }
-            });
-
-            function handleAllSelection(selector) {
-                $(selector).on('change', function() {
-                    var selected = $(this).val() || [];
-                    if (selected.includes('all') && selected.length > 1) {
-                        $(this).val('all').trigger('change.select2');
-                    }
-                });
-            }
-
-            // Apply the 'all' selection logic to both dropdowns
-            handleAllSelection('#teacher_ids');
-            handleAllSelection('#standard_ids');
-        });
-    </script>
+    <script src="../../assets/js/custom_principal.js"></script>
+    
 </body>
 
 </html>
