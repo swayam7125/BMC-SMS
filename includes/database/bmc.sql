@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jul 28, 2025 at 11:30 AM
+-- Generation Time: Jul 28, 2025 at 12:02 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -335,7 +335,10 @@ INSERT INTO `notifications` (`id`, `user_id`, `message`, `link`, `is_read`, `cre
 (2, 10, 'New notice from BMC: Harsh', '/pages/principal/view_notice.php', 1, '2025-07-28 08:27:39', 'new_notice'),
 (3, 10, 'New leave request from meet parekh', '/pages/principal/principal_leave_requests.php', 1, '2025-07-28 08:31:40', 'leave_request'),
 (4, 10, 'New leave request from meet parekh', '/pages/principal/principal_leave_requests.php', 1, '2025-07-28 09:17:10', 'leave_request'),
-(5, 6, 'Your leave application has been Rejected.', '/pages/teacher/teacher_leave_history.php', 1, '2025-07-28 09:18:01', 'leave_status');
+(5, 6, 'Your leave application has been Rejected.', '/pages/teacher/teacher_leave_history.php', 1, '2025-07-28 09:18:01', 'leave_status'),
+(6, 6, 'New notice from Principal: hyy...', '/pages/teacher/view_notice.php', 1, '2025-07-28 09:46:55', 'school_notice'),
+(7, 6, 'New notice from Principal: all teachers...', '/pages/teacher/view_notice.php', 1, '2025-07-28 09:49:30', 'school_notice'),
+(8, 6, 'New notice from Principal: only meet parekh...', '/pages/teacher/view_notice.php', 1, '2025-07-28 09:49:55', 'school_notice');
 
 -- --------------------------------------------------------
 
@@ -445,7 +448,10 @@ CREATE TABLE `school_notices_content` (
 
 INSERT INTO `school_notices_content` (`id`, `user_id`, `school_id`, `title`, `content`, `file_path`, `original_filename`, `created_at`) VALUES
 (2, 10, 4, 'Internship', 'Do Work', '/BMC-SMS/pages/principal/uploads/notice_688352064e9079.52076292_INTERNSHIP REGISTRATION FORM JAY (4) (1) (1).pdf', 'INTERNSHIP REGISTRATION FORM JAY (4) (1) (1).pdf', '2025-07-25 09:44:38'),
-(3, 10, 4, 'Complete work', 'HII', '/BMC-SMS/pages/principal/uploads/notice_6883539e857812.52522225_INTERNSHIP REGISTRATION FORM JAY (5).pdf', 'INTERNSHIP REGISTRATION FORM JAY (5).pdf', '2025-07-25 09:51:26');
+(3, 10, 4, 'Complete work', 'HII', '/BMC-SMS/pages/principal/uploads/notice_6883539e857812.52522225_INTERNSHIP REGISTRATION FORM JAY (5).pdf', 'INTERNSHIP REGISTRATION FORM JAY (5).pdf', '2025-07-25 09:51:26'),
+(4, 10, 4, 'hyy', 'hyyy', '/BMC-SMS/pages/principal/uploads/notice_6887470f553421.65162146_fenil_php_1-12.pdf', 'fenil_php_1-12.pdf', '2025-07-28 09:46:55'),
+(5, 10, 4, 'all teachers', 'jkmk', '/BMC-SMS/pages/principal/uploads/notice_688747aa003377.45718927_Chapter 2- Consumer oriented E-Commerce E-Retailing (1).pdf', 'Chapter 2- Consumer oriented E-Commerce E-Retailing (1).pdf', '2025-07-28 09:49:30'),
+(6, 10, 4, 'only meet parekh', 'cbhjcndm', '/BMC-SMS/pages/principal/uploads/notice_688747c31a6951.43956424_Chapter 2- Consumer oriented E-Commerce E-Retailing (1).pdf', 'Chapter 2- Consumer oriented E-Commerce E-Retailing (1).pdf', '2025-07-28 09:49:55');
 
 -- --------------------------------------------------------
 
@@ -467,7 +473,11 @@ CREATE TABLE `school_notice_recipients` (
 INSERT INTO `school_notice_recipients` (`id`, `notice_id`, `recipient_type`, `recipient_identifier`) VALUES
 (1, 2, 'teacher', '6'),
 (2, 2, 'standard', '11'),
-(3, 3, 'teacher', '6');
+(3, 3, 'teacher', '6'),
+(4, 4, 'teacher', '6'),
+(5, 4, 'standard', '11'),
+(6, 5, 'teacher', '6'),
+(7, 6, 'teacher', '6');
 
 -- --------------------------------------------------------
 
@@ -719,6 +729,41 @@ INSERT INTO `teacher` (`id`, `teacher_image`, `teacher_name`, `phone`, `school_i
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `teacher_attendance`
+--
+
+CREATE TABLE `teacher_attendance` (
+  `attendance_id` int(11) NOT NULL,
+  `teacher_id` int(11) NOT NULL,
+  `school_id` int(11) NOT NULL,
+  `attendance_date` date NOT NULL,
+  `status` enum('Present','Absent','Leave') NOT NULL,
+  `remark` varchar(255) DEFAULT NULL,
+  `marked_by_user_id` int(11) DEFAULT NULL,
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `teacher_attendance`
+--
+
+INSERT INTO `teacher_attendance` (`attendance_id`, `teacher_id`, `school_id`, `attendance_date`, `status`, `remark`, `marked_by_user_id`, `updated_at`) VALUES
+(1, 6, 4, '2025-07-28', 'Leave', NULL, 10, '2025-07-28 08:53:46'),
+(2, 15, 4, '2025-07-28', 'Absent', NULL, 10, '2025-07-28 08:53:30'),
+(3, 16, 4, '2025-07-28', 'Present', NULL, 10, '2025-07-28 09:09:23'),
+(4, 17, 4, '2025-07-28', 'Absent', NULL, 10, '2025-07-28 09:15:12'),
+(6, 19, 4, '2025-07-28', 'Absent', NULL, 10, '2025-07-28 09:22:16'),
+(7, 20, 4, '2025-07-28', 'Present', NULL, 10, '2025-07-28 09:26:16'),
+(8, 15, 4, '2025-07-27', 'Absent', NULL, 10, '2025-07-28 09:35:08'),
+(9, 16, 4, '2025-07-27', 'Present', NULL, 10, '2025-07-28 09:35:08'),
+(10, 19, 4, '2025-07-27', 'Present', NULL, 10, '2025-07-28 09:35:08'),
+(11, 6, 4, '2025-07-27', 'Present', NULL, 10, '2025-07-28 09:35:08'),
+(12, 17, 4, '2025-07-27', 'Present', NULL, 10, '2025-07-28 09:35:08'),
+(13, 20, 4, '2025-07-27', 'Present', NULL, 10, '2025-07-28 09:35:08');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `teacher_timings`
 --
 
@@ -949,6 +994,15 @@ ALTER TABLE `teacher`
   ADD KEY `school_id` (`school_id`);
 
 --
+-- Indexes for table `teacher_attendance`
+--
+ALTER TABLE `teacher_attendance`
+  ADD PRIMARY KEY (`attendance_id`),
+  ADD UNIQUE KEY `uq_teacher_attendance_date` (`teacher_id`,`attendance_date`),
+  ADD KEY `school_id` (`school_id`),
+  ADD KEY `marked_by_user_id` (`marked_by_user_id`);
+
+--
 -- Indexes for table `timetables`
 --
 ALTER TABLE `timetables`
@@ -1025,7 +1079,7 @@ ALTER TABLE `notice`
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `principal_timings`
@@ -1043,13 +1097,13 @@ ALTER TABLE `school`
 -- AUTO_INCREMENT for table `school_notices_content`
 --
 ALTER TABLE `school_notices_content`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `school_notice_recipients`
 --
 ALTER TABLE `school_notice_recipients`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `standard_subjects`
@@ -1068,6 +1122,12 @@ ALTER TABLE `student_marks`
 --
 ALTER TABLE `subjects`
   MODIFY `subject_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+
+--
+-- AUTO_INCREMENT for table `teacher_attendance`
+--
+ALTER TABLE `teacher_attendance`
+  MODIFY `attendance_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `timetables`
