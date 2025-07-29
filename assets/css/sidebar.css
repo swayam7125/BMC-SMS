@@ -6,6 +6,20 @@
   height: 100vh;
 }
 
+/* This rule moves the arrow from the far right to next to the text */
+#accordionSidebar .nav-item > .nav-link::after {
+    position: static;      /* Removes the absolute positioning that sent it to the right */
+    transform: none;       /* Resets the original vertical centering */
+    display: inline-block; /* Ensures it behaves correctly next to the text */
+    margin-left: .4rem;    /* Adds a little space after the text */
+}
+
+/* This rule ensures the arrow still rotates 90 degrees when the menu is open */
+#accordionSidebar .nav-item > .nav-link[aria-expanded="true"]::after {
+    /* transform: rotate(25deg); */
+}
+
+
 /* --- Responsive Custom Sidebar --- */
 
 /* These styles apply ONLY to screens 768px and wider */
@@ -27,7 +41,7 @@
   }
 
   /* 4. THE FIX: Keep icon and text on the same line in the collapsed sidebar */
-  .sidebar.toggled .nav-item .nav-link span {
+  #accordionSidebar.toggled .nav-item .nav-link span {
     display: inline !important; /* Forces the text to stay next to the icon */
     margin-left: 0.5rem; /* Adds a small space between the icon and text */
   }
