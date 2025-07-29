@@ -27,33 +27,46 @@ if (isset($_POST['class_std']) && isset($_POST['exam_type']) && isset($_POST['ac
         mysqli_stmt_close($stmt_subjects);
 
         if (empty($subjects)) {
-            $response['message'] = "No subjects have been assigned to this standard. Please contact the administrator.";
+            $response['message'] = "No subjects assigned to this standard.";
             echo json_encode($response);
             exit;
         }
         $response['subjects'] = $subjects;
 
-        $student_query = "SELECT id, student_name, rollno FROM student WHERE std = ? ORDER BY rollno";
+        // --- MODIFIED: Also select school_id to get school-specific settings ---
+        $student_query = "SELECT id, student_name, rollno, school_id FROM student WHERE std = ? ORDER BY rollno";
         $stmt_students = mysqli_prepare($conn, $student_query);
         mysqli_stmt_bind_param($stmt_students, "s", $class_std);
         mysqli_stmt_execute($stmt_students);
         $students_result = mysqli_stmt_get_result($stmt_students);
 
         $students = [];
+        $school_id = null; // Initialize school_id
         while ($student_row = mysqli_fetch_assoc($students_result)) {
+            if (!$school_id) {
+                $school_id = $student_row['school_id']; // Get school_id from the first student
+            }
             $students[$student_row['id']] = [
-                'id' => $student_row['id'],
-                'student_name' => $student_row['student_name'],
-                'rollno' => $student_row['rollno'],
-                'marks' => [],
-                'total_obtained' => 0,
-                'total_possible' => 0,
-                'percentage' => 0,
-                // --- NEW: Initialize status field ---
-                'status' => 'N/A'
+                'id' => $student_row['id'], 'student_name' => $student_row['student_name'],
+                'rollno' => $student_row['rollno'], 'marks' => [], 'total_obtained' => 0,
+                'total_possible' => 0, 'percentage' => 0, 'status' => 'N/A'
             ];
         }
         mysqli_stmt_close($stmt_students);
+        
+        // --- NEW: Fetch the passing percentage for the school ---
+        $passing_percentage = 33.00; // Default fallback value
+        if ($school_id) {
+            $settings_query = "SELECT passing_percentage FROM school WHERE id = ?";
+            $stmt_settings = mysqli_prepare($conn, $settings_query);
+            mysqli_stmt_bind_param($stmt_settings, "i", $school_id);
+            mysqli_stmt_execute($stmt_settings);
+            $settings_result = mysqli_stmt_get_result($stmt_settings);
+            if ($settings_row = mysqli_fetch_assoc($settings_result)) {
+                $passing_percentage = (float)$settings_row['passing_percentage'];
+            }
+            mysqli_stmt_close($stmt_settings);
+        }
 
         if (!empty($students)) {
             $student_ids = array_keys($students);
@@ -63,11 +76,9 @@ if (isset($_POST['class_std']) && isset($_POST['exam_type']) && isset($_POST['ac
                             FROM student_marks 
                             WHERE exam_type = ? AND academic_year = ? AND student_id IN ($placeholders)";
             $stmt_marks = mysqli_prepare($conn, $marks_query);
-
             $types = 'ss' . str_repeat('i', count($student_ids));
             $params = array_merge([$exam_type, $academic_year], $student_ids);
             mysqli_stmt_bind_param($stmt_marks, $types, ...$params);
-
             mysqli_stmt_execute($stmt_marks);
             $marks_result = mysqli_stmt_get_result($stmt_marks);
 
@@ -80,12 +91,12 @@ if (isset($_POST['class_std']) && isset($_POST['exam_type']) && isset($_POST['ac
             }
             mysqli_stmt_close($stmt_marks);
 
-            foreach ($students as $student_id => $student_data) {
+            foreach ($students as $student_id => &$student_data) {
                 if ($student_data['total_possible'] > 0) {
                     $percentage = ($student_data['total_obtained'] / $student_data['total_possible']) * 100;
-                    $students[$student_id]['percentage'] = round($percentage, 2);
-                    // --- NEW: Determine Pass/Fail status ---
-                    $students[$student_id]['status'] = ($percentage >= 33) ? 'Pass' : 'Fail';
+                    $student_data['percentage'] = round($percentage, 2);
+                    // --- MODIFIED: Use the dynamic passing percentage ---
+                    $student_data['status'] = ($percentage >= $passing_percentage) ? 'Pass' : 'Fail';
                 }
             }
         }
