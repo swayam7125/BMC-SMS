@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jul 28, 2025 at 02:37 PM
+-- Generation Time: Jul 29, 2025 at 01:41 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -48,7 +48,14 @@ CREATE TABLE `assignments` (
 INSERT INTO `assignments` (`id`, `teacher_id`, `school_id`, `standard`, `subject`, `title`, `description`, `file_path`, `original_filename`, `due_date`, `created_at`) VALUES
 (3, 6, 4, '11', 'maths', 'maths', 'chbjdcj', '/BMC-SMS/pages/assignments/uploads/assign_688223fef08ce9.86748149_INTERNSHIP REGISTRATION FORM JAY (4).pdf', 'INTERNSHIP REGISTRATION FORM JAY (4).pdf', '2025-08-17', '2025-07-24 12:15:58'),
 (4, 6, 4, '8', 'maths', 'vfvf', 'dfvfdv', '/BMC-SMS/pages/assignments/uploads/assign_688364726c8816.85613585_INTERNSHIP REGISTRATION FORM JAY (4) (1) (1) (1).pdf', 'INTERNSHIP REGISTRATION FORM JAY (4) (1) (1) (1).pdf', '2025-02-02', '2025-07-25 11:03:14'),
-(5, 6, 4, '11', 'maths', 'cjbdcn', 'cm d cm', '/BMC-SMS/pages/assignments/uploads/assign_6883672a4665c9.17531706_INTERNSHIP REGISTRATION FORM JAY (4) (1) (1) (1).pdf', 'INTERNSHIP REGISTRATION FORM JAY (4) (1) (1) (1).pdf', '2025-08-17', '2025-07-25 11:14:50');
+(5, 6, 4, '11', 'maths', 'cjbdcn', 'cm d cm', '/BMC-SMS/pages/assignments/uploads/assign_6883672a4665c9.17531706_INTERNSHIP REGISTRATION FORM JAY (4) (1) (1) (1).pdf', 'INTERNSHIP REGISTRATION FORM JAY (4) (1) (1) (1).pdf', '2025-08-17', '2025-07-25 11:14:50'),
+(6, 6, 4, '11', 'maths', 'Submit', 'fast', '/BMC-SMS/pages/assignments/uploads/assign_68889feebf02d5.69208261_INTERNSHIP REGISTRATION FORM JAY (4) (1).pdf', 'INTERNSHIP REGISTRATION FORM JAY (4) (1).pdf', '2025-08-01', '2025-07-29 10:18:22'),
+(7, 6, 4, '11', 'maths', 'do it', 'fastttttttttttt', '/BMC-SMS/pages/assignments/uploads/assign_6888a208a02c48.69759915_Software Developer Engineer Job Description by Slidesgo.pptx', 'Software Developer Engineer Job Description by Slidesgo.pptx', '2025-08-03', '2025-07-29 10:27:20'),
+(8, 6, 4, '11', 'maths', 'zsfs', 'zsfsaf05082', '/BMC-SMS/pages/assignments/uploads/assign_6888a2801f2042.46527619_sujal.pdf', 'sujal.pdf', '2025-08-05', '2025-07-29 10:29:20'),
+(9, 6, 4, '11', 'maths', 'sdcwsaafafasa', 'ascas', '/BMC-SMS/pages/assignments/uploads/assign_6888a47684b0c2.79834382_DEVAM MUKESH PAREKH (1).pdf', 'DEVAM MUKESH PAREKH (1).pdf', '2025-08-06', '2025-07-29 10:37:42'),
+(10, 6, 4, '11', 'maths', 'ihsfbsaf', 'sdvsdg', '/BMC-SMS/pages/assignments/uploads/assign_6888ac24a5a959.54928827_INTERNSHIP REGISTRATION FORM MEET final.pdf', 'INTERNSHIP REGISTRATION FORM MEET final.pdf', '2025-08-07', '2025-07-29 11:10:28'),
+(11, 6, 4, '11', 'maths', 'oppp', 'oooooooo', '/BMC-SMS/pages/assignments/uploads/assign_6888ae71510de3.76436450_view_attendence.txt', 'view_attendence.txt', '2025-08-11', '2025-07-29 11:20:17'),
+(12, 6, 4, '11', 'maths', 'efwef', 'ddddddddddd', '/BMC-SMS/pages/assignments/uploads/assign_6888b242d8d3a7.26212962_Software Developer Engineer Job Description by Slidesgo.pptx', 'Software Developer Engineer Job Description by Slidesgo.pptx', '2025-08-15', '2025-07-29 11:36:34');
 
 -- --------------------------------------------------------
 
@@ -62,17 +69,29 @@ CREATE TABLE `assignment_submissions` (
   `student_id` int(11) NOT NULL,
   `file_path` varchar(255) NOT NULL,
   `original_filename` varchar(255) DEFAULT NULL,
-  `status` varchar(50) NOT NULL DEFAULT 'Submitted',
-  `submitted_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `status` enum('Submitted','Accepted','Rejected','Re-submitted') NOT NULL DEFAULT 'Submitted',
+  `submitted_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `rejection_reason` text DEFAULT NULL,
+  `evaluated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `assignment_submissions`
 --
 
-INSERT INTO `assignment_submissions` (`id`, `assignment_id`, `student_id`, `file_path`, `original_filename`, `status`, `submitted_at`) VALUES
-(1, 3, 3, '/BMC-SMS/pages/assignments/submit/sub_688226f95aae52.40718307_PROJECT college.pdf', 'PROJECT college.pdf', 'Submitted', '2025-07-24 12:28:41'),
-(2, 5, 3, '/BMC-SMS/pages/assignments/submit/sub_68836749e5cb40.87594266_INTERNSHIP REGISTRATION FORM JAY (4) (1) (1).pdf', 'INTERNSHIP REGISTRATION FORM JAY (4) (1) (1).pdf', 'Submitted', '2025-07-25 11:15:21');
+INSERT INTO `assignment_submissions` (`id`, `assignment_id`, `student_id`, `file_path`, `original_filename`, `status`, `submitted_at`, `rejection_reason`, `evaluated_at`) VALUES
+(1, 3, 3, '/BMC-SMS/pages/assignments/submit/sub_688226f95aae52.40718307_PROJECT college.pdf', 'PROJECT college.pdf', 'Accepted', '2025-07-24 12:28:41', NULL, '2025-07-29 10:04:55'),
+(2, 5, 3, '/BMC-SMS/pages/assignments/submit/sub_68889d987294e5.36771037_INTERNSHIP REGISTRATION FORM JAY (4) (1).pdf', 'INTERNSHIP REGISTRATION FORM JAY (4) (1).pdf', 'Accepted', '2025-07-29 10:08:24', NULL, '2025-07-29 10:09:07'),
+(3, 6, 3, '/BMC-SMS/pages/assignments/submit/sub_6888a029177fa3.50141412_INTERNSHIP REGISTRATION FORM.docx', 'INTERNSHIP REGISTRATION FORM.docx', 'Accepted', '2025-07-29 10:19:21', NULL, '2025-07-29 10:19:58'),
+(4, 9, 3, '/BMC-SMS/pages/assignments/submit/sub_6888a4a1e28077.23929501_IS assignment.pdf', 'IS assignment.pdf', 'Accepted', '2025-07-29 10:38:25', NULL, '2025-07-29 10:39:23'),
+(5, 8, 3, '/BMC-SMS/pages/assignments/submit/sub_6888a4ae261c63.12128760_INTERNSHIP REGISTRATION FORM harsh.pdf', 'INTERNSHIP REGISTRATION FORM harsh.pdf', 'Submitted', '2025-07-29 10:38:38', NULL, NULL),
+(6, 7, 3, '/BMC-SMS/pages/assignments/submit/sub_6888a4ba2e23b2.40104438_INTERNSHIP REGISTRATION FORM MEET final.pdf', 'INTERNSHIP REGISTRATION FORM MEET final.pdf', 'Submitted', '2025-07-29 10:38:50', NULL, NULL),
+(7, 10, 3, '/BMC-SMS/pages/assignments/submit/sub_6888ad70512319.42689804_fees sem 5.pdf', 'fees sem 5.pdf', 'Submitted', '2025-07-29 11:16:00', NULL, NULL),
+(8, 11, 3, '/BMC-SMS/pages/assignments/submit/sub_6888ae9cecf250.02155169_view_attendence.txt', 'view_attendence.txt', 'Submitted', '2025-07-29 11:21:00', NULL, NULL),
+(10, 3, 15, '/BMC-SMS/pages/assignments/submit/sub_6888af373aab86.80439551_past_principal.txt', 'past_principal.txt', 'Accepted', '2025-07-29 11:23:35', NULL, '2025-07-29 11:33:23'),
+(11, 5, 15, '/BMC-SMS/pages/assignments/submit/sub_6888b1465e2247.28954191_school_settings.txt', 'school_settings.txt', 'Accepted', '2025-07-29 11:32:22', NULL, '2025-07-29 11:32:41'),
+(12, 12, 15, '/BMC-SMS/pages/assignments/submit/sub_6888b26445db03.78916412_school_settings.txt', 'school_settings.txt', 'Accepted', '2025-07-29 11:37:08', NULL, '2025-07-29 11:38:06'),
+(13, 12, 3, '/BMC-SMS/pages/assignments/submit/sub_6888b2cc5a72a6.40958430_school_settings.txt', 'school_settings.txt', 'Accepted', '2025-07-29 11:38:52', NULL, '2025-07-29 11:39:15');
 
 -- --------------------------------------------------------
 
@@ -97,7 +116,18 @@ CREATE TABLE `attendance` (
 --
 
 INSERT INTO `attendance` (`id`, `student_id`, `teacher_id`, `school_id`, `standard`, `subject`, `period_number`, `attendance_date`, `status`) VALUES
-(1, 3, 6, 4, '11', '0', 2, '2025-07-28', 'Absent');
+(1, 3, 6, 4, '11', '0', 2, '2025-07-28', 'Absent'),
+(2, 3, 6, 4, '11', '', 0, '2025-07-29', 'Absent'),
+(3, 15, 6, 4, '11', '', 0, '2025-07-29', 'Absent'),
+(4, 15, 6, 4, '11', '', 0, '2025-07-28', 'Present'),
+(5, 16, 6, 4, '11', '', 0, '2025-07-28', 'Absent'),
+(6, 16, 6, 4, '11', '', 0, '2025-07-29', 'Absent'),
+(7, 15, 6, 4, '11', 'English', 1, '2025-07-29', 'Absent'),
+(8, 16, 6, 4, '11', 'English', 1, '2025-07-29', 'Present'),
+(9, 3, 6, 4, '11', 'English', 1, '2025-07-29', 'Absent'),
+(10, 15, 6, 4, '11', '0', 2, '2025-07-29', 'Absent'),
+(11, 16, 6, 4, '11', '0', 2, '2025-07-29', 'Present'),
+(12, 3, 6, 4, '11', '0', 2, '2025-07-29', 'Present');
 
 -- --------------------------------------------------------
 
@@ -337,7 +367,13 @@ INSERT INTO `notifications` (`id`, `user_id`, `message`, `link`, `is_read`, `cre
 (3, 10, 'New leave request from meet parekh', '/pages/principal/principal_leave_requests.php', 1, '2025-07-28 08:31:40', 'leave_request'),
 (4, 10, 'New leave request from meet parekh', '/pages/principal/principal_leave_requests.php', 1, '2025-07-28 09:17:10', 'leave_request'),
 (5, 6, 'Your leave application has been Rejected.', '/pages/teacher/teacher_leave_history.php', 1, '2025-07-28 09:18:01', 'leave_status'),
-(6, 3, 'New notes posted: Hello test notification...', '/pages/student/view_notes.php', 1, '2025-07-28 10:54:36', 'new_notes');
+(6, 3, 'New notes posted: Hello test notification...', '/pages/student/view_notes.php', 1, '2025-07-28 10:54:36', 'new_notes'),
+(7, 6, 'devam parekh submitted the assignment: \'Submit\'', '/pages/assignments/view_submissions.php?id=6', 0, '2025-07-29 10:19:21', 'assignment_submission'),
+(8, 3, 'Your submission for \'Submit\' has been Accepted.', '/pages/assignments/view_assignments.php', 1, '2025-07-29 10:19:58', 'submission_status'),
+(9, 6, 'devam parekh submitted the assignment: \'sdcwsaafafasa\'', '/pages/assignments/view_submissions.php?id=9', 0, '2025-07-29 10:38:25', 'assignment_submission'),
+(10, 6, 'devam parekh submitted the assignment: \'zsfs\'', '/pages/assignments/view_submissions.php?id=8', 0, '2025-07-29 10:38:38', 'assignment_submission'),
+(11, 6, 'devam parekh submitted the assignment: \'do it\'', '/pages/assignments/view_submissions.php?id=7', 0, '2025-07-29 10:38:50', 'assignment_submission'),
+(12, 3, 'Your submission for \'sdcwsaafafasa\' has been Accepted.', '/pages/assignments/view_assignments.php', 0, '2025-07-29 10:39:23', 'submission_status');
 
 -- --------------------------------------------------------
 
@@ -414,15 +450,16 @@ CREATE TABLE `school` (
   `education_board` set('CBSE','State','IGCSE') DEFAULT NULL,
   `school_medium` set('English','Hindi','Regional Language') DEFAULT NULL,
   `school_category` set('Pre-Primary','Primary','Upper Primary','Secondary','Higher Secondary') DEFAULT NULL,
-  `address` text DEFAULT NULL
+  `address` text DEFAULT NULL,
+  `passing_percentage` decimal(5,2) DEFAULT 33.00
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `school`
 --
 
-INSERT INTO `school` (`id`, `school_logo`, `school_name`, `email`, `phone`, `school_opening`, `school_type`, `education_board`, `school_medium`, `school_category`, `address`) VALUES
-(4, NULL, 'sanskar bharti vidyalay', 'sbv@gmail.com', '8526548525', '2025-07-06', 'Private', 'CBSE', 'Hindi', '', 'adajan');
+INSERT INTO `school` (`id`, `school_logo`, `school_name`, `email`, `phone`, `school_opening`, `school_type`, `education_board`, `school_medium`, `school_category`, `address`, `passing_percentage`) VALUES
+(4, NULL, 'sanskar bharti vidyalay', 'sbv@gmail.com', '8526548525', '2025-07-06', 'Private', 'CBSE', 'Hindi', '', 'adajan', 25.00);
 
 -- --------------------------------------------------------
 
@@ -496,11 +533,11 @@ CREATE TABLE `school_timetable` (
 INSERT INTO `school_timetable` (`id`, `school_id`, `standard`, `day_of_week`, `period_number`, `subject_name`, `teacher_id`, `start_time`, `end_time`) VALUES
 (1, 4, '11', 'Monday', 1, 'Computer Science', 6, '08:00:00', '09:00:00'),
 (2, 4, '11', 'Monday', 2, '0', 6, '09:00:00', '10:00:00'),
-(3, 4, '11', 'Tuesday', 1, 'English', 6, '08:00:00', '09:00:00'),
-(4, 4, '11', 'Tuesday', 2, '0', 6, '09:00:00', '10:00:00'),
+(3, 4, '11', 'Tuesday', 1, 'English', 6, '16:00:00', '17:00:00'),
+(4, 4, '11', 'Tuesday', 2, 'Computer Science', 6, '15:00:00', '16:00:00'),
 (5, 4, '11', 'Wednesday', 1, 'Mathematics', 6, '08:00:00', '09:00:00'),
 (6, 4, '11', 'Wednesday', 2, '0', 6, '09:00:00', '10:00:00'),
-(7, 4, '11', 'Thursday', 1, 'Physical Education', 6, '08:09:00', '09:00:00'),
+(7, 4, '11', 'Thursday', 1, 'Physical Education', 6, '15:00:00', '16:00:00'),
 (8, 4, '11', 'Thursday', 2, '0', 6, '09:00:00', '10:00:00'),
 (9, 4, '11', 'Friday', 1, 'Sanskrit', 6, '08:00:00', '09:00:00'),
 (10, 4, '11', 'Friday', 2, '0', 6, '09:00:00', '10:00:00'),
@@ -641,7 +678,9 @@ CREATE TABLE `student` (
 --
 
 INSERT INTO `student` (`id`, `student_image`, `student_name`, `rollno`, `std`, `email`, `password`, `academic_year`, `school_id`, `dob`, `gender`, `blood_group`, `address`, `father_name`, `father_phone`, `mother_name`, `mother_phone`) VALUES
-(3, NULL, 'devam parekh', '9', '11', 'devam@gmail.com', '$2y$10$vl/hHLMF3ar5GEc6pQJfVexTt3vKCXoAGF/9HcDtgGGDsfKHoXHQu', '2024-2025', 4, '2025-07-11', 'male', 'b+', 'canal road', 'mukesh', '9874522589', 'sunita', '753685124');
+(3, NULL, 'devam parekh', '9', '11', 'devam@gmail.com', '$2y$10$vl/hHLMF3ar5GEc6pQJfVexTt3vKCXoAGF/9HcDtgGGDsfKHoXHQu', '2024-2025', 4, '2025-07-11', 'male', 'b+', 'canal road', 'mukesh', '9874522589', 'sunita', '753685124'),
+(15, NULL, 'dev', '12', '11', 'dev@gmail.com', '$2y$10$g93YH/7v1r0T0RkfvEtoreB87XSJtaD6Geo6tuTgYOb5SvydFKEe.', '2024-2025', 4, '2005-03-11', 'male', 'ab+', 'surat', 'Sanket Patel', '5674231568', 'Sita Patel', '8974567458'),
+(16, NULL, 'ram', '13', '11', 'ram@gmail.com', '$2y$10$6n48rtFT/N7SsITe4PlNE.ttsPuv1go1PbrnMLRRoqucU0Zkh1Rvy', '2024-2025', 4, '2003-03-11', 'male', 'ab+', 'sagrampura', 'SFF', '4547842345', 'dsgfse', '6478932145');
 
 -- --------------------------------------------------------
 
@@ -669,13 +708,13 @@ CREATE TABLE `student_marks` (
 --
 
 INSERT INTO `student_marks` (`mark_id`, `student_id`, `school_id`, `academic_year`, `std`, `division`, `exam_type`, `subject_name`, `marks_obtained`, `total_marks`, `entry_date`, `entered_by_user_id`) VALUES
-(85, 3, 4, '2025-2026', '11', '', 'term_1', 'Computer Science', 90.00, 100.00, '2025-07-24 13:08:59', 6),
-(86, 3, 4, '2025-2026', '11', '', 'term_1', 'English', 80.00, 100.00, '2025-07-24 13:08:59', 6),
-(87, 3, 4, '2025-2026', '11', '', 'term_1', 'Mathematics', 80.00, 100.00, '2025-07-24 13:08:59', 6),
-(88, 3, 4, '2025-2026', '11', '', 'term_1', 'Physical Education', 80.00, 100.00, '2025-07-24 13:08:59', 6),
-(89, 3, 4, '2025-2026', '11', '', 'term_1', 'Sanskrit', 70.00, 100.00, '2025-07-24 13:08:59', 6),
-(90, 3, 4, '2025-2026', '11', '', 'term_1', 'Science', 80.00, 100.00, '2025-07-24 13:08:59', 6),
-(91, 3, 4, '2025-2026', '11', '', 'term_1', 'Social Studies', 80.00, 100.00, '2025-07-24 13:08:59', 6),
+(85, 3, 4, '2025-2026', '11', '', 'term_1', 'Computer Science', 26.00, 100.00, '2025-07-24 13:08:59', 6),
+(86, 3, 4, '2025-2026', '11', '', 'term_1', 'English', 26.00, 100.00, '2025-07-24 13:08:59', 6),
+(87, 3, 4, '2025-2026', '11', '', 'term_1', 'Mathematics', 26.00, 100.00, '2025-07-24 13:08:59', 6),
+(88, 3, 4, '2025-2026', '11', '', 'term_1', 'Physical Education', 26.00, 100.00, '2025-07-24 13:08:59', 6),
+(89, 3, 4, '2025-2026', '11', '', 'term_1', 'Sanskrit', 26.00, 100.00, '2025-07-24 13:08:59', 6),
+(90, 3, 4, '2025-2026', '11', '', 'term_1', 'Science', 26.00, 100.00, '2025-07-24 13:08:59', 6),
+(91, 3, 4, '2025-2026', '11', '', 'term_1', 'Social Studies', 26.00, 100.00, '2025-07-24 13:08:59', 6),
 (92, 3, 4, '2025-2026', '11', '', 'final_exam', 'Computer Science', 12.00, 100.00, '2025-07-25 11:01:54', 6),
 (93, 3, 4, '2025-2026', '11', '', 'final_exam', 'English', 65.00, 100.00, '2025-07-25 11:01:54', 6),
 (94, 3, 4, '2025-2026', '11', '', 'final_exam', 'Mathematics', 23.00, 100.00, '2025-07-25 11:01:54', 6),
@@ -757,6 +796,29 @@ INSERT INTO `teacher` (`id`, `teacher_image`, `teacher_name`, `phone`, `school_i
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `teacher_attendance`
+--
+
+CREATE TABLE `teacher_attendance` (
+  `attendance_id` int(11) NOT NULL,
+  `teacher_id` int(11) NOT NULL,
+  `school_id` int(11) NOT NULL,
+  `attendance_date` date NOT NULL,
+  `status` enum('Present','Absent','Leave') NOT NULL,
+  `marked_by_user_id` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `teacher_attendance`
+--
+
+INSERT INTO `teacher_attendance` (`attendance_id`, `teacher_id`, `school_id`, `attendance_date`, `status`, `marked_by_user_id`, `created_at`) VALUES
+(1, 6, 4, '2025-07-29', 'Leave', 10, '2025-07-29 08:26:38');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `teacher_timings`
 --
 
@@ -827,7 +889,9 @@ INSERT INTO `users` (`id`, `role`, `email`, `password`, `account_status`) VALUES
 (3, 'student', 'devam@gmail.com', '$2y$10$vl/hHLMF3ar5GEc6pQJfVexTt3vKCXoAGF/9HcDtgGGDsfKHoXHQu', 'active'),
 (6, 'teacher', 'meet@gmail.com', '$2y$10$sdz4DZ5oaMJNrUA9mld44uiBNIIkAQCPjs2XrrnUcl.Bp6wlzYz1a', 'active'),
 (8, 'bmc', 'swayam@gmail.com', '$2y$10$T74F9Gb05l.StKcZg2sy/ub6PHeH.l3tT3Lv1JwOZzioXJCdEN0zO', 'active'),
-(10, 'schooladmin', 'fenil@gmail.com', '$2y$10$EaSZM1Mq/otD2L1wHMoZdefcPjkOWeXPjePcvdj5WLY/6Lx5DxrJ6', 'active');
+(10, 'schooladmin', 'fenil@gmail.com', '$2y$10$EaSZM1Mq/otD2L1wHMoZdefcPjkOWeXPjePcvdj5WLY/6Lx5DxrJ6', 'active'),
+(15, 'student', 'dev@gmail.com', '$2y$10$g93YH/7v1r0T0RkfvEtoreB87XSJtaD6Geo6tuTgYOb5SvydFKEe.', 'active'),
+(16, 'student', 'ram@gmail.com', '$2y$10$6n48rtFT/N7SsITe4PlNE.ttsPuv1go1PbrnMLRRoqucU0Zkh1Rvy', 'active');
 
 --
 -- Indexes for dumped tables
@@ -993,6 +1057,15 @@ ALTER TABLE `teacher`
   ADD KEY `school_id` (`school_id`);
 
 --
+-- Indexes for table `teacher_attendance`
+--
+ALTER TABLE `teacher_attendance`
+  ADD PRIMARY KEY (`attendance_id`),
+  ADD UNIQUE KEY `uq_teacher_attendance` (`teacher_id`,`attendance_date`),
+  ADD KEY `school_id_idx` (`school_id`),
+  ADD KEY `marked_by_user_idx` (`marked_by_user_id`);
+
+--
 -- Indexes for table `timetables`
 --
 ALTER TABLE `timetables`
@@ -1015,19 +1088,19 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `assignments`
 --
 ALTER TABLE `assignments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- AUTO_INCREMENT for table `assignment_submissions`
 --
 ALTER TABLE `assignment_submissions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `attendance`
 --
 ALTER TABLE `attendance`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
 -- AUTO_INCREMENT for table `deleted_principals`
@@ -1069,7 +1142,7 @@ ALTER TABLE `notice`
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- AUTO_INCREMENT for table `principal_timings`
@@ -1099,7 +1172,7 @@ ALTER TABLE `school_notice_recipients`
 -- AUTO_INCREMENT for table `school_timetable`
 --
 ALTER TABLE `school_timetable`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=49;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=81;
 
 --
 -- AUTO_INCREMENT for table `standard_subjects`
@@ -1111,13 +1184,19 @@ ALTER TABLE `standard_subjects`
 -- AUTO_INCREMENT for table `student_marks`
 --
 ALTER TABLE `student_marks`
-  MODIFY `mark_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=99;
+  MODIFY `mark_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=113;
 
 --
 -- AUTO_INCREMENT for table `subjects`
 --
 ALTER TABLE `subjects`
   MODIFY `subject_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+
+--
+-- AUTO_INCREMENT for table `teacher_attendance`
+--
+ALTER TABLE `teacher_attendance`
+  MODIFY `attendance_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `timetables`
@@ -1129,7 +1208,7 @@ ALTER TABLE `timetables`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- Constraints for dumped tables
@@ -1225,6 +1304,14 @@ ALTER TABLE `student_marks`
 ALTER TABLE `teacher`
   ADD CONSTRAINT `fk_teacher_user_id` FOREIGN KEY (`id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `teacher_ibfk_1` FOREIGN KEY (`school_id`) REFERENCES `school` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `teacher_attendance`
+--
+ALTER TABLE `teacher_attendance`
+  ADD CONSTRAINT `fk_teacher_attendance_school` FOREIGN KEY (`school_id`) REFERENCES `school` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_teacher_attendance_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `teacher` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_teacher_attendance_user` FOREIGN KEY (`marked_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `timetables`
