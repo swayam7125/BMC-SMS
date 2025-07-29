@@ -2,6 +2,9 @@
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 
+// ADDED: Set the timezone to match your location
+date_default_timezone_set('Asia/Kolkata');
+
 $role = decrypt_id($_COOKIE['encrypted_user_role'] ?? '');
 $userId = decrypt_id($_COOKIE['encrypted_user_id'] ?? '');
 
@@ -10,7 +13,8 @@ if ($role !== 'teacher') {
     exit();
 }
 
-$today_day_name = date('l'); // e.g., 'Monday'
+$today_day_name = date('l'); // e.g., 'Tuesday'
+$current_time = date('H:i:s'); // Get current time in HH:MM:SS format
 $lectures_today = [];
 $students = [];
 $selected_lecture = null;
@@ -81,12 +85,15 @@ if (isset($_GET['lecture_id'])) {
     <title>Take Lecture Attendance</title>
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
-    <!-- Corrected Font Awesome link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-
+    <style>
+        .disabled-card {
+            opacity: 0.65;
+            background-color: #f8f9fc;
+        }
+    </style>
 </head>
 
 <body id="page-top">
@@ -108,19 +115,32 @@ if (isset($_GET['lecture_id'])) {
                         </div>
                         <?php else: ?>
                         <?php foreach ($lectures_today as $lecture): ?>
+                        <?php
+                            // Check if the current time is within the lecture's start and end time
+                            $is_active = ($current_time >= $lecture['start_time'] && $current_time <= $lecture['end_time']);
+                            $card_class = $is_active ? '' : 'disabled-card';
+                        ?>
                         <div class="col-xl-4 col-md-6 mb-4">
-                            <div class="card shadow h-100">
+                            <div class="card shadow h-100 <?php echo $card_class; ?>">
                                 <div class="card-body">
                                     <div class="font-weight-bold text-primary text-uppercase mb-1">Period
-                                        <?php echo $lecture['period_number']; ?></div>
+                                        <?php echo htmlspecialchars($lecture['period_number']); ?></div>
                                     <div class="h5 mb-0 font-weight-bold text-gray-800">Std
-                                        <?php echo $lecture['standard']; ?> - <?php echo $lecture['subject_name']; ?>
+                                        <?php echo htmlspecialchars($lecture['standard']); ?> - <?php echo htmlspecialchars($lecture['subject_name']); ?>
                                     </div>
                                     <div class="text-muted small">
                                         <?php echo date('h:i A', strtotime($lecture['start_time'])) . ' - ' . date('h:i A', strtotime($lecture['end_time'])); ?>
                                     </div>
-                                    <a href="add_lecture_attendance.php?lecture_id=<?php echo $lecture['id']; ?>"
-                                        class="btn btn-primary btn-sm mt-3">Take Attendance</a>
+                                    
+                                    <?php if ($is_active): ?>
+                                        <a href="add_lecture_attendance.php?lecture_id=<?php echo $lecture['id']; ?>" class="btn btn-primary btn-sm mt-3">
+                                            <i class="fas fa-check-circle"></i> Take Attendance
+                                        </a>
+                                    <?php else: ?>
+                                        <button class="btn btn-secondary btn-sm mt-3" disabled>
+                                            <i class="fas fa-clock"></i> Not Lecture Time
+                                        </button>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
@@ -132,20 +152,20 @@ if (isset($_GET['lecture_id'])) {
                     <div class="card shadow mb-4">
                         <div class="card-header">
                             <h6 class="m-0 font-weight-bold text-primary">
-                                Taking Attendance for: Std <?php echo $selected_lecture['standard']; ?> | Period
-                                <?php echo $selected_lecture['period_number']; ?> | Subject:
-                                <?php echo $selected_lecture['subject_name']; ?>
+                                Taking Attendance for: Std <?php echo htmlspecialchars($selected_lecture['standard']); ?> | Period
+                                <?php echo htmlspecialchars($selected_lecture['period_number']); ?> | Subject:
+                                <?php echo htmlspecialchars($selected_lecture['subject_name']); ?>
                             </h6>
                         </div>
                         <div class="card-body">
                             <form method="POST" action="add_lecture_attendance.php">
                                 <input type="hidden" name="attendance_date" value="<?php echo date('Y-m-d'); ?>">
                                 <input type="hidden" name="period_number"
-                                    value="<?php echo $selected_lecture['period_number']; ?>">
+                                    value="<?php echo htmlspecialchars($selected_lecture['period_number']); ?>">
                                 <input type="hidden" name="standard"
-                                    value="<?php echo $selected_lecture['standard']; ?>">
+                                    value="<?php echo htmlspecialchars($selected_lecture['standard']); ?>">
                                 <input type="hidden" name="subject"
-                                    value="<?php echo $selected_lecture['subject_name']; ?>">
+                                    value="<?php echo htmlspecialchars($selected_lecture['subject_name']); ?>">
                                 <div class="table-responsive">
                                     <table class="table table-bordered">
                                         <thead>
@@ -158,8 +178,8 @@ if (isset($_GET['lecture_id'])) {
                                         <tbody>
                                             <?php foreach ($students as $student): ?>
                                             <tr>
-                                                <td><?php echo $student['rollno']; ?></td>
-                                                <td><?php echo $student['student_name']; ?></td>
+                                                <td><?php echo htmlspecialchars($student['rollno']); ?></td>
+                                                <td><?php echo htmlspecialchars($student['student_name']); ?></td>
                                                 <td>
                                                     <div class="form-check form-check-inline">
                                                         <input class="form-check-input" type="radio"
@@ -190,25 +210,6 @@ if (isset($_GET['lecture_id'])) {
                 </div>
             </div>
             <?php include '../../includes/footer.php'; ?>
-        </div>
-    </div>
-
-    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
-        aria-hidden="true">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="exampleModalLabel">Ready to Leave?</h5>
-                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">×</span>
-                    </button>
-                </div>
-                <div class="modal-body">Select "Logout" below if you are ready to end your current session.</div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
-                    <a class="btn btn-primary" href="/BMC-SMS/logout.php">Logout</a>
-                </div>
-            </div>
         </div>
     </div>
 

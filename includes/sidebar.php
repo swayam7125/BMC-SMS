@@ -180,6 +180,12 @@ if (!defined('BASE_WEB_PATH')) {
         </div>
     </li>
     <li class="nav-item">
+        <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/principal/school_settings.php">
+            <i class="fas fa-fw fa-cog"></i>
+            <span>School Settings</span>
+        </a>
+    </li>
+    <li class="nav-item">
         <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePastData">
             <i class="fas fa-fw fa-history"></i>
             <span>View Past Data</span>
@@ -264,10 +270,16 @@ if (!defined('BASE_WEB_PATH')) {
         </div>
     </li>
     <li class="nav-item">
-        <a class="nav-link" href="/BMC-SMS/pages/teacher/add_lecture_attendance.php">
+        <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseLectureAttendance">
             <i class="fas fa-fw fa-clipboard-user"></i>
             <span>Lecture Attendance</span>
         </a>
+        <div id="collapseLectureAttendance" class="collapse" data-parent="#accordionSidebar">
+            <div class="bg-white py-2 collapse-inner rounded">
+                <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/add_lecture_attendance.php">Take Attendance</a>
+                <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/view_lecture_attendance.php">View Attendance</a>
+            </div>
+        </div>
     </li>
     <li class="nav-item">
         <a class="nav-link" href="/BMC-SMS/pages/student/view_timetable.php">

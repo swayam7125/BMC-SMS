@@ -91,7 +91,7 @@ if ($selected_std) {
 }
 
 $days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-$total_periods = 1;
+$total_periods = 2;
 ?>
 <!DOCTYPE html>
 <html lang="en">
