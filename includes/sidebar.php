@@ -41,7 +41,7 @@ if (!defined('BASE_WEB_PATH')) {
 
         // ====== BMC Admin Panel ======
         case 'bmc':
-    ?>
+            ?>
     <div class="sidebar-heading font-weight-semibold">Admin Controls</div>
     <li class="nav-item">
         <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseSchool">
@@ -94,7 +94,7 @@ if (!defined('BASE_WEB_PATH')) {
 
         // ====== School Admin (Principal) Panel ======
         case 'schooladmin':
-        ?>
+            ?>
     <div class="sidebar-heading font-weight-semibold">School Management</div>
     <li class="nav-item">
         <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseTeacher">
@@ -210,7 +210,7 @@ if (!defined('BASE_WEB_PATH')) {
                 }
                 $stmt_check->close();
             }
-        ?>
+            ?>
     <div class="sidebar-heading font-weight-semibold">Classroom & Actions</div>
     <li class="nav-item">
         <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/student/student_list.php">
@@ -250,18 +250,10 @@ if (!defined('BASE_WEB_PATH')) {
     </li>
 
     <li class="nav-item">
-        <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseLeave">
+        <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/teacher_leave_management.php">
             <i class="fas fa-fw fa-calendar-alt"></i>
             <span>Leave Management</span>
         </a>
-        <div id="collapseLeave" class="collapse" data-parent="#accordionSidebar">
-            <div class="bg-white py-2 collapse-inner rounded">
-                <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/teacher_leave_form.php">Apply
-                    for Leave</a>
-                <a class="collapse-item"
-                    href="<?php echo BASE_WEB_PATH; ?>pages/teacher/teacher_leave_history.php">Leave History</a>
-            </div>
-        </div>
     </li>
     <li class="nav-item">
         <a class="nav-link" href="/BMC-SMS/pages/teacher/add_lecture_attendance.php">
@@ -293,7 +285,7 @@ if (!defined('BASE_WEB_PATH')) {
 
         // ====== Student Panel ======
         case 'student':
-        ?>
+            ?>
     <div class="sidebar-heading font-weight-semibold">My Academics</div>
     <li class="nav-item">
         <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/user/profile.php">

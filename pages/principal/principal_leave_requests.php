@@ -55,6 +55,7 @@ if ($role !== 'schooladmin') {
                                             <th>Teacher Name</th>
                                             <th>From Date</th>
                                             <th>To Date</th>
+                                            <th>Leave Type</th>
                                             <th>Reason</th>
                                             <th>Applied On</th>
                                             <th>Action</th>
@@ -62,8 +63,8 @@ if ($role !== 'schooladmin') {
                                     </thead>
                                     <tbody>
                                         <?php
-                                        // Fetch pending leave applications
-                                        $query = "SELECT l.id, t.teacher_name, l.from_date, l.to_date, l.reason, l.applied_on
+                                        // Fetch pending leave applications, including leave_type
+                                        $query = "SELECT l.id, t.teacher_name, l.from_date, l.to_date, l.leave_type, l.reason, l.applied_on
                                                   FROM leave_applications l
                                                   JOIN teacher t ON l.teacher_id = t.id
                                                   WHERE l.status = 'Pending'
@@ -75,6 +76,7 @@ if ($role !== 'schooladmin') {
                                                 echo "<td>" . htmlspecialchars($row['teacher_name']) . "</td>";
                                                 echo "<td>" . htmlspecialchars($row['from_date']) . "</td>";
                                                 echo "<td>" . htmlspecialchars($row['to_date']) . "</td>";
+                                                echo "<td>" . htmlspecialchars($row['leave_type']) . "</td>"; // Display Leave Type
                                                 echo "<td>" . htmlspecialchars($row['reason']) . "</td>";
                                                 echo "<td>" . htmlspecialchars(date('d-m-Y H:i', strtotime($row['applied_on']))) . "</td>";
                                                 // Action Buttons
@@ -85,7 +87,8 @@ if ($role !== 'schooladmin') {
                                                 echo "</tr>";
                                             }
                                         } else {
-                                            echo '<tr><td colspan="6" class="text-center">No pending leave requests.</td></tr>';
+                                            // Adjusted colspan to 7
+                                            echo '<tr><td colspan="7" class="text-center">No pending leave requests.</td></tr>';
                                         }
                                         ?>
                                     </tbody>
@@ -99,7 +102,8 @@ if ($role !== 'schooladmin') {
         </div>
     </div>
 
-    <div class="modal fade" id="rejectionModal" tabindex="-1" role="dialog" aria-labelledby="rejectionModalLabel" aria-hidden="true">
+    <div class="modal fade" id="rejectionModal" tabindex="-1" role="dialog" aria-labelledby="rejectionModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
@@ -115,7 +119,8 @@ if ($role !== 'schooladmin') {
                         <input type="hidden" name="action" value="reject">
                         <div class="form-group">
                             <label for="rejection_reason_textarea">Rejection Reason</label>
-                            <textarea class="form-control" id="rejection_reason_textarea" name="rejection_reason" rows="4" required></textarea>
+                            <textarea class="form-control" id="rejection_reason_textarea" name="rejection_reason"
+                                rows="4" required></textarea>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -126,7 +131,7 @@ if ($role !== 'schooladmin') {
             </div>
         </div>
     </div>
-    
+
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
         aria-hidden="true">
         <div class="modal-dialog" role="document">
@@ -152,4 +157,5 @@ if ($role !== 'schooladmin') {
     <script src="../../assets/js/custom_principal.js"></script>
 
 </body>
+
 </html>
