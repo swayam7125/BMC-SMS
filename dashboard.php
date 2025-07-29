@@ -314,12 +314,12 @@ switch ($role) {
                         <?php elseif ($role == 'schooladmin'): ?>
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <a class="card-link" href="./pages/teacher/teacher_list.php">
-                                    <div class="card border-left-info shadow h-100 py-2">
+                                    <div class="card border-left-primary shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                                        TOTAL Teachers in My School</div>
+                                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                                        TOTAL Teachers in School</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalTeachers; ?></div>
                                                 </div>
                                                 <div class="col-auto">
@@ -332,12 +332,12 @@ switch ($role) {
                             </div>
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <a class="card-link" href="./pages/student/student_list.php">
-                                    <div class="card border-left-warning shadow h-100 py-2">
+                                    <div class="card border-left-success shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                                        TOTAL Students in My School</div>
+                                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                                        TOTAL Students in School</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalStudents; ?></div>
                                                 </div>
                                                 <div class="col-auto">
@@ -348,7 +348,24 @@ switch ($role) {
                                     </div>
                                 </a>
                             </div>
-                        <?php elseif ($role == 'teacher'): ?>
+                            <div class="col-xl-3 col-md-6 mb-4">
+                                <a class="card-link" href="./pages/student/student_list.php">
+                                    <div class="card border-left-info shadow h-100 py-2">
+                                        <div class="card-body">
+                                            <div class="row no-gutters align-items-center">
+                                                <div class="col mr-2">
+                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                                        TOTAL Admissions in School</div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalAdmissions; ?></div>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <i class="fas fa-user-plus fa-2x text-gray-300"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <a class="card-link" href="./pages/student/student_list.php">
                                     <div class="card border-left-warning shadow h-100 py-2">
@@ -356,10 +373,83 @@ switch ($role) {
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
                                                     <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                                        TOTAL Students in My School</div>
+                                                        TOTAL Students Left from School</div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalStudentsLeft; ?></div>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <i class="fas fa-right-from-bracket fa-2x text-gray-300"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                        <?php elseif ($role == 'teacher'): ?>
+                            <div class="col-xl-3 col-md-6 mb-4">
+                                <a class="card-link" href="./pages/student/student_list.php">
+                                    <div class="card border-left-primary shadow h-100 py-2">
+                                        <div class="card-body">
+                                            <div class="row no-gutters align-items-center">
+                                                <div class="col mr-2">
+                                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                                        TOTAL Students</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800">
                                                         <?php echo $totalStudents; ?>
                                                     </div>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <i class="fas fa-children fa-2x text-gray-300"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="col-xl-3 col-md-6 mb-4">
+                                <a class="card-link" href="./pages/student/student_list.php">
+                                    <div class="card border-left-success shadow h-100 py-2">
+                                        <div class="card-body">
+                                            <div class="row no-gutters align-items-center">
+                                                <div class="col mr-2">
+                                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                                        Salary</div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $salary; ?></div>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <i class="fas fa-indian-rupee-sign fa-2x text-gray-300"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="col-xl-3 col-md-6 mb-4">
+                                <a class="card-link" href="./pages/student/student_list.php">
+                                    <div class="card border-left-info shadow h-100 py-2">
+                                        <div class="card-body">
+                                            <div class="row no-gutters align-items-center">
+                                                <div class="col mr-2">
+                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                                        TOTAL Present</div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalPresent; ?></div>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <i class="fas fa-user-check fa-2x text-gray-300"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="col-xl-3 col-md-6 mb-4">
+                                <a class="card-link" href="./pages/student/student_list.php">
+                                    <div class="card border-left-warning shadow h-100 py-2">
+                                        <div class="card-body">
+                                            <div class="row no-gutters align-items-center">
+                                                <div class="col mr-2">
+                                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                                        TOTAL Leaves</div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalLeaves; ?></div>
                                                 </div>
                                                 <div class="col-auto">
                                                     <i class="fas fa-children fa-2x text-gray-300"></i>
@@ -401,6 +491,60 @@ switch ($role) {
                                                 </div>
                                                 <div class="col-auto">
                                                     <i class="fas fa-book-open fa-2x text-gray-300"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="col-xl-3 col-md-6 mb-4">
+                                <a class="card-link" href="./pages/student/student_list.php">
+                                    <div class="card border-left-success shadow h-100 py-2">
+                                        <div class="card-body">
+                                            <div class="row no-gutters align-items-center">
+                                                <div class="col mr-2">
+                                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                                        TOTAL Present</div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalPresent; ?></div>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <i class="fas fa-children fa-2x text-gray-300"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="col-xl-3 col-md-6 mb-4">
+                                <a class="card-link" href="./pages/student/student_list.php">
+                                    <div class="card border-left-info shadow h-100 py-2">
+                                        <div class="card-body">
+                                            <div class="row no-gutters align-items-center">
+                                                <div class="col mr-2">
+                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                                        TOTAL Leaves</div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalLeaves; ?></div>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <i class="fas fa-children fa-2x text-gray-300"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="col-xl-3 col-md-6 mb-4">
+                                <a class="card-link" href="./pages/student/student_list.php">
+                                    <div class="card border-left-warning shadow h-100 py-2">
+                                        <div class="card-body">
+                                            <div class="row no-gutters align-items-center">
+                                                <div class="col mr-2">
+                                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                                        TOTAL Absent</div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalAbsent; ?></div>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <i class="fas fa-children fa-2x text-gray-300"></i>
                                                 </div>
                                             </div>
                                         </div>

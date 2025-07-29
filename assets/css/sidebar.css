@@ -11,21 +11,9 @@
     /* --- Dropdown Arrow Fix --- */
     /* This is the main fix for the arrow position. */
     #accordionSidebar .nav-item .nav-link[data-toggle="collapse"]::after {
-        float: none; /* Disables the original template's float: right; */
         display: inline-block;
         margin-left: 0.5rem;
         transition: transform 0.2s ease; /* Adds smooth rotation */
-    }
-
-    /* This rotates the arrow when the menu is open (expanded). */
-    #accordionSidebar .nav-item .nav-link[data-toggle="collapse"][aria-expanded="true"]::after {
-        transform: rotate(90deg);
-    }
-
-    /* --- UX Improvement: Active Link Style --- */
-    /* Highlights the current active page in the sidebar for better navigation. */
-    #accordionSidebar .nav-item.active > .nav-link {
-        background-color: rgba(0, 0, 0, 0.2);
     }
 
     /* --- Responsive Overrides (for screens 768px and wider) --- */
