@@ -110,6 +110,7 @@ $pageTitle = 'View Submissions';
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
 </head>
@@ -124,7 +125,8 @@ $pageTitle = 'View Submissions';
                     <h1 class="h3 mb-2 text-gray-800">Submissions for
                         "<?php echo htmlspecialchars($assignment['title']); ?>"</h1>
                     <p class="mb-4">Standard: <?php echo htmlspecialchars($assignment['standard']); ?> | Subject:
-                        <?php echo htmlspecialchars($assignment['subject']); ?></p>
+                        <?php echo htmlspecialchars($assignment['subject']); ?>
+                    </p>
 
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
@@ -222,6 +224,24 @@ $pageTitle = 'View Submissions';
                         <button class="btn btn-danger" type="submit">Confirm Rejection</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Ready to Leave?</h5>
+                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                </div>
+                <div class="modal-body">Select "Logout" below if you are ready to end your current session.</div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
+                    <a class="btn btn-primary" href="/BMC-SMS/logout.php">Logout</a>
+                </div>
             </div>
         </div>
     </div>
