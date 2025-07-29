@@ -1,3 +1,4 @@
+
 <?php
 $role = null;
 $user_id = null;
@@ -180,12 +181,6 @@ if (!defined('BASE_WEB_PATH')) {
         </div>
     </li>
     <li class="nav-item">
-        <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/principal/school_settings.php">
-            <i class="fas fa-fw fa-cog"></i>
-            <span>School Settings</span>
-        </a>
-    </li>
-    <li class="nav-item">
         <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePastData">
             <i class="fas fa-fw fa-history"></i>
             <span>View Past Data</span>
@@ -229,7 +224,7 @@ if (!defined('BASE_WEB_PATH')) {
     <li class="nav-item">
         <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseMarks">
             <i class="fas fa-fw fa-marker"></i>
-            <span>Marks Management</span>
+            <span>Manage Marks</span>
         </a>
         <div id="collapseMarks" class="collapse" data-parent="#accordionSidebar">
             <div class="bg-white py-2 collapse-inner rounded">
@@ -245,7 +240,7 @@ if (!defined('BASE_WEB_PATH')) {
     <li class="nav-item">
         <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseAssignments">
             <i class="fas fa-fw fa-book-open"></i>
-            <span>Assignment Management</span>
+            <span>Manage Assignment</span>
         </a>
         <div id="collapseAssignments" class="collapse" data-parent="#accordionSidebar">
             <div class="bg-white py-2 collapse-inner rounded">
@@ -258,7 +253,7 @@ if (!defined('BASE_WEB_PATH')) {
     <li class="nav-item">
         <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseLeave">
             <i class="fas fa-fw fa-calendar-alt"></i>
-            <span>Leave Management</span>
+            <span>Manage Leave</span>
         </a>
         <div id="collapseLeave" class="collapse" data-parent="#accordionSidebar">
             <div class="bg-white py-2 collapse-inner rounded">
@@ -270,16 +265,10 @@ if (!defined('BASE_WEB_PATH')) {
         </div>
     </li>
     <li class="nav-item">
-        <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseLectureAttendance">
+        <a class="nav-link" href="/BMC-SMS/pages/teacher/add_lecture_attendance.php">
             <i class="fas fa-fw fa-clipboard-user"></i>
             <span>Lecture Attendance</span>
         </a>
-        <div id="collapseLectureAttendance" class="collapse" data-parent="#accordionSidebar">
-            <div class="bg-white py-2 collapse-inner rounded">
-                <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/add_lecture_attendance.php">Take Attendance</a>
-                <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/view_lecture_attendance.php">View Attendance</a>
-            </div>
-        </div>
     </li>
     <li class="nav-item">
         <a class="nav-link" href="/BMC-SMS/pages/student/view_timetable.php">
