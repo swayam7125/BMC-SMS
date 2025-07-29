@@ -1,10 +1,12 @@
 <?php
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
+include_once "../../includes/email_functions.php"; // Include email functions
 
 $role = null;
 $userId = null;
 $schoolId = null;
+$principalName = 'Principal';
 $availableStandards = [];
 $availableTeachers = [];
 
@@ -23,16 +25,17 @@ if ($role !== 'schooladmin' || !$userId) {
     exit;
 }
 
-// Get School ID, all available standards, and all teachers for the school
-$stmt_school = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
+// Get School ID, principal name, all available standards, and all teachers for the school
+$stmt_school = $conn->prepare("SELECT school_id, principal_name FROM principal WHERE id = ?");
 $stmt_school->bind_param("i", $userId);
 $stmt_school->execute();
 $result_school = $stmt_school->get_result();
 if ($row_school = $result_school->fetch_assoc()) {
     $schoolId = $row_school['school_id'];
+    $principalName = $row_school['principal_name'];
 
     // Fetch standards
-    $std_stmt = $conn->prepare("SELECT DISTINCT std FROM student WHERE school_id = ? ORDER BY std");
+    $std_stmt = $conn->prepare("SELECT DISTINCT std FROM student WHERE school_id = ? ORDER BY CAST(std AS UNSIGNED)");
     $std_stmt->bind_param("i", $schoolId);
     $std_stmt->execute();
     $std_result = $std_stmt->get_result();
@@ -63,11 +66,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
     $title = $_POST['title'];
     $content = $_POST['content'];
     $send_to_group = $_POST['send_to_group'];
-    
-    // Arrays to hold the IDs of users who need a notification
+
     $teacher_ids_to_notify = [];
     $standards_to_notify = [];
-
 
     // --- FILE UPLOAD ---
     $filePathForDB = null;
@@ -76,7 +77,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
         $originalFilename = basename($_FILES["notice_file"]["name"]);
         $uploadDirServer = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/principal/uploads/';
         $uploadDirWeb = '/BMC-SMS/pages/principal/uploads/';
-        if (!is_dir($uploadDirServer)) mkdir($uploadDirServer, 0777, true);
+        if (!is_dir($uploadDirServer))
+            mkdir($uploadDirServer, 0777, true);
 
         $storageFilename = uniqid('notice_', true) . '_' . $originalFilename;
         $serverFilePath = $uploadDirServer . $storageFilename;
@@ -143,37 +145,50 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
                 }
             }
         }
-
         $stmt_recipient->close();
         $conn->commit();
     } catch (Exception $e) {
         $conn->rollback();
         die("Failed to send notice: " . $e->getMessage());
     }
-    
-    // --- NOTIFICATION CREATION ---
+
+    // --- NOTIFICATION & EMAIL LOGIC ---
     $notification_message = "New notice from Principal: " . substr($title, 0, 40) . "...";
     $notification_type = "school_notice";
     $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");
-    
-    // 1. Create notifications for all targeted teachers
+
+    $email_subject = "New Notice from Principal: " . htmlspecialchars($title);
+    $email_content_base = "<p>A new notice titled '<strong>" . htmlspecialchars($title) . "</strong>' has been posted by the principal, " . htmlspecialchars($principalName) . ".</p>"
+        . "<p><strong>Content:</strong><br>" . nl2br(htmlspecialchars($content)) . "</p>"
+        . "<p>Please log in to the portal for more details.</p>";
+
+    // 1. Notify and Email Teachers
     if (!empty($teacher_ids_to_notify)) {
         $unique_teacher_ids = array_unique($teacher_ids_to_notify);
+        $placeholders = implode(',', array_fill(0, count($unique_teacher_ids), '?'));
+        $sql_teachers = "SELECT id, email, teacher_name FROM teacher WHERE id IN ($placeholders)";
+        $stmt_teachers = $conn->prepare($sql_teachers);
+        $stmt_teachers->bind_param(str_repeat('i', count($unique_teacher_ids)), ...$unique_teacher_ids);
+        $stmt_teachers->execute();
+        $result_teachers = $stmt_teachers->get_result();
+
         $notification_link = "/pages/teacher/view_notice.php";
-        foreach ($unique_teacher_ids as $teacher_id) {
-            $stmt_notify->bind_param("isss", $teacher_id, $notification_message, $notification_link, $notification_type);
+
+        while ($teacher = $result_teachers->fetch_assoc()) {
+            $stmt_notify->bind_param("isss", $teacher['id'], $notification_message, $notification_link, $notification_type);
             $stmt_notify->execute();
+
+            $email_body = "<p>Dear " . htmlspecialchars($teacher['teacher_name']) . ",</p>" . $email_content_base;
+            send_email($teacher['email'], $email_subject, $email_body);
         }
+        $stmt_teachers->close();
     }
 
-    // **START: NEW LOGIC TO NOTIFY STUDENTS**
+    // 2. Notify and Email Students
     if (!empty($standards_to_notify)) {
         $unique_standards = array_unique($standards_to_notify);
-        
-        // Prepare a query to get all student IDs from the selected standards
         $placeholders = implode(',', array_fill(0, count($unique_standards), '?'));
-        $sql_students = "SELECT id FROM student WHERE school_id = ? AND std IN ($placeholders)";
-        
+        $sql_students = "SELECT id, email, student_name FROM student WHERE school_id = ? AND std IN ($placeholders)";
         $stmt_students = $conn->prepare($sql_students);
         $types = "i" . str_repeat('s', count($unique_standards));
         $params = array_merge([$schoolId], $unique_standards);
@@ -182,16 +197,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
         $result_students = $stmt_students->get_result();
 
         $notification_link = "/pages/student/view_notice.php";
-        
+
         while ($student = $result_students->fetch_assoc()) {
-            $student_id = $student['id'];
-            $stmt_notify->bind_param("isss", $student_id, $notification_message, $notification_link, $notification_type);
+            $stmt_notify->bind_param("isss", $student['id'], $notification_message, $notification_link, $notification_type);
             $stmt_notify->execute();
+
+            $email_body = "<p>Dear " . htmlspecialchars($student['student_name']) . ",</p>" . $email_content_base;
+            send_email($student['email'], $email_subject, $email_body);
         }
         $stmt_students->close();
     }
-    // **END: NEW LOGIC TO NOTIFY STUDENTS**
-    
+
     $stmt_notify->close();
 
     header("Location: send_notice.php?success=1");
@@ -213,13 +229,12 @@ $pageTitle = 'Send School Notice';
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-
-
     <style>
-        .select2-container--default .select2-selection--multiple {
-            border: 1px solid #d1d3e2;
-            height: auto;
-        }
+    .select2-container--default .select2-selection--multiple {
+        border: 1px solid #d1d3e2;
+        height: auto;
+        padding: .375rem .75rem;
+    }
     </style>
 </head>
 
@@ -231,50 +246,54 @@ $pageTitle = 'Send School Notice';
                 <?php include '../../includes/header.php'; ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Send a Notice</h1>
+                    <?php if (isset($_GET['success'])): ?>
+                    <div class="alert alert-success">Notice sent successfully!</div>
+                    <?php endif; ?>
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">New Notice</h6>
+                            <h6 class="m-0 font-weight-bold text-primary">New Notice Details</h6>
                         </div>
                         <div class="card-body">
                             <form method="POST" action="send_notice.php" enctype="multipart/form-data">
-
                                 <div class="form-group">
                                     <label for="send_to_group">Send To</label>
                                     <select class="form-control" id="send_to_group" name="send_to_group" required>
                                         <option value="">-- Select a Group --</option>
                                         <option value="both">Both (All Teachers & All Students)</option>
-                                        <option value="teacher">Teacher</option>
-                                        <option value="student">Student</option>
+                                        <option value="teacher">Specific Teachers</option>
+                                        <option value="student">Specific Standards</option>
                                     </select>
                                 </div>
-
                                 <div class="form-group" id="teacher_group" style="display:none;">
                                     <label for="teacher_ids">Select Teachers</label>
-                                    <select class="form-control multi-select" id="teacher_ids" name="teacher_ids[]" multiple="multiple">
+                                    <select class="form-control multi-select" id="teacher_ids" name="teacher_ids[]"
+                                        multiple="multiple">
                                         <option value="all">All Teachers</option>
                                         <?php foreach ($availableTeachers as $teacher): ?>
-                                            <option value="<?php echo htmlspecialchars($teacher['id']); ?>"><?php echo htmlspecialchars($teacher['teacher_name']); ?></option>
+                                        <option value="<?php echo htmlspecialchars($teacher['id']); ?>">
+                                            <?php echo htmlspecialchars($teacher['teacher_name']); ?></option>
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
-
                                 <div class="form-group" id="student_group" style="display:none;">
                                     <label for="standard_ids">Select Standards</label>
-                                    <select class="form-control multi-select" id="standard_ids" name="standard_ids[]" multiple="multiple">
+                                    <select class="form-control multi-select" id="standard_ids" name="standard_ids[]"
+                                        multiple="multiple">
                                         <option value="all">All Standards</option>
                                         <?php foreach ($availableStandards as $standard): ?>
-                                            <option value="<?php echo htmlspecialchars($standard); ?>">Standard <?php echo htmlspecialchars($standard); ?></option>
+                                        <option value="<?php echo htmlspecialchars($standard); ?>">Standard
+                                            <?php echo htmlspecialchars($standard); ?></option>
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
-
                                 <div class="form-group">
                                     <label for="title">Title</label>
                                     <input type="text" class="form-control" id="title" name="title" required>
                                 </div>
                                 <div class="form-group">
                                     <label for="content">Content</label>
-                                    <textarea class="form-control" id="content" name="content" rows="4" required></textarea>
+                                    <textarea class="form-control" id="content" name="content" rows="4"
+                                        required></textarea>
                                 </div>
                                 <div class="form-group">
                                     <label for="notice_file">Attach File (Optional)</label>
@@ -295,9 +314,8 @@ $pageTitle = 'Send School Notice';
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="exampleModalLabel">Ready to Leave?</h5>
-                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">×</span>
-                    </button>
+                    <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span
+                            aria-hidden="true">×</span></button>
                 </div>
                 <div class="modal-body">Select "Logout" below if you are ready to end your current session.</div>
                 <div class="modal-footer">
@@ -307,13 +325,27 @@ $pageTitle = 'Send School Notice';
             </div>
         </div>
     </div>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script src="../../assets/js/custom_principal.js"></script>
-    
+    <script>
+    $(document).ready(function() {
+        $('.multi-select').select2();
+        $('#send_to_group').on('change', function() {
+            var selected = $(this).val();
+            $('#teacher_group').hide();
+            $('#student_group').hide();
+            if (selected === 'teacher') {
+                $('#teacher_group').show();
+            } else if (selected === 'student') {
+                $('#student_group').show();
+            } else if (selected === 'both') {
+                // No need to show dropdowns as it's for all
+            }
+        });
+    });
+    </script>
 </body>
 
 </html>

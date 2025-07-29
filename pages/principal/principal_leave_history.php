@@ -46,14 +46,15 @@ if ($role !== 'schooladmin') {
                                             <th>Teacher Name</th>
                                             <th>From Date</th>
                                             <th>To Date</th>
+                                            <th>Leave Type</th>
                                             <th>Reason</th>
                                             <th>Status & Rejection Reason</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <?php
-                                        // Fetch all leave applications that are NOT 'Pending', including rejection_reason
-                                        $query = "SELECT t.teacher_name, l.from_date, l.to_date, l.reason, l.status, l.rejection_reason
+                                        // Fetch all leave applications that are NOT 'Pending', including leave_type and rejection_reason
+                                        $query = "SELECT t.teacher_name, l.from_date, l.to_date, l.leave_type, l.reason, l.status, l.rejection_reason
                                                   FROM leave_applications l
                                                   JOIN teacher t ON l.teacher_id = t.id
                                                   WHERE l.status IN ('Approved', 'Rejected')
@@ -68,6 +69,7 @@ if ($role !== 'schooladmin') {
                                                 echo "<td>" . htmlspecialchars($row['teacher_name']) . "</td>";
                                                 echo "<td>" . htmlspecialchars($row['from_date']) . "</td>";
                                                 echo "<td>" . htmlspecialchars($row['to_date']) . "</td>";
+                                                echo "<td>" . htmlspecialchars($row['leave_type']) . "</td>"; // Display Leave Type
                                                 echo "<td>" . htmlspecialchars($row['reason']) . "</td>";
                                                 // Display status and rejection reason if available
                                                 echo '<td>
@@ -79,7 +81,8 @@ if ($role !== 'schooladmin') {
                                                 echo "</tr>";
                                             }
                                         } else {
-                                            echo '<tr><td colspan="5" class="text-center">No processed leave applications found.</td></tr>';
+                                            // Adjusted colspan to 6
+                                            echo '<tr><td colspan="6" class="text-center">No processed leave applications found.</td></tr>';
                                         }
                                         $conn->close();
                                         ?>

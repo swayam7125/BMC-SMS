@@ -1,6 +1,14 @@
 <?php
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
+include_once "../../includes/email_functions.php"; // Include email functions
+
+$role = null;
+$userId = null;
+$schoolId = null;
+$teacherName = 'Teacher';
+$availableStandards = [];
+$availableSubjects = [];
 
 // Get user info from cookies, ensure user is a teacher
 if (isset($_COOKIE['encrypted_user_role'])) {
@@ -10,20 +18,20 @@ if (isset($_COOKIE['encrypted_user_role'])) {
 if (isset($_COOKIE['encrypted_user_id'])) {
     $userId = decrypt_id($_COOKIE['encrypted_user_id']);
 }
+
 if (!$role || !$userId || $role !== 'teacher') {
-    die("Access Denied. Only teachers can access this page.");
+    header("Location: ../login.php");
+    exit;
 }
 
-// Fetch the teacher's info (school, standards, subject)
-$schoolId = null;
-$availableStandards = [];
-$availableSubjects = [];
-$stmt = $conn->prepare("SELECT school_id, std, subject FROM teacher WHERE id = ?");
-$stmt->bind_param("i", $userId);
-$stmt->execute();
-$result = $stmt->get_result();
-if ($row = $result->fetch_assoc()) {
+// Fetch the teacher's info (school, name, standards, subject)
+$stmt_teacher_info = $conn->prepare("SELECT school_id, teacher_name, std, subject FROM teacher WHERE id = ?");
+$stmt_teacher_info->bind_param("i", $userId);
+$stmt_teacher_info->execute();
+$result_teacher_info = $stmt_teacher_info->get_result();
+if ($row = $result_teacher_info->fetch_assoc()) {
     $schoolId = $row['school_id'];
+    $teacherName = $row['teacher_name'];
     if (!empty($row['std'])) {
         $availableStandards = explode(',', $row['std']);
     }
@@ -31,7 +39,7 @@ if ($row = $result->fetch_assoc()) {
         $availableSubjects = explode(',', $row['subject']);
     }
 }
-$stmt->close();
+$stmt_teacher_info->close();
 
 // Handle form submission
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -46,15 +54,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if (isset($_FILES['assignment_file']) && $_FILES['assignment_file']['error'] == 0) {
         $originalFilename = basename($_FILES["assignment_file"]["name"]);
-
-        // --- CORRECTED & MORE ROBUST FILE PATH LOGIC ---
-        // __DIR__ gives the absolute path of the current file's directory
         $uploadDirServer = __DIR__ . '/uploads/';
-        // The web path for the database link
         $uploadDirWeb = '/BMC-SMS/pages/assignments/uploads/';
 
         if (!is_dir($uploadDirServer)) {
-            // This will now correctly create the 'uploads' directory inside 'pages/assignments/'
             mkdir($uploadDirServer, 0777, true);
         }
 
@@ -66,10 +69,51 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
     }
 
-    // CORRECTED INSERT statement to match the columns you need to add
     $insert_stmt = $conn->prepare("INSERT INTO assignments (teacher_id, school_id, standard, subject, title, description, due_date, file_path, original_filename) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $insert_stmt->bind_param("iisssssss", $userId, $schoolId, $standard, $subject, $title, $description, $due_date, $filePathForDB, $originalFilename);
-    $insert_stmt->execute();
+
+    if ($insert_stmt->execute()) {
+        $assignmentId = $conn->insert_id; // Get the ID of the new assignment
+
+        // --- START: Notification & Email Logic ---
+        // Get all students of the target standard
+        $stmt_students = $conn->prepare("SELECT id, email, student_name FROM student WHERE school_id = ? AND std = ?");
+        $stmt_students->bind_param("is", $schoolId, $standard);
+        $stmt_students->execute();
+        $result_students = $stmt_students->get_result();
+
+        // Prepare notification components
+        $notification_message = "New Assignment: " . substr($title, 0, 50) . "...";
+        $notification_link = "/pages/assignments/view_assignments.php";
+        $notification_type = "new_assignment";
+        $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");
+
+        // Prepare email components
+        $email_subject = "New Assignment Posted: " . htmlspecialchars($title);
+        $email_content_base = "
+            <p>A new assignment has been posted by your teacher, " . htmlspecialchars($teacherName) . ".</p>
+            <ul>
+                <li><strong>Title:</strong> " . htmlspecialchars($title) . "</li>
+                <li><strong>Subject:</strong> " . htmlspecialchars($subject) . "</li>
+                <li><strong>Due Date:</strong> " . htmlspecialchars($due_date) . "</li>
+            </ul>
+            <p><strong>Description:</strong><br>" . nl2br(htmlspecialchars($description)) . "</p>
+            <p>Please log in to the portal to view the details and submit your work.</p>
+        ";
+
+        while ($student = $result_students->fetch_assoc()) {
+            // 1. Send In-App Notification
+            $stmt_notify->bind_param("isss", $student['id'], $notification_message, $notification_link, $notification_type);
+            $stmt_notify->execute();
+
+            // 2. Send Email
+            $email_body = "<p>Dear " . htmlspecialchars($student['student_name']) . ",</p>" . $email_content_base;
+            send_email($student['email'], $email_subject, $email_body);
+        }
+        $stmt_students->close();
+        $stmt_notify->close();
+        // --- END: Notification & Email Logic ---
+    }
     $insert_stmt->close();
 
     header("Location: assignment_history.php?success=1");
@@ -89,7 +133,6 @@ $pageTitle = 'Send Assignment';
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-
 </head>
 
 <body id="page-top">
@@ -105,14 +148,15 @@ $pageTitle = 'Send Assignment';
                             <h6 class="m-0 font-weight-bold text-primary">Assignment Details</h6>
                         </div>
                         <div class="card-body">
-                            <form method="POST" enctype="multipart/form-data">
+                            <form method="POST" enctype="multipart/form-data" action="send_assignment.php">
                                 <div class="form-row">
                                     <div class="form-group col-md-6">
                                         <label for="standard">For Standard</label>
                                         <select class="form-control" id="standard" name="standard" required>
                                             <option value="">-- Select Standard --</option>
                                             <?php foreach ($availableStandards as $std): ?>
-                                                <option value="<?php echo htmlspecialchars(trim($std)); ?>">Standard <?php echo htmlspecialchars(trim($std)); ?></option>
+                                            <option value="<?php echo htmlspecialchars(trim($std)); ?>">Standard
+                                                <?php echo htmlspecialchars(trim($std)); ?></option>
                                             <?php endforeach; ?>
                                         </select>
                                     </div>
@@ -121,7 +165,8 @@ $pageTitle = 'Send Assignment';
                                         <select class="form-control" id="subject" name="subject" required>
                                             <option value="">-- Select Subject --</option>
                                             <?php foreach ($availableSubjects as $sub): ?>
-                                                <option value="<?php echo htmlspecialchars(trim($sub)); ?>"><?php echo htmlspecialchars(trim($sub)); ?></option>
+                                            <option value="<?php echo htmlspecialchars(trim($sub)); ?>">
+                                                <?php echo htmlspecialchars(trim($sub)); ?></option>
                                             <?php endforeach; ?>
                                         </select>
                                     </div>
@@ -132,7 +177,8 @@ $pageTitle = 'Send Assignment';
                                 </div>
                                 <div class="form-group">
                                     <label for="description">Description / Instructions</label>
-                                    <textarea class="form-control" id="description" name="description" rows="4"></textarea>
+                                    <textarea class="form-control" id="description" name="description"
+                                        rows="4"></textarea>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group col-md-6">
@@ -141,7 +187,8 @@ $pageTitle = 'Send Assignment';
                                     </div>
                                     <div class="form-group col-md-6">
                                         <label for="assignment_file">Attach File (Optional)</label>
-                                        <input type="file" class="form-control-file" id="assignment_file" name="assignment_file">
+                                        <input type="file" class="form-control-file" id="assignment_file"
+                                            name="assignment_file">
                                     </div>
                                 </div>
                                 <button type="submit" class="btn btn-primary">Send Assignment</button>

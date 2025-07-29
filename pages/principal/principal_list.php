@@ -42,7 +42,7 @@ $result = mysqli_query($conn, $query);
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php';?>
+        <?php include '../../includes/sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
@@ -109,16 +109,16 @@ $result = mysqli_query($conn, $query);
                                                 <?php if ($role === 'bmc'): ?>
                                                 <?php
                                                             $return_url = urlencode('/BMC-SMS/pages/principal/principal_list.php');
-                                                            if ($row['account_status'] === 'active'): 
+                                                            if ($row['account_status'] === 'active'):
                                                                 $suspendUrl = "../../includes/actions/update_user_status.php?id={$row['id']}&status=suspended&return={$return_url}";
-                                                            ?>
+                                                                ?>
                                                 <a href="#"
                                                     onclick="confirmAction('<?php echo $suspendUrl; ?>', 'suspend this principal')"
                                                     class="btn btn-warning btn-sm" title="Suspend"><i
                                                         class="fas fa-ban"></i></a>
-                                                <?php else: 
+                                                <?php else:
                                                                 $reactivateUrl = "../../includes/actions/update_user_status.php?id={$row['id']}&status=active&return={$return_url}";
-                                                            ?>
+                                                                ?>
                                                 <a href="#"
                                                     onclick="confirmAction('<?php echo $reactivateUrl; ?>', 'reactivate this principal')"
                                                     class="btn btn-success btn-sm" title="Reactivate"><i

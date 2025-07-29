@@ -57,13 +57,14 @@ $pageTitle = 'Teacher - Assignment History';
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
 
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
-    <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i"
+        rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
 
 </head>
 
@@ -76,10 +77,11 @@ $pageTitle = 'Teacher - Assignment History';
 
                 <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">Sent Assignment History</h1>
-                    <p class="mb-4">A record of all assignments you have sent. You can view submission status and details for each.</p>
+                    <p class="mb-4">A record of all assignments you have sent. You can view submission status and
+                        details for each.</p>
 
                     <?php if (isset($_GET['success'])): ?>
-                        <div class="alert alert-success">Assignment sent successfully!</div>
+                    <div class="alert alert-success">Assignment sent successfully!</div>
                     <?php endif; ?>
 
                     <div class="card shadow mb-4">
@@ -88,7 +90,8 @@ $pageTitle = 'Teacher - Assignment History';
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
-                                <table class="table table-bordered" id="assignmentHistoryTable" width="100%" cellspacing="0">
+                                <table class="table table-bordered" id="assignmentHistoryTable" width="100%"
+                                    cellspacing="0">
                                     <thead>
                                         <tr>
                                             <th>Title</th>
@@ -102,25 +105,28 @@ $pageTitle = 'Teacher - Assignment History';
                                     </thead>
                                     <tbody>
                                         <?php if (!empty($assignments)): ?>
-                                            <?php foreach ($assignments as $assignment): ?>
-                                                <tr>
-                                                    <td><?php echo htmlspecialchars($assignment['title']); ?></td>
-                                                    <td>Standard <?php echo htmlspecialchars($assignment['standard']); ?></td>
-                                                    <td><?php echo htmlspecialchars($assignment['subject']); ?></td>
-                                                    <td><?php echo date("d-m-Y", strtotime($assignment['created_at'])); ?></td>
-                                                    <td><?php echo date("d-m-Y", strtotime($assignment['due_date'])); ?></td>
-                                                    <td><?php echo htmlspecialchars($assignment['submission_count']); ?> / <?php echo htmlspecialchars($assignment['total_students']); ?></td>
-                                                    <td>
-                                                        <a href="view_submissions.php?id=<?php echo $assignment['id']; ?>" class="btn btn-primary btn-sm" title="View Submissions">
-                                                            <i class="fas fa-eye"></i> View
-                                                        </a>
-                                                    </td>
-                                                </tr>
-                                            <?php endforeach; ?>
+                                        <?php foreach ($assignments as $assignment): ?>
+                                        <tr>
+                                            <td><?php echo htmlspecialchars($assignment['title']); ?></td>
+                                            <td>Standard <?php echo htmlspecialchars($assignment['standard']); ?></td>
+                                            <td><?php echo htmlspecialchars($assignment['subject']); ?></td>
+                                            <td><?php echo date("d-m-Y", strtotime($assignment['created_at'])); ?></td>
+                                            <td><?php echo date("d-m-Y", strtotime($assignment['due_date'])); ?></td>
+                                            <td><?php echo htmlspecialchars($assignment['submission_count']); ?> /
+                                                <?php echo htmlspecialchars($assignment['total_students']); ?></td>
+                                            <td>
+                                                <a href="view_submissions.php?id=<?php echo $assignment['id']; ?>"
+                                                    class="btn btn-primary btn-sm" title="View Submissions">
+                                                    <i class="fas fa-eye"></i> View
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        <?php endforeach; ?>
                                         <?php else: ?>
-                                            <tr>
-                                                <td colspan="7" class="text-center">You have not sent any assignments yet.</td>
-                                            </tr>
+                                        <tr>
+                                            <td colspan="7" class="text-center">You have not sent any assignments yet.
+                                            </td>
+                                        </tr>
                                         <?php endif; ?>
                                     </tbody>
                                 </table>
@@ -135,6 +141,24 @@ $pageTitle = 'Teacher - Assignment History';
 
     <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
 
+    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Ready to Leave?</h5>
+                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                </div>
+                <div class="modal-body">Select "Logout" below if you are ready to end your current session.</div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
+                    <a class="btn btn-primary" href="/BMC-SMS/logout.php">Logout</a>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
         aria-hidden="true">
         <div class="modal-dialog" role="document">
