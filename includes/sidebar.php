@@ -1,3 +1,4 @@
+
 <?php
 $role = null;
 $user_id = null;
@@ -223,7 +224,7 @@ if (!defined('BASE_WEB_PATH')) {
     <li class="nav-item">
         <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseMarks">
             <i class="fas fa-fw fa-marker"></i>
-            <span>Marks Management</span>
+            <span>Manage Marks</span>
         </a>
         <div id="collapseMarks" class="collapse" data-parent="#accordionSidebar">
             <div class="bg-white py-2 collapse-inner rounded">
@@ -239,7 +240,7 @@ if (!defined('BASE_WEB_PATH')) {
     <li class="nav-item">
         <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseAssignments">
             <i class="fas fa-fw fa-book-open"></i>
-            <span>Assignment Management</span>
+            <span>Manage Assignment</span>
         </a>
         <div id="collapseAssignments" class="collapse" data-parent="#accordionSidebar">
             <div class="bg-white py-2 collapse-inner rounded">
@@ -252,7 +253,7 @@ if (!defined('BASE_WEB_PATH')) {
     <li class="nav-item">
         <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/teacher_leave_management.php">
             <i class="fas fa-fw fa-calendar-alt"></i>
-            <span>Leave Management</span>
+            <span>Manage Leave</span>
         </a>
     </li>
     <li class="nav-item">
