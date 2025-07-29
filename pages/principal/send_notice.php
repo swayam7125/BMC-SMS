@@ -63,6 +63,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
     $title = $_POST['title'];
     $content = $_POST['content'];
     $send_to_group = $_POST['send_to_group'];
+    
+    // Arrays to hold the IDs of users who need a notification
+    $teacher_ids_to_notify = [];
+    $standards_to_notify = [];
+
 
     // --- FILE UPLOAD ---
     $filePathForDB = null;
@@ -83,36 +88,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
     // --- DATABASE INSERTION ---
     $conn->begin_transaction();
     try {
-        // 1. Insert the notice content
         $stmt_content = $conn->prepare("INSERT INTO school_notices_content (user_id, school_id, title, content, file_path, original_filename) VALUES (?, ?, ?, ?, ?, ?)");
         $stmt_content->bind_param("iissss", $userId, $schoolId, $title, $content, $filePathForDB, $originalFilename);
         $stmt_content->execute();
         $noticeId = $conn->insert_id;
         $stmt_content->close();
 
-        // --- FIX STARTS HERE ---
-
-        // 2. Prepare the recipient statement ONCE.
         $stmt_recipient = $conn->prepare("INSERT INTO school_notice_recipients (notice_id, recipient_type, recipient_identifier) VALUES (?, ?, ?)");
-
-        // 3. Define variables that will be bound by reference.
         $recipient_type = '';
         $recipient_identifier = '';
         $stmt_recipient->bind_param("iss", $noticeId, $recipient_type, $recipient_identifier);
 
-        // 4. Loop and execute with the updated variables.
         if ($send_to_group == 'both') {
-            // Send to ALL teachers
             $recipient_type = 'teacher';
             foreach ($availableTeachers as $teacher) {
                 $recipient_identifier = $teacher['id'];
                 $stmt_recipient->execute();
+                $teacher_ids_to_notify[] = $teacher['id'];
             }
-            // Send to ALL standards
             $recipient_type = 'standard';
             foreach ($availableStandards as $standard) {
                 $recipient_identifier = $standard;
                 $stmt_recipient->execute();
+                $standards_to_notify[] = $standard;
             }
         } elseif ($send_to_group == 'teacher' && !empty($_POST['teacher_ids'])) {
             $recipient_type = 'teacher';
@@ -120,11 +118,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
                 foreach ($availableTeachers as $teacher) {
                     $recipient_identifier = $teacher['id'];
                     $stmt_recipient->execute();
+                    $teacher_ids_to_notify[] = $teacher['id'];
                 }
             } else {
                 foreach ($_POST['teacher_ids'] as $teacher_id) {
                     $recipient_identifier = $teacher_id;
                     $stmt_recipient->execute();
+                    $teacher_ids_to_notify[] = $teacher_id;
                 }
             }
         } elseif ($send_to_group == 'student' && !empty($_POST['standard_ids'])) {
@@ -133,16 +133,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
                 foreach ($availableStandards as $standard) {
                     $recipient_identifier = $standard;
                     $stmt_recipient->execute();
+                    $standards_to_notify[] = $standard;
                 }
             } else {
                 foreach ($_POST['standard_ids'] as $standard_id) {
                     $recipient_identifier = $standard_id;
                     $stmt_recipient->execute();
+                    $standards_to_notify[] = $standard_id;
                 }
             }
         }
-
-        // --- FIX ENDS HERE ---
 
         $stmt_recipient->close();
         $conn->commit();
@@ -150,6 +150,49 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
         $conn->rollback();
         die("Failed to send notice: " . $e->getMessage());
     }
+    
+    // --- NOTIFICATION CREATION ---
+    $notification_message = "New notice from Principal: " . substr($title, 0, 40) . "...";
+    $notification_type = "school_notice";
+    $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");
+    
+    // 1. Create notifications for all targeted teachers
+    if (!empty($teacher_ids_to_notify)) {
+        $unique_teacher_ids = array_unique($teacher_ids_to_notify);
+        $notification_link = "/pages/teacher/view_notice.php";
+        foreach ($unique_teacher_ids as $teacher_id) {
+            $stmt_notify->bind_param("isss", $teacher_id, $notification_message, $notification_link, $notification_type);
+            $stmt_notify->execute();
+        }
+    }
+
+    // **START: NEW LOGIC TO NOTIFY STUDENTS**
+    if (!empty($standards_to_notify)) {
+        $unique_standards = array_unique($standards_to_notify);
+        
+        // Prepare a query to get all student IDs from the selected standards
+        $placeholders = implode(',', array_fill(0, count($unique_standards), '?'));
+        $sql_students = "SELECT id FROM student WHERE school_id = ? AND std IN ($placeholders)";
+        
+        $stmt_students = $conn->prepare($sql_students);
+        $types = "i" . str_repeat('s', count($unique_standards));
+        $params = array_merge([$schoolId], $unique_standards);
+        $stmt_students->bind_param($types, ...$params);
+        $stmt_students->execute();
+        $result_students = $stmt_students->get_result();
+
+        $notification_link = "/pages/student/view_notice.php";
+        
+        while ($student = $result_students->fetch_assoc()) {
+            $student_id = $student['id'];
+            $stmt_notify->bind_param("isss", $student_id, $notification_message, $notification_link, $notification_type);
+            $stmt_notify->execute();
+        }
+        $stmt_students->close();
+    }
+    // **END: NEW LOGIC TO NOTIFY STUDENTS**
+    
+    $stmt_notify->close();
 
     header("Location: send_notice.php?success=1");
     exit();
@@ -268,53 +311,8 @@ $pageTitle = 'Send School Notice';
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            // Initialize all multi-select dropdowns with Select2
-            $('.multi-select').select2({
-                placeholder: "Select one or more options",
-                allowClear: true
-            });
-
-            // Handle showing/hiding the specific recipient dropdowns
-            $('#send_to_group').on('change', function() {
-                var selectedGroup = $(this).val();
-                var teacherGroup = $('#teacher_group');
-                var studentGroup = $('#student_group');
-
-                switch (selectedGroup) {
-                    case 'both':
-                        teacherGroup.hide();
-                        studentGroup.hide();
-                        break;
-                    case 'teacher':
-                        teacherGroup.show();
-                        studentGroup.hide();
-                        break;
-                    case 'student':
-                        teacherGroup.hide();
-                        studentGroup.show();
-                        break;
-                    default:
-                        teacherGroup.hide();
-                        studentGroup.hide();
-                }
-            });
-
-            function handleAllSelection(selector) {
-                $(selector).on('change', function() {
-                    var selected = $(this).val() || [];
-                    if (selected.includes('all') && selected.length > 1) {
-                        $(this).val('all').trigger('change.select2');
-                    }
-                });
-            }
-
-            // Apply the 'all' selection logic to both dropdowns
-            handleAllSelection('#teacher_ids');
-            handleAllSelection('#standard_ids');
-        });
-    </script>
+    <script src="../../assets/js/custom_principal.js"></script>
+    
 </body>
 
 </html>

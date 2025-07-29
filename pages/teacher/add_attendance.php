@@ -152,7 +152,7 @@ if (empty($errorMessage)) {
                                     <form method="POST" action="add_attendance.php?attendance_date=<?php echo $attendance_date_display; ?>">
                                         <input type="hidden" name="attendance_date" value="<?php echo $attendance_date_display; ?>">
                                         <div class="table-responsive">
-                                            <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                            <table class="table table-bordered" id="addAttendanceTable " width="100%" cellspacing="0">
                                                 <thead>
                                                     <tr>
                                                         <th>Roll No</th>
@@ -226,15 +226,7 @@ if (empty($errorMessage)) {
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            $('#dataTable').DataTable({
-                "paging": false, // Disable pagination for attendance sheet
-                "searching": false, // Disable search
-                "info": false // Disable info
-            });
-        });
-    </script>
+    <script src="../../assets/js/custom_teacher_scripts.js"></script>
 </body>
 
 </html>

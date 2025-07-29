@@ -2,13 +2,25 @@
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
 
+// --- START: MARK AS READ LOGIC ---
+if (isset($_GET['notif_id']) && is_numeric($_GET['notif_id'])) {
+    $notification_id = $_GET['notif_id'];
+    $current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+    if ($current_user_id) {
+        $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?");
+        $stmt_mark_read->bind_param("ii", $notification_id, $current_user_id);
+        $stmt_mark_read->execute();
+        $stmt_mark_read->close();
+    }
+}
+// --- END: MARK AS READ LOGIC ---
+
 $role = null;
 $userId = null;
 $schoolId = null;
 $studentStd = null;
 $teacherStds = [];
 
-// Get user role and ID from cookies
 if (isset($_COOKIE['encrypted_user_role'])) {
     $decrypted_role = decrypt_id($_COOKIE['encrypted_user_role']);
     $role = $decrypted_role ? strtolower(trim($decrypted_role)) : null;
@@ -17,13 +29,11 @@ if (isset($_COOKIE['encrypted_user_id'])) {
     $userId = decrypt_id($_COOKIE['encrypted_user_id']);
 }
 
-// Redirect if user is not properly logged in
 if (!$role || !$userId) {
     header("Location: ./login.php");
     exit;
 }
 
-// --- FETCH USER-SPECIFIC DATA (school_id, std) ---
 switch ($role) {
     case 'student':
         $stmt = $conn->prepare("SELECT school_id, std FROM student WHERE id = ?");
@@ -61,10 +71,7 @@ switch ($role) {
         break;
 }
 
-
-// --- Build the SQL query based on the user's role ---
 $notes = [];
-// --- MODIFIED: Query now uses COALESCE to get the sender's name from teacher or principal table ---
 $base_sql = "SELECT 
                 n.title, 
                 n.content, 
@@ -103,8 +110,6 @@ switch ($role) {
         $params = [$schoolId];
         $types = "i";
         break;
-    case 'bmc':
-        break;
 }
 
 $base_sql .= " ORDER BY n.created_at DESC";
@@ -121,13 +126,11 @@ if ($stmt) {
     }
     $stmt->close();
 }
-$conn->close();
-
+// **FIX: The line "$conn->close();" was REMOVED from here.**
 $pageTitle = 'View Notes';
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
@@ -138,9 +141,7 @@ $pageTitle = 'View Notes';
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-
 </head>
-
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -155,7 +156,7 @@ $pageTitle = 'View Notes';
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
-                                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                <table class="table table-bordered" id="notesTable " width="100%" cellspacing="0">
                                     <thead>
                                         <tr>
                                             <th>From</th>
@@ -176,7 +177,7 @@ $pageTitle = 'View Notes';
                                                 <td><?php echo date('d-m-Y H:i', strtotime($note['created_at'])); ?></td>
                                                 <td>
                                                     <?php if ($note['file_path']): ?>
-                                                        <a href="<?php echo htmlspecialchars($note['file_path']); ?>" class="btn btn-success btn-sm" download="<?php echo htmlspecialchars($note['original_filename']); ?>">
+                                                        <a href="<?php echo htmlspecialchars(BASE_WEB_PATH . ltrim($note['file_path'], '/')); ?>" class="btn btn-success btn-sm" download="<?php echo htmlspecialchars($note['original_filename']); ?>">
                                                             <i class="fas fa-download"></i> Download
                                                         </a>
                                                     <?php else: ?>
@@ -227,18 +228,11 @@ $pageTitle = 'View Notes';
     <script src="https://cdn.datatables.net/1.10.21/js/dataTables.bootstrap4.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 
-    <script>
-        $(document).ready(function() {
-            $('#dataTable').DataTable({
-                "order": [
-                    [4, "desc"]
-                ], // Sort by the 'Date' column
-                "dom": "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-                    "<'row'<'col-sm-12'tr>>" +
-                    "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
-            });
-        });
-    </script>
+    <script src="../../assets/js/custom_student_scripts.js"></script>
 </body>
-
 </html>
+<?php 
+if (isset($conn)) {
+    $conn->close();
+}
+?>

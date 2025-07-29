@@ -7,7 +7,6 @@ $userId = null;
 $schoolId = null;
 $availableStandards = [];
 
-// This block is based on your dashboard.php logic to get the logged-in user's info
 if (isset($_COOKIE['encrypted_user_role'])) {
     $decrypted_role = decrypt_id($_COOKIE['encrypted_user_role']);
     $role = $decrypted_role ? strtolower(trim($decrypted_role)) : null;
@@ -16,16 +15,13 @@ if (isset($_COOKIE['encrypted_user_id'])) {
     $userId = decrypt_id($_COOKIE['encrypted_user_id']);
 }
 
-// Redirect if user is not properly logged in
 if (!$role || !$userId) {
     header("Location: ../login.php");
     exit;
 }
 
-// Fetch available standards based on the user's role
 switch ($role) {
     case 'teacher':
-        // A teacher can send notes to the standards they are assigned to teach
         $stmt = $conn->prepare("SELECT school_id, std FROM teacher WHERE id = ?");
         $stmt->bind_param("i", $userId);
         $stmt->execute();
@@ -38,16 +34,13 @@ switch ($role) {
         }
         $stmt->close();
         break;
-
     case 'schooladmin':
-        // A principal can send notes to any standard in their school
         $stmt = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
         $stmt->bind_param("i", $userId);
         $stmt->execute();
         $result = $stmt->get_result();
         if ($row = $result->fetch_assoc()) {
             $schoolId = $row['school_id'];
-            // Fetch all unique standards that have students in that school
             $std_stmt = $conn->prepare("SELECT DISTINCT std FROM student WHERE school_id = ? ORDER BY std");
             $std_stmt->bind_param("i", $schoolId);
             $std_stmt->execute();
@@ -81,10 +74,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_note'])) {
         if (!is_dir($uploadDirServer)) {
             mkdir($uploadDirServer, 0777, true);
         }
-
         $storageFilename = uniqid('note_', true) . '_' . $originalFilename;
         $serverFilePath = $uploadDirServer . $storageFilename;
-
         if (move_uploaded_file($_FILES["note_file"]["tmp_name"], $serverFilePath)) {
             $filePathForDB = $uploadDirWeb . $storageFilename;
         }
@@ -92,7 +83,35 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_note'])) {
 
     $stmt = $conn->prepare("INSERT INTO notes (user_id, school_id, target_standard, title, content, file_path, original_filename) VALUES (?, ?, ?, ?, ?, ?, ?)");
     $stmt->bind_param("iisssss", $userId, $schoolId, $target_standard, $title, $content, $filePathForDB, $originalFilename);
-    $stmt->execute();
+    
+    if($stmt->execute()) {
+        // --- START: NOTIFICATION LOGIC ---
+        // Find all students in this standard to notify them
+        $stmt_students = $conn->prepare("SELECT id FROM student WHERE school_id = ? AND std = ?");
+        $stmt_students->bind_param("is", $schoolId, $target_standard);
+        $stmt_students->execute();
+        $result_students = $stmt_students->get_result();
+        
+        $student_ids_to_notify = [];
+        while ($student_row = $result_students->fetch_assoc()) {
+            $student_ids_to_notify[] = $student_row['id'];
+        }
+        $stmt_students->close();
+
+        if (!empty($student_ids_to_notify)) {
+            $notification_message = "New notes posted: " . substr($title, 0, 40) . "...";
+            $notification_link = "/pages/student/view_notes.php";
+            $notification_type = "new_notes";
+
+            $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");
+            foreach ($student_ids_to_notify as $student_id) {
+                $stmt_notify->bind_param("isss", $student_id, $notification_message, $notification_link, $notification_type);
+                $stmt_notify->execute();
+            }
+            $stmt_notify->close();
+        }
+        // --- END: NOTIFICATION LOGIC ---
+    }
     $stmt->close();
 
     header("Location: send_notes.php?success=1");
@@ -113,7 +132,6 @@ $pageTitle = 'Send Notes';
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
@@ -123,9 +141,7 @@ $pageTitle = 'Send Notes';
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-
 </head>
-
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>

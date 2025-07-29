@@ -37,7 +37,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && $isClassTeacher) {
     if (isset($_FILES['timetable_file']) && $_FILES['timetable_file']['error'] == 0) {
         $originalFilename = basename($_FILES["timetable_file"]["name"]);
 
-        // --- MODIFIED: File path changed to /pages/teacher/uploads/timetables/ ---
         $uploadDirServer = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/teacher/uploads/timetables/';
         $uploadDirWeb = '/BMC-SMS/pages/teacher/uploads/timetables/';
 
@@ -54,7 +53,35 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && $isClassTeacher) {
             // Insert timetable record into the database
             $insert_stmt = $conn->prepare("INSERT INTO timetables (school_id, standard, class_teacher_id, timetable_file, original_filename) VALUES (?, ?, ?, ?, ?)");
             $insert_stmt->bind_param("isiss", $schoolId, $classTeacherStd, $userId, $filePathForDB, $originalFilename);
-            $insert_stmt->execute();
+            if ($insert_stmt->execute()) {
+                
+                // --- START: NOTIFICATION LOGIC ---
+                // Find all students in this standard to notify them
+                $stmt_students = $conn->prepare("SELECT id FROM student WHERE school_id = ? AND std = ?");
+                $stmt_students->bind_param("is", $schoolId, $classTeacherStd);
+                $stmt_students->execute();
+                $result_students = $stmt_students->get_result();
+                
+                $student_ids_to_notify = [];
+                while ($student_row = $result_students->fetch_assoc()) {
+                    $student_ids_to_notify[] = $student_row['id'];
+                }
+                $stmt_students->close();
+
+                if (!empty($student_ids_to_notify)) {
+                    $notification_message = "A new timetable has been uploaded for your class.";
+                    $notification_link = "/pages/student/view_timetable.php";
+                    $notification_type = "new_timetable";
+
+                    $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");
+                    foreach ($student_ids_to_notify as $student_id) {
+                        $stmt_notify->bind_param("isss", $student_id, $notification_message, $notification_link, $notification_type);
+                        $stmt_notify->execute();
+                    }
+                    $stmt_notify->close();
+                }
+                // --- END: NOTIFICATION LOGIC ---
+            }
             $insert_stmt->close();
 
             header("Location: send_timetable.php?success=1");
@@ -80,7 +107,6 @@ $pageTitle = 'Send Timetable';
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-
 </head>
 
 <body id="page-top">
@@ -114,7 +140,7 @@ $pageTitle = 'Send Timetable';
                                     </div>
                                     <div class="form-group">
                                         <label for="timetable_file">Upload Timetable File (PDF, PNG, JPG)</label>
-                                        <input type="file" class="form-control-file" id="timetable_file" name="timetable_file" required>
+                                        <input type="file" class="form-control-file" id="timetable_file" name="timetable_file" accept=".pdf,.png,.jpg,.jpeg" required>
                                     </div>
                                     <button type="submit" name="send_timetable" class="btn btn-primary">Upload Timetable</button>
                                 </form>

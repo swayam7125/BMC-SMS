@@ -48,8 +48,9 @@ $current_user_id = null;
 
 if ($isLoggedIn && isset($_COOKIE['encrypted_user_id'])) {
     $current_user_id = decrypt_id($_COOKIE['encrypted_user_id']);
-    // The calling script MUST ensure $conn is open and valid.
-    if ($current_user_id && isset($conn)) {
+    
+    // FIX: Check if the connection exists AND is still active using ping()
+    if ($current_user_id && isset($conn) && $conn->ping()) {
         $stmt_notifications = $conn->prepare("SELECT id, message, link, type, created_at FROM notifications WHERE user_id = ? AND is_read = 0 ORDER BY created_at DESC LIMIT 5");
         $stmt_notifications->bind_param("i", $current_user_id);
         $stmt_notifications->execute();
@@ -71,10 +72,16 @@ function getNotificationIcon($type) {
     switch ($type) {
         case 'leave_request':
             return 'fas fa-calendar-plus text-white';
-        case 'new_notice':
+        case 'new_notice': // BMC notice
             return 'fas fa-file-alt text-white';
         case 'leave_status':
             return 'fas fa-check-circle text-white';
+        case 'school_notice': // Principal notice
+            return 'fas fa-chalkboard-teacher text-white';
+        case 'new_timetable': // New timetable
+            return 'fas fa-table text-white';
+        case 'new_notes': // New notes
+            return 'fas fa-sticky-note text-white';
         default:
             return 'fas fa-bell text-white';
     }
@@ -125,47 +132,51 @@ function getNotificationIcon($type) {
         </li>
 
         <li class="nav-item dropdown no-arrow mx-1">
-            <a class="nav-link dropdown-toggle" href="#" id="alertsDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            <a class="nav-link dropdown-toggle" href="#" id="alertsDropdown" role="button" data-toggle="dropdown"
+                aria-haspopup="true" aria-expanded="false">
                 <i class="fas fa-bell fa-fw"></i>
                 <?php if ($unread_count > 0): ?>
-                    <span class="badge badge-danger badge-counter">
-                        <?php echo ($unread_count > 5) ? '5+' : $unread_count; ?>
-                    </span>
+                <span class="badge badge-danger badge-counter">
+                    <?php echo ($unread_count > 5) ? '5+' : $unread_count; ?>
+                </span>
                 <?php endif; ?>
             </a>
-            <div class="dropdown-list dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="alertsDropdown">
+            <div class="dropdown-list dropdown-menu dropdown-menu-right shadow animated--grow-in"
+                aria-labelledby="alertsDropdown">
                 <h6 class="dropdown-header">
                     Alerts Center
                 </h6>
 
                 <?php if (empty($notifications)): ?>
-                    <a class="dropdown-item d-flex align-items-center" href="#">
-                        <div class="mr-3">
-                            <div class="icon-circle bg-secondary">
-                                <i class="fas fa-info-circle text-white"></i>
-                            </div>
+                <a class="dropdown-item d-flex align-items-center" href="#">
+                    <div class="mr-3">
+                        <div class="icon-circle bg-secondary">
+                            <i class="fas fa-info-circle text-white"></i>
                         </div>
-                        <div>
-                            <div class="small text-gray-500"><?php echo date('F j, Y'); ?></div>
-                            No new notifications.
-                        </div>
-                    </a>
+                    </div>
+                    <div>
+                        <div class="small text-gray-500"><?php echo date('F j, Y'); ?></div>
+                        No new notifications.
+                    </div>
+                </a>
                 <?php else: ?>
-                    <?php foreach ($notifications as $notification): ?>
-                        <a class="dropdown-item d-flex align-items-center" href="<?php echo htmlspecialchars(BASE_WEB_PATH . ltrim($notification['link'], '/')) . '?notif_id=' . $notification['id']; ?>">
-                            <div class="mr-3">
-                                <div class="icon-circle bg-primary">
-                                    <i class="<?php echo getNotificationIcon($notification['type']); ?>"></i>
-                                </div>
-                            </div>
-                            <div>
-                                <div class="small text-gray-500"><?php echo date('F j, Y', strtotime($notification['created_at'])); ?></div>
-                                <span class="font-weight-bold"><?php echo htmlspecialchars($notification['message']); ?></span>
-                            </div>
-                        </a>
-                    <?php endforeach; ?>
+                <?php foreach ($notifications as $notification): ?>
+                <a class="dropdown-item d-flex align-items-center"
+                    href="<?php echo htmlspecialchars(BASE_WEB_PATH . ltrim($notification['link'], '/')) . '?notif_id=' . $notification['id']; ?>">
+                    <div class="mr-3">
+                        <div class="icon-circle bg-primary">
+                            <i class="<?php echo getNotificationIcon($notification['type']); ?>"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="small text-gray-500">
+                            <?php echo date('F j, Y', strtotime($notification['created_at'])); ?></div>
+                        <span class="font-weight-bold"><?php echo htmlspecialchars($notification['message']); ?></span>
+                    </div>
+                </a>
+                <?php endforeach; ?>
                 <?php endif; ?>
-                
+
                 <a class="dropdown-item text-center small text-gray-500" href="#">Show All Alerts</a>
             </div>
         </li>
@@ -228,42 +239,40 @@ function getNotificationIcon($type) {
         <div class="topbar-divider d-none d-sm-block"></div>
 
         <?php if ($isLoggedIn): ?>
-            <li class="nav-item dropdown no-arrow">
-                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-toggle="dropdown"
-                    aria-haspopup="true" aria-expanded="false">
-                    <span class="mr-2 d-none d-lg-inline text-gray-600 small"><?php echo htmlspecialchars($userName); ?></span>
-                    <img class="img-profile rounded-circle"
-                        src="<?php echo htmlspecialchars($userProfileImage); ?>"
-                        onerror="this.src='<?php echo BASE_WEB_PATH; ?>assets/images/undraw_profile.svg';"
-                        alt="Profile"
-                        style="width: 32px; height: 32px; object-fit: cover;">
+        <li class="nav-item dropdown no-arrow">
+            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-toggle="dropdown"
+                aria-haspopup="true" aria-expanded="false">
+                <span
+                    class="mr-2 d-none d-lg-inline text-gray-600 small"><?php echo htmlspecialchars($userName); ?></span>
+                <img class="img-profile rounded-circle" src="<?php echo htmlspecialchars($userProfileImage); ?>"
+                    onerror="this.src='<?php echo BASE_WEB_PATH; ?>assets/images/undraw_profile.svg';" alt="Profile"
+                    style="width: 32px; height: 32px; object-fit: cover;">
+            </a>
+            <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="userDropdown">
+
+                <?php if ($user_role !== 'bmc'): ?>
+                <a class="dropdown-item" href="<?php echo BASE_WEB_PATH; ?>pages/user/profile.php">
+                    <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
+                    Profile
                 </a>
-                <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="userDropdown">
+                <?php endif; ?>
 
-                    <?php if ($user_role !== 'bmc'): ?>
-                        <a class="dropdown-item" href="<?php echo BASE_WEB_PATH; ?>pages/user/profile.php">
-                            <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
-                            Profile
-                        </a>
-                    <?php endif; ?>
-
-                    <a class="dropdown-item" href="#">
-                        <i class="fas fa-cogs fa-sm fa-fw mr-2 text-gray-400"></i>
-                        Settings
-                    </a>
-                    <a class="dropdown-item" href="#">
-                        <i class="fas fa-list fa-sm fa-fw mr-2 text-gray-400"></i>
-                        Activity Log
-                    </a>
-                    <div class="dropdown-divider"></div>
-                    <a class="dropdown-item" href="#" data-toggle="modal" data-target="#logoutModal">
-                        <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
-                        Logout
-                    </a>
-                </div>
-            </li>
+                <a class="dropdown-item" href="#">
+                    <i class="fas fa-cogs fa-sm fa-fw mr-2 text-gray-400"></i>
+                    Settings
+                </a>
+                <a class="dropdown-item" href="#">
+                    <i class="fas fa-list fa-sm fa-fw mr-2 text-gray-400"></i>
+                    Activity Log
+                </a>
+                <div class="dropdown-divider"></div>
+                <a class="dropdown-item" href="#" data-toggle="modal" data-target="#logoutModal">
+                    <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
+                    Logout
+                </a>
+            </div>
+        </li>
         <?php endif; ?>
 
     </ul>
-
 </nav>

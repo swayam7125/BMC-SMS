@@ -149,13 +149,7 @@ if ($role !== 'schooladmin') {
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
+    <script src="../../assets/js/custom_principal.js"></script>
 
-    <script>
-    // Pass the leave application ID to the hidden input field in the rejection modal
-    $(document).on("click", ".reject-btn", function() {
-        var leaveId = $(this).data('id');
-        $("#rejectionModal .modal-body #leave_id_input").val(leaveId);
-    });
-    </script>
 </body>
 </html>
