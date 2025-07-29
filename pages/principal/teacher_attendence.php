@@ -141,8 +141,10 @@ if (empty($errorMessage)) {
 
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+    
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+
 </head>
 
 <body id="page-top">

@@ -198,6 +198,7 @@ $schools_result = mysqli_query($conn, $schools_query);
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 
+
 </head>
 
 <body id="page-top">

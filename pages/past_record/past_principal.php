@@ -34,6 +34,7 @@ $result = mysqli_query($conn, $query);
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+
 </head>
 
 <body id="page-top">

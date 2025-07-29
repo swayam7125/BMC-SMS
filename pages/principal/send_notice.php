@@ -214,6 +214,7 @@ $pageTitle = 'Send School Notice';
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 
+
     <style>
         .select2-container--default .select2-selection--multiple {
             border: 1px solid #d1d3e2;

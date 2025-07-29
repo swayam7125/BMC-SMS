@@ -67,6 +67,9 @@ $settings_stmt->close();
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+
 </head>
 <body id="page-top">
     <div id="wrapper">
