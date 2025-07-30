@@ -52,7 +52,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_FILES['assignment_file']) &&
 
             if ($existing_submission) {
                 // Update existing submission for re-uploads
-                $update_stmt = $conn->prepare("UPDATE assignment_submissions SET file_path = ?, original_filename = ?, status = 'Re-submitted', submitted_at = NOW(), rejection_reason = NULL, evaluated_at = NULL WHERE id = ?");
+                $update_stmt = $conn->prepare("UPDATE assignment_submissions SET file_path = ?, original_filename = ?, status = 'Re-submitted', submitted_at = NOW(), evaluated_at = NULL WHERE id = ?");
                 $update_stmt->bind_param("ssi", $filePathForDB, $originalFilename, $existing_submission['id']);
                 $update_stmt->execute();
                 $update_stmt->close();
@@ -109,11 +109,12 @@ $schoolId = $student_info['school_id'] ?? 0;
 $studentStd = $student_info['std'] ?? '';
 $student_info_stmt->close();
 
+// MODIFICATION: Select the new rejection_count column
 $sql = "
     SELECT 
         a.id, a.title, a.subject, a.description, a.due_date,
         a.file_path, a.original_filename, t.teacher_name,
-        ss.status as submission_status, ss.rejection_reason
+        ss.status as submission_status, ss.rejection_reason, ss.rejection_count
     FROM assignments a
     JOIN teacher t ON a.teacher_id = t.id
     LEFT JOIN assignment_submissions ss ON a.id = ss.assignment_id AND ss.student_id = ?
@@ -173,25 +174,29 @@ $stmt->close();
                                     <h5 class="mb-1 text-primary"><?php echo htmlspecialchars($assignment['title']); ?>
                                     </h5>
                                     <?php
+                                            $status_text = str_replace('-', ' ', $status);
                                             $badge_class = 'badge-warning'; // Pending
-                                            if ($status == 'Accepted')
-                                                $badge_class = 'badge-success';
-                                            if ($status == 'Rejected')
-                                                $badge_class = 'badge-danger';
-                                            if ($status == 'Submitted' || $status == 'Re-submitted')
-                                                $badge_class = 'badge-info';
+                                            if ($status == 'Accepted') $badge_class = 'badge-success';
+                                            if ($status == 'Rejected') $badge_class = 'badge-danger';
+                                            if ($status == 'Submitted' || $status == 'Re-submitted') $badge_class = 'badge-info';
+                                            
+                                            // MODIFICATION: Display the rejection count
+                                            if ($status == 'Rejected' && $assignment['rejection_count'] > 0) {
+                                                $times = $assignment['rejection_count'] == 1 ? 'time' : 'times';
+                                                $status_text .= " (" . $assignment['rejection_count'] . " $times)";
+                                            }
                                             ?>
                                     <span
-                                        class="badge <?php echo $badge_class; ?> p-2 align-self-start"><?php echo str_replace('-', ' ', $status); ?></span>
+                                        class="badge <?php echo $badge_class; ?> p-2 align-self-start"><?php echo $status_text; ?></span>
                                 </div>
                                 <p class="mb-1"><?php echo nl2br(htmlspecialchars($assignment['description'])); ?></p>
                                 <small class="text-muted">Due:
                                     <?php echo date("F j, Y", strtotime($assignment['due_date'])); ?></small>
-
+                                
                                 <?php if ($status === 'Rejected' && !empty($assignment['rejection_reason'])): ?>
-                                <div class="rejection-reason mt-2">
-                                    <strong>Teacher's Feedback:</strong>
-                                    <?php echo htmlspecialchars($assignment['rejection_reason']); ?>
+                                <div class="rejection-reason mt-3">
+                                    <h6 class="font-weight-bold text-warning">Feedback History:</h6>
+                                    <?php echo $assignment['rejection_reason']; // Echo directly as it contains pre-formatted HTML ?>
                                 </div>
                                 <?php endif; ?>
 

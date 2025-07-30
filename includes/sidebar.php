@@ -107,6 +107,10 @@ if (!defined('BASE_WEB_PATH')) {
                             Teacher</a>
                         <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/teacher_list.php">Teacher
                             List</a>
+                            <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/principal/teacher_attendence.php">Teacher
+                            Attendance</a>
+                            <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_teacher_attendence.php">View Teacher
+                            Attendance</a>
                     </div>
                 </div>
             </li>
@@ -150,6 +154,12 @@ if (!defined('BASE_WEB_PATH')) {
                             Timetable</a>
                     </div>
                 </div>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/principal/school_settings.php">
+                    <i class="fas fa-fw fa-children"></i>
+                    <span>Passing Criteria</span>
+                </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseLeaveManagement">
@@ -242,12 +252,20 @@ if (!defined('BASE_WEB_PATH')) {
                     <span>Manage Leave</span>
                 </a>
             </li>
+            
             <li class="nav-item">
-                <a class="nav-link" href="/BMC-SMS/pages/teacher/add_lecture_attendance.php">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseAttendance">
                     <i class="fas fa-fw fa-clipboard-user"></i>
-                    <span>Lecture Attendance</span>
+                    <span>Manage Attendance</span>
                 </a>
+                <div id="collapseAttendance" class="collapse" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item" href="/BMC-SMS/pages/teacher/add_lecture_attendance.php">Lecture Attendance</a>
+                        <a class="collapse-item" href="/BMC-SMS/pages/teacher/view_lecture_attendance.php">View Attendance</a>
+                    </div>
+                </div>
             </li>
+
             <li class="nav-item">
                 <a class="nav-link" href="/BMC-SMS/pages/student/view_timetable.php">
                     <i class="fas fa-fw fa-calendar-week"></i>

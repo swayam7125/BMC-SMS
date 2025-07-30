@@ -37,7 +37,9 @@ if ($school_id) {
     $standards = $standards_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 }
 
+// Get filter values from URL
 $selected_std = $_GET['standard'] ?? null;
+$total_periods = isset($_GET['periods']) ? (int)$_GET['periods'] : 8; // Default to 8 periods
 
 // Handle form submission to save the timetable
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_timetable'])) {
@@ -53,9 +55,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_timetable'])) {
     foreach ($timetable_entries as $day => $periods) {
         foreach ($periods as $period_num => $details) {
             if (!empty($details['subject']) && !empty($details['teacher'])) {
-                // --- ★ FIX: Corrected the type definition string here ---
-                // Old: "isssisss"
-                // New: "issisiss"
                 $stmt->bind_param("issisiss", $school_id, $standard_to_save, $day, $period_num, $details['subject'], $details['teacher'], $details['start_time'], $details['end_time']);
                 $stmt->execute();
             }
@@ -91,7 +90,6 @@ if ($selected_std) {
 }
 
 $days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-$total_periods = 2;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -124,15 +122,14 @@ $total_periods = 2;
 
                     <div class="card shadow mb-4">
                         <div class="card-header">
-                            <h6 class="m-0 font-weight-bold text-primary">Select Class</h6>
+                            <h6 class="m-0 font-weight-bold text-primary">Select Options</h6>
                         </div>
                         <div class="card-body">
-                            <form method="GET">
-                                <div class="form-group">
-                                    <label for="standard">Select a Standard to manage its timetable:</label>
-                                    <select name="standard" id="standard" class="form-control"
-                                        onchange="this.form.submit()">
-                                        <option value="">-- Select Standard --</option>
+                            <form method="GET" class="form-inline">
+                                <div class="form-group mr-3">
+                                    <label for="standard" class="mr-2">Standard:</label>
+                                    <select name="standard" id="standard" class="form-control">
+                                        <option value="">-- Select --</option>
                                         <?php foreach ($standards as $standard): ?>
                                         <option value="<?php echo $standard['std']; ?>"
                                             <?php if ($selected_std == $standard['std']) echo 'selected'; ?>>
@@ -141,6 +138,12 @@ $total_periods = 2;
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
+                                <div class="form-group mr-3">
+                                    <label for="periods" class="mr-2">Periods per Day:</label>
+                                    <input type="number" name="periods" id="periods" class="form-control" 
+                                           value="<?php echo htmlspecialchars($total_periods); ?>" min="1" max="12">
+                                </div>
+                                <button type="submit" class="btn btn-primary">Generate Timetable</button>
                             </form>
                         </div>
                     </div>

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jul 29, 2025 at 03:00 PM
+-- Generation Time: Jul 30, 2025 at 10:32 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -196,7 +196,8 @@ CREATE TABLE `deleted_students` (
 
 INSERT INTO `deleted_students` (`id`, `student_name`, `email`, `rollno`, `std`, `academic_year`, `dob`, `gender`, `blood_group`, `address`, `father_name`, `father_phone`, `mother_name`, `mother_phone`, `school_id`, `deleted_by_role`, `deleted_at`) VALUES
 (1, 'Rahul Patel', 'rahul@gmail.com', '1', '5th', '2024-2025', '2005-02-02', 'male', 'AB+', 'surat', 'harsh', '6565548720', 'hemina', '6523012304', 3, 'schooladmin', '2025-07-22 11:51:18'),
-(13, 'vansh', 'vansh@gmail.com', '15', '12', '2024-2025', '2011-03-11', 'female', 'B+', 'surat', 'girishbhai', '5565615555', 'Sita Patel', '5454454455', 4, 'teacher', '2025-07-24 15:42:54');
+(13, 'vansh', 'vansh@gmail.com', '15', '12', '2024-2025', '2011-03-11', 'female', 'B+', 'surat', 'girishbhai', '5565615555', 'Sita Patel', '5454454455', 4, 'teacher', '2025-07-24 15:42:54'),
+(16, 'mihir', 'mihir@gmail.com', '15', '11', '2024-2025', '2005-08-17', 'male', 'B-', 'nutan', 'janak', '5746895214', 'harshita', '6352417898', 4, 'schooladmin', '2025-07-30 08:06:28');
 
 -- --------------------------------------------------------
 
@@ -234,7 +235,8 @@ CREATE TABLE `deleted_teachers` (
 INSERT INTO `deleted_teachers` (`id`, `teacher_name`, `email`, `phone`, `gender`, `dob`, `blood_group`, `address`, `school_id`, `qualification`, `subject`, `language_known`, `salary`, `std`, `experience`, `batch`, `class_teacher`, `class_teacher_std`, `deleted_by_role`, `deleted_at`) VALUES
 (1, 'JAY', 'jay@gmail.com', '5674298791', 'male', '2005-11-03', 'AB-', '0', 3, 'BA', 'Account', 'Hindi', 500000.00, 'Nursery,Junior,1', '5', 'Evening', 0, NULL, 'schooladmin', '2025-07-22 11:51:18'),
 (12, 'ram', 'ram@gmail.com', '5545875655', 'male', '2005-03-11', 'AB+', 'surat', 4, 'MA', 'English', 'English', 100000.00, '5,6', '5', 'Morning', 0, NULL, 'schooladmin', '2025-07-24 09:34:16'),
-(14, 'Hemant', 'hemant@gmail.com', '5674231495', 'male', '2000-03-11', 'AB+', 'Surat', 4, 'MA', 'account', 'English', 150000.00, '11,12', '5', 'Morning', 1, '12', 'schooladmin', '2025-07-25 08:19:17');
+(14, 'Hemant', 'hemant@gmail.com', '5674231495', 'male', '2000-03-11', 'AB+', 'Surat', 4, 'MA', 'account', 'English', 150000.00, '11,12', '5', 'Morning', 1, '12', 'schooladmin', '2025-07-25 08:19:17'),
+(17, 'Yug gandhi', 'yug@gmail.com', '5874693214', 'male', '2005-03-11', 'B-', 'surat', 4, 'MA', 'maths', 'English', 250000.00, '7,9', '5', 'Morning', 1, '7', 'schooladmin', '2025-07-30 08:10:40');
 
 -- --------------------------------------------------------
 
@@ -271,7 +273,7 @@ INSERT INTO `leave_applications` (`id`, `teacher_id`, `from_date`, `to_date`, `r
 (10, 6, '2025-07-29', '2025-07-29', 'personal reason\r\n', 'First Half', 'Approved', '2025-07-29 11:08:03', NULL),
 (11, 6, '2025-07-29', '2025-07-29', 'medical emegency', 'Second Half', 'Rejected', '2025-07-29 11:08:42', 'cant'),
 (12, 6, '2025-07-09', '2025-07-09', 'i want leave', 'Second Half', 'Rejected', '2025-07-29 11:31:47', 'no you can\'t'),
-(13, 6, '2025-07-29', '2025-07-29', 'leave', 'First Half', 'Pending', '2025-07-29 12:35:04', NULL);
+(13, 6, '2025-07-29', '2025-07-29', 'leave', 'First Half', 'Approved', '2025-07-29 12:35:04', NULL);
 
 -- --------------------------------------------------------
 
@@ -373,8 +375,9 @@ INSERT INTO `notifications` (`id`, `user_id`, `message`, `link`, `is_read`, `cre
 (25, 10, 'New leave request from meet parekh', '/pages/principal/principal_leave_requests.php', 1, '2025-07-29 11:31:47', 'leave_request'),
 (26, 6, 'Your leave application has been Rejected.', '/pages/teacher/teacher_leave_management.php', 1, '2025-07-29 11:32:47', 'leave_status'),
 (27, 3, 'New Assignment: test...', '/pages/assignments/view_assignments.php', 0, '2025-07-29 12:19:46', 'new_assignment'),
-(28, 10, 'New leave request from meet parekh', '/pages/principal/principal_leave_requests.php', 0, '2025-07-29 12:35:04', 'leave_request'),
-(29, 3, 'New Assignment: hyy...', '/pages/assignments/view_assignments.php', 0, '2025-07-29 12:43:57', 'new_assignment');
+(28, 10, 'New leave request from meet parekh', '/pages/principal/principal_leave_requests.php', 1, '2025-07-29 12:35:04', 'leave_request'),
+(29, 3, 'New Assignment: hyy...', '/pages/assignments/view_assignments.php', 0, '2025-07-29 12:43:57', 'new_assignment'),
+(30, 6, 'Your leave application has been Approved.', '/pages/teacher/teacher_leave_management.php', 0, '2025-07-30 08:11:43', 'leave_status');
 
 -- --------------------------------------------------------
 
@@ -806,6 +809,41 @@ INSERT INTO `teacher` (`id`, `teacher_image`, `teacher_name`, `phone`, `school_i
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `teacher_attendance`
+--
+
+CREATE TABLE `teacher_attendance` (
+  `attendance_id` int(11) NOT NULL,
+  `teacher_id` int(11) NOT NULL,
+  `school_id` int(11) NOT NULL,
+  `attendance_date` date NOT NULL,
+  `status` enum('Present','Absent','Leave') NOT NULL,
+  `remark` varchar(255) DEFAULT NULL,
+  `marked_by_user_id` int(11) DEFAULT NULL,
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `teacher_attendance`
+--
+
+INSERT INTO `teacher_attendance` (`attendance_id`, `teacher_id`, `school_id`, `attendance_date`, `status`, `remark`, `marked_by_user_id`, `updated_at`) VALUES
+(1, 6, 4, '2025-07-28', 'Leave', NULL, 10, '2025-07-28 08:53:46'),
+(2, 15, 4, '2025-07-28', 'Absent', NULL, 10, '2025-07-28 08:53:30'),
+(3, 16, 4, '2025-07-28', 'Present', NULL, 10, '2025-07-28 09:09:23'),
+(4, 17, 4, '2025-07-28', 'Absent', NULL, 10, '2025-07-28 09:15:12'),
+(6, 19, 4, '2025-07-28', 'Absent', NULL, 10, '2025-07-28 09:22:16'),
+(7, 20, 4, '2025-07-28', 'Present', NULL, 10, '2025-07-28 09:26:16'),
+(8, 15, 4, '2025-07-27', 'Absent', NULL, 10, '2025-07-28 09:35:08'),
+(9, 16, 4, '2025-07-27', 'Present', NULL, 10, '2025-07-28 09:35:08'),
+(10, 19, 4, '2025-07-27', 'Present', NULL, 10, '2025-07-28 09:35:08'),
+(11, 6, 4, '2025-07-27', 'Present', NULL, 10, '2025-07-28 09:35:08'),
+(12, 17, 4, '2025-07-27', 'Present', NULL, 10, '2025-07-28 09:35:08'),
+(13, 20, 4, '2025-07-27', 'Present', NULL, 10, '2025-07-28 09:35:08');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `teacher_timings`
 --
 
@@ -829,7 +867,14 @@ INSERT INTO `teacher_timings` (`timing_id`, `teacher_id`, `day_of_week`, `opens_
 (0, 6, 'Thursday', '10:00:00', '18:00:00', 0),
 (0, 6, 'Friday', '10:00:00', '18:00:00', 0),
 (0, 6, 'Saturday', NULL, NULL, 1),
-(0, 6, 'Sunday', NULL, NULL, 1);
+(0, 6, 'Sunday', NULL, NULL, 1),
+(0, 17, 'Monday', '10:00:00', '18:00:00', 0),
+(0, 17, 'Tuesday', '10:00:00', '18:00:00', 0),
+(0, 17, 'Wednesday', '10:00:00', '18:00:00', 0),
+(0, 17, 'Thursday', '10:00:00', '18:00:00', 0),
+(0, 17, 'Friday', '10:00:00', '18:00:00', 0),
+(0, 17, 'Saturday', NULL, NULL, 1),
+(0, 17, 'Sunday', NULL, NULL, 1);
 
 -- --------------------------------------------------------
 
@@ -1043,6 +1088,15 @@ ALTER TABLE `teacher`
   ADD KEY `school_id` (`school_id`);
 
 --
+-- Indexes for table `teacher_attendance`
+--
+ALTER TABLE `teacher_attendance`
+  ADD PRIMARY KEY (`attendance_id`),
+  ADD UNIQUE KEY `uq_teacher_attendance_date` (`teacher_id`,`attendance_date`),
+  ADD KEY `school_id` (`school_id`),
+  ADD KEY `marked_by_user_id` (`marked_by_user_id`);
+
+--
 -- Indexes for table `timetables`
 --
 ALTER TABLE `timetables`
@@ -1089,13 +1143,13 @@ ALTER TABLE `deleted_principals`
 -- AUTO_INCREMENT for table `deleted_students`
 --
 ALTER TABLE `deleted_students`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT for table `deleted_teachers`
 --
 ALTER TABLE `deleted_teachers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- AUTO_INCREMENT for table `leave_applications`
@@ -1119,7 +1173,7 @@ ALTER TABLE `notice`
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=30;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
 
 --
 -- AUTO_INCREMENT for table `principal_timings`
@@ -1170,6 +1224,12 @@ ALTER TABLE `subjects`
   MODIFY `subject_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
 --
+-- AUTO_INCREMENT for table `teacher_attendance`
+--
+ALTER TABLE `teacher_attendance`
+  MODIFY `attendance_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+
+--
 -- AUTO_INCREMENT for table `timetables`
 --
 ALTER TABLE `timetables`
@@ -1179,7 +1239,7 @@ ALTER TABLE `timetables`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- Constraints for dumped tables

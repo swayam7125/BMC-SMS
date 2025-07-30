@@ -49,15 +49,26 @@ if (!$principalDetails || empty($principalDetails['school_id'])) {
 $attendance_date_display = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
 
 if (empty($errorMessage)) {
-    // Fetch teacher_id to enable per-row actions
+    // Corrected query to fetch ALL teachers and their attendance status for the selected date
     $stmt = $conn->prepare("
-        SELECT t.id as teacher_id, t.teacher_name, t.batch, t.class_teacher, t.class_teacher_std, ta.status 
-        FROM teacher_attendance ta 
-        JOIN teacher t ON ta.teacher_id = t.id 
-        WHERE ta.school_id = ? AND ta.attendance_date = ? 
-        ORDER BY t.teacher_name ASC
+        SELECT 
+            t.id AS teacher_id, 
+            t.teacher_name, 
+            t.batch, 
+            t.class_teacher, 
+            t.class_teacher_std, 
+            ta.status 
+        FROM 
+            teacher t
+        LEFT JOIN 
+            teacher_attendance ta ON t.id = ta.teacher_id AND ta.attendance_date = ?
+        WHERE 
+            t.school_id = ?
+        ORDER BY 
+            t.teacher_name ASC
     ");
-    $stmt->bind_param("is", $principalDetails['school_id'], $attendance_date_display);
+    // Note: The order of parameters in bind_param is changed to match the '?' in the new query
+    $stmt->bind_param("si", $attendance_date_display, $principalDetails['school_id']);
     $stmt->execute();
     $result = $stmt->get_result();
     $attendance_records = $result->fetch_all(MYSQLI_ASSOC);
@@ -158,12 +169,13 @@ if (empty($errorMessage)) {
                                                     </td>
                                                     <td>
                                                         <?php
-                                                            $status = htmlspecialchars($record['status']);
-                                                            $badge_class = 'badge-secondary';
+                                                            // If status is NULL, it means not marked yet
+                                                            $status = $record['status'] ?? 'Not Marked'; 
+                                                            $badge_class = 'badge-secondary'; // Default for 'Not Marked'
                                                             if ($status == 'Present') $badge_class = 'badge-success';
                                                             if ($status == 'Absent') $badge_class = 'badge-danger';
                                                             if ($status == 'Leave') $badge_class = 'badge-warning';
-                                                            echo "<span class='badge {$badge_class}'>{$status}</span>";
+                                                            echo "<span class='badge {$badge_class}'>" . htmlspecialchars($status) . "</span>";
                                                         ?>
                                                     </td>
                                                     <td>
@@ -175,7 +187,7 @@ if (empty($errorMessage)) {
                                                 <?php endforeach; ?>
                                             <?php else: ?>
                                                 <tr>
-                                                    <td colspan="5" class="text-center">No attendance records found for this date.</td>
+                                                    <td colspan="5" class="text-center">No teachers found for this school.</td>
                                                 </tr>
                                             <?php endif; ?>
                                         </tbody>
@@ -215,12 +227,10 @@ if (empty($errorMessage)) {
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
     <script>
     $(document).ready(function() {
-        // ★ ADDED: New Javascript to control the batch filter
         var table = $('#dataTable').DataTable();
 
         $('#batchFilter').on('change', function(){
             var selectedBatch = $(this).val();
-            // Column 1 is the 'Batch' column
             table.column(1).search(selectedBatch).draw();
         });
     });
