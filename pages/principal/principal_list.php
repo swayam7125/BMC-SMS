@@ -219,7 +219,7 @@ $result = mysqli_query($conn, $query);
     }
 
     function confirmDelete(id) {
-        var deleteUrl = `../../includes/actions/delete_principal.php?id=${id}`;
+        var deleteUrl = `../../pages/principal/principal.php?id=${id}`;
         $('#confirmDeleteBtn').attr('href', deleteUrl);
         $('#deleteModal').modal('show');
     }

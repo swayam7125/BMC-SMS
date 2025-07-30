@@ -13,8 +13,6 @@ $schoolId = null; // Initialize schoolId
 
 // Retrieve and decrypt user role and ID from cookies
 if (isset($_COOKIE['encrypted_user_role'])) {
-    // FIX: Normalize the role by converting to lowercase and trimming whitespace.
-    // This ensures that comparisons like ($role == 'bmc') work correctly even if the cookie stores "Bmc" or " bmc ".
     $decrypted_role = decrypt_id($_COOKIE['encrypted_user_role']);
     $role = $decrypted_role ? strtolower(trim($decrypted_role)) : null;
 }
@@ -22,7 +20,7 @@ if (isset($_COOKIE['encrypted_user_id'])) {
     $userId = decrypt_id($_COOKIE['encrypted_user_id']);
 }
 
-// Fetch user email from the 'users' table using userId (Still useful for displaying, but not for ID-based lookups)
+// Fetch user email from the 'users' table using userId
 if ($userId) {
     $stmt_email = $conn->prepare("SELECT email FROM users WHERE id = ?");
     if ($stmt_email) {
@@ -49,8 +47,15 @@ $totalSchools = 0;
 $totalPrincipals = 0;
 $totalTeachers = 0;
 $totalStudents = 0;
+$totalAdmissions = 0;
+$totalStudentsLeft = 0;
+$salary = 0;
+$totalPresent = 0;
+$totalLeaves = 0;
+$totalAbsent = 0;
 
-// Fetch data based on user role. The switch now uses the normalized $role.
+
+// Fetch data based on user role
 switch ($role) {
     case 'bmc':
         // BMC role sees all global counts
@@ -107,7 +112,7 @@ switch ($role) {
                     $teacherStmt->close();
                 }
 
-                // Get total students in this school
+                // Get total current students in this school
                 $studentStmt = $conn->prepare("SELECT COUNT(*) AS total FROM student WHERE school_id = ?");
                 if ($studentStmt) {
                     $studentStmt->bind_param("i", $schoolId);
@@ -119,14 +124,30 @@ switch ($role) {
                     }
                     $studentStmt->close();
                 }
+                
+                // Get total students who have left from this school
+                $studentLeftStmt = $conn->prepare("SELECT COUNT(*) AS total FROM deleted_students WHERE school_id = ?");
+                if ($studentLeftStmt) {
+                    $studentLeftStmt->bind_param("i", $schoolId);
+                    $studentLeftStmt->execute();
+                    $studentLeftResult = $studentLeftStmt->get_result();
+                    if ($studentLeftResult && $studentLeftResult->num_rows > 0) {
+                        $studentLeftRow = $studentLeftResult->fetch_assoc();
+                        $totalStudentsLeft = $studentLeftRow['total'];
+                    }
+                    $studentLeftStmt->close();
+                }
+
+                // Calculate total admissions (current students + students who left)
+                $totalAdmissions = $totalStudents + $totalStudentsLeft;
             }
             $stmt->close();
         }
         break;
 
     case 'teacher':
-        // Teacher sees data related to their school
-        $stmt = $conn->prepare("SELECT school_id FROM teacher WHERE id = ?");
+        // Teacher sees data related to their school and personal stats
+        $stmt = $conn->prepare("SELECT school_id, salary FROM teacher WHERE id = ?");
         if ($stmt) {
             $stmt->bind_param("i", $userId);
             $stmt->execute();
@@ -134,8 +155,9 @@ switch ($role) {
             if ($result && $result->num_rows > 0) {
                 $teacherData = $result->fetch_assoc();
                 $schoolId = $teacherData['school_id'];
+                $salary = $teacherData['salary'] ?? 0; // Fetch salary
 
-                // Get total students in this school
+                // Get total students in the teacher's school
                 $studentStmt = $conn->prepare("SELECT COUNT(*) AS total FROM student WHERE school_id = ?");
                 if ($studentStmt) {
                     $studentStmt->bind_param("i", $schoolId);
@@ -147,25 +169,68 @@ switch ($role) {
                     }
                     $studentStmt->close();
                 }
+
+                // Get total approved leaves for this teacher
+                $leavesStmt = $conn->prepare("SELECT COUNT(*) AS total FROM leave_applications WHERE teacher_id = ? AND status = 'Approved'");
+                if ($leavesStmt) {
+                    $leavesStmt->bind_param("i", $userId);
+                    $leavesStmt->execute();
+                    $leavesResult = $leavesStmt->get_result();
+                    if ($leavesResult && $leavesResult->num_rows > 0) {
+                        $leavesRow = $leavesResult->fetch_assoc();
+                        $totalLeaves = $leavesRow['total'];
+                    }
+                    $leavesStmt->close();
+                }
+                
+                // **CORRECTED LOGIC**: Get the teacher's own overall present days (counting each day once)
+                $presentStmt = $conn->prepare("SELECT COUNT(DISTINCT attendance_date) AS total FROM teacher_attendance WHERE teacher_id = ? AND status = 'Present'");
+                if ($presentStmt) {
+                    $presentStmt->bind_param("i", $userId);
+                    $presentStmt->execute();
+                    $presentResult = $presentStmt->get_result();
+                    if ($presentResult && $presentResult->num_rows > 0) {
+                        $presentRow = $presentResult->fetch_assoc();
+                        $totalPresent = $presentRow['total'];
+                    }
+                    $presentStmt->close();
+                }
             }
             $stmt->close();
         }
         break;
 
     case 'student':
-        // Student sees data related to their school
-        $stmt = $conn->prepare("SELECT school_id FROM student WHERE id = ?");
-        if ($stmt) {
-            $stmt->bind_param("i", $userId);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            if ($result && $result->num_rows > 0) {
-                $studentData = $result->fetch_assoc();
-                $schoolId = $studentData['school_id'];
-                // Students typically won't see counts of other students/teachers.
+        // Student sees data related to their school and personal attendance
+        
+        // Get total unique days the student was present
+        $presentStmt = $conn->prepare("SELECT COUNT(DISTINCT attendance_date) AS total FROM attendance WHERE student_id = ? AND status = 'Present'");
+        if ($presentStmt) {
+            $presentStmt->bind_param("i", $userId);
+            $presentStmt->execute();
+            $presentResult = $presentStmt->get_result();
+            if ($presentResult && $presentResult->num_rows > 0) {
+                $presentRow = $presentResult->fetch_assoc();
+                $totalPresent = $presentRow['total'];
             }
-            $stmt->close();
+            $presentStmt->close();
         }
+
+        // Get total absent lectures for the logged-in student
+        $absentStmt = $conn->prepare("SELECT COUNT(*) AS total FROM attendance WHERE student_id = ? AND status = 'Absent'");
+        if ($absentStmt) {
+            $absentStmt->bind_param("i", $userId);
+            $absentStmt->execute();
+            $absentResult = $absentStmt->get_result();
+            if ($absentResult && $absentResult->num_rows > 0) {
+                $absentRow = $absentResult->fetch_assoc();
+                $totalAbsent = $absentRow['total'];
+            }
+            $absentStmt->close();
+        }
+        
+        // NOTE: Total Leaves is set to 0 as there is no student leave application system.
+        $totalLeaves = 0;
         break;
 }
 
@@ -181,8 +246,6 @@ switch ($role) {
     <meta name="description" content="">
     <meta name="author" content="">
     <?php
-    // FIX: Set a default title and then determine the specific title based on the role.
-    // This is cleaner and ensures a title is always set.
     $pageTitle = 'Dashboard'; // Default title
     if ($role == 'bmc') {
         $pageTitle = 'BMC - Dashboard';
@@ -195,24 +258,18 @@ switch ($role) {
     }
     ?>
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
-
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-
     <link href="./assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
-    <link
-        href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
 
     <link href="./assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="./assets/css/calender.css">
 
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-
     <link rel="stylesheet" href="./assets/css/notification_window.css">
-
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-
+    
 </head>
 
 <body id="page-top">
@@ -364,7 +421,7 @@ switch ($role) {
                                             </div>
                                         </div>
                                     </div>
-                                </a>
+                        </a>
                             </div>
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <a class="card-link" href="./pages/student/student_list.php">
@@ -406,14 +463,14 @@ switch ($role) {
                                 </a>
                             </div>
                             <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="./pages/student/student_list.php">
+                                <a class="card-link" href="#">
                                     <div class="card border-left-success shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
                                                     <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                                         Salary</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $salary; ?></div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800">₹<?php echo number_format($salary); ?></div>
                                                 </div>
                                                 <div class="col-auto">
                                                     <i class="fas fa-indian-rupee-sign fa-2x text-gray-300"></i>
@@ -424,13 +481,13 @@ switch ($role) {
                                 </a>
                             </div>
                             <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="./pages/student/student_list.php">
+                                <a class="card-link" href="#">
                                     <div class="card border-left-info shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
                                                     <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                                        TOTAL Present</div>
+                                                        Total Present Days</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalPresent; ?></div>
                                                 </div>
                                                 <div class="col-auto">
@@ -442,7 +499,7 @@ switch ($role) {
                                 </a>
                             </div>
                             <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="./pages/student/student_list.php">
+                                <a class="card-link" href="./pages/teacher/teacher_leave_history.php">
                                     <div class="card border-left-warning shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
@@ -452,7 +509,7 @@ switch ($role) {
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalLeaves; ?></div>
                                                 </div>
                                                 <div class="col-auto">
-                                                    <i class="fas fa-children fa-2x text-gray-300"></i>
+                                                    <i class="fas fa-envelope-circle-check fa-2x text-gray-300"></i>
                                                 </div>
                                             </div>
                                         </div>
@@ -473,7 +530,6 @@ switch ($role) {
                                                         <?php
                                                         // Fetch student's standard
                                                         $student_std = '0';
-                                                        // This query will now work because the connection is still open.
                                                         $stmt_std = $conn->prepare("SELECT std FROM student WHERE id = ?");
                                                         if ($stmt_std) {
                                                             $stmt_std->bind_param("i", $userId);
@@ -498,17 +554,17 @@ switch ($role) {
                                 </a>
                             </div>
                             <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="./pages/student/student_list.php">
+                                <a class="card-link" href="#">
                                     <div class="card border-left-success shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
                                                     <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                                        TOTAL Present</div>
+                                                        TOTAL Present Days</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalPresent; ?></div>
                                                 </div>
                                                 <div class="col-auto">
-                                                    <i class="fas fa-children fa-2x text-gray-300"></i>
+                                                    <i class="fas fa-user-check fa-2x text-gray-300"></i>
                                                 </div>
                                             </div>
                                         </div>
@@ -516,7 +572,7 @@ switch ($role) {
                                 </a>
                             </div>
                             <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="./pages/student/student_list.php">
+                                <a class="card-link" href="#">
                                     <div class="card border-left-info shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
@@ -526,7 +582,7 @@ switch ($role) {
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalLeaves; ?></div>
                                                 </div>
                                                 <div class="col-auto">
-                                                    <i class="fas fa-children fa-2x text-gray-300"></i>
+                                                    <i class="fas fa-envelope-circle-check fa-2x text-gray-300"></i>
                                                 </div>
                                             </div>
                                         </div>
@@ -534,17 +590,17 @@ switch ($role) {
                                 </a>
                             </div>
                             <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="./pages/student/student_list.php">
+                                <a class="card-link" href="#">
                                     <div class="card border-left-warning shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
                                                     <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                                        TOTAL Absent</div>
+                                                        TOTAL Absent Lectures</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalAbsent; ?></div>
                                                 </div>
                                                 <div class="col-auto">
-                                                    <i class="fas fa-children fa-2x text-gray-300"></i>
+                                                    <i class="fas fa-calendar-xmark fa-2x text-gray-300"></i>
                                                 </div>
                                             </div>
                                         </div>

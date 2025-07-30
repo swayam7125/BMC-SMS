@@ -193,6 +193,12 @@ if (isset($_GET['lecture_id'])) {
                                                             value="Absent">
                                                         <label class="form-check-label">Absent</label>
                                                     </div>
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input" type="radio"
+                                                            name="attendance[<?php echo $student['id']; ?>]"
+                                                            value="Leave">
+                                                        <label class="form-check-label">Leave</label>
+                                                    </div>
                                                 </td>
                                             </tr>
                                             <?php endforeach; ?>

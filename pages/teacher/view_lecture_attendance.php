@@ -75,6 +75,7 @@ if ($selected_lecture_id) {
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
@@ -123,7 +124,7 @@ if ($selected_lecture_id) {
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
-                                <table class="table table-bordered">
+                                <table class="table table-bordered" id="attendanceTable" width="100%" cellspacing="0">
                                     <thead>
                                         <tr>
                                             <th>Roll No</th>
@@ -140,7 +141,14 @@ if ($selected_lecture_id) {
                                                 <td>
                                                     <?php
                                                     $status = htmlspecialchars($record['status']);
-                                                    $badge_class = ($status == 'Present') ? 'badge-success' : 'badge-danger';
+                                                    $badge_class = 'badge-secondary'; // Default
+                                                    if ($status == 'Present') {
+                                                        $badge_class = 'badge-success';
+                                                    } elseif ($status == 'Absent') {
+                                                        $badge_class = 'badge-danger';
+                                                    } elseif ($status == 'Leave') {
+                                                        $badge_class = 'badge-warning';
+                                                    }
                                                     echo "<span class='badge {$badge_class}'>{$status}</span>";
                                                     ?>
                                                 </td>
@@ -162,7 +170,7 @@ if ($selected_lecture_id) {
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
- <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
         aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
@@ -182,5 +190,12 @@ if ($selected_lecture_id) {
     </div>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
+    <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#attendanceTable').DataTable();
+        });
+    </script>
 </body>
 </html>
