@@ -143,98 +143,48 @@ function getNotificationIcon($type) {
             </a>
             <div class="dropdown-list dropdown-menu dropdown-menu-right shadow animated--grow-in"
                 aria-labelledby="alertsDropdown">
-                <h6 class="dropdown-header font-weight-semibold">
-                    Alerts Center
-                </h6>
+                <div class="dropdown-header d-flex justify-content-between align-items-center">
+                    <h6 class="font-weight-semibold mb-0">Alerts Center</h6>
+                    <?php if ($unread_count > 0): ?>
+                    <a href="#" class="text-decoration-none small" id="clear-all-notifications-btn" style="color: #c5c9de;">Clear All</a>
+                    <?php endif; ?>
+                </div>
 
-                <?php if (empty($notifications)): ?>
-                <a class="dropdown-item d-flex align-items-center" href="#">
-                    <div class="mr-3">
-                        <div class="icon-circle bg-secondary">
-                            <i class="fas fa-info-circle text-white"></i>
+                <div id="notification-items-container">
+                    <?php if (empty($notifications)): ?>
+                    <a class="dropdown-item d-flex align-items-center" href="#">
+                        <div class="mr-3">
+                            <div class="icon-circle bg-secondary">
+                                <i class="fas fa-info-circle text-white"></i>
+                            </div>
                         </div>
-                    </div>
-                    <div>
-                        <div class="small text-gray-500"><?php echo date('F j, Y'); ?></div>
-                        No new notifications.
-                    </div>
-                </a>
-                <?php else: ?>
-                <?php foreach ($notifications as $notification): ?>
-                <a class="dropdown-item d-flex align-items-center"
-                    href="<?php echo htmlspecialchars(BASE_WEB_PATH . ltrim($notification['link'], '/')) . '?notif_id=' . $notification['id']; ?>">
-                    <div class="mr-3">
-                        <div class="icon-circle bg-primary">
-                            <i class="<?php echo getNotificationIcon($notification['type']); ?>"></i>
+                        <div>
+                            <div class="small text-gray-500"><?php echo date('F j, Y'); ?></div>
+                            No new notifications.
                         </div>
-                    </div>
-                    <div>
-                        <div class="small text-gray-500">
-                            <?php echo date('F j, Y', strtotime($notification['created_at'])); ?></div>
-                        <span class="font-weight-bold"><?php echo htmlspecialchars($notification['message']); ?></span>
-                    </div>
-                </a>
-                <?php endforeach; ?>
-                <?php endif; ?>
+                    </a>
+                    <?php else: ?>
+                    <?php foreach ($notifications as $notification): ?>
+                    <a class="dropdown-item d-flex align-items-center"
+                        href="<?php echo htmlspecialchars(BASE_WEB_PATH . ltrim($notification['link'], '/')) . '?notif_id=' . $notification['id']; ?>">
+                        <div class="mr-3">
+                            <div class="icon-circle bg-primary">
+                                <i class="<?php echo getNotificationIcon($notification['type']); ?>"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="small text-gray-500">
+                                <?php echo date('F j, Y', strtotime($notification['created_at'])); ?></div>
+                            <span class="font-weight-bold"><?php echo htmlspecialchars($notification['message']); ?></span>
+                        </div>
+                    </a>
+                    <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
 
                 <a class="dropdown-item text-center small text-gray-500" href="#">Show All Alerts</a>
             </div>
         </li>
-
-
-        <!-- <li class="nav-item dropdown no-arrow mx-1">
-            <a class="nav-link dropdown-toggle" href="#" id="messagesDropdown" role="button" data-toggle="dropdown"
-                aria-haspopup="true" aria-expanded="false">
-                <i class="fas fa-envelope fa-fw"></i>
-                <span class="badge badge-danger badge-counter">7</span>
-            </a>
-            <div class="dropdown-list dropdown-menu dropdown-menu-right shadow animated--grow-in"
-                aria-labelledby="messagesDropdown">
-                <h6 class="dropdown-header">
-                    Message Center
-                </h6>
-                <a class="dropdown-item d-flex align-items-center" href="#">
-                    <div class="dropdown-list-image mr-3">
-                        <img class="rounded-circle" src="img/undraw_profile_1.svg" alt="...">
-                        <div class="status-indicator bg-success"></div>
-                    </div>
-                    <div class="font-weight-bold">
-                        <div class="text-truncate">Hi there! I am wondering if you can help me with a
-                            problem I've been having.</div>
-                        <div class="small text-gray-500">Emily Fowler · 58m</div>
-                    </div>
-                </a>
-                <a class="dropdown-item d-flex align-items-center" href="#">
-                    <div class="dropdown-list-image mr-3">
-                        <img class="rounded-circle" src="img/undraw_profile_2.svg" alt="...">
-                        <div class="status-indicator"></div>
-                    </div>
-                </a>
-                <a class="dropdown-item d-flex align-items-center" href="#">
-                    <div class="dropdown-list-image mr-3">
-                        <img class="rounded-circle" src="img/undraw_profile_3.svg" alt="...">
-                        <div class="status-indicator bg-warning"></div>
-                    </div>
-                    <div>
-                        <div class="text-truncate">Last month's report looks great, I am very happy with
-                            the progress so far, keep up the good work!</div>
-                        <div class="small text-gray-500">Morgan Alvarez · 2d</div>
-                    </div>
-                </a>
-                <a class="dropdown-item d-flex align-items-center" href="#">
-                    <div class="dropdown-list-image mr-3">
-                        <img class="rounded-circle" src="https://source.unsplash.com/Mv9hjnEUHR4/60x60" alt="...">
-                        <div class="status-indicator bg-success"></div>
-                    </div>
-                    <div>
-                        <div class="text-truncate">Am I a good boy? The reason I ask is because someone
-                            told me that people say this to all dogs, even if they aren't good...</div>
-                        <div class="small text-gray-500">Chicken the Dog · 2w</div>
-                    </div>
-                </a>
-                <a class="dropdown-item text-center small text-gray-500" href="#">Read More Messages</a>
-            </div>
-        </li> -->
 
         <div class="topbar-divider d-none d-sm-block"></div>
 
@@ -276,3 +226,88 @@ function getNotificationIcon($type) {
 
     </ul>
 </nav>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const clearAllBtn = document.getElementById('clear-all-notifications-btn');
+    const confirmClearBtn = document.getElementById('confirmClearBtn');
+
+    // --- Step 1: Show the modal ---
+    // When the main 'Clear All' link is clicked, show our custom modal
+    // instead of the old confirm() dialog.
+    if (clearAllBtn) {
+        clearAllBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            // Use jQuery to launch the Bootstrap modal
+            $('#clearNotificationsModal').modal('show');
+        });
+    }
+
+    // --- Step 2: Handle the confirmation click ---
+    // When the 'Clear' button *inside* the modal is clicked, run the fetch logic.
+    if (confirmClearBtn) {
+        confirmClearBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+
+            fetch('<?php echo BASE_WEB_PATH; ?>includes/actions/clear_all_notifications.php', {
+                method: 'POST',
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // On success, hide the modal first
+                    $('#clearNotificationsModal').modal('hide');
+
+                    // Then, update the UI as before
+                    const counter = document.querySelector('#alertsDropdown .badge-counter');
+                    if (counter) {
+                        counter.style.display = 'none';
+                    }
+                    const container = document.getElementById('notification-items-container');
+                    if (container) {
+                        container.innerHTML = `
+                        <a class="dropdown-item d-flex align-items-center" href="#">
+                            <div class="mr-3">
+                                <div class="icon-circle bg-success">
+                                    <i class="fas fa-check-circle text-white"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="small text-gray-500"><?php echo date('F j, Y'); ?></div>
+                                All caught up! No new notifications.
+                            </div>
+                        </a>`;
+                    }
+                    if (clearAllBtn) {
+                        clearAllBtn.style.display = 'none';
+                    }
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error clearing notifications:', error);
+                alert('An error occurred while clearing notifications.');
+            });
+        });
+    }
+});
+</script>
+
+<div class="modal fade" id="clearNotificationsModal" tabindex="-1" role="dialog" aria-labelledby="clearNotificationsModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="clearNotificationsModalLabel">Clear All Notifications?</h5>
+                <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">×</span>
+                </button>
+            </div>
+            <div class="modal-body">Select "Clear" below if you are ready to mark all notifications as read.</div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
+                <a class="btn btn-primary" href="#" id="confirmClearBtn">Clear</a>
+            </div>
+        </div>
+    </div>
+</div>

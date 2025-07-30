@@ -70,6 +70,13 @@ if (!defined('BASE_WEB_PATH')) {
                     </div>
                 </div>
             </li>
+            <!-- NEW LINK ADDED HERE -->
+            <li class="nav-item">
+                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/bmc/principal_attendance.php">
+                    <i class="fas fa-fw fa-user-clock"></i>
+                    <span>Principal Attendance</span>
+                </a>
+            </li>
             <li class="nav-item">
                 <a class="nav-link" href="/BMC-SMS/pages/bmc/send_notice.php">
                     <i class="fas fa-fw fa-bullhorn"></i>
