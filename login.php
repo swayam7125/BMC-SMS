@@ -73,12 +73,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                                 // 4. Insert or update the attendance record
                                 $current_date = date("Y-m-d");
-                                $current_time = date("H:i:s");
+
+                                // The $current_time variable is removed. We now use the database's clock.
                                 $att_stmt = mysqli_prepare($conn,
                                     "INSERT INTO principal_attendance (principal_id, school_id, attendance_date, status, login_latitude, login_longitude, login_time)
-                                     VALUES (?, ?, ?, ?, ?, ?, ?)
-                                     ON DUPLICATE KEY UPDATE status = VALUES(status), login_latitude = VALUES(login_latitude), login_longitude = VALUES(login_longitude), login_time = VALUES(login_time)");
-                                mysqli_stmt_bind_param($att_stmt, "iisssds", $principal_id, $school_id, $current_date, $attendance_status, $user_lat, $user_lon, $current_time);
+                                    VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIME())
+                                    ON DUPLICATE KEY UPDATE status = VALUES(status), login_latitude = VALUES(login_latitude), login_longitude = VALUES(login_longitude), login_time = CURRENT_TIME()");
+
+                                // The type string "s" for time and the $current_time variable are removed from this line.
+                                mysqli_stmt_bind_param($att_stmt, "iisssd", $principal_id, $school_id, $current_date, $attendance_status, $user_lat, $user_lon);
                                 mysqli_stmt_execute($att_stmt);
                             }
                         }
