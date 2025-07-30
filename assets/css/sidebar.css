@@ -1,43 +1,61 @@
-    /* --- Base Sidebar Adjustments --- */
-    #accordionSidebar {
-        position: -webkit-sticky; /* For Safari */
-        position: sticky;
-        top: 0;
-        height: 100vh;
-        /* Add a smooth transition for expand/collapse animations */
-        transition: width 0.3s ease;
-    }
+/* --- Base Sidebar Adjustments --- */
+#accordionSidebar {
+  position: -webkit-sticky; /* For Safari */
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  max-height: 100vh;
+  /* Add a smooth transition for expand/collapse animations */
+  transition: width 0.3s ease;
+  flex-shrink: 0;
+  /* Prevents sidebar from shrinking */
+}
 
-    /* --- Dropdown Arrow Fix --- */
-    /* This is the main fix for the arrow position. */
-    #accordionSidebar .nav-item .nav-link[data-toggle="collapse"]::after {
-        display: inline-block;
-        margin-left: 0.5rem;
-        transition: transform 0.2s ease; /* Adds smooth rotation */
-    }
+/* --- Dropdown Arrow Fix --- */
+/* This is the main fix for the arrow position. */
+#accordionSidebar .nav-item .nav-link[data-toggle="collapse"]::after {
+  display: inline-block;
+  margin-left: 0.5rem;
+  transition: transform 0.2s ease; /* Adds smooth rotation */
+}
 
-    /* --- Responsive Overrides (for screens 768px and wider) --- */
-    @media (min-width: 768px) {
-        /* 1. Set a slightly wider width for the expanded sidebar */
-        #accordionSidebar {
-            width: 250px !important;
-        }
+/* --- Fix for Sticky Sidebar Scrolling --- */
+/* --- CORE LAYOUT FIX --- */
+html,
+body {
+  height: 100%;
+  overflow: hidden !important;
+}
+#wrapper {
+  height: 100vh;
+}
+#content-wrapper {
+  overflow-y: auto;
+}
+/* --- END OF FIX --- */
 
-        /* 2. Set a custom width for the collapsed sidebar */
-        #accordionSidebar.toggled {
-            width: 110px !important;
-            overflow: hidden; /* Prevents text from spilling out */
-        }
+/* --- Responsive Overrides (for screens 768px and wider) --- */
+@media (min-width: 768px) {
+  /* 1. Set a slightly wider width for the expanded sidebar */
+  #accordionSidebar {
+    width: 250px !important;
+  }
 
-        /* 3. UX FIX: Keep icon and text visible on the same line in the collapsed state */
-        #accordionSidebar.toggled .nav-item .nav-link span {
-            display: inline !important; 
-            font-size: 0.75rem; /* Make text slightly smaller to fit better */
-            margin-left: 0.4rem; 
-        }
+  /* 2. Set a custom width for the collapsed sidebar */
+  #accordionSidebar.toggled {
+    width: 110px !important;
+    overflow: hidden; /* Prevents text from spilling out */
+  }
 
-        /* 4. Center-align text and icon when collapsed */
-        #accordionSidebar.toggled .nav-item .nav-link {
-            justify-content: center;
-        }
-    }
+  /* 3. UX FIX: Keep icon and text visible on the same line in the collapsed state */
+  #accordionSidebar.toggled .nav-item .nav-link span {
+    display: inline !important;
+    font-size: 0.75rem; /* Make text slightly smaller to fit better */
+    margin-left: 0.4rem;
+  }
+
+  /* 4. Center-align text and icon when collapsed */
+  #accordionSidebar.toggled .nav-item .nav-link {
+    justify-content: center;
+  }
+}
