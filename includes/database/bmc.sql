@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jul 31, 2025 at 11:41 AM
+-- Generation Time: Jul 31, 2025 at 10:45 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -356,11 +356,15 @@ INSERT INTO `notifications` (`id`, `user_id`, `message`, `link`, `is_read`, `cre
 (6, 3, 'New notes posted: Hello test notification...', '/pages/student/view_notes.php', 1, '2025-07-28 10:54:36', 'new_notes'),
 (7, 10, 'New leave request from meet parekh', '/pages/principal/principal_leave_requests.php', 1, '2025-07-29 09:44:56', 'leave_request'),
 (8, 6, 'Your leave application has been Rejected.', '/pages/teacher/teacher_leave_history.php', 1, '2025-07-29 09:45:50', 'leave_status'),
+(8, 6, 'Your leave application has been Rejected.', '/pages/teacher/teacher_leave_history.php', 1, '2025-07-29 09:45:50', 'leave_status'),
 (9, 10, 'New leave request from meet parekh', '/pages/principal/principal_leave_requests.php', 1, '2025-07-29 09:48:16', 'leave_request'),
 (10, 6, 'Your leave application has been Approved.', '/pages/teacher/teacher_leave_history.php', 1, '2025-07-29 09:48:41', 'leave_status'),
 (11, 10, 'New leave request from meet parekh', '/pages/principal/principal_leave_requests.php', 1, '2025-07-29 11:03:55', 'leave_request'),
 (12, 10, 'New leave request from meet parekh', '/pages/principal/principal_leave_requests.php', 1, '2025-07-29 11:08:03', 'leave_request'),
 (13, 10, 'New leave request from meet parekh', '/pages/principal/principal_leave_requests.php', 1, '2025-07-29 11:08:42', 'leave_request'),
+(14, 6, 'Your leave application has been Approved.', '/pages/teacher/teacher_leave_history.php', 1, '2025-07-29 11:09:26', 'leave_status'),
+(15, 6, 'Your leave application has been Rejected.', '/pages/teacher/teacher_leave_history.php', 1, '2025-07-29 11:09:32', 'leave_status'),
+(16, 6, 'Your leave application has been Approved.', '/pages/teacher/teacher_leave_history.php', 1, '2025-07-29 11:09:33', 'leave_status'),
 (14, 6, 'Your leave application has been Approved.', '/pages/teacher/teacher_leave_history.php', 1, '2025-07-29 11:09:26', 'leave_status'),
 (15, 6, 'Your leave application has been Rejected.', '/pages/teacher/teacher_leave_history.php', 1, '2025-07-29 11:09:32', 'leave_status'),
 (16, 6, 'Your leave application has been Approved.', '/pages/teacher/teacher_leave_history.php', 1, '2025-07-29 11:09:33', 'leave_status'),
@@ -376,12 +380,8 @@ INSERT INTO `notifications` (`id`, `user_id`, `message`, `link`, `is_read`, `cre
 (26, 6, 'Your leave application has been Rejected.', '/pages/teacher/teacher_leave_management.php', 1, '2025-07-29 11:32:47', 'leave_status'),
 (27, 3, 'New Assignment: test...', '/pages/assignments/view_assignments.php', 1, '2025-07-29 12:19:46', 'new_assignment'),
 (28, 10, 'New leave request from meet parekh', '/pages/principal/principal_leave_requests.php', 1, '2025-07-29 12:35:04', 'leave_request'),
-(29, 3, 'New Assignment: hyy...', '/pages/assignments/view_assignments.php', 1, '2025-07-29 12:43:57', 'new_assignment'),
-(30, 6, 'Your leave application has been Approved.', '/pages/teacher/teacher_leave_management.php', 1, '2025-07-30 08:11:43', 'leave_status'),
-(31, 3, 'Your results for the Final Exam have been published.', '/pages/student/view_report.php?exam_type=final_exam&academic_year=2025-2026', 1, '2025-07-31 08:46:13', 'result_published'),
-(32, 3, 'Your results for the Final Exam have been published.', '/pages/teacher/view_marks.php?exam_type=final_exam&academic_year=2025-2026', 1, '2025-07-31 09:03:11', 'result_published'),
-(33, 3, 'Your results for the Final Exam have been published.', '/pages/student/view_my_marks.php?exam_type=final_exam&academic_year=2025-2026', 1, '2025-07-31 09:06:56', 'result_published'),
-(34, 3, 'Your results for the Final Exam have been published.', '/pages/student/view_my_marks.php?exam_type=final_exam&academic_year=2025-2026', 1, '2025-07-31 09:15:05', 'result_published');
+(29, 3, 'New Assignment: hyy...', '/pages/assignments/view_assignments.php', 0, '2025-07-29 12:43:57', 'new_assignment'),
+(30, 6, 'Your leave application has been Approved.', '/pages/teacher/teacher_leave_management.php', 1, '2025-07-30 08:11:43', 'leave_status');
 
 -- --------------------------------------------------------
 
@@ -436,6 +436,8 @@ CREATE TABLE `principal_attendance` (
 --
 
 INSERT INTO `principal_attendance` (`id`, `principal_id`, `school_id`, `attendance_date`, `status`, `login_latitude`, `login_longitude`, `login_time`, `updated_at`) VALUES
+(1, 10, 4, '2025-07-30', 'Absent', 21.21014980, 72.77075840, '23:47:25', '2025-07-30 18:17:25'),
+(12, 10, 4, '2025-07-31', 'Absent', 21.18435710, 72.79023360, '13:51:12', '2025-07-31 08:21:12');
 (1, 10, 4, '2025-07-30', 'Absent', 21.21014980, 72.77075840, '23:47:25', '2025-07-30 18:17:25'),
 (12, 10, 4, '2025-07-31', 'Absent', 21.18435710, 72.79023360, '13:51:12', '2025-07-31 08:21:12');
 
@@ -1220,6 +1222,7 @@ ALTER TABLE `notifications`
 -- AUTO_INCREMENT for table `principal_attendance`
 --
 ALTER TABLE `principal_attendance`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --

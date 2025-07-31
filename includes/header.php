@@ -72,15 +72,21 @@ function getNotificationIcon($type) {
     switch ($type) {
         case 'leave_request':
             return 'fas fa-calendar-plus text-white';
-        case 'new_notice': // BMC notice
+        case 'new_notice': // BMC to Principal notice
             return 'fas fa-file-alt text-white';
+        case 'principal_notice': // Principal to BMC notice
+            return 'fas fa-user-tie text-white';
         case 'leave_status':
             return 'fas fa-check-circle text-white';
-        case 'school_notice': // Principal notice
+        case 'school_notice': // Principal to School notice
             return 'fas fa-chalkboard-teacher text-white';
-        case 'new_timetable': // New timetable
-            return 'fas fa-table text-white';
-        case 'new_notes': // New notes
+        case 'new_assignment':
+            return 'fas fa-file-signature text-white';
+        case 'marks_uploaded':
+            return 'fas fa-award text-white';
+        case 'exam_timetable':
+            return 'fas fa-calendar-alt text-white';
+        case 'new_notes':
             return 'fas fa-sticky-note text-white';
         // --- NEW: Added case for result notifications ---
         case 'result_published':
@@ -90,7 +96,6 @@ function getNotificationIcon($type) {
     }
 }
 // --- END: Dynamic Notification Logic ---
-
 ?>
 
 <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
@@ -260,27 +265,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     $('#clearNotificationsModal').modal('hide');
 
                     const counter = document.querySelector('#alertsDropdown .badge-counter');
-                    if (counter) {
-                        counter.style.display = 'none';
-                    }
+                    if (counter) counter.style.display = 'none';
+                    
                     const container = document.getElementById('notification-items-container');
                     if (container) {
                         container.innerHTML = `
                         <a class="dropdown-item d-flex align-items-center" href="#">
-                            <div class="mr-3">
-                                <div class="icon-circle bg-success">
-                                    <i class="fas fa-check-circle text-white"></i>
-                                </div>
-                            </div>
-                            <div>
-                                <div class="small text-gray-500"><?php echo date('F j, Y'); ?></div>
-                                All caught up! No new notifications.
-                            </div>
+                            <div class="mr-3"><div class="icon-circle bg-success"><i class="fas fa-check-circle text-white"></i></div></div>
+                            <div><div class="small text-gray-500"><?php echo date('F j, Y'); ?></div>All caught up! No new notifications.</div>
                         </a>`;
                     }
-                    if (clearAllBtn) {
-                        clearAllBtn.style.display = 'none';
-                    }
+                    if (clearAllBtn) clearAllBtn.style.display = 'none';
                 } else {
                     alert('Error: ' + data.message);
                 }

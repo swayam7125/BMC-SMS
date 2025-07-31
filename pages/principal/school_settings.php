@@ -23,23 +23,13 @@ $stmt->close();
 // Handle form submission to UPDATE settings
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $passing_percentage = $_POST['passing_percentage'];
-    $latitude = !empty($_POST['latitude']) ? $_POST['latitude'] : null;
-    $longitude = !empty($_POST['longitude']) ? $_POST['longitude'] : null;
-    $radius = $_POST['radius'];
 
     // Update the school table
-    $update_stmt = $conn->prepare("UPDATE school SET 
-        passing_percentage = ?, 
-        latitude = ?,
-        longitude = ?,
-        attendance_radius_meters = ?
-        WHERE id = ?");
+    $update_stmt = $conn->prepare("UPDATE school SET passing_percentage = ? WHERE id = ?");
     
-    $update_stmt->bind_param("dddii", 
+    // ## FIX: The type string was changed from "dddii" to "di" to match the 2 variables ##
+    $update_stmt->bind_param("di", 
         $passing_percentage, 
-        $latitude,
-        $longitude,
-        $radius,
         $school_id
     );
     
@@ -70,7 +60,6 @@ $settings_stmt->close();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-
 </head>
 <body id="page-top">
     <div id="wrapper">

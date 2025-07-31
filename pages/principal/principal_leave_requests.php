@@ -2,24 +2,26 @@
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 
-// Mark notification as read if notif_id is present in the URL
-if (isset($_GET['notif_id']) && is_numeric($_GET['notif_id'])) {
-    $notification_id = $_GET['notif_id'];
-    $current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
-    if ($current_user_id) {
-        $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?");
-        $stmt_mark_read->bind_param("ii", $notification_id, $current_user_id);
-        $stmt_mark_read->execute();
-        $stmt_mark_read->close();
-    }
-}
-
-// Ensure user is a schooladmin
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : '';
-if ($role !== 'schooladmin') {
+$current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+
+// Ensure user is a schooladmin and has a valid ID
+if ($role !== 'schooladmin' || !$current_user_id) {
     header("Location: /BMC-SMS/dashboard.php");
     exit;
 }
+
+// --- THIS IS THE FIX ---
+// Mark all unread 'leave_request' notifications as read for the current principal.
+// This ensures the sidebar counter is permanently removed on the next page load.
+$stmt_mark_all_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND type = 'leave_request' AND is_read = 0");
+if ($stmt_mark_all_read) {
+    $stmt_mark_all_read->bind_param("i", $current_user_id);
+    $stmt_mark_all_read->execute();
+    $stmt_mark_all_read->close();
+}
+// --- END OF FIX ---
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -63,7 +65,7 @@ if ($role !== 'schooladmin') {
                                     </thead>
                                     <tbody>
                                         <?php
-                                        // Fetch pending leave applications, including leave_type
+                                        // Fetch pending leave applications
                                         $query = "SELECT l.id, t.teacher_name, l.from_date, l.to_date, l.leave_type, l.reason, l.applied_on
                                                   FROM leave_applications l
                                                   JOIN teacher t ON l.teacher_id = t.id
@@ -76,7 +78,7 @@ if ($role !== 'schooladmin') {
                                                 echo "<td>" . htmlspecialchars($row['teacher_name']) . "</td>";
                                                 echo "<td>" . htmlspecialchars($row['from_date']) . "</td>";
                                                 echo "<td>" . htmlspecialchars($row['to_date']) . "</td>";
-                                                echo "<td>" . htmlspecialchars($row['leave_type']) . "</td>"; // Display Leave Type
+                                                echo "<td>" . htmlspecialchars($row['leave_type']) . "</td>";
                                                 echo "<td>" . htmlspecialchars($row['reason']) . "</td>";
                                                 echo "<td>" . htmlspecialchars(date('d-m-Y H:i', strtotime($row['applied_on']))) . "</td>";
                                                 // Action Buttons
@@ -87,7 +89,6 @@ if ($role !== 'schooladmin') {
                                                 echo "</tr>";
                                             }
                                         } else {
-                                            // Adjusted colspan to 7
                                             echo '<tr><td colspan="7" class="text-center">No pending leave requests.</td></tr>';
                                         }
                                         ?>

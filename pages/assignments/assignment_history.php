@@ -1,5 +1,5 @@
 <?php
-// Standard setup from your dashboard.php
+// Standard setup
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
@@ -23,7 +23,7 @@ if (!$role || $role !== 'teacher') {
     exit;
 }
 
-// --- Fetch assignment history for the logged-in teacher ---
+// --- Step 1: Fetch assignment history AND get new submission counts BEFORE clearing them ---
 $assignments = [];
 $stmt = $conn->prepare("
     SELECT
@@ -34,7 +34,8 @@ $stmt = $conn->prepare("
         a.created_at,
         a.due_date,
         (SELECT COUNT(*) FROM assignment_submissions s WHERE s.assignment_id = a.id) as submission_count,
-        (SELECT COUNT(*) FROM student st WHERE st.school_id = a.school_id AND st.std = a.standard) as total_students
+        (SELECT COUNT(*) FROM student st WHERE st.school_id = a.school_id AND st.std = a.standard) as total_students,
+        (SELECT COUNT(*) FROM notifications n WHERE n.user_id = a.teacher_id AND n.is_read = 0 AND n.type = 'assignment_submission' AND n.link LIKE CONCAT('%view_submissions.php?id=', a.id, '%')) as new_submission_count
     FROM assignments a
     WHERE a.teacher_id = ?
     ORDER BY a.created_at DESC
@@ -44,6 +45,17 @@ $stmt->execute();
 $result = $stmt->get_result();
 $assignments = $result->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
+
+// --- Step 2: Now, mark all 'assignment_submission' notifications as read to clear the sidebar counter ---
+if ($userId) {
+    $stmt_mark_all_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND type = 'assignment_submission' AND is_read = 0");
+    if ($stmt_mark_all_read) {
+        $stmt_mark_all_read->bind_param("i", $userId);
+        $stmt_mark_all_read->execute();
+        $stmt_mark_all_read->close();
+    }
+}
+
 
 $pageTitle = 'Teacher - Assignment History';
 ?>
@@ -118,6 +130,9 @@ $pageTitle = 'Teacher - Assignment History';
                                                 <a href="view_submissions.php?id=<?php echo $assignment['id']; ?>"
                                                     class="btn btn-primary btn-sm" title="View Submissions">
                                                     <i class="fas fa-eye"></i> View
+                                                    <?php if ($assignment['new_submission_count'] > 0): ?>
+                                                        <span class="badge badge-danger ml-2"><?php echo $assignment['new_submission_count']; ?></span>
+                                                    <?php endif; ?>
                                                 </a>
                                             </td>
                                         </tr>
@@ -140,25 +155,7 @@ $pageTitle = 'Teacher - Assignment History';
     </div>
 
     <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
-
-    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
-        aria-hidden="true">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="exampleModalLabel">Ready to Leave?</h5>
-                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">×</span>
-                    </button>
-                </div>
-                <div class="modal-body">Select "Logout" below if you are ready to end your current session.</div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
-                    <a class="btn btn-primary" href="/BMC-SMS/logout.php">Logout</a>
-                </div>
-            </div>
-        </div>
-    </div>
+    
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
         aria-hidden="true">
         <div class="modal-dialog" role="document">
@@ -184,7 +181,12 @@ $pageTitle = 'Teacher - Assignment History';
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
-    <script src="../../assets/js/assignment.js"></script>
+    <script>
+    $(document).ready(function() {
+        // Initialize the DataTable
+        $('#assignmentHistoryTable').DataTable();
+    });
+    </script>
 </body>
 
 </html>
