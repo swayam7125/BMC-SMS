@@ -14,6 +14,97 @@ if (isset($_COOKIE['encrypted_user_id'])) {
 if (!defined('BASE_WEB_PATH')) {
     define('BASE_WEB_PATH', '/BMC-SMS/');
 }
+
+// --- START: FETCH UNREAD NOTIFICATION COUNTS ---
+// Initialize all counter variables
+$unread_assignments = 0; $unread_results = 0; $unread_student_notices = 0; $unread_notes = 0;
+$unread_bmc_notices = 0; $unread_leave_requests = 0; $unread_principal_notices = 0;
+$unread_teacher_notices = 0; $unread_submissions = 0; $unread_leave_status = 0;
+$unread_exam_timetables = 0;
+
+// Fetch counts based on the user's role
+if (isset($conn) && $conn->ping() && $user_id) {
+    switch ($role) {
+        case 'student':
+            $sql_counts = "SELECT 
+                                SUM(CASE WHEN type = 'new_assignment' THEN 1 ELSE 0 END) AS assignments,
+                                SUM(CASE WHEN type = 'marks_uploaded' THEN 1 ELSE 0 END) AS results,
+                                SUM(CASE WHEN type = 'school_notice' THEN 1 ELSE 0 END) AS notices,
+                                SUM(CASE WHEN type = 'new_notes' THEN 1 ELSE 0 END) AS notes,
+                                SUM(CASE WHEN type = 'exam_timetable' THEN 1 ELSE 0 END) AS exam_timetables
+                           FROM notifications WHERE user_id = ? AND is_read = 0";
+            $stmt_counts = $conn->prepare($sql_counts);
+            if ($stmt_counts) {
+                $stmt_counts->bind_param("i", $user_id);
+                $stmt_counts->execute();
+                $result_student = $stmt_counts->get_result()->fetch_assoc();
+                if ($result_student) {
+                    $unread_assignments = (int) ($result_student['assignments'] ?? 0);
+                    $unread_results = (int) ($result_student['results'] ?? 0);
+                    $unread_student_notices = (int) ($result_student['notices'] ?? 0);
+                    $unread_notes = (int) ($result_student['notes'] ?? 0);
+                    $unread_exam_timetables = (int) ($result_student['exam_timetables'] ?? 0);
+                }
+                $stmt_counts->close();
+            }
+            break;
+
+        case 'schooladmin':
+            $sql_principal_counts = "SELECT 
+                                        SUM(CASE WHEN type = 'new_notice' THEN 1 ELSE 0 END) AS bmc_notices,
+                                        SUM(CASE WHEN type = 'leave_request' THEN 1 ELSE 0 END) AS leave_requests
+                                     FROM notifications WHERE user_id = ? AND is_read = 0";
+            $stmt_principal_counts = $conn->prepare($sql_principal_counts);
+            if($stmt_principal_counts) {
+                $stmt_principal_counts->bind_param("i", $user_id);
+                $stmt_principal_counts->execute();
+                $result_principal = $stmt_principal_counts->get_result()->fetch_assoc();
+                if ($result_principal) {
+                    $unread_bmc_notices = (int) ($result_principal['bmc_notices'] ?? 0);
+                    $unread_leave_requests = (int) ($result_principal['leave_requests'] ?? 0);
+                }
+                $stmt_principal_counts->close();
+            }
+            break;
+
+        case 'teacher':
+            $sql_teacher_counts = "SELECT 
+                                      SUM(CASE WHEN type = 'school_notice' THEN 1 ELSE 0 END) AS teacher_notices,
+                                      SUM(CASE WHEN type = 'assignment_submission' THEN 1 ELSE 0 END) AS submissions,
+                                      SUM(CASE WHEN type = 'leave_status' THEN 1 ELSE 0 END) AS leave_status,
+                                      SUM(CASE WHEN type = 'exam_timetable' THEN 1 ELSE 0 END) AS exam_timetables
+                                   FROM notifications WHERE user_id = ? AND is_read = 0";
+            $stmt_teacher_counts = $conn->prepare($sql_teacher_counts);
+            if ($stmt_teacher_counts) {
+                $stmt_teacher_counts->bind_param("i", $user_id);
+                $stmt_teacher_counts->execute();
+                $result_teacher = $stmt_teacher_counts->get_result()->fetch_assoc();
+                if ($result_teacher) {
+                    $unread_teacher_notices = (int) ($result_teacher['teacher_notices'] ?? 0);
+                    $unread_submissions = (int) ($result_teacher['submissions'] ?? 0);
+                    $unread_leave_status = (int) ($result_teacher['leave_status'] ?? 0);
+                    $unread_exam_timetables = (int) ($result_teacher['exam_timetables'] ?? 0);
+                }
+                $stmt_teacher_counts->close();
+            }
+            break;
+            
+        case 'bmc':
+            $sql_bmc_counts = "SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND type = 'principal_notice' AND is_read = 0";
+            $stmt_bmc_counts = $conn->prepare($sql_bmc_counts);
+            if ($stmt_bmc_counts) {
+                $stmt_bmc_counts->bind_param("i", $user_id);
+                $stmt_bmc_counts->execute();
+                $result_bmc = $stmt_bmc_counts->get_result()->fetch_assoc();
+                if ($result_bmc) {
+                    $unread_principal_notices = (int) ($result_bmc['count'] ?? 0);
+                }
+                $stmt_bmc_counts->close();
+            }
+            break;
+    }
+}
+// --- END: FETCH UNREAD NOTIFICATION COUNTS ---
 ?>
 
 <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
@@ -70,7 +161,6 @@ if (!defined('BASE_WEB_PATH')) {
                     </div>
                 </div>
             </li>
-            <!-- NEW LINK ADDED HERE -->
             <li class="nav-item">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/bmc/principal_attendance.php">
                     <i class="fas fa-fw fa-user-clock"></i>
@@ -79,8 +169,17 @@ if (!defined('BASE_WEB_PATH')) {
             </li>
             <li class="nav-item">
                 <a class="nav-link" href="/BMC-SMS/pages/bmc/send_notice.php">
-                    <i class="fas fa-fw fa-bullhorn"></i>
-                    <span>Send Notice</span>
+                    <i class="fas fa-fw fa-paper-plane"></i>
+                    <span>Send Notice to Principals</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/BMC-SMS/pages/bmc/view_principal_notices.php">
+                    <i class="fas fa-fw fa-envelope-open-text"></i>
+                    <span>View Principal Notices</span>
+                    <?php if ($unread_principal_notices > 0): ?>
+                        <span class="badge badge-danger badge-counter"><?php echo ($unread_principal_notices > 9) ? '9+' : $unread_principal_notices; ?></span>
+                    <?php endif; ?>
                 </a>
             </li>
             <li class="nav-item">
@@ -139,14 +238,20 @@ if (!defined('BASE_WEB_PATH')) {
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseNotices">
                     <i class="fas fa-fw fa-bullhorn"></i>
                     <span>Notices</span>
+                    <?php if ($unread_bmc_notices > 0): ?>
+                        <span class="badge badge-danger badge-counter">
+                            <?php echo ($unread_bmc_notices > 9) ? '9+' : $unread_bmc_notices; ?>
+                        </span>
+                    <?php endif; ?>
                 </a>
                 <div id="collapseNotices" class="collapse" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
                         <a class="collapse-item" href="/BMC-SMS/pages/principal/send_notice.php">Send School Notice</a>
+                        <a class="collapse-item" href="/BMC-SMS/pages/principal/send_notice_to_bmc.php">Send Notice to BMC</a>
                         <a class="collapse-item" href="/BMC-SMS/pages/principal/view_notice.php">View BMC Notices
-                            <?php if ($unread_count > 0): ?>
+                            <?php if ($unread_bmc_notices > 0): ?>
                                 <span class="badge badge-danger badge-counter">
-                                    <?php echo ($unread_count > 5) ? '5+' : $unread_count; ?>
+                                    <?php echo ($unread_bmc_notices > 9) ? '9+' : $unread_bmc_notices; ?>
                                 </span>
                             <?php endif; ?>
                         </a>
@@ -165,6 +270,7 @@ if (!defined('BASE_WEB_PATH')) {
                             Subjects</a>
                         <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/academics/manage_timetable.php">Manage
                             Timetable</a>
+                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/principal/send_exam_timetable.php">Send Exam Timetable</a>
                     </div>
                 </div>
             </li>
@@ -178,11 +284,22 @@ if (!defined('BASE_WEB_PATH')) {
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseLeaveManagement">
                     <i class="fas fa-fw fa-calendar-alt"></i>
                     <span>Teacher Leave</span>
+                    <?php if ($unread_leave_requests > 0): ?>
+                        <span class="badge badge-danger badge-counter">
+                            <?php echo ($unread_leave_requests > 9) ? '9+' : $unread_leave_requests; ?>
+                        </span>
+                    <?php endif; ?>
                 </a>
                 <div id="collapseLeaveManagement" class="collapse" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item"
-                            href="<?php echo BASE_WEB_PATH; ?>pages/principal/principal_leave_requests.php">Pending Requests</a>
+                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/principal/principal_leave_requests.php">
+                            Pending Requests
+                            <?php if ($unread_leave_requests > 0): ?>
+                                <span class="badge badge-danger badge-counter">
+                                    <?php echo ($unread_leave_requests > 9) ? '9+' : $unread_leave_requests; ?>
+                                </span>
+                            <?php endif; ?>
+                        </a>
                         <a class="collapse-item"
                             href="<?php echo BASE_WEB_PATH; ?>pages/principal/principal_leave_history.php">Application
                             History</a>
@@ -208,17 +325,19 @@ if (!defined('BASE_WEB_PATH')) {
         // ====== Teacher Panel ======
         case 'teacher':
             $is_class_teacher = false;
-            if ($user_id && isset($conn) && $conn->ping()) {
+            if ($user_id && isset($conn)) {
                 $stmt_check = $conn->prepare("SELECT class_teacher FROM teacher WHERE id = ?");
-                $stmt_check->bind_param("i", $user_id);
-                $stmt_check->execute();
-                $result_check = $stmt_check->get_result();
-                if ($teacher_details = $result_check->fetch_assoc()) {
-                    if ($teacher_details['class_teacher'] == 1) {
-                        $is_class_teacher = true;
+                if ($stmt_check) {
+                    $stmt_check->bind_param("i", $user_id);
+                    $stmt_check->execute();
+                    $result_check = $stmt_check->get_result();
+                    if ($teacher_details = $result_check->fetch_assoc()) {
+                        if ($teacher_details['class_teacher'] == 1) {
+                            $is_class_teacher = true;
+                        }
                     }
+                    $stmt_check->close();
                 }
-                $stmt_check->close();
             }
         ?>
             <div class="sidebar-heading font-weight-semibold">Classroom & Actions</div>
@@ -250,6 +369,11 @@ if (!defined('BASE_WEB_PATH')) {
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseAssignments">
                     <i class="fas fa-fw fa-book-open"></i>
                     <span>Manage Assignment</span>
+                    <?php if ($unread_submissions > 0): ?>
+                        <span class="badge badge-danger badge-counter">
+                            <?php echo ($unread_submissions > 9) ? '9+' : $unread_submissions; ?>
+                        </span>
+                    <?php endif; ?>
                 </a>
                 <div id="collapseAssignments" class="collapse" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
@@ -263,6 +387,11 @@ if (!defined('BASE_WEB_PATH')) {
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/teacher_leave_management.php">
                     <i class="fas fa-fw fa-calendar-alt"></i>
                     <span>Manage Leave</span>
+                    <?php if ($unread_leave_status > 0): ?>
+                        <span class="badge badge-danger badge-counter">
+                            <?php echo ($unread_leave_status > 9) ? '9+' : $unread_leave_status; ?>
+                        </span>
+                    <?php endif; ?>
                 </a>
             </li>
             
@@ -282,7 +411,18 @@ if (!defined('BASE_WEB_PATH')) {
             <li class="nav-item">
                 <a class="nav-link" href="/BMC-SMS/pages/student/view_timetable.php">
                     <i class="fas fa-fw fa-calendar-week"></i>
-                    <span>View Timetable</span>
+                    <span>View Lecture Timetable</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/BMC-SMS/pages/teacher/view_exam_timetable.php">
+                    <i class="fas fa-fw fa-calendar-alt"></i>
+                    <span>View Exam Timetable</span>
+                    <?php if ($unread_exam_timetables > 0): ?>
+                        <span class="badge badge-danger badge-counter">
+                            <?php echo ($unread_exam_timetables > 9) ? '9+' : $unread_exam_timetables; ?>
+                        </span>
+                    <?php endif; ?>
                 </a>
             </li>
             <li class="nav-item">
@@ -294,9 +434,9 @@ if (!defined('BASE_WEB_PATH')) {
                 <a class="nav-link" href="/BMC-SMS/pages/teacher/view_notice.php">
                     <i class="fas fa-fw fa-bell"></i>
                     <span>View School Notices</span>
-                    <?php if ($unread_count > 0): ?>
+                     <?php if ($unread_teacher_notices > 0): ?>
                         <span class="badge badge-danger badge-counter">
-                            <?php echo ($unread_count > 5) ? '5+' : $unread_count; ?>
+                            <?php echo ($unread_teacher_notices > 9) ? '9+' : $unread_teacher_notices; ?>
                         </span>
                     <?php endif; ?>
                 </a>
@@ -320,9 +460,9 @@ if (!defined('BASE_WEB_PATH')) {
                 <a class="nav-link" href="/BMC-SMS/pages/assignments/view_assignments.php">
                     <i class="fas fa-fw fa-clipboard-list"></i>
                     <span>View Assignments</span>
-                    <?php if ($unread_count > 0): ?>
+                    <?php if ($unread_assignments > 0): ?>
                         <span class="badge badge-danger badge-counter">
-                            <?php echo ($unread_count > 5) ? '5+' : $unread_count; ?>
+                            <?php echo ($unread_assignments > 9) ? '9+' : $unread_assignments; ?>
                         </span>
                     <?php endif; ?>
                 </a>
@@ -337,9 +477,9 @@ if (!defined('BASE_WEB_PATH')) {
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/student/view_my_marks.php">
                     <i class="fas fa-fw fa-file-lines"></i>
                     <span>View Results</span>
-                    <?php if ($unread_count > 0): ?>
+                    <?php if ($unread_results > 0): ?>
                         <span class="badge badge-danger badge-counter">
-                            <?php echo ($unread_count > 5) ? '5+' : $unread_count; ?>
+                            <?php echo ($unread_results > 9) ? '9+' : $unread_results; ?>
                         </span>
                     <?php endif; ?>
                 </a>
@@ -348,9 +488,9 @@ if (!defined('BASE_WEB_PATH')) {
                 <a class="nav-link" href="/BMC-SMS/pages/student/view_notice.php">
                     <i class="fas fa-fw fa-bell"></i>
                     <span>View School Notices</span>
-                    <?php if ($unread_count > 0): ?>
+                    <?php if ($unread_student_notices > 0): ?>
                         <span class="badge badge-danger badge-counter">
-                            <?php echo ($unread_count > 5) ? '5+' : $unread_count; ?>
+                            <?php echo ($unread_student_notices > 9) ? '9+' : $unread_student_notices; ?>
                         </span>
                     <?php endif; ?>
                 </a>
@@ -359,16 +499,27 @@ if (!defined('BASE_WEB_PATH')) {
                 <a class="nav-link" href="/BMC-SMS/pages/student/view_notes.php">
                     <i class="fas fa-fw fa-eye"></i>
                     <span>View Notes</span>
-                    <?php if ($unread_count > 0): ?>
+                    <?php if ($unread_notes > 0): ?>
                         <span class="badge badge-danger badge-counter">
-                            <?php echo ($unread_count > 5) ? '5+' : $unread_count; ?>
+                            <?php echo ($unread_notes > 9) ? '9+' : $unread_notes; ?>
                         </span>
                     <?php endif; ?></a>
             </li>
             <li class="nav-item">
                 <a class="nav-link" href="/BMC-SMS/pages/student/view_timetable.php">
                     <i class="fas fa-fw fa-table-list"></i>
-                    <span>View Timetable</span>
+                    <span>View Lecture Timetable</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/BMC-SMS/pages/student/view_exam_timetable.php">
+                    <i class="fas fa-fw fa-calendar-alt"></i>
+                    <span>View Exam Timetable</span>
+                    <?php if ($unread_exam_timetables > 0): ?>
+                        <span class="badge badge-danger badge-counter">
+                            <?php echo ($unread_exam_timetables > 9) ? '9+' : $unread_exam_timetables; ?>
+                        </span>
+                    <?php endif; ?>
                 </a>
             </li>
     <?php
@@ -383,3 +534,18 @@ if (!defined('BASE_WEB_PATH')) {
     </div>
 
 </ul>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.jQuery) {
+        $('#accordionSidebar').on('click', 'a', function(e) {
+            var badge = $(this).find('.badge-counter');
+            if (badge.length > 0) {
+                badge.fadeOut('fast', function() {
+                    $(this).remove();
+                });
+            }
+        });
+    }
+});
+</script>

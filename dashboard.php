@@ -424,7 +424,7 @@ switch ($role) {
                         </a>
                             </div>
                             <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="./pages/student/student_list.php">
+                                <a class="card-link" href="pages/past_record/past_student.php">
                                     <div class="card border-left-warning shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
@@ -499,7 +499,7 @@ switch ($role) {
                                 </a>
                             </div>
                             <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="./pages/teacher/teacher_leave_history.php">
+                                <a class="card-link" href="#">
                                     <div class="card border-left-warning shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
@@ -518,7 +518,7 @@ switch ($role) {
                             </div>
                         <?php elseif ($role == 'student'): ?>
                             <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="./pages/student/student_profile.php">
+                                <a class="card-link" href="dashboard.php">
                                     <div class="card border-left-primary shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
@@ -554,7 +554,7 @@ switch ($role) {
                                 </a>
                             </div>
                             <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="#">
+                                <a class="card-link" href="pages/student/view_lecture_attendance.php">
                                     <div class="card border-left-success shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
@@ -572,7 +572,7 @@ switch ($role) {
                                 </a>
                             </div>
                             <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="#">
+                                <a class="card-link" href="pages/student/view_lecture_attendance.php">
                                     <div class="card border-left-info shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
@@ -590,7 +590,7 @@ switch ($role) {
                                 </a>
                             </div>
                             <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="#">
+                                <a class="card-link" href="pages/student/view_lecture_attendance.php">
                                     <div class="card border-left-warning shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">

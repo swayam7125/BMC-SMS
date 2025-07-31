@@ -2,7 +2,30 @@
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
 
-// --- START: MARK NOTIFICATION AS READ ---
+$role = null;
+$userId = null;
+
+if (isset($_COOKIE['encrypted_user_role'])) {
+    $decrypted_role = decrypt_id($_COOKIE['encrypted_user_role']);
+    $role = $decrypted_role ? strtolower(trim($decrypted_role)) : null;
+}
+if (isset($_COOKIE['encrypted_user_id'])) {
+    $userId = decrypt_id($_COOKIE['encrypted_user_id']);
+}
+
+// --- START: MARK ALL SCHOOL NOTICE NOTIFICATIONS AS READ ON PAGE VIEW ---
+if (($role === 'student' || $role === 'teacher') && $userId) {
+    $stmt_mark_all_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND type = 'school_notice' AND is_read = 0");
+    if ($stmt_mark_all_read) {
+        $stmt_mark_all_read->bind_param("i", $userId);
+        $stmt_mark_all_read->execute();
+        $stmt_mark_all_read->close();
+    }
+}
+// --- END: MARK ALL SCHOOL NOTICE NOTIFICATIONS AS READ ---
+
+
+// --- START: MARK INDIVIDUAL NOTIFICATION AS READ (From notification dropdown) ---
 if (isset($_GET['notif_id']) && is_numeric($_GET['notif_id'])) {
     $notification_id = $_GET['notif_id'];
     $current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
@@ -13,20 +36,7 @@ if (isset($_GET['notif_id']) && is_numeric($_GET['notif_id'])) {
         $stmt_mark_read->close();
     }
 }
-// --- END: MARK NOTIFICATION AS READ ---
-
-$role = null;
-$userId = null;
-$schoolId = null;
-$studentStd = null;
-
-if (isset($_COOKIE['encrypted_user_role'])) {
-    $decrypted_role = decrypt_id($_COOKIE['encrypted_user_role']);
-    $role = $decrypted_role ? strtolower(trim($decrypted_role)) : null;
-}
-if (isset($_COOKIE['encrypted_user_id'])) {
-    $userId = decrypt_id($_COOKIE['encrypted_user_id']);
-}
+// --- END: MARK INDIVIDUAL NOTIFICATION AS READ ---
 
 // Redirect if user is not properly logged in
 if (!$role || !$userId) {
@@ -35,6 +45,8 @@ if (!$role || !$userId) {
 }
 
 // Fetch user-specific data
+$schoolId = null;
+$studentStd = null;
 if ($role == 'student') {
     $stmt = $conn->prepare("SELECT school_id, std FROM student WHERE id = ?");
     $stmt->bind_param("i", $userId);
@@ -69,16 +81,16 @@ $types = "i";
 
 // Add condition based on user role
 if ($role == 'teacher') {
-    $sql .= " AND r.recipient_type = 'teacher' AND r.recipient_identifier = ?";
-    $params[] = $userId;
-    $types .= "i";
+    $sql .= " AND r.recipient_type = 'teacher'";
+    // No need to filter by teacher ID here as they get all notices for their school in this logic
 } elseif ($role == 'student' && $studentStd) {
     $sql .= " AND r.recipient_type = 'standard' AND r.recipient_identifier = ?";
     $params[] = $studentStd;
     $types .= "s";
 } else {
-    $sql .= " AND 1=0";
+    $sql .= " AND 1=0"; // Prevent query from running if conditions aren't met
 }
+
 
 $sql .= " ORDER BY c.created_at DESC";
 

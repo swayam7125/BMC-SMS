@@ -2,7 +2,30 @@
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
 
-// --- START: MARK AS READ LOGIC ---
+$role = null;
+$userId = null;
+
+if (isset($_COOKIE['encrypted_user_role'])) {
+    $decrypted_role = decrypt_id($_COOKIE['encrypted_user_role']);
+    $role = $decrypted_role ? strtolower(trim($decrypted_role)) : null;
+}
+if (isset($_COOKIE['encrypted_user_id'])) {
+    $userId = decrypt_id($_COOKIE['encrypted_user_id']);
+}
+
+// --- START: MARK ALL NOTE NOTIFICATIONS AS READ ON PAGE VIEW ---
+if ($role === 'student' && $userId) {
+    $stmt_mark_all_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND type = 'new_notes' AND is_read = 0");
+    if ($stmt_mark_all_read) {
+        $stmt_mark_all_read->bind_param("i", $userId);
+        $stmt_mark_all_read->execute();
+        $stmt_mark_all_read->close();
+    }
+}
+// --- END: MARK ALL NOTE NOTIFICATIONS AS READ ---
+
+
+// --- START: MARK INDIVIDUAL AS READ LOGIC ---
 if (isset($_GET['notif_id']) && is_numeric($_GET['notif_id'])) {
     $notification_id = $_GET['notif_id'];
     $current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
@@ -13,26 +36,16 @@ if (isset($_GET['notif_id']) && is_numeric($_GET['notif_id'])) {
         $stmt_mark_read->close();
     }
 }
-// --- END: MARK AS READ LOGIC ---
-
-$role = null;
-$userId = null;
-$schoolId = null;
-$studentStd = null;
-$teacherStds = [];
-
-if (isset($_COOKIE['encrypted_user_role'])) {
-    $decrypted_role = decrypt_id($_COOKIE['encrypted_user_role']);
-    $role = $decrypted_role ? strtolower(trim($decrypted_role)) : null;
-}
-if (isset($_COOKIE['encrypted_user_id'])) {
-    $userId = decrypt_id($_COOKIE['encrypted_user_id']);
-}
+// --- END: MARK INDIVIDUAL AS READ LOGIC ---
 
 if (!$role || !$userId) {
     header("Location: ./login.php");
     exit;
 }
+
+$schoolId = null;
+$studentStd = null;
+$teacherStds = [];
 
 switch ($role) {
     case 'student':

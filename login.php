@@ -64,7 +64,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 // 3. If we have all coordinates, check the distance
                                 if ($user_lat && $user_lon && !empty($school_location['latitude']) && !empty($school_location['longitude'])) {
                                     $distance = haversine_distance($user_lat, $user_lon, $school_location['latitude'], $school_location['longitude']);
-                                    $tolerance_radius = 300; // Allow a 100-meter radius for accuracy
+                                    $tolerance_radius = 300; // Allow a 300-meter radius for accuracy
 
                                     if ($distance <= $tolerance_radius) {
                                         $attendance_status = 'Present';

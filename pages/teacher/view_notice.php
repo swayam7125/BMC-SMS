@@ -2,7 +2,28 @@
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
 
-// --- START: MARK AS READ LOGIC ---
+$role = null;
+$userId = null;
+if (isset($_COOKIE['encrypted_user_role'])) {
+    $decrypted_role = decrypt_id($_COOKIE['encrypted_user_role']);
+    $role = $decrypted_role ? strtolower(trim($decrypted_role)) : null;
+}
+if (isset($_COOKIE['encrypted_user_id'])) {
+    $userId = decrypt_id($_COOKIE['encrypted_user_id']);
+}
+
+// --- ADDED THIS BLOCK TO CLEAR NOTIFICATIONS ---
+if (($role === 'student' || $role === 'teacher') && $userId) {
+    $stmt_mark_all_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND type = 'school_notice' AND is_read = 0");
+    if($stmt_mark_all_read){
+        $stmt_mark_all_read->bind_param("i", $userId);
+        $stmt_mark_all_read->execute();
+        $stmt_mark_all_read->close();
+    }
+}
+// --- END OF NEW BLOCK ---
+
+// --- START: MARK INDIVIDUAL AS READ LOGIC ---
 if (isset($_GET['notif_id']) && is_numeric($_GET['notif_id'])) {
     $notification_id = $_GET['notif_id'];
     $current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
@@ -13,20 +34,10 @@ if (isset($_GET['notif_id']) && is_numeric($_GET['notif_id'])) {
         $stmt_mark_read->close();
     }
 }
-// --- END: MARK AS READ LOGIC ---
+// --- END: MARK INDIVIDUAL AS READ LOGIC ---
 
-$role = null;
-$userId = null;
 $schoolId = null;
 $studentStd = null;
-
-if (isset($_COOKIE['encrypted_user_role'])) {
-    $decrypted_role = decrypt_id($_COOKIE['encrypted_user_role']);
-    $role = $decrypted_role ? strtolower(trim($decrypted_role)) : null;
-}
-if (isset($_COOKIE['encrypted_user_id'])) {
-    $userId = decrypt_id($_COOKIE['encrypted_user_id']);
-}
 
 // Redirect if user is not properly logged in
 if (!$role || !$userId) {
@@ -34,7 +45,7 @@ if (!$role || !$userId) {
     exit;
 }
 
-// Fetch user-specific data (school_id, std for students, or just school_id for teachers)
+// Fetch user-specific data
 if ($role == 'student') {
     $stmt = $conn->prepare("SELECT school_id, std FROM student WHERE id = ?");
     $stmt->bind_param("i", $userId);
@@ -58,7 +69,7 @@ if ($role == 'student') {
 
 $notices = [];
 
-// New query to join content and recipient tables
+// Query to join content and recipient tables
 $sql = "SELECT DISTINCT c.title, c.content, c.file_path, c.original_filename, c.created_at
         FROM school_notices_content c
         JOIN school_notice_recipients r ON c.id = r.notice_id
@@ -77,14 +88,13 @@ if ($role == 'teacher') {
     $params[] = $studentStd;
     $types .= "s";
 } else {
-    // If role is not matched, prevent fetching any notices
     $sql .= " AND 1=0";
 }
 
 $sql .= " ORDER BY c.created_at DESC";
 
 $stmt = $conn->prepare($sql);
-if ($stmt && !empty($params) && $params[0] !== null) { // Ensure schoolId is not null
+if ($stmt && !empty($params) && $params[0] !== null) {
     $stmt->bind_param($types, ...$params);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -99,7 +109,6 @@ $pageTitle = 'View School Notices';
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
@@ -107,12 +116,9 @@ $pageTitle = 'View School Notices';
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400i,600,700" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-
 </head>
-
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -172,7 +178,6 @@ $pageTitle = 'View School Notices';
             </div>
         </div>
     </div>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
@@ -180,5 +185,4 @@ $pageTitle = 'View School Notices';
     $conn->close();
     ?>
 </body>
-
 </html>

@@ -1,11 +1,10 @@
 <?php
-// Standard setup
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
-include_once "../../includes/email_functions.php"; // Include email functions
+include_once "../../includes/email_functions.php";
 
 $role = null;
 $userId = null;
@@ -18,13 +17,22 @@ if (isset($_COOKIE['encrypted_user_id'])) {
     $userId = decrypt_id($_COOKIE['encrypted_user_id']);
 }
 
-// Security Check: Ensure user is logged in and is a student
 if (!$role || $role !== 'student') {
     header("Location: ../../login.php");
     exit;
 }
 
-// --- HANDLE ASSIGNMENT SUBMISSION (POST REQUEST) ---
+// Mark this student's assignment notifications as read
+if ($userId) {
+    $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND type = 'new_assignment' AND is_read = 0");
+    if ($stmt_mark_read) {
+        $stmt_mark_read->bind_param("i", $userId);
+        $stmt_mark_read->execute();
+        $stmt_mark_read->close();
+    }
+}
+
+// Handle assignment submission
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_FILES['assignment_file']) && isset($_POST['assignment_id'])) {
     $assignment_id = $_POST['assignment_id'];
     $student_id = $userId;
@@ -42,8 +50,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_FILES['assignment_file']) &&
 
         if (move_uploaded_file($_FILES["assignment_file"]["tmp_name"], $serverFilePath)) {
             $filePathForDB = $uploadDirWeb . $storageFilename;
-
-            // Check if a submission already exists to decide whether to INSERT or UPDATE
             $check_stmt = $conn->prepare("SELECT id FROM assignment_submissions WHERE assignment_id = ? AND student_id = ?");
             $check_stmt->bind_param("ii", $assignment_id, $student_id);
             $check_stmt->execute();
@@ -51,46 +57,45 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_FILES['assignment_file']) &&
             $check_stmt->close();
 
             if ($existing_submission) {
-                // Update existing submission for re-uploads
                 $update_stmt = $conn->prepare("UPDATE assignment_submissions SET file_path = ?, original_filename = ?, status = 'Re-submitted', submitted_at = NOW(), evaluated_at = NULL WHERE id = ?");
                 $update_stmt->bind_param("ssi", $filePathForDB, $originalFilename, $existing_submission['id']);
                 $update_stmt->execute();
                 $update_stmt->close();
             } else {
-                // Insert new submission
                 $insert_stmt = $conn->prepare("INSERT INTO assignment_submissions (assignment_id, student_id, file_path, original_filename, status) VALUES (?, ?, ?, ?, 'Submitted')");
                 $insert_stmt->bind_param("iiss", $assignment_id, $student_id, $filePathForDB, $originalFilename);
                 $insert_stmt->execute();
                 $insert_stmt->close();
             }
 
-            // --- START: Email Notification to Teacher ---
-            $query = "SELECT s.student_name, a.title, t.email AS teacher_email, t.teacher_name
-                      FROM assignments a
-                      JOIN teacher t ON a.teacher_id = t.id
-                      JOIN student s ON s.id = ?
-                      WHERE a.id = ?";
-            $stmt_info = $conn->prepare($query);
-            $stmt_info->bind_param("ii", $student_id, $assignment_id);
-            $stmt_info->execute();
-            $info = $stmt_info->get_result()->fetch_assoc();
+            // --- ## START: CREATE NOTIFICATION FOR TEACHER ## ---
+            $stmt_teacher_id = $conn->prepare("SELECT teacher_id FROM assignments WHERE id = ?");
+            $stmt_teacher_id->bind_param("i", $assignment_id);
+            $stmt_teacher_id->execute();
+            $teacher_info = $stmt_teacher_id->get_result()->fetch_assoc();
+            $stmt_teacher_id->close();
 
-            if ($info) {
-                $student_name = $info['student_name'];
-                $assignment_title = $info['title'];
-                $teacher_email = $info['teacher_email'];
-                $teacher_name = $info['teacher_name'];
+            if ($teacher_info) {
+                $teacher_id = $teacher_info['teacher_id'];
+                $stmt_student_name = $conn->prepare("SELECT student_name FROM student WHERE id = ?");
+                $stmt_student_name->bind_param("i", $student_id);
+                $stmt_student_name->execute();
+                $student_info = $stmt_student_name->get_result()->fetch_assoc();
+                $stmt_student_name->close();
+                $student_name = $student_info['student_name'] ?? 'A student';
 
-                $email_subject = "Assignment Submitted: " . htmlspecialchars($assignment_title);
-                $email_body = "
-                    <p>Dear " . htmlspecialchars($teacher_name) . ",</p>
-                    <p>A student, <strong>" . htmlspecialchars($student_name) . "</strong>, has submitted their work for the assignment titled '<strong>" . htmlspecialchars($assignment_title) . "</strong>'.</p>
-                    <p>Please log in to the portal to review the submission.</p>
-                ";
-                send_email($teacher_email, $email_subject, $email_body);
+                $notification_message = htmlspecialchars($student_name) . " has submitted an assignment.";
+                $notification_link = "/BMC-SMS/pages/assignments/view_submissions.php?id=" . $assignment_id;
+                $notification_type = "assignment_submission";
+
+                $insert_notif_stmt = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");
+                if($insert_notif_stmt){
+                    $insert_notif_stmt->bind_param("isss", $teacher_id, $notification_message, $notification_link, $notification_type);
+                    $insert_notif_stmt->execute();
+                    $insert_notif_stmt->close();
+                }
             }
-            $stmt_info->close();
-            // --- END: Email Notification to Teacher ---
+            // --- ## END: CREATE NOTIFICATION FOR TEACHER ## ---
 
             header("Location: view_assignments.php?submission=success");
             exit();
@@ -100,7 +105,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_FILES['assignment_file']) &&
     exit();
 }
 
-// --- FETCH DATA FOR DISPLAY ---
+// ... the rest of the file remains the same ...
+// Fetch data for display
 $student_info_stmt = $conn->prepare("SELECT school_id, std FROM student WHERE id = ?");
 $student_info_stmt->bind_param("i", $userId);
 $student_info_stmt->execute();
@@ -109,12 +115,11 @@ $schoolId = $student_info['school_id'] ?? 0;
 $studentStd = $student_info['std'] ?? '';
 $student_info_stmt->close();
 
-// MODIFICATION: Select the new rejection_count column
 $sql = "
     SELECT 
         a.id, a.title, a.subject, a.description, a.due_date,
         a.file_path, a.original_filename, t.teacher_name,
-        ss.status as submission_status, ss.rejection_reason, ss.rejection_count
+        ss.status as submission_status, ss.rejection_reason
     FROM assignments a
     JOIN teacher t ON a.teacher_id = t.id
     LEFT JOIN assignment_submissions ss ON a.id = ss.assignment_id AND ss.student_id = ?
@@ -127,26 +132,17 @@ $stmt->close();
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <title>My Assignments</title>
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-
     <style>
-    .rejection-reason {
-        background-color: #fff3cd;
-        border-left: 4px solid #f6c23e;
-        padding: 10px;
-        margin-top: 10px;
-        border-radius: 0 4px 4px 0;
-    }
+    .rejection-reason { background-color: #fff3cd; border-left: 4px solid #f6c23e; padding: 10px; margin-top: 10px; border-radius: 0 4px 4px 0; }
     </style>
 </head>
-
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -159,8 +155,7 @@ $stmt->close();
                     <div class="alert alert-success">Assignment submitted successfully!</div>
                     <?php endif; ?>
                     <?php if (isset($_GET['submission']) && $_GET['submission'] == 'error'): ?>
-                    <div class="alert alert-danger">There was an error submitting your assignment. Please try again.
-                    </div>
+                    <div class="alert alert-danger">Error submitting assignment. Please try again.</div>
                     <?php endif; ?>
 
                     <div id="assignment-list">
@@ -171,46 +166,34 @@ $stmt->close();
                         <div class="card shadow mb-4">
                             <div class="card-body">
                                 <div class="d-flex w-100 justify-content-between">
-                                    <h5 class="mb-1 text-primary"><?php echo htmlspecialchars($assignment['title']); ?>
-                                    </h5>
+                                    <h5 class="mb-1 text-primary"><?php echo htmlspecialchars($assignment['title']); ?></h5>
                                     <?php
                                             $status_text = str_replace('-', ' ', $status);
                                             $badge_class = 'badge-warning'; // Pending
                                             if ($status == 'Accepted') $badge_class = 'badge-success';
                                             if ($status == 'Rejected') $badge_class = 'badge-danger';
                                             if ($status == 'Submitted' || $status == 'Re-submitted') $badge_class = 'badge-info';
-                                            
-                                            // MODIFICATION: Display the rejection count
-                                            if ($status == 'Rejected' && $assignment['rejection_count'] > 0) {
-                                                $times = $assignment['rejection_count'] == 1 ? 'time' : 'times';
-                                                $status_text .= " (" . $assignment['rejection_count'] . " $times)";
-                                            }
-                                            ?>
-                                    <span
-                                        class="badge <?php echo $badge_class; ?> p-2 align-self-start"><?php echo $status_text; ?></span>
+                                    ?>
+                                    <span class="badge <?php echo $badge_class; ?> p-2 align-self-start"><?php echo $status_text; ?></span>
                                 </div>
                                 <p class="mb-1"><?php echo nl2br(htmlspecialchars($assignment['description'])); ?></p>
-                                <small class="text-muted">Due:
-                                    <?php echo date("F j, Y", strtotime($assignment['due_date'])); ?></small>
+                                <small class="text-muted">Due: <?php echo date("F j, Y", strtotime($assignment['due_date'])); ?></small>
                                 
                                 <?php if ($status === 'Rejected' && !empty($assignment['rejection_reason'])): ?>
                                 <div class="rejection-reason mt-3">
                                     <h6 class="font-weight-bold text-warning">Feedback History:</h6>
-                                    <?php echo $assignment['rejection_reason']; // Echo directly as it contains pre-formatted HTML ?>
+                                    <?php echo $assignment['rejection_reason']; ?>
                                 </div>
                                 <?php endif; ?>
 
                                 <div class="float-right mt-2">
                                     <?php if ($assignment['file_path']): ?>
-                                    <a href="<?php echo htmlspecialchars($assignment['file_path']); ?>"
-                                        class="btn btn-sm btn-outline-secondary" download>
+                                    <a href="<?php echo htmlspecialchars($assignment['file_path']); ?>" class="btn btn-sm btn-outline-secondary" download>
                                         <i class="fas fa-download"></i> Download Attachment
                                     </a>
                                     <?php endif; ?>
                                     <?php if ($status === 'Pending' || $status === 'Rejected'): ?>
-                                    <button class="btn btn-sm btn-primary" data-toggle="modal"
-                                        data-target="#uploadModal" data-assignment-id="<?php echo $assignment['id']; ?>"
-                                        data-assignment-title="<?php echo htmlspecialchars($assignment['title']); ?>">
+                                    <button class="btn btn-sm btn-primary" data-toggle="modal" data-target="#uploadModal" data-assignment-id="<?php echo $assignment['id']; ?>" data-assignment-title="<?php echo htmlspecialchars($assignment['title']); ?>">
                                         <?php echo ($status === 'Rejected') ? '<i class="fas fa-upload"></i> Re-upload' : 'Submit'; ?>
                                     </button>
                                     <?php endif; ?>
@@ -219,9 +202,7 @@ $stmt->close();
                         </div>
                         <?php endforeach; ?>
                         <?php else: ?>
-                        <div class="text-center">
-                            <p>No assignments found.</p>
-                        </div>
+                        <div class="text-center"><p>No assignments found.</p></div>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -229,15 +210,13 @@ $stmt->close();
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
-
     <div class="modal fade" id="uploadModal" tabindex="-1" role="dialog">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <form action="view_assignments.php" method="POST" enctype="multipart/form-data">
                     <div class="modal-header">
                         <h5 class="modal-title" id="uploadModalLabel">Submit Assignment</h5>
-                        <button class="close" type="button" data-dismiss="modal"><span
-                                aria-hidden="true">×</span></button>
+                        <button class="close" type="button" data-dismiss="modal"><span aria-hidden="true">×</span></button>
                     </div>
                     <div class="modal-body">
                         <p>You are submitting for: <strong id="modalAssignmentTitle"></strong></p>
@@ -245,8 +224,7 @@ $stmt->close();
                         <div class="form-group">
                             <label for="submissionFile">Upload your file</label>
                             <div class="custom-file">
-                                <input type="file" class="custom-file-input" id="submissionFile" name="assignment_file"
-                                    required>
+                                <input type="file" class="custom-file-input" id="submissionFile" name="assignment_file" required>
                                 <label class="custom-file-label" for="submissionFile">Choose file...</label>
                             </div>
                         </div>
@@ -259,15 +237,12 @@ $stmt->close();
             </div>
         </div>
     </div>
-    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
-        aria-hidden="true">
+    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="exampleModalLabel">Ready to Leave?</h5>
-                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">×</span>
-                    </button>
+                    <button class="close" type="button" data-dismiss="modal"><span aria-hidden="true">×</span></button>
                 </div>
                 <div class="modal-body">Select "Logout" below if you are ready to end your current session.</div>
                 <div class="modal-footer">
@@ -277,26 +252,19 @@ $stmt->close();
             </div>
         </div>
     </div>
-
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
-
     <script>
     $(document).ready(function() {
-        // This script runs when the upload modal is about to be shown
         $('#uploadModal').on('show.bs.modal', function(event) {
-            var button = $(event.relatedTarget); // Button that triggered the modal
-            var assignmentId = button.data('assignment-id'); // Extract info from data-* attributes
+            var button = $(event.relatedTarget);
+            var assignmentId = button.data('assignment-id');
             var assignmentTitle = button.data('assignment-title');
-
-            // Update the modal's content.
             var modal = $(this);
             modal.find('#modalAssignmentTitle').text(assignmentTitle);
             modal.find('#modalAssignmentId').val(assignmentId);
         });
-
-        // This script updates the file input label to show the selected file name
         $('.custom-file-input').on('change', function() {
             var fileName = $(this).val().split('\\').pop();
             $(this).siblings('.custom-file-label').addClass("selected").html(fileName);
@@ -304,5 +272,4 @@ $stmt->close();
     });
     </script>
 </body>
-
 </html>

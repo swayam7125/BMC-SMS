@@ -14,6 +14,17 @@ if ($role !== 'student' || !$student_id) {
     exit;
 }
 
+// --- START: MARK RESULT NOTIFICATIONS AS READ ---
+if ($student_id) {
+    $stmt_mark_read = mysqli_prepare($conn, "UPDATE notifications SET is_read = 1 WHERE user_id = ? AND type = 'marks_uploaded' AND is_read = 0");
+    if ($stmt_mark_read) {
+        mysqli_stmt_bind_param($stmt_mark_read, "i", $student_id);
+        mysqli_stmt_execute($stmt_mark_read);
+        mysqli_stmt_close($stmt_mark_read);
+    }
+}
+// --- END: MARK RESULT NOTIFICATIONS AS READ ---
+
 $query_std = "SELECT std FROM student WHERE id = ?";
 $stmt_std = mysqli_prepare($conn, $query_std);
 mysqli_stmt_bind_param($stmt_std, "i", $student_id);
