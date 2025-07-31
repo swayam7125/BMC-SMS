@@ -70,7 +70,6 @@ if (!defined('BASE_WEB_PATH')) {
                     </div>
                 </div>
             </li>
-            <!-- NEW LINK ADDED HERE -->
             <li class="nav-item">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/bmc/principal_attendance.php">
                     <i class="fas fa-fw fa-user-clock"></i>
@@ -135,6 +134,12 @@ if (!defined('BASE_WEB_PATH')) {
                     </div>
                 </div>
             </li>
+            <li class="nav-item">
+    <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_my_attendance.php">
+        <i class="fas fa-fw fa-user-check"></i>
+        <span>My Attendance</span>
+    </a>
+</li>
             <li class="nav-item">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseNotices">
                     <i class="fas fa-fw fa-bullhorn"></i>

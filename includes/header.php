@@ -146,7 +146,7 @@ function getNotificationIcon($type) {
                 <div class="dropdown-header d-flex justify-content-between align-items-center">
                     <h6 class="font-weight-semibold mb-0">Alerts Center</h6>
                     <?php if ($unread_count > 0): ?>
-                    <a href="#" class="text-decoration-none small" id="clear-all-notifications-btn" style="color: #c5c9de;">Clear All</a>
+                    <a href="#" class="text-decoration-none" id="clear-all-notifications-btn" style="color: #ffffff; font-size: 0.85rem;">Clear All</a>
                     <?php endif; ?>
                 </div>
 
