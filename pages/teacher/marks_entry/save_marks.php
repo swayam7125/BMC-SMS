@@ -98,8 +98,7 @@ if (isset($_POST['marks']) && isset($_POST['class_std']) && isset($_POST['exam_t
         $response['message'] = 'Database error: ' . $e->getMessage();
     }
 
-    // --- START: Email Notification Logic ---
-    // Send emails only if the marks were successfully saved to the database.
+    // --- START: Notification and Email Logic ---
     if ($response['success']) {
         // 1. Get the teacher's name for the email body
         $teacher_name = 'Your Teacher'; // Fallback name
@@ -132,47 +131,62 @@ if (isset($_POST['marks']) && isset($_POST['class_std']) && isset($_POST['exam_t
             }
             mysqli_stmt_close($stmt_students);
 
-            // 3. Loop through each student and send them a personalized email
             $exam_type_formatted = ucwords(str_replace('_', ' ', $exam_type));
 
+            // Prepare notification statement once before the loop
+            $stmt_notification = mysqli_prepare($conn, "INSERT INTO notifications (user_id, message, link, type, created_at) VALUES (?, ?, ?, 'result_published', NOW())");
+
+            // 3. Loop through each student and send them a notification and personalized email
             foreach ($marks_data as $student_id => $subjects) {
-                if (isset($students_info[$student_id]) && !empty($students_info[$student_id]['email'])) {
+                if (isset($students_info[$student_id])) {
                     $student = $students_info[$student_id];
 
-                    $email_subject = "Marks Published for {$exam_type_formatted} - {$academic_year}";
+                    // --- Create and send the notification ---
+                    $notification_message = "Your results for the {$exam_type_formatted} have been published.";
+                    // --- This link now correctly points to the teacher's view_marks.php page ---
+                    $notification_link = "/pages/student/view_my_marks.php?exam_type={$exam_type}&academic_year={$academic_year}";
+                    mysqli_stmt_bind_param($stmt_notification, "iss", $student_id, $notification_message, $notification_link);
+                    mysqli_stmt_execute($stmt_notification);
 
-                    // Create an HTML table for the marks
-                    $marks_table = '<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 80%; margin-top: 15px;">
-                                        <thead style="background-color: #f2f2f2;">
-                                            <tr>
-                                                <th>Subject</th>
-                                                <th>Marks Obtained</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>';
-                    foreach ($subjects as $subject_name => $marks) {
-                        if (is_numeric($marks)) { // Only include subjects where marks were entered
-                            $marks_table .= '<tr><td>' . htmlspecialchars($subject_name) . '</td><td>' . htmlspecialchars($marks) . '</td></tr>';
+                    // --- Existing Email Logic ---
+                    if (!empty($student['email'])) {
+                        $email_subject = "Marks Published for {$exam_type_formatted} - {$academic_year}";
+
+                        // Create an HTML table for the marks
+                        $marks_table = '<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 80%; margin-top: 15px;">
+                                            <thead style="background-color: #f2f2f2;">
+                                                <tr>
+                                                    <th>Subject</th>
+                                                    <th>Marks Obtained</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>';
+                        foreach ($subjects as $subject_name => $marks) {
+                            if (is_numeric($marks)) { // Only include subjects where marks were entered
+                                $marks_table .= '<tr><td>' . htmlspecialchars($subject_name) . '</td><td>' . htmlspecialchars($marks) . '</td></tr>';
+                            }
                         }
+                        $marks_table .= '</tbody></table>';
+
+                        $email_body = "
+                            <p>Dear " . htmlspecialchars($student['name']) . ",</p>
+                            <p>Your marks for the <strong>{$exam_type_formatted}</strong> of the academic year <strong>{$academic_year}</strong> have been published by your teacher, " . htmlspecialchars($teacher_name) . ".</p>
+                            <p>Here are your results:</p>
+                            {$marks_table}
+                            <p>You can view your full report card by logging into the school portal.</p>
+                            <p>Best regards,<br>School Administration</p>
+                        ";
+
+                        // Call the central email function
+                        send_email($student['email'], $email_subject, $email_body);
                     }
-                    $marks_table .= '</tbody></table>';
-
-                    $email_body = "
-                        <p>Dear " . htmlspecialchars($student['name']) . ",</p>
-                        <p>Your marks for the <strong>{$exam_type_formatted}</strong> of the academic year <strong>{$academic_year}</strong> have been published by your teacher, " . htmlspecialchars($teacher_name) . ".</p>
-                        <p>Here are your results:</p>
-                        {$marks_table}
-                        <p>You can view your full report card by logging into the school portal.</p>
-                        <p>Best regards,<br>School Administration</p>
-                    ";
-
-                    // Call the central email function
-                    send_email($student['email'], $email_subject, $email_body);
                 }
             }
+            // Close the notification statement
+            mysqli_stmt_close($stmt_notification);
         }
     }
-    // --- END: Email Notification Logic ---
+    // --- END: Notification and Email Logic ---
 
 } else {
     $response['message'] = 'No marks data received or required fields are missing.';

@@ -82,6 +82,9 @@ function getNotificationIcon($type) {
             return 'fas fa-table text-white';
         case 'new_notes': // New notes
             return 'fas fa-sticky-note text-white';
+        // --- NEW: Added case for result notifications ---
+        case 'result_published':
+            return 'fas fa-poll-h text-white';
         default:
             return 'fas fa-bell text-white';
     }
@@ -165,8 +168,13 @@ function getNotificationIcon($type) {
                     </a>
                     <?php else: ?>
                     <?php foreach ($notifications as $notification): ?>
-                    <a class="dropdown-item d-flex align-items-center"
-                        href="<?php echo htmlspecialchars(BASE_WEB_PATH . ltrim($notification['link'], '/')) . '?notif_id=' . $notification['id']; ?>">
+                    <?php
+                        // --- FIX: Correctly build the notification link ---
+                        $base_link = htmlspecialchars(BASE_WEB_PATH . ltrim($notification['link'], '/'));
+                        $separator = (strpos($base_link, '?') === false) ? '?' : '&';
+                        $final_link = $base_link . $separator . 'notif_id=' . $notification['id'];
+                    ?>
+                    <a class="dropdown-item d-flex align-items-center" href="<?php echo $final_link; ?>">
                         <div class="mr-3">
                             <div class="icon-circle bg-primary">
                                 <i class="<?php echo getNotificationIcon($notification['type']); ?>"></i>
@@ -232,19 +240,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const clearAllBtn = document.getElementById('clear-all-notifications-btn');
     const confirmClearBtn = document.getElementById('confirmClearBtn');
 
-    // --- Step 1: Show the modal ---
-    // When the main 'Clear All' link is clicked, show our custom modal
-    // instead of the old confirm() dialog.
     if (clearAllBtn) {
         clearAllBtn.addEventListener('click', function(e) {
             e.preventDefault();
-            // Use jQuery to launch the Bootstrap modal
             $('#clearNotificationsModal').modal('show');
         });
     }
 
-    // --- Step 2: Handle the confirmation click ---
-    // When the 'Clear' button *inside* the modal is clicked, run the fetch logic.
     if (confirmClearBtn) {
         confirmClearBtn.addEventListener('click', function(e) {
             e.preventDefault();
@@ -255,10 +257,8 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    // On success, hide the modal first
                     $('#clearNotificationsModal').modal('hide');
 
-                    // Then, update the UI as before
                     const counter = document.querySelector('#alertsDropdown .badge-counter');
                     if (counter) {
                         counter.style.display = 'none';
