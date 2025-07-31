@@ -4,11 +4,11 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 include_once "encryption.php";
-include_once "./includes/connect.php"; // Include your database connection file
+include_once "./includes/connect.php"; // This path is likely correct for a PHP include
 
 $role = null;
 $userId = null;
-$userEmail = ''; // Initialize userEmail for consistent fetching (still useful for general info)
+$userEmail = ''; // Initialize userEmail for consistent fetching
 $schoolId = null; // Initialize schoolId
 
 // Retrieve and decrypt user role and ID from cookies
@@ -124,7 +124,7 @@ switch ($role) {
                     }
                     $studentStmt->close();
                 }
-                
+
                 // Get total students who have left from this school
                 $studentLeftStmt = $conn->prepare("SELECT COUNT(*) AS total FROM deleted_students WHERE school_id = ?");
                 if ($studentLeftStmt) {
@@ -182,7 +182,7 @@ switch ($role) {
                     }
                     $leavesStmt->close();
                 }
-                
+
                 // **CORRECTED LOGIC**: Get the teacher's own overall present days (counting each day once)
                 $presentStmt = $conn->prepare("SELECT COUNT(DISTINCT attendance_date) AS total FROM teacher_attendance WHERE teacher_id = ? AND status = 'Present'");
                 if ($presentStmt) {
@@ -202,7 +202,7 @@ switch ($role) {
 
     case 'student':
         // Student sees data related to their school and personal attendance
-        
+
         // Get total unique days the student was present
         $presentStmt = $conn->prepare("SELECT COUNT(DISTINCT attendance_date) AS total FROM attendance WHERE student_id = ? AND status = 'Present'");
         if ($presentStmt) {
@@ -228,7 +228,7 @@ switch ($role) {
             }
             $absentStmt->close();
         }
-        
+
         // NOTE: Total Leaves is set to 0 as there is no student leave application system.
         $totalLeaves = 0;
         break;
@@ -258,18 +258,15 @@ switch ($role) {
     }
     ?>
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-    <link href="./assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <!-- Corrected Asset Paths -->
+    <link href="/BMC-SMS/assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link href="/BMC-SMS/assets/css/sb-admin-2.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/BMC-SMS/assets/css/calender.css">
+    <link rel="stylesheet" href="/BMC-SMS/assets/css/notification_window.css">
+    <link rel="stylesheet" href="/BMC-SMS/assets/css/sidebar.css">
+    <link rel="stylesheet" href="/BMC-SMS/assets/css/scrollbar_hidden.css">
 
-    <link href="./assets/css/sb-admin-2.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="./assets/css/calender.css">
-
-    <link rel="stylesheet" href="./assets/css/notification_window.css">
-    <link rel="stylesheet" href="../../assets/css/sidebar.css">
-    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-    
 </head>
 
 <body id="page-top">
@@ -421,7 +418,7 @@ switch ($role) {
                                             </div>
                                         </div>
                                     </div>
-                        </a>
+                                </a>
                             </div>
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <a class="card-link" href="./pages/student/student_list.php">
@@ -529,7 +526,7 @@ switch ($role) {
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800">
                                                         <?php
                                                         // Fetch student's standard
-                                                        $student_std = '0';
+                                                        $student_std = 'N/A';
                                                         $stmt_std = $conn->prepare("SELECT std FROM student WHERE id = ?");
                                                         if ($stmt_std) {
                                                             $stmt_std->bind_param("i", $userId);
@@ -610,50 +607,30 @@ switch ($role) {
                         <?php endif; ?>
                     </div>
 
+                    <!-- Unified Chart Area -->
                     <div class="row">
                         <div class="col-xl-8 col-lg-7">
-                            <div class="card shadow mb-4">
-                                <div
-                                    class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                                    <h6 class="m-0 font-weight-bold text-primary">Growth Overview</h6>
+                            <div class="card shadow mb-4 h-100">
+                                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                                    <h6 id="chart-title" class="m-0 font-weight-bold text-primary">Overview</h6>
                                 </div>
                                 <div class="card-body">
                                     <div class="chart-area">
-                                        <canvas id="myAreaChart"></canvas>
+                                        <!-- Pass PHP variables to JS via data attributes -->
+                                        <canvas id="myAreaChart"
+                                            data-role="<?php echo htmlspecialchars($role); ?>"
+                                            data-user-id="<?php echo htmlspecialchars($userId); ?>"
+                                            data-base-url="/BMC-SMS/">
+                                        </canvas>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
+                        <!-- Calendar Area -->
                         <div class="col-xl-4 col-lg-5">
-                            <div class="card shadow mb-4">
-                                <div
-                                    class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                                    <h6 class="m-0 font-weight-bold text-primary">Donut Chart</h6>
-                                </div>
-                                <div class="card-body">
-                                    <div class="chart-pie pt-4 pb-2">
-                                        <canvas id="myPieChart"></canvas>
-                                    </div>
-                                    <div class="mt-4 text-center small">
-                                        <span class="mr-2">
-                                            <i class="fas fa-circle text-primary"></i> Direct
-                                        </span>
-                                        <span class="mr-2">
-                                            <i class="fas fa-circle text-success"></i> Social
-                                        </span>
-                                        <span class="mr-2">
-                                            <i class="fas fa-circle text-info"></i> Referral
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-xl-6 col-lg-7 mb-4">
-                            <div class="card shadow h-100">
-                                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                            <div class="card shadow mb-4 h-100">
+                                <div class="card-header py-3">
                                     <h6 class="m-0 font-weight-bold text-primary">Calendar</h6>
                                 </div>
                                 <div class="card-body">
@@ -672,43 +649,7 @@ switch ($role) {
                                             <div>Fri</div>
                                             <div>Sat</div>
                                         </div>
-                                        <div class="calendar-grid" id="calendar-grid">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-xl-6 col-lg-5 mb-4">
-                            <div class="card shadow h-100 overflow-y-auto">
-                                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                                    <h6 class="m-0 font-weight-bold text-primary">Notifications</h6>
-                                </div>
-                                <div class="card-body p-0">
-                                    <div class="list-group list-group-flush">
-                                        <div class="notification-item">
-                                            <i class="fas fa-user-plus notification-icon text-primary"></i>
-                                            <div class="notification-content">
-                                                <div class="notification-title">New student enrolled</div>
-                                                <p class="mb-0">A new student, John Doe, has been enrolled in Class 10.</p>
-                                                <div class="notification-time">3 days ago</div>
-                                            </div>
-                                        </div>
-                                        <div class="notification-item">
-                                            <i class="fas fa-edit notification-icon text-success"></i>
-                                            <div class="notification-content">
-                                                <div class="notification-title">Teacher profile updated</div>
-                                                <p class="mb-0">Jane Smith's profile has been updated.</p>
-                                                <div class="notification-time">1 week ago</div>
-                                            </div>
-                                        </div>
-                                        <div class="notification-item">
-                                            <i class="fas fa-calendar-alt notification-icon text-warning"></i>
-                                            <div class="notification-content">
-                                                <div class="notification-title">School event reminder</div>
-                                                <p class="mb-0">Annual sports day is scheduled for next month.</p>
-                                                <div class="notification-time">2 weeks ago</div>
-                                            </div>
-                                        </div>
+                                        <div class="calendar-grid" id="calendar-grid"></div>
                                     </div>
                                 </div>
                             </div>
@@ -744,21 +685,14 @@ switch ($role) {
         </div>
     </div>
 
-    <script src="./assets/vendor/jquery/jquery.min.js"></script>
-    <script src="./assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-
-    <script src="./assets/vendor/jquery-easing/jquery.easing.min.js"></script>
-
-    <script src="./assets/js/sb-admin-2.min.js"></script>
-
-    <script src="./assets/vendor/chart.js/Chart.min.js"></script>
-
-    <?php if ($role == 'bmc' || $role == 'schooladmin' || $role == 'teacher' || $role == 'student'): ?>
-        <script src="./assets/js/demo/chart-area-demo.js"></script>
-        <script src="./assets/js/demo/chart-pie-demo.js"></script>
-    <?php endif; ?>
-
-    <script src="./assets/js/calender.js"></script>
+    <!-- Corrected Script Paths -->
+    <script src="/BMC-SMS/assets/vendor/jquery/jquery.min.js"></script>
+    <script src="/BMC-SMS/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/BMC-SMS/assets/vendor/jquery-easing/jquery.easing.min.js"></script>
+    <script src="/BMC-SMS/assets/js/sb-admin-2.min.js"></script>
+    <script src="/BMC-SMS/assets/vendor/chart.js/Chart.min.js"></script>
+    <script src="/BMC-SMS/assets/js/calender.js"></script>
+    <script src="/BMC-SMS/assets/js/dynamic_chart.js"></script>
 
 </body>
 
