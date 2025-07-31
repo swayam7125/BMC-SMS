@@ -356,11 +356,15 @@ INSERT INTO `notifications` (`id`, `user_id`, `message`, `link`, `is_read`, `cre
 (6, 3, 'New notes posted: Hello test notification...', '/pages/student/view_notes.php', 1, '2025-07-28 10:54:36', 'new_notes'),
 (7, 10, 'New leave request from meet parekh', '/pages/principal/principal_leave_requests.php', 1, '2025-07-29 09:44:56', 'leave_request'),
 (8, 6, 'Your leave application has been Rejected.', '/pages/teacher/teacher_leave_history.php', 1, '2025-07-29 09:45:50', 'leave_status'),
+(8, 6, 'Your leave application has been Rejected.', '/pages/teacher/teacher_leave_history.php', 1, '2025-07-29 09:45:50', 'leave_status'),
 (9, 10, 'New leave request from meet parekh', '/pages/principal/principal_leave_requests.php', 1, '2025-07-29 09:48:16', 'leave_request'),
 (10, 6, 'Your leave application has been Approved.', '/pages/teacher/teacher_leave_history.php', 1, '2025-07-29 09:48:41', 'leave_status'),
 (11, 10, 'New leave request from meet parekh', '/pages/principal/principal_leave_requests.php', 1, '2025-07-29 11:03:55', 'leave_request'),
 (12, 10, 'New leave request from meet parekh', '/pages/principal/principal_leave_requests.php', 1, '2025-07-29 11:08:03', 'leave_request'),
 (13, 10, 'New leave request from meet parekh', '/pages/principal/principal_leave_requests.php', 1, '2025-07-29 11:08:42', 'leave_request'),
+(14, 6, 'Your leave application has been Approved.', '/pages/teacher/teacher_leave_history.php', 1, '2025-07-29 11:09:26', 'leave_status'),
+(15, 6, 'Your leave application has been Rejected.', '/pages/teacher/teacher_leave_history.php', 1, '2025-07-29 11:09:32', 'leave_status'),
+(16, 6, 'Your leave application has been Approved.', '/pages/teacher/teacher_leave_history.php', 1, '2025-07-29 11:09:33', 'leave_status'),
 (14, 6, 'Your leave application has been Approved.', '/pages/teacher/teacher_leave_history.php', 1, '2025-07-29 11:09:26', 'leave_status'),
 (15, 6, 'Your leave application has been Rejected.', '/pages/teacher/teacher_leave_history.php', 1, '2025-07-29 11:09:32', 'leave_status'),
 (16, 6, 'Your leave application has been Approved.', '/pages/teacher/teacher_leave_history.php', 1, '2025-07-29 11:09:33', 'leave_status'),
@@ -374,7 +378,7 @@ INSERT INTO `notifications` (`id`, `user_id`, `message`, `link`, `is_read`, `cre
 (24, 15, 'New notice from Principal: sending to both teacher and students...', '/pages/student/view_notice.php', 0, '2025-07-29 11:29:44', 'school_notice'),
 (25, 10, 'New leave request from meet parekh', '/pages/principal/principal_leave_requests.php', 1, '2025-07-29 11:31:47', 'leave_request'),
 (26, 6, 'Your leave application has been Rejected.', '/pages/teacher/teacher_leave_management.php', 1, '2025-07-29 11:32:47', 'leave_status'),
-(27, 3, 'New Assignment: test...', '/pages/assignments/view_assignments.php', 0, '2025-07-29 12:19:46', 'new_assignment'),
+(27, 3, 'New Assignment: test...', '/pages/assignments/view_assignments.php', 1, '2025-07-29 12:19:46', 'new_assignment'),
 (28, 10, 'New leave request from meet parekh', '/pages/principal/principal_leave_requests.php', 1, '2025-07-29 12:35:04', 'leave_request'),
 (29, 3, 'New Assignment: hyy...', '/pages/assignments/view_assignments.php', 0, '2025-07-29 12:43:57', 'new_assignment'),
 (30, 6, 'Your leave application has been Approved.', '/pages/teacher/teacher_leave_management.php', 1, '2025-07-30 08:11:43', 'leave_status');
@@ -434,6 +438,8 @@ CREATE TABLE `principal_attendance` (
 INSERT INTO `principal_attendance` (`id`, `principal_id`, `school_id`, `attendance_date`, `status`, `login_latitude`, `login_longitude`, `login_time`, `updated_at`) VALUES
 (1, 10, 4, '2025-07-30', 'Absent', 21.21014980, 72.77075840, '23:47:25', '2025-07-30 18:17:25'),
 (12, 10, 4, '2025-07-31', 'Absent', 21.18435710, 72.79023360, '13:51:12', '2025-07-31 08:21:12');
+(1, 10, 4, '2025-07-30', 'Absent', 21.21014980, 72.77075840, '23:47:25', '2025-07-30 18:17:25'),
+(12, 10, 4, '2025-07-31', 'Absent', 21.18435710, 72.79023360, '13:51:12', '2025-07-31 08:21:12');
 
 -- --------------------------------------------------------
 
@@ -482,15 +488,16 @@ CREATE TABLE `school` (
   `school_category` set('Pre-Primary','Primary','Upper Primary','Secondary','Higher Secondary') DEFAULT NULL,
   `address` text DEFAULT NULL,
   `latitude` decimal(10,8) DEFAULT NULL,
-  `longitude` decimal(11,8) DEFAULT NULL
+  `longitude` decimal(11,8) DEFAULT NULL,
+  `passing_percentage` decimal(5,2) NOT NULL DEFAULT 33.00
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `school`
 --
 
-INSERT INTO `school` (`id`, `school_logo`, `school_name`, `email`, `phone`, `school_opening`, `school_type`, `education_board`, `school_medium`, `school_category`, `address`, `latitude`, `longitude`) VALUES
-(4, NULL, 'sanskar bharti vidyalay', 'sbv@gmail.com', '8526548525', '2025-07-06', 'Private', 'CBSE', 'Hindi', '', 'adajan', 21.21060270, 72.76795460);
+INSERT INTO `school` (`id`, `school_logo`, `school_name`, `email`, `phone`, `school_opening`, `school_type`, `education_board`, `school_medium`, `school_category`, `address`, `latitude`, `longitude`, `passing_percentage`) VALUES
+(4, NULL, 'sanskar bharti vidyalay', 'sbv@gmail.com', '8526548525', '2025-07-06', 'Private', 'CBSE', 'Hindi', '', 'adajan', 21.21060270, 72.76795460, 33.00);
 
 -- --------------------------------------------------------
 
@@ -756,13 +763,13 @@ INSERT INTO `student_marks` (`mark_id`, `student_id`, `school_id`, `academic_yea
 (89, 3, 4, '2025-2026', '11', '', 'term_1', 'Sanskrit', 70.00, 100.00, '2025-07-24 13:08:59', 6),
 (90, 3, 4, '2025-2026', '11', '', 'term_1', 'Science', 80.00, 100.00, '2025-07-24 13:08:59', 6),
 (91, 3, 4, '2025-2026', '11', '', 'term_1', 'Social Studies', 80.00, 100.00, '2025-07-24 13:08:59', 6),
-(92, 3, 4, '2025-2026', '11', '', 'final_exam', 'Computer Science', 12.00, 100.00, '2025-07-25 11:01:54', 6),
-(93, 3, 4, '2025-2026', '11', '', 'final_exam', 'English', 65.00, 100.00, '2025-07-25 11:01:54', 6),
-(94, 3, 4, '2025-2026', '11', '', 'final_exam', 'Mathematics', 23.00, 100.00, '2025-07-25 11:01:54', 6),
-(95, 3, 4, '2025-2026', '11', '', 'final_exam', 'Physical Education', 12.00, 100.00, '2025-07-25 11:01:54', 6),
-(96, 3, 4, '2025-2026', '11', '', 'final_exam', 'Sanskrit', 34.00, 100.00, '2025-07-25 11:01:54', 6),
-(97, 3, 4, '2025-2026', '11', '', 'final_exam', 'Science', 32.00, 100.00, '2025-07-25 11:01:54', 6),
-(98, 3, 4, '2025-2026', '11', '', 'final_exam', 'Social Studies', 31.00, 100.00, '2025-07-25 11:01:54', 6);
+(92, 3, 4, '2025-2026', '11', '', 'final_exam', 'Computer Science', 80.00, 100.00, '2025-07-25 11:01:54', 6),
+(93, 3, 4, '2025-2026', '11', '', 'final_exam', 'English', 70.00, 100.00, '2025-07-25 11:01:54', 6),
+(94, 3, 4, '2025-2026', '11', '', 'final_exam', 'Mathematics', 78.00, 100.00, '2025-07-25 11:01:54', 6),
+(95, 3, 4, '2025-2026', '11', '', 'final_exam', 'Physical Education', 70.00, 100.00, '2025-07-25 11:01:54', 6),
+(96, 3, 4, '2025-2026', '11', '', 'final_exam', 'Sanskrit', 80.00, 100.00, '2025-07-25 11:01:54', 6),
+(97, 3, 4, '2025-2026', '11', '', 'final_exam', 'Science', 80.00, 100.00, '2025-07-25 11:01:54', 6),
+(98, 3, 4, '2025-2026', '11', '', 'final_exam', 'Social Studies', 70.00, 100.00, '2025-07-25 11:01:54', 6);
 
 -- --------------------------------------------------------
 
@@ -1209,12 +1216,13 @@ ALTER TABLE `notice`
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
 
 --
 -- AUTO_INCREMENT for table `principal_attendance`
 --
 ALTER TABLE `principal_attendance`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
@@ -1257,7 +1265,7 @@ ALTER TABLE `standard_subjects`
 -- AUTO_INCREMENT for table `student_marks`
 --
 ALTER TABLE `student_marks`
-  MODIFY `mark_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=99;
+  MODIFY `mark_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=127;
 
 --
 -- AUTO_INCREMENT for table `subjects`

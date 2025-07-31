@@ -88,6 +88,9 @@ function getNotificationIcon($type) {
             return 'fas fa-calendar-alt text-white';
         case 'new_notes':
             return 'fas fa-sticky-note text-white';
+        // --- NEW: Added case for result notifications ---
+        case 'result_published':
+            return 'fas fa-poll-h text-white';
         default:
             return 'fas fa-bell text-white';
     }
@@ -151,7 +154,7 @@ function getNotificationIcon($type) {
                 <div class="dropdown-header d-flex justify-content-between align-items-center">
                     <h6 class="font-weight-semibold mb-0">Alerts Center</h6>
                     <?php if ($unread_count > 0): ?>
-                    <a href="#" class="text-decoration-none small" id="clear-all-notifications-btn" style="color: #c5c9de;">Clear All</a>
+                    <a href="#" class="text-decoration-none" id="clear-all-notifications-btn" style="color: #ffffff; font-size: 0.85rem;">Clear All</a>
                     <?php endif; ?>
                 </div>
 
@@ -170,8 +173,13 @@ function getNotificationIcon($type) {
                     </a>
                     <?php else: ?>
                     <?php foreach ($notifications as $notification): ?>
-                    <a class="dropdown-item d-flex align-items-center"
-                        href="<?php echo htmlspecialchars(BASE_WEB_PATH . ltrim($notification['link'], '/')) . '?notif_id=' . $notification['id']; ?>">
+                    <?php
+                        // --- FIX: Correctly build the notification link ---
+                        $base_link = htmlspecialchars(BASE_WEB_PATH . ltrim($notification['link'], '/'));
+                        $separator = (strpos($base_link, '?') === false) ? '?' : '&';
+                        $final_link = $base_link . $separator . 'notif_id=' . $notification['id'];
+                    ?>
+                    <a class="dropdown-item d-flex align-items-center" href="<?php echo $final_link; ?>">
                         <div class="mr-3">
                             <div class="icon-circle bg-primary">
                                 <i class="<?php echo getNotificationIcon($notification['type']); ?>"></i>
@@ -255,6 +263,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.status === 'success') {
                     $('#clearNotificationsModal').modal('hide');
+
                     const counter = document.querySelector('#alertsDropdown .badge-counter');
                     if (counter) counter.style.display = 'none';
                     

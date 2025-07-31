@@ -39,20 +39,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         $error_message = "Your account has been suspended. Please contact the administrator.";
                     } else {
                         
-                        // --- START: GEOLOCATION ATTENDANCE LOGIC FOR PRINCIPAL ---
+                        // --- START: GEOLOCATION AND TIME-BASED ATTENDANCE LOGIC FOR PRINCIPAL ---
                         if ($user['role'] === 'schooladmin') {
                             $principal_id = $user['id'];
-                            $attendance_status = 'Absent'; // Default status is 'Absent'
+                            $attendance_status = 'Absent'; // Default status
 
-                            // 1. Get the principal's school_id
-                            $school_id_query = mysqli_prepare($conn, "SELECT school_id FROM principal WHERE id = ?");
-                            mysqli_stmt_bind_param($school_id_query, "i", $principal_id);
-                            mysqli_stmt_execute($school_id_query);
-                            $school_id_result = mysqli_stmt_get_result($school_id_query);
+                            // 1. Get the principal's school_id and batch
+                            $details_query = mysqli_prepare($conn, "SELECT school_id, batch FROM principal WHERE id = ?");
+                            mysqli_stmt_bind_param($details_query, "i", $principal_id);
+                            mysqli_stmt_execute($details_query);
+                            $details_result = mysqli_stmt_get_result($details_query);
                             
-                            if($school_id_result && mysqli_num_rows($school_id_result) > 0) {
-                                $principal_details = mysqli_fetch_assoc($school_id_result);
+                            if($details_result && mysqli_num_rows($details_result) > 0) {
+                                $principal_details = mysqli_fetch_assoc($details_result);
                                 $school_id = $principal_details['school_id'];
+                                $principal_batch = $principal_details['batch']; // e.g., 'Morning' or 'Evening'
 
                                 // 2. Get the school's official coordinates
                                 $school_loc_query = mysqli_prepare($conn, "SELECT latitude, longitude FROM school WHERE id = ?");
@@ -61,26 +62,41 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 $school_loc_result = mysqli_stmt_get_result($school_loc_query);
                                 $school_location = mysqli_fetch_assoc($school_loc_result);
 
-                                // 3. If we have all coordinates, check the distance
+                                // 3. Perform location and time checks
+                                $location_ok = false;
+                                $time_ok = false;
+
+                                // Location Check
                                 if ($user_lat && $user_lon && !empty($school_location['latitude']) && !empty($school_location['longitude'])) {
                                     $distance = haversine_distance($user_lat, $user_lon, $school_location['latitude'], $school_location['longitude']);
-                                    $tolerance_radius = 300; // Allow a 300-meter radius for accuracy
+                                    $tolerance_radius = 300; // Allow a 300-meter radius
 
                                     if ($distance <= $tolerance_radius) {
-                                        $attendance_status = 'Present';
+                                        $location_ok = true;
                                     }
+                                }
+
+                                // Time Check
+                                $current_hour = (int)date('H'); // Get current hour in 24-hour format
+                                if ($principal_batch === 'Morning' && $current_hour < 10) { // Must log in before 10:00 AM
+                                    $time_ok = true;
+                                } elseif ($principal_batch === 'Evening' && $current_hour < 14) { // Must log in before 2:00 PM (14:00)
+                                    $time_ok = true;
+                                }
+
+                                // Final attendance status depends on both checks passing
+                                if ($location_ok && $time_ok) {
+                                    $attendance_status = 'Present';
                                 }
 
                                 // 4. Insert or update the attendance record
                                 $current_date = date("Y-m-d");
 
-                                // The $current_time variable is removed. We now use the database's clock.
                                 $att_stmt = mysqli_prepare($conn,
                                     "INSERT INTO principal_attendance (principal_id, school_id, attendance_date, status, login_latitude, login_longitude, login_time)
                                     VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIME())
                                     ON DUPLICATE KEY UPDATE status = VALUES(status), login_latitude = VALUES(login_latitude), login_longitude = VALUES(login_longitude), login_time = CURRENT_TIME()");
 
-                                // The type string "s" for time and the $current_time variable are removed from this line.
                                 mysqli_stmt_bind_param($att_stmt, "iisssd", $principal_id, $school_id, $current_date, $attendance_status, $user_lat, $user_lon);
                                 mysqli_stmt_execute($att_stmt);
                             }

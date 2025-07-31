@@ -98,11 +98,10 @@ if (isset($_POST['marks']) && isset($_POST['class_std']) && isset($_POST['exam_t
         $response['message'] = 'Database error: ' . $e->getMessage();
     }
 
-    // --- START: Email Notification Logic ---
-    // Send emails only if the marks were successfully saved to the database.
+    // --- START: Notification and Email Logic ---
     if ($response['success']) {
-        // 1. Get the teacher's name for the email body
-        $teacher_name = 'Your Teacher'; // Fallback name
+        // Get teacher's name
+        $teacher_name = 'Your Teacher';
         $stmt_teacher = mysqli_prepare($conn, "SELECT teacher_name FROM teacher WHERE id = ?");
         mysqli_stmt_bind_param($stmt_teacher, "i", $teacher_id);
         mysqli_stmt_execute($stmt_teacher);
@@ -112,67 +111,92 @@ if (isset($_POST['marks']) && isset($_POST['class_std']) && isset($_POST['exam_t
         }
         mysqli_stmt_close($stmt_teacher);
 
-        // 2. Get details (name and email) for all students whose marks were updated
         $student_ids = array_keys($marks_data);
         if (!empty($student_ids)) {
+            // Get student info (name, email)
             $placeholders = implode(',', array_fill(0, count($student_ids), '?'));
             $sql_students = "SELECT id, student_name, email FROM student WHERE id IN ($placeholders)";
             $stmt_students = mysqli_prepare($conn, $sql_students);
-            $types = str_repeat('i', count($student_ids));
-            mysqli_stmt_bind_param($stmt_students, $types, ...$student_ids);
+            mysqli_stmt_bind_param($stmt_students, str_repeat('i', count($student_ids)), ...$student_ids);
             mysqli_stmt_execute($stmt_students);
             $result_students = mysqli_stmt_get_result($stmt_students);
-
             $students_info = [];
             while ($student_row = mysqli_fetch_assoc($result_students)) {
-                $students_info[$student_row['id']] = [
-                    'name' => $student_row['student_name'],
-                    'email' => $student_row['email']
-                ];
+                $students_info[$student_row['id']] = ['name' => $student_row['student_name'], 'email' => $student_row['email']];
             }
             mysqli_stmt_close($stmt_students);
 
-            // 3. Loop through each student and send them a personalized email
-            $exam_type_formatted = ucwords(str_replace('_', ' ', $exam_type));
-
-            foreach ($marks_data as $student_id => $subjects) {
-                if (isset($students_info[$student_id]) && !empty($students_info[$student_id]['email'])) {
-                    $student = $students_info[$student_id];
-
-                    $email_subject = "Marks Published for {$exam_type_formatted} - {$academic_year}";
-
-                    // Create an HTML table for the marks
-                    $marks_table = '<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 80%; margin-top: 15px;">
-                                        <thead style="background-color: #f2f2f2;">
-                                            <tr>
-                                                <th>Subject</th>
-                                                <th>Marks Obtained</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>';
-                    foreach ($subjects as $subject_name => $marks) {
-                        if (is_numeric($marks)) { // Only include subjects where marks were entered
-                            $marks_table .= '<tr><td>' . htmlspecialchars($subject_name) . '</td><td>' . htmlspecialchars($marks) . '</td></tr>';
-                        }
-                    }
-                    $marks_table .= '</tbody></table>';
-
-                    $email_body = "
-                        <p>Dear " . htmlspecialchars($student['name']) . ",</p>
-                        <p>Your marks for the <strong>{$exam_type_formatted}</strong> of the academic year <strong>{$academic_year}</strong> have been published by your teacher, " . htmlspecialchars($teacher_name) . ".</p>
-                        <p>Here are your results:</p>
-                        {$marks_table}
-                        <p>You can view your full report card by logging into the school portal.</p>
-                        <p>Best regards,<br>School Administration</p>
-                    ";
-
-                    // Call the central email function
-                    send_email($student['email'], $email_subject, $email_body);
+            // --- NEW: Calculate percentage for each student ---
+            $student_percentages = [];
+            $sql_agg = "SELECT student_id, SUM(marks_obtained) AS total_obtained, SUM(total_marks) AS total_possible
+                        FROM student_marks
+                        WHERE exam_type = ? AND academic_year = ? AND student_id IN ($placeholders)
+                        GROUP BY student_id";
+            $stmt_agg = mysqli_prepare($conn, $sql_agg);
+            mysqli_stmt_bind_param($stmt_agg, 'ss' . str_repeat('i', count($student_ids)), $exam_type, $academic_year, ...$student_ids);
+            mysqli_stmt_execute($stmt_agg);
+            $result_agg = mysqli_stmt_get_result($stmt_agg);
+            while ($agg_row = mysqli_fetch_assoc($result_agg)) {
+                if ($agg_row['total_possible'] > 0) {
+                    $percentage = ($agg_row['total_obtained'] / $agg_row['total_possible']) * 100;
+                    $student_percentages[$agg_row['student_id']] = round($percentage, 2);
                 }
             }
+            mysqli_stmt_close($stmt_agg);
+            // --- END: NEW ---
+
+            $exam_type_formatted = ucwords(str_replace('_', ' ', $exam_type));
+            $stmt_notification = mysqli_prepare($conn, "INSERT INTO notifications (user_id, message, link, type, created_at) VALUES (?, ?, ?, 'result_published', NOW())");
+
+            // Loop through each student to send notifications and personalized emails
+            foreach ($marks_data as $student_id => $subjects) {
+                if (isset($students_info[$student_id])) {
+                    $student = $students_info[$student_id];
+
+                    // Create and send notification
+                    $notification_message = "Your results for the {$exam_type_formatted} have been published.";
+                    $notification_link = "/pages/student/view_my_marks.php?exam_type={$exam_type}&academic_year={$academic_year}";
+                    mysqli_stmt_bind_param($stmt_notification, "iss", $student_id, $notification_message, $notification_link);
+                    mysqli_stmt_execute($stmt_notification);
+
+                    // Send email
+                    if (!empty($student['email'])) {
+                        $email_subject = "Marks Published for {$exam_type_formatted} - {$academic_year}";
+
+                        $marks_table = '<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 80%; margin-top: 15px;">
+                                            <thead style="background-color: #f2f2f2;"><tr><th>Subject</th><th>Marks Obtained</th></tr></thead><tbody>';
+                        foreach ($subjects as $subject_name => $marks) {
+                            if (is_numeric($marks)) {
+                                $marks_table .= '<tr><td>' . htmlspecialchars($subject_name) . '</td><td>' . htmlspecialchars($marks) . '</td></tr>';
+                            }
+                        }
+                        $marks_table .= '</tbody></table>';
+
+                        // --- MODIFIED: Add percentage to the email body ---
+                        $percentage_html = '';
+                        if (isset($student_percentages[$student_id])) {
+                            $percentage_val = $student_percentages[$student_id];
+                            $percentage_html = '<p style="font-size: 1.1em;">Your overall percentage is: <strong>' . $percentage_val . '%</strong></p>';
+                        }
+
+                        $email_body = "
+                            <p>Dear " . htmlspecialchars($student['name']) . ",</p>
+                            <p>Your marks for the <strong>{$exam_type_formatted}</strong> of the academic year <strong>{$academic_year}</strong> have been published by your teacher, " . htmlspecialchars($teacher_name) . ".</p>
+                            <p>Here are your results:</p>
+                            {$marks_table}
+                            {$percentage_html}
+                            <p>You can view your full report card by logging into the school portal.</p>
+                            <p>Best regards,<br>School Administration</p>
+                        ";
+                        
+                        send_email($student['email'], $email_subject, $email_body);
+                    }
+                }
+            }
+            mysqli_stmt_close($stmt_notification);
         }
     }
-    // --- END: Email Notification Logic ---
+    // --- END: Notification and Email Logic ---
 
 } else {
     $response['message'] = 'No marks data received or required fields are missing.';

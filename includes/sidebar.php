@@ -235,6 +235,12 @@ if (isset($conn) && $conn->ping() && $user_id) {
                 </div>
             </li>
             <li class="nav-item">
+    <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_my_attendance.php">
+        <i class="fas fa-fw fa-user-check"></i>
+        <span>My Attendance</span>
+    </a>
+</li>
+            <li class="nav-item">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseNotices">
                     <i class="fas fa-fw fa-bullhorn"></i>
                     <span>Notices</span>
