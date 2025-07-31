@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jul 30, 2025 at 10:32 AM
+-- Generation Time: Jul 30, 2025 at 08:24 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -412,6 +412,31 @@ INSERT INTO `principal` (`id`, `principal_image`, `school_id`, `principal_name`,
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `principal_attendance`
+--
+
+CREATE TABLE `principal_attendance` (
+  `id` int(11) NOT NULL,
+  `principal_id` int(11) NOT NULL,
+  `school_id` int(11) NOT NULL,
+  `attendance_date` date NOT NULL,
+  `status` enum('Present','Absent') NOT NULL,
+  `login_latitude` decimal(10,8) DEFAULT NULL,
+  `login_longitude` decimal(11,8) DEFAULT NULL,
+  `login_time` time NOT NULL,
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `principal_attendance`
+--
+
+INSERT INTO `principal_attendance` (`id`, `principal_id`, `school_id`, `attendance_date`, `status`, `login_latitude`, `login_longitude`, `login_time`, `updated_at`) VALUES
+(1, 10, 4, '2025-07-30', 'Absent', 21.21014980, 72.77075840, '23:47:25', '2025-07-30 18:17:25');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `principal_timings`
 --
 
@@ -454,15 +479,17 @@ CREATE TABLE `school` (
   `education_board` set('CBSE','State','IGCSE') DEFAULT NULL,
   `school_medium` set('English','Hindi','Regional Language') DEFAULT NULL,
   `school_category` set('Pre-Primary','Primary','Upper Primary','Secondary','Higher Secondary') DEFAULT NULL,
-  `address` text DEFAULT NULL
+  `address` text DEFAULT NULL,
+  `latitude` decimal(10,8) DEFAULT NULL,
+  `longitude` decimal(11,8) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `school`
 --
 
-INSERT INTO `school` (`id`, `school_logo`, `school_name`, `email`, `phone`, `school_opening`, `school_type`, `education_board`, `school_medium`, `school_category`, `address`) VALUES
-(4, NULL, 'sanskar bharti vidyalay', 'sbv@gmail.com', '8526548525', '2025-07-06', 'Private', 'CBSE', 'Hindi', '', 'adajan');
+INSERT INTO `school` (`id`, `school_logo`, `school_name`, `email`, `phone`, `school_opening`, `school_type`, `education_board`, `school_medium`, `school_category`, `address`, `latitude`, `longitude`) VALUES
+(4, NULL, 'sanskar bharti vidyalay', 'sbv@gmail.com', '8526548525', '2025-07-06', 'Private', 'CBSE', 'Hindi', '', 'adajan', 21.21060270, 72.76795460);
 
 -- --------------------------------------------------------
 
@@ -1012,6 +1039,14 @@ ALTER TABLE `principal`
   ADD KEY `school_id` (`school_id`);
 
 --
+-- Indexes for table `principal_attendance`
+--
+ALTER TABLE `principal_attendance`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_principal_attendance` (`principal_id`,`attendance_date`),
+  ADD KEY `school_id` (`school_id`);
+
+--
 -- Indexes for table `principal_timings`
 --
 ALTER TABLE `principal_timings`
@@ -1176,6 +1211,12 @@ ALTER TABLE `notifications`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
 
 --
+-- AUTO_INCREMENT for table `principal_attendance`
+--
+ALTER TABLE `principal_attendance`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+
+--
 -- AUTO_INCREMENT for table `principal_timings`
 --
 ALTER TABLE `principal_timings`
@@ -1288,6 +1329,13 @@ ALTER TABLE `notifications`
 ALTER TABLE `principal`
   ADD CONSTRAINT `fk_principal_user_id` FOREIGN KEY (`id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `principal_ibfk_1` FOREIGN KEY (`school_id`) REFERENCES `school` (`id`);
+
+--
+-- Constraints for table `principal_attendance`
+--
+ALTER TABLE `principal_attendance`
+  ADD CONSTRAINT `principal_attendance_ibfk_1` FOREIGN KEY (`principal_id`) REFERENCES `principal` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `principal_attendance_ibfk_2` FOREIGN KEY (`school_id`) REFERENCES `school` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `principal_timings`
