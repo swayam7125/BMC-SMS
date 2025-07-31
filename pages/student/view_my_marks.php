@@ -2,6 +2,23 @@
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
+// --- START: This code marks the notification as read ---
+if (isset($_GET['notif_id']) && is_numeric($_GET['notif_id'])) {
+    $notification_id = $_GET['notif_id'];
+    $current_user_id = null;
+    if (isset($_COOKIE['encrypted_user_id'])) {
+        $current_user_id = decrypt_id($_COOKIE['encrypted_user_id']);
+    }
+    
+    if ($current_user_id) {
+        $update_stmt = mysqli_prepare($conn, "UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?");
+        mysqli_stmt_bind_param($update_stmt, "ii", $notification_id, $current_user_id);
+        mysqli_stmt_execute($update_stmt);
+        mysqli_stmt_close($update_stmt);
+    }
+}
+// --- END: Mark notification as read ---
+
 $role = null;
 $student_id = null;
 $student_std = null;
