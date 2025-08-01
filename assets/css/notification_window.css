@@ -1,28 +1,150 @@
-.notification-item {
-  display: flex;
-  align-items: center;
-  padding: 15px;
-  border-bottom: 1px solid #e3e6f0;
+/* --- Notification Window Styling (Themed for SB Admin 2) --- */
+.notification-window {
+    font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* Fill the parent card */
 }
 
-.notification-item:last-child {
-  border-bottom: none;
+.notification-tabs {
+    display: flex;
+    border-bottom: 1px solid #e3e6f0;
+    flex-shrink: 0;
+    overflow-x: auto;
+    margin: -1.25rem -1.25rem 0.5rem -1.25rem; /* Pull tabs to the edges of the padding */
+    padding: 0 1.25rem;
 }
 
-.notification-icon {
-  font-size: 1.5rem;
-  margin-right: 15px;
+/* Hide scrollbar for the tabs on Firefox */
+.notification-tabs {
+    scrollbar-width: none;
+}
+/* Hide scrollbar for the tabs on Webkit */
+.notification-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.notification-tab {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    color: #858796;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: all 0.2s ease-in-out;
+    white-space: nowrap;
+}
+
+.notification-tab:hover {
+    background-color: #f8f9fc;
+    color: #5a5c69;
+}
+
+.notification-tab.active {
+    color: #4e73df;
+    border-bottom-color: #4e73df;
+}
+
+.notification-body {
+    /* ** EDIT: Set a fixed height and ensure scrollbar is visible ** */
+    height: 420px; /* This fixed height constrains the card size */
+    overflow-y: auto; /* This will show a scrollbar ONLY when content overflows */
+    padding-right: 10px; /* Add some padding so the scrollbar doesn't overlap content */
 }
 
 .notification-content {
-  flex-grow: 1;
+    display: none;
 }
 
-.notification-title {
-  font-weight: 600;
+.notification-content.active {
+    display: block;
+}
+
+.notification-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.notification-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 0.8rem 0.5rem; /* Increased padding for better spacing */
+    border-bottom: 1px solid #eaecf4;
+    transition: background-color 0.2s;
+    border-radius: 0.35rem; /* Add rounded corners on hover */
+}
+
+.notification-item:last-child {
+    border-bottom: none;
+}
+
+.notification-item:hover {
+    background-color: #f8f9fc;
+}
+
+.notification-item a {
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    width: 100%;
+    align-items: center; /* Vertically center icon with text */
+}
+
+.notification-icon {
+    flex-shrink: 0;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1rem;
+    color: #fff;
+    font-size: 0.9rem; /* Slightly smaller icon */
+}
+
+/* Matching theme colors */
+.icon-assignments { background-color: #4e73df; } /* Primary */
+.icon-leave-status { background-color: #1cc88a; } /* Success */
+.icon-notices { background-color: #f6c23e; } /* Warning */
+.icon-timetables { background-color: #36b9cc; } /* Info */
+.icon-other { background-color: #858796; } /* Secondary */
+
+.notification-details {
+    flex-grow: 1;
+}
+
+.notification-message {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #5a5c69;
+    line-height: 1.4;
 }
 
 .notification-time {
-  font-size: 0.8rem;
-  color: #858796;
+    font-size: 0.75rem; /* Slightly larger time text */
+    color: #b7b9cc;
+    margin-top: 0.2rem;
+}
+
+.notification-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    padding: 2rem;
+    color: #b7b9cc;
+}
+
+.notification-empty-state i {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+}
+
+.notification-item.unread .notification-message {
+    font-weight: 700;
+    color: #3a3b45;
 }
