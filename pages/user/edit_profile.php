@@ -77,6 +77,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
             $name_field = 'student_name';
             break;
         case 'principal':
+        case 'schooladmin': // FIX: Added 'schooladmin' to allow editing for this role.
             $table_name = 'principal';
             $image_field = 'principal_image';
             $name_field = 'principal_name';
@@ -216,7 +217,6 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                         <div class="card-body">
                             <form method="POST" action="edit_profile.php" enctype="multipart/form-data">
                                 <div class="row">
-                                    <!-- Photo Preview -->
                                     <div class="col-md-4 text-center">
                                         <?php
                                         // FIX: Use the robust function to get the correct path for the preview image.
@@ -238,7 +238,6 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                                             <input type="hidden" name="current_image_path" value="<?php echo htmlspecialchars($user_data[$image_field] ?? ''); ?>">
                                         </div>
                                     </div>
-                                    <!-- User Details -->
                                     <div class="col-md-8">
                                         <div class="form-group">
                                             <label for="name">Full Name *</label>
