@@ -143,9 +143,10 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                                 </div>
                                 <div class="card-body text-center">
                                     <?php
+                                        $path_role = ($user_role === 'schooladmin') ? 'principal' : $user_role;
                                         $defaultImagePath = BASE_WEB_PATH . 'assets/img/default-user.jpg';
                                         $imagePathFromDB = $user_data[$image_field] ?? '';
-                                        $profileImagePath = getWebAccessibleImagePath($imagePathFromDB, BASE_WEB_PATH, $user_role) ?? $defaultImagePath;
+                                        $profileImagePath = getWebAccessibleImagePath($imagePathFromDB, BASE_WEB_PATH, $path_role) ?? $defaultImagePath;
                                         ?>
                                     <img src="<?php echo htmlspecialchars($profileImagePath); ?>"
                                         class="profile-photo mb-3" alt="Profile Photo"
@@ -170,12 +171,29 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                                             <?php echo htmlspecialchars($user_data['email'] ?? 'N/A'); ?></div>
                                     </div>
                                     <hr>
+                                    
+                                    <?php if ($user_role === 'teacher' || $user_role === 'principal' || $user_role === 'schooladmin'): ?>
                                     <div class="row info-row">
                                         <div class="col-sm-4 info-label">Phone:</div>
                                         <div class="col-sm-8 info-value">
                                             <?php echo htmlspecialchars($user_data['phone'] ?? 'N/A'); ?></div>
                                     </div>
                                     <hr>
+                                    <?php elseif ($user_role === 'student'): ?>
+                                    <div class="row info-row">
+                                        <div class="col-sm-4 info-label">Father's Phone:</div>
+                                        <div class="col-sm-8 info-value">
+                                            <?php echo htmlspecialchars($user_data['father_phone'] ?? 'N/A'); ?></div>
+                                    </div>
+                                    <hr>
+                                    <div class="row info-row">
+                                        <div class="col-sm-4 info-label">Mother's Phone:</div>
+                                        <div class="col-sm-8 info-value">
+                                            <?php echo htmlspecialchars($user_data['mother_phone'] ?? 'N/A'); ?></div>
+                                    </div>
+                                    <hr>
+                                    <?php endif; ?>
+
                                     <div class="row info-row">
                                         <div class="col-sm-4 info-label">Date of Birth:</div>
                                         <div class="col-sm-8 info-value">
@@ -219,46 +237,62 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                                                 </div>
                                             </div>
                                         </div>
-                                        <?php if ($user_role === 'teacher' || $user_role === 'principal'): ?>
+                                        
+                                        <?php if ($user_role === 'principal' || $user_role === 'schooladmin'): ?>
                                         <div class="col-md-6">
                                             <div class="row info-row">
                                                 <div class="col-sm-5 info-label">Qualification:</div>
-                                                <div class="col-sm-7 info-value">
-                                                    <?php echo htmlspecialchars($user_data['qualification'] ?? 'N/A'); ?>
-                                                </div>
+                                                <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['qualification'] ?? 'N/A'); ?></div>
                                             </div>
                                         </div>
                                         <div class="col-md-6">
                                             <div class="row info-row">
                                                 <div class="col-sm-5 info-label">Batch:</div>
-                                                <div class="col-sm-7 info-value"><span
-                                                        class="badge badge-<?php echo ($user_data['batch'] ?? '') === 'Morning' ? 'info' : 'warning'; ?>"><?php echo htmlspecialchars($user_data['batch'] ?? 'N/A'); ?></span>
-                                                </div>
+                                                <div class="col-sm-7 info-value"><span class="badge badge-<?php echo ($user_data['batch'] ?? '') === 'Morning' ? 'info' : 'warning'; ?>"><?php echo htmlspecialchars($user_data['batch'] ?? 'N/A'); ?></span></div>
                                             </div>
                                         </div>
                                         <div class="col-md-6">
                                             <div class="row info-row">
                                                 <div class="col-sm-5 info-label">Salary:</div>
-                                                <div class="col-sm-7 info-value salary-display">
-                                                    ₹<?php echo number_format($user_data['salary'] ?? 0, 2); ?></div>
+                                                <div class="col-sm-7 info-value salary-display">₹<?php echo number_format($user_data['salary'] ?? 0, 2); ?></div>
                                             </div>
                                         </div>
-                                        <?php endif; ?>
-                                        <?php if ($user_role === 'teacher'): ?>
+                                        <?php elseif ($user_role === 'teacher'): ?>
+                                        <div class="col-md-6">
+                                            <div class="row info-row">
+                                                <div class="col-sm-5 info-label">Qualification:</div>
+                                                <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['qualification'] ?? 'N/A'); ?></div>
+                                            </div>
+                                        </div>
                                         <div class="col-md-6">
                                             <div class="row info-row">
                                                 <div class="col-sm-5 info-label">Subject:</div>
-                                                <div class="col-sm-7 info-value">
-                                                    <?php echo htmlspecialchars($user_data['subject'] ?? 'N/A'); ?>
-                                                </div>
+                                                <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['subject'] ?? 'N/A'); ?></div>
                                             </div>
                                         </div>
                                         <div class="col-md-6">
                                             <div class="row info-row">
                                                 <div class="col-sm-5 info-label">Experience:</div>
-                                                <div class="col-sm-7 info-value">
-                                                    <?php echo htmlspecialchars($user_data['experience'] ?? '0'); ?>
-                                                    years</div>
+                                                <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['experience'] ?? '0'); ?> years</div>
+                                            </div>
+                                        </div>
+                                        <?php elseif ($user_role === 'student'): ?>
+                                        <div class="col-md-6">
+                                            <div class="row info-row">
+                                                <div class="col-sm-5 info-label">Standard:</div>
+                                                <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['std'] ?? 'N/A'); ?></div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="row info-row">
+                                                <div class="col-sm-5 info-label">Roll No:</div>
+                                                <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['rollno'] ?? 'N/A'); ?></div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="row info-row">
+                                                <div class="col-sm-5 info-label">Academic Year:</div>
+                                                <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['academic_year'] ?? 'N/A'); ?></div>
                                             </div>
                                         </div>
                                         <?php endif; ?>
@@ -279,9 +313,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="exampleModalLabel">Ready to Leave?</h5>
-                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">×</span>
-                    </button>
+                    <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
                 </div>
                 <div class="modal-body">Select "Logout" below if you are ready to end your current session.</div>
                 <div class="modal-footer">
@@ -297,29 +329,14 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="changePasswordModalLabel">Change Password</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body">
                     <form id="changePasswordForm" action="process_password_change.php" method="POST">
-                        <div class="form-group">
-                            <label for="current_password">Current Password</label>
-                            <input type="password" class="form-control" id="current_password" name="current_password" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="new_password">New Password</label>
-                            <input type="password" class="form-control" id="new_password" name="new_password" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="confirm_password">Confirm New Password</label>
-                            <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
-                            <div id="password_match_error" class="text-danger mt-2" style="display: none;">Passwords do not match.</div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                            <button type="submit" class="btn btn-primary">Save changes</button>
-                        </div>
+                        <div class="form-group"><label for="current_password">Current Password</label><input type="password" class="form-control" id="current_password" name="current_password" required></div>
+                        <div class="form-group"><label for="new_password">New Password</label><input type="password" class="form-control" id="new_password" name="new_password" required></div>
+                        <div class="form-group"><label for="confirm_password">Confirm New Password</label><input type="password" class="form-control" id="confirm_password" name="confirm_password" required><div id="password_match_error" class="text-danger mt-2" style="display: none;">Passwords do not match.</div></div>
+                        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button><button type="submit" class="btn btn-primary">Save changes</button></div>
                     </form>
                 </div>
             </div>
@@ -330,21 +347,17 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script>
-        // JavaScript for password validation within the modal
         $(document).ready(function() {
             $('#changePasswordForm').on('submit', function(e) {
                 var newPassword = $('#new_password').val();
                 var confirmPassword = $('#confirm_password').val();
-                
                 if (newPassword !== confirmPassword) {
-                    e.preventDefault(); // Prevent form submission
+                    e.preventDefault();
                     $('#password_match_error').show();
                 } else {
                     $('#password_match_error').hide();
                 }
             });
-
-            // Hide the error message when the user types
             $('#new_password, #confirm_password').on('keyup', function() {
                 if ($('#new_password').val() === $('#confirm_password').val()) {
                     $('#password_match_error').hide();

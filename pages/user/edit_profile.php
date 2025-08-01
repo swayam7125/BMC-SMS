@@ -23,14 +23,12 @@ function getWebAccessibleImagePath($db_image_path, $base_web_path, $default_sub_
         return null;
     }
 
-    // First, try to see if the path is already a full, valid web path
     $full_web_path = $base_web_path . ltrim($db_image_path, '/');
     $filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $full_web_path;
     if (@file_exists($filesystem_path) && @is_file($filesystem_path)) {
         return $full_web_path;
     }
 
-    // Fallback: If the path is relative or just a filename, try common locations
     $possible_locations = [
         "pages/{$default_sub_folder}/uploads/",
         "uploads/{$default_sub_folder}s/",
@@ -42,11 +40,11 @@ function getWebAccessibleImagePath($db_image_path, $base_web_path, $default_sub_
         $test_filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $test_path;
 
         if (@file_exists($test_filesystem_path) && @is_file($test_filesystem_path)) {
-            return $test_path; // Return the web-accessible path
+            return $test_path;
         }
     }
 
-    return null; // No photo found
+    return null;
 }
 
 
@@ -59,13 +57,8 @@ $success_message = '';
 if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'])) {
     $user_id = decrypt_id($_COOKIE['encrypted_user_id']);
     $user_role = decrypt_id($_COOKIE['encrypted_user_role']);
-
-    // MODIFICATION 1: Determine the correct role to use for file paths.
-    // If the user role is 'schooladmin', use 'principal' for directory paths.
     $path_role = ($user_role === 'schooladmin') ? 'principal' : $user_role;
 
-
-    // Determine the table and field names based on the user's role
     $table_name = '';
     $image_field = '';
     $name_field = '';
@@ -82,28 +75,59 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
             $name_field = 'student_name';
             break;
         case 'principal':
-        case 'schooladmin': // This correctly identifies the table
+        case 'schooladmin':
             $table_name = 'principal';
             $image_field = 'principal_image';
             $name_field = 'principal_name';
             break;
         default:
-            // Redirect if role is not editable
             header("Location: profile.php?error=Invalid user role for editing.");
             exit;
     }
+
+    // --- Fetch Current User Data First to get current email for comparison ---
+    try {
+        $query = "SELECT * FROM {$table_name} WHERE id = ?";
+        $stmt_fetch = mysqli_prepare($conn, $query);
+        mysqli_stmt_bind_param($stmt_fetch, "i", $user_id);
+        mysqli_stmt_execute($stmt_fetch);
+        $result = mysqli_stmt_get_result($stmt_fetch);
+        if (mysqli_num_rows($result) > 0) {
+            $user_data = mysqli_fetch_assoc($result);
+        } else {
+            header("Location: profile.php?error=User not found.");
+            exit;
+        }
+        mysqli_stmt_close($stmt_fetch);
+    } catch (Exception $e) {
+        $errors[] = "Database query failed: " . $e->getMessage();
+    }
+
 
     // --- Handle Form Submission (POST Request) ---
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Retrieve form data
         $name = trim($_POST['name']);
-        $phone = trim($_POST['phone']);
+        $email = trim($_POST['email']);
+        $phone = trim($_POST['phone'] ?? '');
         $dob = $_POST['dob'];
         $gender = $_POST['gender'];
         $blood_group = $_POST['blood_group'];
         $address = trim($_POST['address']);
         $current_image_path = $_POST['current_image_path'];
-        $new_image_path = $current_image_path; // Default to old path
+        $new_image_path = $current_image_path;
+
+        // Check if email has changed and if the new one is unique
+        if ($email !== $user_data['email']) {
+            $email_check_query = "SELECT id FROM users WHERE email = ? AND id != ?";
+            $stmt_check = mysqli_prepare($conn, $email_check_query);
+            mysqli_stmt_bind_param($stmt_check, "si", $email, $user_id);
+            mysqli_stmt_execute($stmt_check);
+            if (mysqli_stmt_get_result($stmt_check)->num_rows > 0) {
+                $errors[] = "This email address is already in use by another account.";
+            }
+            mysqli_stmt_close($stmt_check);
+        }
 
         // --- Handle Photo Upload ---
         if (isset($_FILES['profile_image']) && $_FILES['profile_image']['error'] === UPLOAD_ERR_OK) {
@@ -112,19 +136,15 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
             $allowed_exts = ['jpg', 'jpeg', 'png', 'gif'];
 
             if (in_array($file_ext, $allowed_exts)) {
-                // MODIFICATION 2: Use the `$path_role` variable for the directory.
                 $target_dir = "pages/{$path_role}/uploads/";
                 $full_target_dir = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . BASE_WEB_PATH . $target_dir;
-
                 if (!file_exists($full_target_dir)) {
                     mkdir($full_target_dir, 0777, true);
                 }
-                // Use the original role for the filename for clarity if needed, or path_role
                 $new_filename = uniqid($path_role . '_', true) . '.' . $file_ext;
                 $destination = $full_target_dir . $new_filename;
-
                 if (move_uploaded_file($file['tmp_name'], $destination)) {
-                    $new_image_path = $target_dir . $new_filename; // Store the relative path
+                    $new_image_path = $target_dir . $new_filename;
                 } else {
                     $errors[] = "Failed to move uploaded file.";
                 }
@@ -133,53 +153,62 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
             }
         }
 
-        // --- Update Database ---
+        // --- Update Database with Transaction ---
         if (empty($errors)) {
+            mysqli_begin_transaction($conn);
+
             try {
-                $update_query = "UPDATE {$table_name} SET 
-                                    {$name_field} = ?, 
-                                    phone = ?, 
-                                    dob = ?, 
-                                    gender = ?, 
-                                    blood_group = ?, 
-                                    address = ?,
-                                    {$image_field} = ?
-                                 WHERE id = ?";
+                // 1. Update Role-Specific Table (e.g., student, teacher)
+                $update_fields = [ "{$name_field} = ?", "email = ?", "dob = ?", "gender = ?", "blood_group = ?", "address = ?", "{$image_field} = ?" ];
+                $params = [$name, $email, $dob, $gender, $blood_group, $address, $new_image_path];
+                $param_types = "sssssss";
 
-                $stmt = mysqli_prepare($conn, $update_query);
-                mysqli_stmt_bind_param($stmt, "sssssssi", $name, $phone, $dob, $gender, $blood_group, $address, $new_image_path, $user_id);
-
-                if (mysqli_stmt_execute($stmt)) {
-                    // Redirect to profile page with a success message
-                    header("Location: profile.php?success=Profile updated successfully!");
-                    exit();
-                } else {
-                    throw new Exception("Database update failed: " . mysqli_stmt_error($stmt));
+                if ($user_role === 'teacher' || $user_role === 'principal' || $user_role === 'schooladmin') {
+                    $update_fields[] = "phone = ?";
+                    $params[] = $phone;
+                    $param_types .= "s";
+                } elseif ($user_role === 'student') {
+                    $update_fields[] = "father_phone = ?";
+                    $params[] = trim($_POST['father_phone']);
+                    $param_types .= "s";
+                    $update_fields[] = "mother_phone = ?";
+                    $params[] = trim($_POST['mother_phone']);
+                    $param_types .= "s";
                 }
-                mysqli_stmt_close($stmt);
+
+                $params[] = $user_id;
+                $param_types .= "i";
+
+                $update_query_role = "UPDATE {$table_name} SET " . implode(', ', $update_fields) . " WHERE id = ?";
+                $stmt_role = mysqli_prepare($conn, $update_query_role);
+                mysqli_stmt_bind_param($stmt_role, $param_types, ...$params);
+
+                if (!mysqli_stmt_execute($stmt_role)) {
+                    throw new Exception("Failed to update profile details.");
+                }
+                mysqli_stmt_close($stmt_role);
+
+                // 2. Update Users Table
+                $update_users_query = "UPDATE users SET email = ? WHERE id = ?";
+                $stmt_users = mysqli_prepare($conn, $update_users_query);
+                mysqli_stmt_bind_param($stmt_users, "si", $email, $user_id);
+
+                if (!mysqli_stmt_execute($stmt_users)) {
+                    throw new Exception("Failed to update login details.");
+                }
+                mysqli_stmt_close($stmt_users);
+
+                // If all good, commit the transaction
+                mysqli_commit($conn);
+
+                header("Location: profile.php?success=Profile updated successfully!");
+                exit();
+
             } catch (Exception $e) {
-                $errors[] = "Database error: " . $e->getMessage();
+                mysqli_rollback($conn);
+                $errors[] = "Database update failed: " . $e->getMessage();
             }
         }
-    }
-
-    // --- Fetch Current User Data for Form (GET Request) ---
-    try {
-        $query = "SELECT * FROM {$table_name} WHERE id = ?";
-        $stmt = mysqli_prepare($conn, $query);
-        mysqli_stmt_bind_param($stmt, "i", $user_id);
-        mysqli_stmt_execute($stmt);
-        $result = mysqli_stmt_get_result($stmt);
-
-        if (mysqli_num_rows($result) > 0) {
-            $user_data = mysqli_fetch_assoc($result);
-        } else {
-            header("Location: profile.php?error=User not found.");
-            exit;
-        }
-        mysqli_stmt_close($stmt);
-    } catch (Exception $e) {
-        $errors[] = "Database query failed: " . $e->getMessage();
     }
 } else {
     // Redirect to login if cookies are not set
@@ -208,7 +237,12 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
                 <div class="container-fluid">
-                    <h1 class="h3 mb-4 text-gray-800">Edit Profile</h1>
+                    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+                        <h1 class="h3 mb-0 text-gray-800">Edit Profile</h1>
+                        <a href="profile.php" class="btn btn-sm btn-secondary shadow-sm">
+                            <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Profile
+                        </a>
+                    </div>
 
                     <?php if (!empty($errors)): ?>
                         <div class="alert alert-danger">
@@ -227,7 +261,6 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                                         <?php
                                         $default_image_path = BASE_WEB_PATH . 'assets/img/default-user.jpg';
                                         $imagePathFromDB = $user_data[$image_field] ?? '';
-                                        // MODIFICATION 3: Use the `$path_role` variable to find the image.
                                         $current_image_web_path = getWebAccessibleImagePath($imagePathFromDB, BASE_WEB_PATH, $path_role) ?? $default_image_path;
                                         ?>
                                         <img src="<?php echo htmlspecialchars($current_image_web_path); ?>"
@@ -250,9 +283,26 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                                             <input type="text" class="form-control" id="name" name="name" value="<?php echo htmlspecialchars($user_data[$name_field] ?? ''); ?>" required>
                                         </div>
                                         <div class="form-group">
+                                            <label for="email">Email *</label>
+                                            <input type="email" class="form-control" id="email" name="email" value="<?php echo htmlspecialchars($user_data['email'] ?? ''); ?>" required>
+                                        </div>
+                                        <?php if ($user_role === 'teacher' || $user_role === 'principal' || $user_role === 'schooladmin'): ?>
+                                        <div class="form-group">
                                             <label for="phone">Phone</label>
                                             <input type="tel" class="form-control" id="phone" name="phone" value="<?php echo htmlspecialchars($user_data['phone'] ?? ''); ?>">
                                         </div>
+                                        <?php elseif ($user_role === 'student'): ?>
+                                        <div class="form-row">
+                                            <div class="form-group col-md-6">
+                                                <label for="father_phone">Father's Phone</label>
+                                                <input type="tel" class="form-control" id="father_phone" name="father_phone" value="<?php echo htmlspecialchars($user_data['father_phone'] ?? ''); ?>">
+                                            </div>
+                                            <div class="form-group col-md-6">
+                                                <label for="mother_phone">Mother's Phone</label>
+                                                <input type="tel" class="form-control" id="mother_phone" name="mother_phone" value="<?php echo htmlspecialchars($user_data['mother_phone'] ?? ''); ?>">
+                                            </div>
+                                        </div>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                                 <hr>
