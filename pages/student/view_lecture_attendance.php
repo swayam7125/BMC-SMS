@@ -40,8 +40,9 @@ $attendance_percentage = ($total_lectures > 0) ? round(($present_count / $total_
 
 <head>
     <title>My Lecture Attendance</title>
+
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-    <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
+    <!-- <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet"> -->
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
     <!-- Corrected Font Awesome link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
