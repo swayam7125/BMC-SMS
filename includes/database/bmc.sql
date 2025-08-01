@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jul 31, 2025 at 02:29 PM
+-- Generation Time: Aug 01, 2025 at 11:06 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -502,7 +502,7 @@ CREATE TABLE `principal` (
   `email` varchar(50) NOT NULL,
   `password` varchar(255) NOT NULL,
   `phone` varchar(10) DEFAULT NULL,
-  `principal_dob` date DEFAULT NULL,
+  `dob` date DEFAULT NULL,
   `gender` enum('Male','Female','Others') NOT NULL,
   `blood_group` enum('A+','A-','B+','B-','AB+','AB-','O+','O-') NOT NULL,
   `address` text DEFAULT NULL,
@@ -515,8 +515,8 @@ CREATE TABLE `principal` (
 -- Dumping data for table `principal`
 --
 
-INSERT INTO `principal` (`id`, `principal_image`, `school_id`, `principal_name`, `email`, `password`, `phone`, `principal_dob`, `gender`, `blood_group`, `address`, `qualification`, `salary`, `batch`) VALUES
-(10, NULL, 4, 'Fenil Pastagia', '17fenill@gmail.com', '$2y$10$EaSZM1Mq/otD2L1wHMoZdefcPjkOWeXPjePcvdj5WLY/6Lx5DxrJ6', '9924976503', '1980-08-17', 'Male', 'B+', 'Adajan', 'M.A. M.Ed', 90000.00, 'Morning');
+INSERT INTO `principal` (`id`, `principal_image`, `school_id`, `principal_name`, `email`, `password`, `phone`, `dob`, `gender`, `blood_group`, `address`, `qualification`, `salary`, `batch`) VALUES
+(10, '', 4, 'Fenil Pastagia', '17fenill@gmail.com', '$2y$10$EaSZM1Mq/otD2L1wHMoZdefcPjkOWeXPjePcvdj5WLY/6Lx5DxrJ6', '9924976503', '0000-00-00', 'Female', 'B+', 'canal road', 'M.A. M.Ed', 90000.00, 'Morning');
 
 -- --------------------------------------------------------
 
@@ -542,7 +542,8 @@ CREATE TABLE `principal_attendance` (
 
 INSERT INTO `principal_attendance` (`id`, `principal_id`, `school_id`, `attendance_date`, `status`, `login_latitude`, `login_longitude`, `login_time`, `updated_at`) VALUES
 (1, 10, 4, '2025-07-30', 'Absent', 21.21014980, 72.77075840, '23:47:25', '2025-07-30 18:17:25'),
-(12, 10, 4, '2025-07-31', 'Absent', NULL, NULL, '17:44:31', '2025-07-31 12:14:31');
+(12, 10, 4, '2025-07-31', 'Absent', NULL, NULL, '17:44:31', '2025-07-31 12:14:31'),
+(20, 10, 4, '2025-08-01', 'Absent', 21.18458692, 72.77910595, '14:15:32', '2025-08-01 08:45:32');
 
 -- --------------------------------------------------------
 
@@ -1397,7 +1398,7 @@ ALTER TABLE `notifications`
 -- AUTO_INCREMENT for table `principal_attendance`
 --
 ALTER TABLE `principal_attendance`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT for table `principal_timings`

@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $principal_name = trim($_POST['principal_name']);
     $new_email = trim($_POST['email']);
     $phone = trim($_POST['phone']);
-    $principal_dob = $_POST['principal_dob'];
+    $dob = $_POST['dob'];
     $gender = $_POST['gender'];
     $blood_group = $_POST['blood_group'];
     $address = trim($_POST['address']);
@@ -135,9 +135,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 mysqli_stmt_close($stmt_user);
             }
 
-            $update_principal_query = "UPDATE principal SET principal_image=?, principal_name=?, email=?, phone=?, principal_dob=?, gender=?, blood_group=?, address=?, qualification=?, salary=?, school_id=?, batch=? WHERE id=?";
+            $update_principal_query = "UPDATE principal SET principal_image=?, principal_name=?, email=?, phone=?, dob=?, gender=?, blood_group=?, address=?, qualification=?, salary=?, school_id=?, batch=? WHERE id=?";
             $stmt_principal_update = mysqli_prepare($conn, $update_principal_query);
-            mysqli_stmt_bind_param($stmt_principal_update, "sssssssssdisi", $image_path_for_db, $principal_name, $new_email, $phone, $principal_dob, $gender, $blood_group, $address, $qualification, $salary, $school_id, $new_batch, $principal_id);
+            mysqli_stmt_bind_param($stmt_principal_update, "sssssssssdisi", $image_path_for_db, $principal_name, $new_email, $phone, $dob, $gender, $blood_group, $address, $qualification, $salary, $school_id, $new_batch, $principal_id);
             if (!mysqli_stmt_execute($stmt_principal_update)) throw new Exception("Error updating principal record: " . mysqli_stmt_error($stmt_principal_update));
             mysqli_stmt_close($stmt_principal_update);
 
@@ -295,7 +295,7 @@ $schools_result = mysqli_query($conn, $schools_query);
                                 </div>
                                 <hr>
                                 <div class="form-row">
-                                    <div class="form-group col-md-6"><label for="principal_dob">Date of Birth</label><input type="date" class="form-control" id="principal_dob" name="principal_dob" value="<?php echo htmlspecialchars($principal['principal_dob']); ?>"></div>
+                                    <div class="form-group col-md-6"><label for="dob">Date of Birth</label><input type="date" class="form-control" id="dob" name="dob" value="<?php echo htmlspecialchars($principal['dob']); ?>"></div>
                                     <div class="form-group col-md-6"><label for="gender">Gender *</label><select class="form-control" id="gender" name="gender" required>
                                             <option value="">-- Select Gender --</option>
                                             <option value="Male" <?php echo ($principal['gender'] == 'Male') ? 'selected' : ''; ?>>Male</option>
