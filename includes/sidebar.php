@@ -231,6 +231,7 @@ if (isset($conn) && $conn->ping() && $user_id) {
                             Student</a>
                         <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/student/student_list.php">Student
                             List</a>
+                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/principal/generate_lc.php">Generate LC</a>
                     </div>
                 </div>
             </li>
