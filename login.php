@@ -2,8 +2,12 @@
 include_once "./includes/connect.php"; // Ensure this path is correct
 include_once "encryption.php"; // Ensure this path is correct
 
+// Initialize error message to avoid undefined variable warnings
+$error_message = '';
+
 // FUNCTION: Calculate distance between two GPS coordinates using the Haversine formula.
-function haversine_distance($lat1, $lon1, $lat2, $lon2) {
+function haversine_distance($lat1, $lon1, $lat2, $lon2)
+{
     $earth_radius = 6371; // Earth radius in kilometers
     $dLat = deg2rad($lat2 - $lat1);
     $dLon = deg2rad($lon2 - $lon1);
@@ -12,7 +16,9 @@ function haversine_distance($lat1, $lon1, $lat2, $lon2) {
     return $earth_radius * $c * 1000; // Return distance in meters
 }
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+// This part of the code only runs when the main login form is submitted,
+// not during the AJAX calls for password reset.
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['password']) && !isset($_POST['otp'])) {
     $email = trim($_POST['email']);
     $password = trim($_POST['password']);
 
@@ -38,7 +44,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     if ($user['account_status'] === 'suspended') {
                         $error_message = "Your account has been suspended. Please contact the administrator.";
                     } else {
-                        
+
                         // --- START: GEOLOCATION AND TIME-BASED ATTENDANCE LOGIC FOR PRINCIPAL ---
                         if ($user['role'] === 'schooladmin') {
                             $principal_id = $user['id'];
@@ -49,8 +55,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             mysqli_stmt_bind_param($details_query, "i", $principal_id);
                             mysqli_stmt_execute($details_query);
                             $details_result = mysqli_stmt_get_result($details_query);
-                            
-                            if($details_result && mysqli_num_rows($details_result) > 0) {
+
+                            if ($details_result && mysqli_num_rows($details_result) > 0) {
                                 $principal_details = mysqli_fetch_assoc($details_result);
                                 $school_id = $principal_details['school_id'];
                                 $principal_batch = $principal_details['batch']; // e.g., 'Morning' or 'Evening'
@@ -92,10 +98,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 // 4. Insert or update the attendance record
                                 $current_date = date("Y-m-d");
 
-                                $att_stmt = mysqli_prepare($conn,
+                                $att_stmt = mysqli_prepare(
+                                    $conn,
                                     "INSERT INTO principal_attendance (principal_id, school_id, attendance_date, status, login_latitude, login_longitude, login_time)
                                     VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIME())
-                                    ON DUPLICATE KEY UPDATE status = VALUES(status), login_latitude = VALUES(login_latitude), login_longitude = VALUES(login_longitude), login_time = CURRENT_TIME()");
+                                    ON DUPLICATE KEY UPDATE status = VALUES(status), login_latitude = VALUES(login_latitude), login_longitude = VALUES(login_longitude), login_time = CURRENT_TIME()"
+                                );
 
                                 mysqli_stmt_bind_param($att_stmt, "iisssd", $principal_id, $school_id, $current_date, $attendance_status, $user_lat, $user_lon);
                                 mysqli_stmt_execute($att_stmt);
@@ -172,73 +180,118 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>BMC-SMS -- Login</title>
-    <link href="assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
-    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,700,900" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
-    <link href="assets/css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <link rel="stylesheet" href="./assets/css/login.css">
 </head>
-<body class="bg-gradient-primary">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-xl-10 col-lg-12 col-md-9">
-                <div class="card o-hidden border-0 shadow-lg my-5">
-                    <div class="card-body p-0">
-                        <div class="row">
-                            <div class="p-5">
-                                <div class="text-center">
-                                    <h1 class="h4 text-gray-900 mb-4">Welcome</h1>
-                                </div>
-                                <?php if (!empty($error_message)): ?>
-                                    <div class="alert alert-danger"><?php echo htmlspecialchars($error_message); ?></div>
-                                <?php endif; ?>
-                                <form class="user" method="POST">
-                                    <div class="form-group">
-                                        <input type="email" class="form-control form-control-user" name="email" placeholder="Enter Email Address..." required>
-                                    </div>
-                                    <div class="form-group">
-                                        <input type="password" class="form-control form-control-user" name="password" placeholder="Password" required>
-                                    </div>
-                                    <input type="hidden" name="latitude" id="latitude">
-                                    <input type="hidden" name="longitude" id="longitude">
-                                    <button type="submit" class="btn btn-primary btn-user btn-block">Login</button>
-                                    <hr>
-                                </form>
-                            </div>
+
+<body>
+
+    <div class="container-fluid p-0">
+        <div class="row g-0">
+            <!-- Branding Panel (Left Side) - Hidden on small screens -->
+            <div class="col-lg-5 d-none d-lg-flex login-branding-panel">
+                <div class="logo">
+                    <i class="far fa-smile"></i>
+                </div>
+                <h1>Welcome Back!</h1>
+                <p>Your central hub for school management and monitoring.</p>
+            </div>
+
+            <!-- Form Panel (Right Side) -->
+            <div class="col-12 col-lg-7 login-form-panel">
+                <div class="login-form-container">
+                    <h2>Login</h2>
+                    <p class="subtitle">Please enter your credentials to proceed.</p>
+
+                    <?php if (!empty($error_message)): ?>
+                        <div class="alert alert-danger text-center"><?php echo htmlspecialchars($error_message); ?></div>
+                    <?php endif; ?>
+
+                    <form id="loginForm" method="POST" action="login.php">
+                        <div class="form-group">
+                            <input type="email" class="form-control form-control-custom" id="email" name="email" placeholder="Email Address" required>
+                            <i class="fas fa-envelope form-icon"></i>
                         </div>
-                    </div>
+                        <div class="form-group">
+                            <input type="password" class="form-control form-control-custom" name="password" id="password" placeholder="Password" required>
+                            <i class="fas fa-lock form-icon"></i>
+                            <i class="fas fa-eye password-toggle" id="togglePassword"></i>
+                        </div>
+
+                        <input type="hidden" name="latitude" id="latitude">
+                        <input type="hidden" name="longitude" id="longitude">
+
+                        <div class="d-grid mt-4">
+                            <button type="submit" class="btn btn-custom-login">Login</button>
+                        </div>
+
+                        <div class="text-center mt-4">
+                            <a class="forgot-password-link" data-bs-toggle="modal" data-bs-target="#forgotPasswordModal">Forgot Password?</a>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
     </div>
-    <script src="assets/vendor/jquery/jquery.min.js"></script>
-    <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="assets/vendor/jquery-easing/jquery.easing.min.js"></script>
-    <script src="assets/js/sb-admin-2.min.js"></script>
 
-    <script>
-    window.addEventListener('load', function() {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                function(position) {
-                    document.getElementById('latitude').value = position.coords.latitude;
-                    document.getElementById('longitude').value = position.coords.longitude;
-                },
-                function(error) {
-                    console.error("Geolocation error: " + error.message);
-                }
-            );
-        } else {
-            console.error("Geolocation is not supported by this browser.");
-        }
-    });
-    </script>
+    <!-- Forgot Password Modal -->
+    <div class="modal fade" id="forgotPasswordModal" tabindex="-1" aria-labelledby="forgotPasswordModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="forgotPasswordModalLabel">Reset Password</h5>
+                    <button type="button" class="btn btn-custom-login" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="reset-alert-placeholder"></div>
+                    <!-- Step 1: Enter Email -->
+                    <form id="sendOtpForm">
+                        <p>Enter your email address and we'll send you an OTP to reset your password.</p>
+                        <div class="mb-3">
+                            <label for="resetEmail" class="form-label">Email Address</label>
+                            <input type="email" class="form-control" id="resetEmail" disabled>
+                        </div>
+                        <button type="submit" class="btn btn-custom-login">Send OTP</button>
+                    </form>
+
+                    <!-- Step 2: Enter OTP and New Password -->
+                    <form id="resetPasswordForm" class="d-none">
+                        <p>An OTP has been sent to <strong id="userEmailDisplay"></strong>. Please enter it below along with your new password.</p>
+                        <input type="hidden" id="hiddenEmail" name="email">
+                        <div class="mb-3">
+                            <label for="otp" class="form-label">One-Time Password (OTP)</label>
+                            <input type="text" class="form-control" id="otp" name="otp" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="new_password" class="form-label">New Password</label>
+                            <input type="password" class="form-control" id="new_password" name="new_password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirm_password" class="form-label">Confirm New Password</label>
+                            <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                        </div>
+                        <button type="submit" class="btn btn-custom-login">Reset Password</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ========= JAVASCRIPT ========= -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="./assets/js/login.js"></script>
 </body>
+
 </html>
