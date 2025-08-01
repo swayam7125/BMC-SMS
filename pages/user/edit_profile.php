@@ -60,6 +60,11 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
     $user_id = decrypt_id($_COOKIE['encrypted_user_id']);
     $user_role = decrypt_id($_COOKIE['encrypted_user_role']);
 
+    // MODIFICATION 1: Determine the correct role to use for file paths.
+    // If the user role is 'schooladmin', use 'principal' for directory paths.
+    $path_role = ($user_role === 'schooladmin') ? 'principal' : $user_role;
+
+
     // Determine the table and field names based on the user's role
     $table_name = '';
     $image_field = '';
@@ -77,6 +82,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
             $name_field = 'student_name';
             break;
         case 'principal':
+        case 'schooladmin': // This correctly identifies the table
             $table_name = 'principal';
             $image_field = 'principal_image';
             $name_field = 'principal_name';
@@ -106,14 +112,15 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
             $allowed_exts = ['jpg', 'jpeg', 'png', 'gif'];
 
             if (in_array($file_ext, $allowed_exts)) {
-                // The target directory should be relative to the project root for consistency
-                $target_dir = "pages/{$user_role}/uploads/";
+                // MODIFICATION 2: Use the `$path_role` variable for the directory.
+                $target_dir = "pages/{$path_role}/uploads/";
                 $full_target_dir = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . BASE_WEB_PATH . $target_dir;
 
                 if (!file_exists($full_target_dir)) {
                     mkdir($full_target_dir, 0777, true);
                 }
-                $new_filename = uniqid($user_role . '_', true) . '.' . $file_ext;
+                // Use the original role for the filename for clarity if needed, or path_role
+                $new_filename = uniqid($path_role . '_', true) . '.' . $file_ext;
                 $destination = $full_target_dir . $new_filename;
 
                 if (move_uploaded_file($file['tmp_name'], $destination)) {
@@ -186,7 +193,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
 <head>
     <meta charset="utf-8">
     <title>Edit Profile - School Management System</title>
-    <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
@@ -216,13 +223,12 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                         <div class="card-body">
                             <form method="POST" action="edit_profile.php" enctype="multipart/form-data">
                                 <div class="row">
-                                    <!-- Photo Preview -->
                                     <div class="col-md-4 text-center">
                                         <?php
-                                        // FIX: Use the robust function to get the correct path for the preview image.
                                         $default_image_path = BASE_WEB_PATH . 'assets/img/default-user.jpg';
                                         $imagePathFromDB = $user_data[$image_field] ?? '';
-                                        $current_image_web_path = getWebAccessibleImagePath($imagePathFromDB, BASE_WEB_PATH, $user_role) ?? $default_image_path;
+                                        // MODIFICATION 3: Use the `$path_role` variable to find the image.
+                                        $current_image_web_path = getWebAccessibleImagePath($imagePathFromDB, BASE_WEB_PATH, $path_role) ?? $default_image_path;
                                         ?>
                                         <img src="<?php echo htmlspecialchars($current_image_web_path); ?>"
                                             alt="Profile Photo"
@@ -238,7 +244,6 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                                             <input type="hidden" name="current_image_path" value="<?php echo htmlspecialchars($user_data[$image_field] ?? ''); ?>">
                                         </div>
                                     </div>
-                                    <!-- User Details -->
                                     <div class="col-md-8">
                                         <div class="form-group">
                                             <label for="name">Full Name *</label>

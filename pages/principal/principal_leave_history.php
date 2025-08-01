@@ -17,7 +17,9 @@ if ($role !== 'schooladmin') {
     <meta charset="UTF-8">
     <title>Leave Application History</title>
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-    <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
+    <!-- <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet"> -->
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link rel="stylesheet" href="../../assets/css/sidebar.css">

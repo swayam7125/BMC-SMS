@@ -54,7 +54,7 @@ try {
         $principal_data['principal_name'],
         $principal_data['email'],
         $principal_data['phone'],
-        $principal_data['principal_dob'], // Note: Mapping 'principal_dob' to 'dob'
+        $principal_data['dob'],
         $principal_data['gender'],
         $principal_data['blood_group'],
         $principal_data['address'],

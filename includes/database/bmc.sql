@@ -60,6 +60,16 @@ INSERT INTO `assignments` (`id`, `teacher_id`, `school_id`, `standard`, `subject
 (14, 6, 4, '11', 'maths', 'ssff', 'asdsaf', NULL, NULL, '2026-01-30', '2025-07-31 10:13:51'),
 (15, 6, 4, '11', 'maths', 'qwfdadfdd', 'dasfs', NULL, NULL, '2025-08-01', '2025-07-31 10:15:45'),
 (16, 6, 4, '11', 'maths', 'asfffascsa', 'csaf', NULL, NULL, '2025-08-01', '2025-07-31 12:11:36');
+(7, 6, 4, '11', 'maths', 'hyy', 'fgbdb', NULL, NULL, '2025-08-17', '2025-07-29 12:43:57'),
+(8, 6, 4, '11', 'maths', 'fsdgfasf', 'dasfaffffffffff', NULL, NULL, '2025-08-05', '2025-07-31 09:28:40'),
+(9, 6, 4, '11', 'maths', 'sggtwgt', 'fwswefwfwew', NULL, NULL, '2025-08-09', '2025-07-31 09:29:44'),
+(10, 6, 4, '11', 'maths', 'fenil', 'fenillllll', NULL, NULL, '2025-08-01', '2025-07-31 09:37:21'),
+(11, 6, 4, '11', 'maths', 'sff', 'dadadwefwfe', NULL, NULL, '2025-08-02', '2025-07-31 09:48:34'),
+(12, 6, 4, '11', 'maths', 'ddasdsfd', 'asfasf', NULL, NULL, '2025-02-03', '2025-07-31 10:05:12'),
+(13, 6, 4, '11', 'maths', 'bjb', 'csv', NULL, NULL, '2025-12-12', '2025-07-31 10:09:34'),
+(14, 6, 4, '11', 'maths', 'ssff', 'asdsaf', NULL, NULL, '2026-01-30', '2025-07-31 10:13:51'),
+(15, 6, 4, '11', 'maths', 'qwfdadfdd', 'dasfs', NULL, NULL, '2025-08-01', '2025-07-31 10:15:45'),
+(16, 6, 4, '11', 'maths', 'asfffascsa', 'csaf', NULL, NULL, '2025-08-01', '2025-07-31 12:11:36');
 
 -- --------------------------------------------------------
 
@@ -76,6 +86,8 @@ CREATE TABLE `assignment_submissions` (
   `status` varchar(50) NOT NULL DEFAULT 'Submitted',
   `rejection_reason` text DEFAULT NULL,
   `submitted_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `evaluated_at` timestamp NULL DEFAULT NULL,
+  `rejection_count` int(11) NOT NULL DEFAULT 0
   `evaluated_at` timestamp NULL DEFAULT NULL,
   `rejection_count` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -271,6 +283,31 @@ INSERT INTO `exam_timetables` (`id`, `principal_id`, `school_id`, `title`, `desc
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `exam_timetables`
+--
+
+CREATE TABLE `exam_timetables` (
+  `id` int(11) NOT NULL,
+  `principal_id` int(11) NOT NULL,
+  `school_id` int(11) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `description` text DEFAULT NULL,
+  `file_path` varchar(255) NOT NULL,
+  `original_filename` varchar(255) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `exam_timetables`
+--
+
+INSERT INTO `exam_timetables` (`id`, `principal_id`, `school_id`, `title`, `description`, `file_path`, `original_filename`, `created_at`) VALUES
+(1, 10, 4, 'Term 1 Exam Timetable', 'time table for term 1', '/BMC-SMS/uploads/timetables/examtt_688b5a0eec5341.29191278_INTERNSHIP REGISTRATION FORM Sujal.pdf', 'INTERNSHIP REGISTRATION FORM Sujal.pdf', '2025-07-31 11:57:02'),
+(2, 10, 4, 'Term 2 Exam Timetable', 'dasf', '/BMC-SMS/uploads/timetables/examtt_688b5f8df01541.57695077_INTERNSHIP REGISTRATION FORM JAY (1).pdf', 'INTERNSHIP REGISTRATION FORM JAY (1).pdf', '2025-07-31 12:20:30');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `leave_applications`
 --
 
@@ -310,6 +347,13 @@ INSERT INTO `leave_applications` (`id`, `teacher_id`, `from_date`, `to_date`, `r
 (17, 6, '2025-08-08', '2025-08-09', 'bhugv nk nn n', 'Full Day', 'Approved', '2025-07-31 11:23:31', NULL),
 (18, 6, '2025-08-08', '2025-08-09', 'bhugv nk nn n', 'Full Day', 'Approved', '2025-07-31 11:24:31', NULL),
 (19, 6, '2025-08-01', '2025-08-05', 'csdff', 'Full Day', 'Approved', '2025-07-31 12:11:58', NULL);
+(13, 6, '2025-07-29', '2025-07-29', 'leave', 'First Half', 'Approved', '2025-07-29 12:35:04', NULL),
+(14, 6, '2025-08-01', '2025-08-03', 'oooooooo', 'Full Day', 'Approved', '2025-07-31 11:09:39', NULL),
+(15, 6, '2025-08-01', '2025-08-05', 'bghugg', 'Full Day', 'Approved', '2025-07-31 11:20:57', NULL),
+(16, 6, '2025-08-01', '2025-08-05', 'bghugg', 'Full Day', 'Rejected', '2025-07-31 11:22:24', 'jnjknjnj'),
+(17, 6, '2025-08-08', '2025-08-09', 'bhugv nk nn n', 'Full Day', 'Approved', '2025-07-31 11:23:31', NULL),
+(18, 6, '2025-08-08', '2025-08-09', 'bhugv nk nn n', 'Full Day', 'Approved', '2025-07-31 11:24:31', NULL),
+(19, 6, '2025-08-01', '2025-08-05', 'csdff', 'Full Day', 'Approved', '2025-07-31 12:11:58', NULL);
 
 -- --------------------------------------------------------
 
@@ -339,6 +383,10 @@ INSERT INTO `notes` (`id`, `user_id`, `school_id`, `target_standard`, `title`, `
 (5, 6, 4, '11', 'safafdevammmmmmmmmmmm', 'devammmmmmmmmmmmmm', NULL, NULL, '2025-07-31 09:02:53'),
 (6, 6, 4, '11', 'njisijfj', 'happpp', '/BMC-SMS/pages/teacher/uploads/note_688b317e718586.38465640_view_attendence.txt', 'view_attendence.txt', '2025-07-31 09:03:58'),
 (7, 6, 4, '11', 'csfxasc', 'cddddddddddddddddddddddddddddddddddd', NULL, NULL, '2025-07-31 12:12:31');
+(4, 6, 4, '11', 'Hello test notification', 'this is test notification for educational purposes only', '/BMC-SMS/pages/teacher/uploads/note_688756ecdc5275.27306642_research sign paper.pdf', 'research sign paper.pdf', '2025-07-28 10:54:36'),
+(5, 6, 4, '11', 'safafdevammmmmmmmmmmm', 'devammmmmmmmmmmmmm', NULL, NULL, '2025-07-31 09:02:53'),
+(6, 6, 4, '11', 'njisijfj', 'happpp', '/BMC-SMS/pages/teacher/uploads/note_688b317e718586.38465640_view_attendence.txt', 'view_attendence.txt', '2025-07-31 09:03:58'),
+(7, 6, 4, '11', 'csfxasc', 'cddddddddddddddddddddddddddddddddddd', NULL, NULL, '2025-07-31 12:12:31');
 
 -- --------------------------------------------------------
 
@@ -364,6 +412,11 @@ INSERT INTO `notice` (`id`, `user_id`, `title`, `content`, `file_path`, `origina
 (1, 8, 'Internship', 'Complete Internship', '/BMC-SMS/pages/bmc/uploads/notice_68834a91915150.91659686_INTERNSHIP REGISTRATION FORM JAY (4) (1).pdf', 'INTERNSHIP REGISTRATION FORM JAY (4) (1).pdf', '2025-07-25 09:12:49'),
 (2, 8, 'Day 6 Test', 'waoaz', '/BMC-SMS/pages/bmc/uploads/notice_688362673aef16.92057394_INTERNSHIP REGISTRATION FORM JAY (4) (1) (1) (1).pdf', 'INTERNSHIP REGISTRATION FORM JAY (4) (1) (1) (1).pdf', '2025-07-25 10:54:31'),
 (3, 8, 'Devam ', 'parekh', '/BMC-SMS/pages/bmc/uploads/notice_6887332e030931.00260915_UI-UX_Fenil_74.pdf', 'UI-UX_Fenil_74.pdf', '2025-07-28 08:22:06'),
+(4, 8, 'Harsh', 'Shah', '/BMC-SMS/pages/bmc/uploads/notice_6887347bbbd760.91586774_UI-UX_Fenil_74.pdf', 'UI-UX_Fenil_74.pdf', '2025-07-28 08:27:39'),
+(5, 8, 'aafafasdf', 'zcasfasfasf', NULL, NULL, '2025-07-31 09:53:31'),
+(6, 8, 'efewf', 'cdwdwffffffffffffffffff', NULL, NULL, '2025-07-31 11:01:54'),
+(7, 8, 'wefwsee', 'seeeeeeeeee', NULL, NULL, '2025-07-31 11:08:15'),
+(8, 8, 'fweff', 'wffw', NULL, NULL, '2025-07-31 12:21:46');
 (4, 8, 'Harsh', 'Shah', '/BMC-SMS/pages/bmc/uploads/notice_6887347bbbd760.91586774_UI-UX_Fenil_74.pdf', 'UI-UX_Fenil_74.pdf', '2025-07-28 08:27:39'),
 (5, 8, 'aafafasdf', 'zcasfasfasf', NULL, NULL, '2025-07-31 09:53:31'),
 (6, 8, 'efewf', 'cdwdwffffffffffffffffff', NULL, NULL, '2025-07-31 11:01:54'),
@@ -466,6 +519,7 @@ CREATE TABLE `principal` (
   `password` varchar(255) NOT NULL,
   `phone` varchar(10) DEFAULT NULL,
   `dob` date DEFAULT NULL,
+  `dob` date DEFAULT NULL,
   `gender` enum('Male','Female','Others') NOT NULL,
   `blood_group` enum('A+','A-','B+','B-','AB+','AB-','O+','O-') NOT NULL,
   `address` text DEFAULT NULL,
@@ -564,6 +618,31 @@ INSERT INTO `principal_to_bmc_notices` (`id`, `principal_id`, `school_id`, `titl
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `principal_to_bmc_notices`
+--
+
+CREATE TABLE `principal_to_bmc_notices` (
+  `id` int(11) NOT NULL,
+  `principal_id` int(11) NOT NULL,
+  `school_id` int(11) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `content` text NOT NULL,
+  `file_path` varchar(255) DEFAULT NULL,
+  `original_filename` varchar(255) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `principal_to_bmc_notices`
+--
+
+INSERT INTO `principal_to_bmc_notices` (`id`, `principal_id`, `school_id`, `title`, `content`, `file_path`, `original_filename`, `created_at`) VALUES
+(1, 10, 4, 'mioweojfkj', 'jwndjkngfbn', NULL, NULL, '2025-07-31 11:39:41'),
+(2, 10, 4, 'njhshdjgsjd', ' sdhjbfdhbfdbwfbwfbw gwvshjvwehjfhsjbfhjsbhewb', NULL, NULL, '2025-07-31 12:16:52');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `school`
 --
 
@@ -589,6 +668,7 @@ CREATE TABLE `school` (
 --
 
 INSERT INTO `school` (`id`, `school_logo`, `school_name`, `email`, `phone`, `school_opening`, `school_type`, `education_board`, `school_medium`, `school_category`, `address`, `latitude`, `longitude`, `passing_percentage`) VALUES
+(4, NULL, 'sanskar bharti vidyalay', 'sbv@gmail.com', '8526548525', '2025-07-06', 'Private', 'CBSE', 'Hindi', '', 'adajan', 21.21060270, 72.76795460, 20.00);
 (4, NULL, 'sanskar bharti vidyalay', 'sbv@gmail.com', '8526548525', '2025-07-06', 'Private', 'CBSE', 'Hindi', '', 'adajan', 21.21060270, 72.76795460, 20.00);
 
 -- --------------------------------------------------------
@@ -617,6 +697,10 @@ INSERT INTO `school_notices_content` (`id`, `user_id`, `school_id`, `title`, `co
 (3, 10, 4, 'Complete work', 'HII', '/BMC-SMS/pages/principal/uploads/notice_6883539e857812.52522225_INTERNSHIP REGISTRATION FORM JAY (5).pdf', 'INTERNSHIP REGISTRATION FORM JAY (5).pdf', '2025-07-25 09:51:26'),
 (4, 10, 4, 'Email testing', 'this notice is being sent to test email feature', '/BMC-SMS/pages/principal/uploads/notice_6888af8d830663.02075899_💻 Case Study.pdf', '💻 Case Study.pdf', '2025-07-29 11:25:01'),
 (5, 10, 4, 'testing', 'hello', '/BMC-SMS/pages/principal/uploads/notice_6888b05c2e9f11.53130874_💻 Case Study.pdf', '💻 Case Study.pdf', '2025-07-29 11:28:28'),
+(6, 10, 4, 'sending to both teacher and students', 'testing', NULL, NULL, '2025-07-29 11:29:33'),
+(7, 10, 4, 'ffdefw', 'dewwwwwwww', NULL, NULL, '2025-07-31 09:54:19'),
+(8, 10, 4, 'fweff', 'casfafsf', NULL, NULL, '2025-07-31 10:01:37'),
+(9, 10, 4, 'csdff', 'readdddd', NULL, NULL, '2025-07-31 12:16:25');
 (6, 10, 4, 'sending to both teacher and students', 'testing', NULL, NULL, '2025-07-29 11:29:33'),
 (7, 10, 4, 'ffdefw', 'dewwwwwwww', NULL, NULL, '2025-07-31 09:54:19'),
 (8, 10, 4, 'fweff', 'casfafsf', NULL, NULL, '2025-07-31 10:01:37'),
@@ -650,6 +734,16 @@ INSERT INTO `school_notice_recipients` (`id`, `notice_id`, `recipient_type`, `re
 (8, 5, 'standard', '11'),
 (9, 6, 'teacher', '6'),
 (10, 6, 'standard', '10'),
+(11, 6, 'standard', '11'),
+(12, 7, 'teacher', '6'),
+(13, 7, 'standard', '10'),
+(14, 7, 'standard', '11'),
+(15, 8, 'teacher', '6'),
+(16, 8, 'standard', '10'),
+(17, 8, 'standard', '11'),
+(18, 9, 'teacher', '6'),
+(19, 9, 'standard', '10'),
+(20, 9, 'standard', '11');
 (11, 6, 'standard', '11'),
 (12, 7, 'teacher', '6'),
 (13, 7, 'standard', '10'),
@@ -695,6 +789,13 @@ INSERT INTO `school_timetable` (`id`, `school_id`, `standard`, `day_of_week`, `p
 (9, 4, '11', 'Friday', 1, 'Sanskrit', 6, '08:00:00', '09:00:00'),
 (10, 4, '11', 'Friday', 2, '0', 6, '09:00:00', '10:00:00'),
 (11, 4, '11', 'Saturday', 1, 'Science', 6, '08:00:00', '09:00:00'),
+(12, 4, '11', 'Saturday', 2, '0', 6, '09:00:00', '10:00:00'),
+(62, 4, '11', 'Monday', 3, 'Science', 6, '18:46:00', '00:00:00'),
+(64, 4, '11', 'Tuesday', 3, 'Sanskrit', 6, '00:00:00', '00:00:00'),
+(66, 4, '11', 'Wednesday', 3, 'Social Studies', 6, '00:00:00', '00:00:00'),
+(68, 4, '11', 'Thursday', 3, 'Physical Education', 6, '00:00:00', '00:00:00'),
+(70, 4, '11', 'Friday', 3, 'English', 6, '00:00:00', '00:00:00'),
+(72, 4, '11', 'Saturday', 3, 'Mathematics', 6, '00:00:00', '00:00:00');
 (12, 4, '11', 'Saturday', 2, '0', 6, '09:00:00', '10:00:00'),
 (62, 4, '11', 'Monday', 3, 'Science', 6, '18:46:00', '00:00:00'),
 (64, 4, '11', 'Tuesday', 3, 'Sanskrit', 6, '00:00:00', '00:00:00'),
@@ -1106,6 +1207,14 @@ ALTER TABLE `exam_timetables`
   ADD KEY `principal_id` (`principal_id`);
 
 --
+-- Indexes for table `exam_timetables`
+--
+ALTER TABLE `exam_timetables`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `school_id` (`school_id`),
+  ADD KEY `principal_id` (`principal_id`);
+
+--
 -- Indexes for table `leave_applications`
 --
 ALTER TABLE `leave_applications`
@@ -1156,6 +1265,14 @@ ALTER TABLE `principal_attendance`
 ALTER TABLE `principal_timings`
   ADD PRIMARY KEY (`timing_id`),
   ADD UNIQUE KEY `uq_principal_day` (`principal_id`,`day_of_week`);
+
+--
+-- Indexes for table `principal_to_bmc_notices`
+--
+ALTER TABLE `principal_to_bmc_notices`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `principal_id` (`principal_id`),
+  ADD KEY `school_id` (`school_id`);
 
 --
 -- Indexes for table `principal_to_bmc_notices`
@@ -1267,11 +1384,13 @@ ALTER TABLE `users`
 --
 ALTER TABLE `assignments`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT for table `assignment_submissions`
 --
 ALTER TABLE `assignment_submissions`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
@@ -1305,9 +1424,16 @@ ALTER TABLE `exam_timetables`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
+-- AUTO_INCREMENT for table `exam_timetables`
+--
+ALTER TABLE `exam_timetables`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
 -- AUTO_INCREMENT for table `leave_applications`
 --
 ALTER TABLE `leave_applications`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
 
 --
@@ -1315,17 +1441,20 @@ ALTER TABLE `leave_applications`
 --
 ALTER TABLE `notes`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `notice`
 --
 ALTER TABLE `notice`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=83;
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=83;
 
 --
@@ -1347,6 +1476,12 @@ ALTER TABLE `principal_to_bmc_notices`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
+-- AUTO_INCREMENT for table `principal_to_bmc_notices`
+--
+ALTER TABLE `principal_to_bmc_notices`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
 -- AUTO_INCREMENT for table `school`
 --
 ALTER TABLE `school`
@@ -1357,17 +1492,20 @@ ALTER TABLE `school`
 --
 ALTER TABLE `school_notices_content`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `school_notice_recipients`
 --
 ALTER TABLE `school_notice_recipients`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT for table `school_timetable`
 --
 ALTER TABLE `school_timetable`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=73;
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=73;
 
 --
@@ -1431,6 +1569,13 @@ ALTER TABLE `exam_timetables`
   ADD CONSTRAINT `fk_ett_school` FOREIGN KEY (`school_id`) REFERENCES `school` (`id`) ON DELETE CASCADE;
 
 --
+-- Constraints for table `exam_timetables`
+--
+ALTER TABLE `exam_timetables`
+  ADD CONSTRAINT `fk_ett_principal` FOREIGN KEY (`principal_id`) REFERENCES `principal` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_ett_school` FOREIGN KEY (`school_id`) REFERENCES `school` (`id`) ON DELETE CASCADE;
+
+--
 -- Constraints for table `leave_applications`
 --
 ALTER TABLE `leave_applications`
@@ -1473,6 +1618,13 @@ ALTER TABLE `principal_attendance`
 --
 ALTER TABLE `principal_timings`
   ADD CONSTRAINT `fk_timing_principal_id` FOREIGN KEY (`principal_id`) REFERENCES `principal` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `principal_to_bmc_notices`
+--
+ALTER TABLE `principal_to_bmc_notices`
+  ADD CONSTRAINT `fk_pbn_principal` FOREIGN KEY (`principal_id`) REFERENCES `principal` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_pbn_school` FOREIGN KEY (`school_id`) REFERENCES `school` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `principal_to_bmc_notices`

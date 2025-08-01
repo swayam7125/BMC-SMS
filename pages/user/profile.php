@@ -3,7 +3,6 @@
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
-// Only define the constant if it hasn't been defined already.
 if (!defined('BASE_WEB_PATH')) {
     define('BASE_WEB_PATH', '/BMC-SMS/');
 }
@@ -29,21 +28,17 @@ function getWebAccessibleImagePath($db_image_path, $base_web_path, $default_sub_
     return null;
 }
 
-// Set default values
 $user_data = null;
 $error_message = '';
 $user_role = '';
 
-// Check for success/error messages from URL
 $success_message_from_url = isset($_GET['success']) ? htmlspecialchars($_GET['success']) : '';
 $error_message_from_url = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : '';
 
-// Check if user is logged in via cookie
 if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'])) {
     $user_id = decrypt_id($_COOKIE['encrypted_user_id']);
     $user_role = decrypt_id($_COOKIE['encrypted_user_role']);
 
-    // Determine the table, fields, and join based on the user's role
     $table_name = '';
     $image_field = '';
     $name_field = '';
@@ -102,43 +97,12 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
 <head>
     <meta charset="utf-8">
     <title>User Profile - School Management System</title>
-    <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-    <style>
-    .profile-photo {
-        width: 150px;
-        height: 150px;
-        object-fit: cover;
-        border-radius: 10px;
-        border: 3px solid #e3e6f0;
-        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
-    }
-
-    .info-row {
-        margin-bottom: 1rem;
-    }
-
-    .info-label {
-        font-weight: bold;
-        color: #5a5c69;
-    }
-
-    .info-value {
-        color: #858796;
-    }
-
-    .salary-display {
-        font-size: 1.2em;
-        font-weight: bold;
-        color: #1cc88a;
-    }
-    </style>
     <link rel="stylesheet" href="../../assets/css/profile.css">
-
 </head>
 
 <body id="page-top">
@@ -150,13 +114,16 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">User Profile</h1>
-                        <!-- UPDATE: Link to the new edit_profile.php page -->
-                        <a href="edit_profile.php" class="btn btn-primary btn-sm">
-                            <i class="fas fa-edit fa-sm"></i> Edit Profile
-                        </a>
+                        <div>
+                            <button type="button" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#changePasswordModal">
+                                <i class="fas fa-lock fa-sm"></i> Change Password
+                            </button>
+                            <a href="edit_profile.php" class="btn btn-primary btn-sm">
+                                <i class="fas fa-edit fa-sm"></i> Edit Profile
+                            </a>
+                        </div>
                     </div>
 
-                    <!-- Display Success/Error Messages -->
                     <?php if ($success_message_from_url): ?>
                     <div class="alert alert-success"><?php echo $success_message_from_url; ?></div>
                     <?php endif; ?>
@@ -306,8 +273,8 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
             <?php include_once '../../includes/footer.php'; ?>
         </div>
     </div>
-    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
-        aria-hidden="true">
+
+    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
@@ -324,9 +291,69 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
             </div>
         </div>
     </div>
+    
+    <div class="modal fade" id="changePasswordModal" tabindex="-1" role="dialog" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="changePasswordModalLabel">Change Password</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="changePasswordForm" action="process_password_change.php" method="POST">
+                        <div class="form-group">
+                            <label for="current_password">Current Password</label>
+                            <input type="password" class="form-control" id="current_password" name="current_password" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="new_password">New Password</label>
+                            <input type="password" class="form-control" id="new_password" name="new_password" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="confirm_password">Confirm New Password</label>
+                            <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                            <div id="password_match_error" class="text-danger mt-2" style="display: none;">Passwords do not match.</div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary">Save changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
+    <script>
+        // JavaScript for password validation within the modal
+        $(document).ready(function() {
+            $('#changePasswordForm').on('submit', function(e) {
+                var newPassword = $('#new_password').val();
+                var confirmPassword = $('#confirm_password').val();
+                
+                if (newPassword !== confirmPassword) {
+                    e.preventDefault(); // Prevent form submission
+                    $('#password_match_error').show();
+                } else {
+                    $('#password_match_error').hide();
+                }
+            });
+
+            // Hide the error message when the user types
+            $('#new_password, #confirm_password').on('keyup', function() {
+                if ($('#new_password').val() === $('#confirm_password').val()) {
+                    $('#password_match_error').hide();
+                } else {
+                    $('#password_match_error').show();
+                }
+            });
+        });
+    </script>
 </body>
 
 </html>

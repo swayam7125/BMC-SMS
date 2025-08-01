@@ -2,6 +2,30 @@
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
+if (!defined('BASE_WEB_PATH')) {
+    define('BASE_WEB_PATH', '/BMC-SMS/');
+}
+
+// --- NEW: ROBUST IMAGE PATH FUNCTION ---
+function getWebAccessibleImagePath($db_image_path, $base_web_path, $default_sub_folder = '') {
+    if (empty($db_image_path)) return null;
+    $full_web_path = $base_web_path . ltrim($db_image_path, '/');
+    $filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $full_web_path;
+    if (@file_exists($filesystem_path) && @is_file($filesystem_path)) {
+        return $full_web_path;
+    }
+    $possible_locations = [ "pages/{$default_sub_folder}/uploads/", "uploads/{$default_sub_folder}s/", "uploads/" ];
+    foreach ($possible_locations as $location) {
+        $test_path = $base_web_path . $location . basename($db_image_path);
+        $test_filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $test_path;
+        if (@file_exists($test_filesystem_path) && @is_file($test_filesystem_path)) {
+            return $test_path;
+        }
+    }
+    return null;
+}
+// --- END OF NEW FUNCTION ---
+
 // Check if user is logged in
 $role = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
@@ -57,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $principal_name = trim($_POST['principal_name']);
     $new_email = trim($_POST['email']);
     $phone = trim($_POST['phone']);
-    $principal_dob = $_POST['principal_dob'];
+    $dob = $_POST['dob'];
     $gender = $_POST['gender'];
     $blood_group = $_POST['blood_group'];
     $address = trim($_POST['address']);
@@ -69,21 +93,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $image_path_for_db = $original_image_path;
 
-    //Handle Photo Upload ---
+    // --- MODIFICATION: Corrected Photo Upload Logic ---
     if (isset($_FILES['principal_image']) && $_FILES['principal_image']['error'] === UPLOAD_ERR_OK) {
         $file = $_FILES['principal_image'];
         $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         $allowed_exts = ['jpg', 'jpeg', 'png', 'gif'];
         if (in_array($file_ext, $allowed_exts)) {
-            $target_dir = "../../pages/principal/uploads/";
-            if (!file_exists($target_dir)) mkdir($target_dir, 0777, true);
+            // Define the directory relative to the project root
+            $target_dir_relative = "pages/principal/uploads/";
+            $full_target_dir = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . BASE_WEB_PATH . $target_dir_relative;
+
+            if (!file_exists($full_target_dir)) {
+                 mkdir($full_target_dir, 0777, true);
+            }
+            
             $new_filename = uniqid('principal_', true) . '.' . $file_ext;
-            $destination = $target_dir . $new_filename;
+            $destination = $full_target_dir . $new_filename;
+
             if (move_uploaded_file($file['tmp_name'], $destination)) {
-                if (!empty($original_image_path) && file_exists($original_image_path)) {
-                    @unlink($original_image_path);
+                // Correctly get the full path of the old image to delete it
+                if (!empty($original_image_path)) {
+                    $old_file_system_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . getWebAccessibleImagePath($original_image_path, BASE_WEB_PATH, 'principal');
+                    if ($old_file_system_path && file_exists($old_file_system_path) && is_file($old_file_system_path)) {
+                        @unlink($old_file_system_path);
+                    }
                 }
-                $image_path_for_db = $destination;
+                // Store the clean, root-relative path for the database
+                $image_path_for_db = $target_dir_relative . $new_filename;
             } else {
                 $errors[] = "Failed to move uploaded file.";
             }
@@ -91,6 +127,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = "Invalid file type. Only JPG, JPEG, PNG, and GIF are allowed.";
         }
     }
+    // --- END OF MODIFICATION ---
 
     //Validation ---
     if (empty($school_id)) $errors[] = "A school must be selected.";
@@ -135,9 +172,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 mysqli_stmt_close($stmt_user);
             }
 
-            $update_principal_query = "UPDATE principal SET principal_image=?, principal_name=?, email=?, phone=?, principal_dob=?, gender=?, blood_group=?, address=?, qualification=?, salary=?, school_id=?, batch=? WHERE id=?";
+            $update_principal_query = "UPDATE principal SET principal_image=?, principal_name=?, email=?, phone=?, dob=?, gender=?, blood_group=?, address=?, qualification=?, salary=?, school_id=?, batch=? WHERE id=?";
             $stmt_principal_update = mysqli_prepare($conn, $update_principal_query);
-            mysqli_stmt_bind_param($stmt_principal_update, "sssssssssdisi", $image_path_for_db, $principal_name, $new_email, $phone, $principal_dob, $gender, $blood_group, $address, $qualification, $salary, $school_id, $new_batch, $principal_id);
+            mysqli_stmt_bind_param($stmt_principal_update, "sssssssssdisi", $image_path_for_db, $principal_name, $new_email, $phone, $dob, $gender, $blood_group, $address, $qualification, $salary, $school_id, $new_batch, $principal_id);
             if (!mysqli_stmt_execute($stmt_principal_update)) throw new Exception("Error updating principal record: " . mysqli_stmt_error($stmt_principal_update));
             mysqli_stmt_close($stmt_principal_update);
 
@@ -191,7 +228,6 @@ $schools_result = mysqli_query($conn, $schools_query);
 <head>
     <meta charset="utf-8">
     <title>Edit Principal - School Management System</title>
-    <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
@@ -225,7 +261,16 @@ $schools_result = mysqli_query($conn, $schools_query);
                             <form method="POST" enctype="multipart/form-data">
                                 <div class="row">
                                     <div class="col-md-3 text-center">
-                                        <img src="<?php echo htmlspecialchars(!empty($principal['principal_image']) && file_exists($principal['principal_image']) ? $principal['principal_image'] : '../../assets/img/default-user.jpg'); ?>" alt="Principal Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
+                                        <?php
+                                            // --- MODIFICATION: Use function to get correct image path ---
+                                            $default_image_path = BASE_WEB_PATH . 'assets/img/default-user.jpg';
+                                            $imagePathFromDB = $principal['principal_image'] ?? '';
+                                            $current_image_web_path = getWebAccessibleImagePath($imagePathFromDB, BASE_WEB_PATH, 'principal') ?? $default_image_path;
+                                        ?>
+                                        <img src="<?php echo htmlspecialchars($current_image_web_path); ?>" 
+                                             alt="Principal Photo" id="imagePreview" class="img-thumbnail mb-2" 
+                                             style="width: 150px; height: 150px; object-fit: cover;"
+                                             onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($default_image_path); ?>';">
                                         <div class="form-group">
                                             <label for="principal_image" class="small btn btn-sm btn-info"><i class="fas fa-upload fa-sm"></i> Change Photo</label>
                                             <input type="file" class="d-none" id="principal_image" name="principal_image">
@@ -295,7 +340,7 @@ $schools_result = mysqli_query($conn, $schools_query);
                                 </div>
                                 <hr>
                                 <div class="form-row">
-                                    <div class="form-group col-md-6"><label for="principal_dob">Date of Birth</label><input type="date" class="form-control" id="principal_dob" name="principal_dob" value="<?php echo htmlspecialchars($principal['principal_dob']); ?>"></div>
+                                    <div class="form-group col-md-6"><label for="dob">Date of Birth</label><input type="date" class="form-control" id="dob" name="dob" value="<?php echo htmlspecialchars($principal['dob']); ?>"></div>
                                     <div class="form-group col-md-6"><label for="gender">Gender *</label><select class="form-control" id="gender" name="gender" required>
                                             <option value="">-- Select Gender --</option>
                                             <option value="Male" <?php echo ($principal['gender'] == 'Male') ? 'selected' : ''; ?>>Male</option>

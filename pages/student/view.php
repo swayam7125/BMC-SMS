@@ -128,13 +128,12 @@ $default_photo = getDefaultImagePath('student', BASE_WEB_PATH);
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>View Student - <?php echo htmlspecialchars($student['student_name']); ?></title>
 
-    <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i"
         rel="stylesheet">
 
-    <!-- Corrected Font Awesome link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-    <!-- Custom styles -->
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
 
     <link rel="stylesheet" href="../../assets/css/profile.css">
@@ -162,9 +161,11 @@ $default_photo = getDefaultImagePath('student', BASE_WEB_PATH);
                             <a href="student_list.php" class="btn btn-secondary btn-sm mr-2">
                                 <i class="fas fa-arrow-left"></i> Back to List
                             </a>
-                            <a href="edit.php?id=<?php echo $student['id']; ?>" class="btn btn-primary btn-sm">
-                                <i class="fas fa-edit"></i> Edit Student
-                            </a>
+                            <?php if ($role === 'schooladmin'): ?>
+                                <a href="edit.php?id=<?php echo $student['id']; ?>" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-edit"></i> Edit Student
+                                </a>
+                            <?php endif; ?>
                         </div>
                     </div>
 

@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
     $principal_name = trim($_POST['principal_name']);
     $email = trim($_POST['email']);
     $phone = trim($_POST['phone']);
-    $principal_dob = $_POST['principal_dob'];
+    $dob = $_POST['dob'];
     $gender = $_POST['gender'];
     $blood_group = $_POST['blood_group'];
     $address = trim($_POST['address']);
@@ -81,9 +81,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
             mysqli_stmt_close($stmt_user);
 
             // Step 2. Insert into 'principal' table
-            $insert_principal_query = "INSERT INTO principal (id, principal_image, school_id, principal_name, email, password, phone, principal_dob, gender, blood_group, address, qualification, salary, batch) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            $insert_principal_query = "INSERT INTO principal (id, principal_image, school_id, principal_name, email, password, phone, dob, gender, blood_group, address, qualification, salary, batch) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt_principal = mysqli_prepare($conn, $insert_principal_query);
-            mysqli_stmt_bind_param($stmt_principal, "issssssssssdss", $new_user_id, $image_path_for_db, $school_id, $principal_name, $email, $hashed_password, $phone, $principal_dob, $gender, $blood_group, $address, $qualification, $salary, $batch);
+            mysqli_stmt_bind_param($stmt_principal, "issssssssssdss", $new_user_id, $image_path_for_db, $school_id, $principal_name, $email, $hashed_password, $phone, $dob, $gender, $blood_group, $address, $qualification, $salary, $batch);
             if (!mysqli_stmt_execute($stmt_principal)) {
                 throw new Exception("Principal record creation failed: " . mysqli_stmt_error($stmt_principal));
             }
@@ -241,7 +241,7 @@ if (!empty($batch)) {
                                 <hr>
                                 <div class="form-row">
                                     <div class="form-group col-md-6"><label for="phone">Phone</label><input type="tel" class="form-control" id="phone" name="phone" value="<?php echo htmlspecialchars($_POST['phone'] ?? ''); ?>" maxlength="10"></div>
-                                    <div class="form-group col-md-6"><label for="principal_dob">Date of Birth</label><input type="date" class="form-control" id="principal_dob" name="principal_dob" value="<?php echo htmlspecialchars($_POST['principal_dob'] ?? ''); ?>"></div>
+                                    <div class="form-group col-md-6"><label for="dob">Date of Birth</label><input type="date" class="form-control" id="dob" name="dob" value="<?php echo htmlspecialchars($_POST['dob'] ?? ''); ?>"></div>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group col-md-6"><label for="gender">Gender *</label><select class="form-control" id="gender" name="gender" required>
