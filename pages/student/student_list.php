@@ -28,7 +28,6 @@ $result = mysqli_query($conn, $query);
     <meta charset="utf-8">
     <title>Student Management - School Management System</title>
     
-    <!-- <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css"> -->
     <link
         href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i"
         rel="stylesheet">
@@ -65,9 +64,11 @@ $result = mysqli_query($conn, $query);
                     <div class="card shadow mb-4">
                         <div class="card-header py-3 d-flex justify-content-between align-items-center">
                             <h6 class="m-0 font-weight-bold text-primary">Student List</h6>
+                            <?php if ($role === 'schooladmin'): ?>
                             <a href="/BMC-SMS/includes/forms/student_enrollment.php"
                                 class="btn btn-primary btn-icon-split btn-sm"><span class="icon text-white-50"><i
                                         class="fas fa-plus"></i></span><span class="text">Add New Student</span></a>
+                            <?php endif; ?>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
@@ -103,33 +104,34 @@ $result = mysqli_query($conn, $query);
                                                 <a href="view.php?id=<?php echo $row['id']; ?>"
                                                     class="btn btn-info btn-sm" title="View"><i
                                                         class="fas fa-eye"></i></a>
-                                                <a href="edit.php?id=<?php echo $row['id']; ?>"
-                                                    class="btn btn-primary btn-sm" title="Edit"><i
-                                                        class="fas fa-edit"></i></a>
-
+                                                
                                                 <?php if ($role === 'schooladmin'): ?>
-                                                <?php
-                                                            $return_url = urlencode('/BMC-SMS/pages/student/student_list.php');
-                                                            if ($row['account_status'] === 'active'):
-                                                                $suspendUrl = "../../includes/actions/update_user_status.php?id={$row['id']}&status=suspended&return={$return_url}";
-                                                            ?>
-                                                <a href="#"
-                                                    onclick="confirmAction('<?php echo $suspendUrl; ?>', 'suspend this student')"
-                                                    class="btn btn-warning btn-sm" title="Suspend"><i
-                                                        class="fas fa-ban"></i></a>
-                                                <?php else:
-                                                                $reactivateUrl = "../../includes/actions/update_user_status.php?id={$row['id']}&status=active&return={$return_url}";
-                                                            ?>
-                                                <a href="#"
-                                                    onclick="confirmAction('<?php echo $reactivateUrl; ?>', 'reactivate this student')"
-                                                    class="btn btn-success btn-sm" title="Reactivate"><i
-                                                        class="fas fa-check-circle"></i></a>
-                                                <?php endif; ?>
-                                                <?php endif; ?>
+                                                    <a href="edit.php?id=<?php echo $row['id']; ?>"
+                                                        class="btn btn-primary btn-sm" title="Edit"><i
+                                                            class="fas fa-edit"></i></a>
 
-                                                <button class="btn btn-danger btn-sm"
-                                                    onclick="confirmDelete(<?php echo $row['id']; ?>)" title="Delete"><i
-                                                        class="fas fa-trash"></i></button>
+                                                    <?php
+                                                                $return_url = urlencode('/BMC-SMS/pages/student/student_list.php');
+                                                                if ($row['account_status'] === 'active'):
+                                                                    $suspendUrl = "../../includes/actions/update_user_status.php?id={$row['id']}&status=suspended&return={$return_url}";
+                                                                ?>
+                                                    <a href="#"
+                                                        onclick="confirmAction('<?php echo $suspendUrl; ?>', 'suspend this student')"
+                                                        class="btn btn-warning btn-sm" title="Suspend"><i
+                                                            class="fas fa-ban"></i></a>
+                                                    <?php else:
+                                                                    $reactivateUrl = "../../includes/actions/update_user_status.php?id={$row['id']}&status=active&return={$return_url}";
+                                                                ?>
+                                                    <a href="#"
+                                                        onclick="confirmAction('<?php echo $reactivateUrl; ?>', 'reactivate this student')"
+                                                        class="btn btn-success btn-sm" title="Reactivate"><i
+                                                            class="fas fa-check-circle"></i></a>
+                                                    <?php endif; ?>
+
+                                                    <button class="btn btn-danger btn-sm"
+                                                        onclick="confirmDelete(<?php echo $row['id']; ?>)" title="Delete"><i
+                                                            class="fas fa-trash"></i></button>
+                                                <?php endif; ?>
                                             </td>
                                         </tr>
                                         <?php endwhile; ?>
