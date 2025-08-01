@@ -134,7 +134,7 @@ if (!empty($photo_path) && !file_exists($photo_path)) {
                                     <hr>
                                     <div class="row">
                                         <div class="col-sm-4 info-label">DOB:</div>
-                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars(date("d M Y", strtotime($principal['principal_dob']))); ?></div>
+                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars(date("d M Y", strtotime($principal['dob']))); ?></div>
                                     </div>
                                     <hr>
                                     <div class="row">
