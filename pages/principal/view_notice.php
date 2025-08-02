@@ -13,7 +13,7 @@ if (isset($_COOKIE['encrypted_user_id'])) {
     $userId = decrypt_id($_COOKIE['encrypted_user_id']);
 }
 
-if ($role !== 'schooladmin' || !$userId) {
+if ($role !== 'principal' || !$userId) {
     header("Location: ../../login.php");
     exit;
 }

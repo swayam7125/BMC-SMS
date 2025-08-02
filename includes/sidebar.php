@@ -49,7 +49,7 @@ if (isset($conn) && $conn->ping() && $user_id) {
             }
             break;
 
-        case 'schooladmin':
+        case 'principal':
             $sql_principal_counts = "SELECT 
                                         SUM(CASE WHEN type = 'new_notice' THEN 1 ELSE 0 END) AS bmc_notices,
                                         SUM(CASE WHEN type = 'leave_request' THEN 1 ELSE 0 END) AS leave_requests
@@ -89,7 +89,7 @@ if (isset($conn) && $conn->ping() && $user_id) {
             }
             break;
             
-        case 'bmc':
+        case 'superadmin':
             $sql_bmc_counts = "SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND type = 'principal_notice' AND is_read = 0";
             $stmt_bmc_counts = $conn->prepare($sql_bmc_counts);
             if ($stmt_bmc_counts) {
@@ -130,8 +130,8 @@ if (isset($conn) && $conn->ping() && $user_id) {
     // Use a switch statement to show menu items based on the user's role
     switch ($role) {
 
-        // ====== BMC Admin Panel ======
-        case 'bmc':
+        // ====== Super Admin Admin Panel ======
+        case 'superadmin':
     ?>
             <div class="sidebar-heading font-weight-semibold">Admin Controls</div>
             <li class="nav-item">
@@ -198,8 +198,8 @@ if (isset($conn) && $conn->ping() && $user_id) {
             break;
 
 
-        // ====== School Admin (Principal) Panel ======
-        case 'schooladmin':
+        // ====== Principal Panel ======
+        case 'principal':
         ?>
             <div class="sidebar-heading font-weight-semibold">School Management</div>
             <li class="nav-item">

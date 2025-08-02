@@ -2,9 +2,9 @@
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 
-// Ensure user is a schooladmin
+// Ensure user is a principal
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : '';
-if ($role !== 'schooladmin') {
+if ($role !== 'principal') {
     // Redirect non-admins away
     header("Location: /BMC-SMS/dashboard.php");
     exit;

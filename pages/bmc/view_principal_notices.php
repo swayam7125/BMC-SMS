@@ -16,12 +16,12 @@ if (isset($_COOKIE['encrypted_user_id'])) {
 }
 
 // Security Check
-if ($role !== 'bmc' || !$userId) {
+if ($role !== 'superadmin' || !$userId) {
     header("Location: ../../login.php");
     exit;
 }
 
-// --- Mark all 'principal_notice' notifications as read for the current BMC admin ---
+// --- Mark all 'principal_notice' notifications as read for the current Super admin ---
 $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND type = 'principal_notice' AND is_read = 0");
 if ($stmt_mark_read) {
     $stmt_mark_read->bind_param("i", $userId);

@@ -42,11 +42,11 @@ if (!$target_role) {
 // --- PERMISSION LOGIC UPDATED ---
 $is_authorized = false;
 switch ($current_user_role) {
-    case 'bmc':
-        if ($target_role === 'schooladmin') $is_authorized = true;
+    case 'superadmin':
+        if ($target_role === 'principal') $is_authorized = true;
         break;
-    case 'schooladmin':
-        // A school admin can manage both teachers AND students
+    case 'principal':
+        // A Principal can manage both teachers AND students
         if ($target_role === 'teacher' || $target_role === 'student') $is_authorized = true;
         break;
     // The 'teacher' case has been removed. Teachers are no longer authorized.

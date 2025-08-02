@@ -8,7 +8,7 @@ include_once "../../encryption.php";
 require('fpdf/fpdf.php');
 
 // Check for valid session and role
-if (!isset($_COOKIE['encrypted_user_role']) || decrypt_id($_COOKIE['encrypted_user_role']) !== 'schooladmin') {
+if (!isset($_COOKIE['encrypted_user_role']) || decrypt_id($_COOKIE['encrypted_user_role']) !== 'principal') {
     header("Location: generate_lc.php?error=Unauthorized access.");
     exit;
 }

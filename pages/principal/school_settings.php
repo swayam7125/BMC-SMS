@@ -3,10 +3,10 @@ session_start();
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 
-// Authorization check for 'schooladmin' role
+// Authorization check for 'principal' role
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 $userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
-if (!$role || $role !== 'schooladmin') {
+if (!$role || $role !== 'principal') {
     header("Location: /BMC-SMS/login.php");
     exit();
 }

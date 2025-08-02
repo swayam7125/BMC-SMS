@@ -4,7 +4,7 @@ include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
 // Check for valid session and role
-if (!isset($_COOKIE['encrypted_user_role']) || decrypt_id($_COOKIE['encrypted_user_role']) !== 'schooladmin') {
+if (!isset($_COOKIE['encrypted_user_role']) || decrypt_id($_COOKIE['encrypted_user_role']) !== 'principal') {
     header("Location: ../../login.php");
     exit;
 }

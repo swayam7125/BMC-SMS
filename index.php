@@ -2,7 +2,7 @@
 include_once "encryption.php";
 
 // List of valid roles
-$allowed_roles = ['student', 'teacher', 'schooladmin', 'bmc'];
+$allowed_roles = ['student', 'teacher', 'principal', 'superadmin'];
 
 // Initialize role
 $role = null;
@@ -26,10 +26,10 @@ if ($role) {
         case 'teacher':
             header("Location: dashboard.php");
             break;
-        case 'schooladmin':
+        case 'principal':
             header("Location: dashboard.php");
             break;
-        case 'bmc':
+        case 'superadmin':
             header("Location: dashboard.php");
             break;
     }

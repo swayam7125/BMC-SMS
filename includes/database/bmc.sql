@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Aug 01, 2025 at 07:52 PM
+-- Generation Time: Aug 02, 2025 at 06:44 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -188,7 +188,7 @@ CREATE TABLE `deleted_principals` (
 --
 
 INSERT INTO `deleted_principals` (`id`, `principal_name`, `email`, `phone`, `dob`, `gender`, `blood_group`, `address`, `qualification`, `salary`, `batch`, `school_id`, `deleted_by_role`, `deleted_at`) VALUES
-(1, 'HARSH', 'harsh@gmail.com', '5674231689', '2005-02-06', 'male', 'B-', 'Adajan', 'B.C.A', 500000.00, '', 3, 'schooladmin', '2025-07-22 11:51:18');
+(1, 'HARSH', 'harsh@gmail.com', '5674231689', '2005-02-06', 'male', 'B-', 'Adajan', 'B.C.A', 500000.00, '', 3, 'principal', '2025-07-22 11:51:18');
 
 -- --------------------------------------------------------
 
@@ -217,7 +217,7 @@ CREATE TABLE `deleted_schools` (
 --
 
 INSERT INTO `deleted_schools` (`id`, `school_logo`, `school_name`, `email`, `phone`, `school_opening`, `school_type`, `education_board`, `school_medium`, `school_category`, `address`, `deleted_by_role`, `deleted_at`) VALUES
-(6, NULL, 'LP SAVANI CANAL ROAD', 'lpsavani@gmail.com', '5478931254', '1999-03-11', 'Private', 'State', 'Hindi', '', 'Adajan', 'bmc', '2025-07-24 10:06:38');
+(6, NULL, 'LP SAVANI CANAL ROAD', 'lpsavani@gmail.com', '5478931254', '1999-03-11', 'Private', 'State', 'Hindi', '', 'Adajan', 'superadmin', '2025-07-24 10:06:38');
 
 -- --------------------------------------------------------
 
@@ -251,10 +251,10 @@ CREATE TABLE `deleted_students` (
 --
 
 INSERT INTO `deleted_students` (`id`, `student_name`, `email`, `rollno`, `std`, `academic_year`, `dob`, `gender`, `blood_group`, `address`, `father_name`, `father_phone`, `mother_name`, `mother_phone`, `school_id`, `reason_for_leaving`, `deleted_by_role`, `deleted_at`) VALUES
-(1, 'Rahul Patel', 'rahul@gmail.com', '1', '5th', '2024-2025', '2005-02-02', 'male', 'AB+', 'surat', 'harsh', '6565548720', 'hemina', '6523012304', 3, NULL, 'schooladmin', '2025-07-22 11:51:18'),
+(1, 'Rahul Patel', 'rahul@gmail.com', '1', '5th', '2024-2025', '2005-02-02', 'male', 'AB+', 'surat', 'harsh', '6565548720', 'hemina', '6523012304', 3, NULL, 'principal', '2025-07-22 11:51:18'),
 (3, 'devam parekh', 'devamparekh1200@gmail.com', '9', '11', '2024-2025', '2025-07-11', 'male', 'B+', 'canal road', 'mukesh', '9874522589', 'sunita', '753685124', 4, NULL, 'student', '2025-08-01 10:04:14'),
 (13, 'vansh', 'vansh@gmail.com', '15', '12', '2024-2025', '2011-03-11', 'female', 'B+', 'surat', 'girishbhai', '5565615555', 'Sita Patel', '5454454455', 4, NULL, 'teacher', '2025-07-24 15:42:54'),
-(16, 'mihir', 'mihir@gmail.com', '15', '11', '2024-2025', '2005-08-17', 'male', 'B-', 'nutan', 'janak', '5746895214', 'harshita', '6352417898', 4, NULL, 'schooladmin', '2025-07-30 08:06:28'),
+(16, 'mihir', 'mihir@gmail.com', '15', '11', '2024-2025', '2005-08-17', 'male', 'B-', 'nutan', 'janak', '5746895214', 'harshita', '6352417898', 4, NULL, 'principal', '2025-07-30 08:06:28'),
 (18, 'devam parekh', 'devamparekh1200@gmail.com', '69', '10', '2024-2025', '2005-03-11', 'male', 'AB-', 'LP savani', 'mukesh', '852369741', 'vanita', '9874563210', 4, 'he is not a good student', 'student', '2025-08-01 06:50:40'),
 (19, 'devam parekh', 'devamparekh1200@gmail.com', '69', '10', '2024-2025', '2005-03-11', 'female', 'A+', 'LP savani', 'mukesh', '8523697415', 'vanita', '1234567872', 4, 'bye bye bye', 'student', '2025-08-01 06:53:19'),
 (20, 'devam parekh', 'devamparekh1200@gmail.com', '69', '10', '2024-2025', '2005-03-11', 'male', 'O+', 'LP savani', 'mukesh', '8523697415', 'vanita', '9632587415', 4, 'bye bye bye', 'student', '2025-08-01 06:57:45');
@@ -293,10 +293,10 @@ CREATE TABLE `deleted_teachers` (
 --
 
 INSERT INTO `deleted_teachers` (`id`, `teacher_name`, `email`, `phone`, `gender`, `dob`, `blood_group`, `address`, `school_id`, `qualification`, `subject`, `language_known`, `salary`, `std`, `experience`, `batch`, `class_teacher`, `class_teacher_std`, `deleted_by_role`, `deleted_at`) VALUES
-(1, 'JAY', 'jay@gmail.com', '5674298791', 'male', '2005-11-03', 'AB-', '0', 3, 'BA', 'Account', 'Hindi', 500000.00, 'Nursery,Junior,1', '5', 'Evening', 0, NULL, 'schooladmin', '2025-07-22 11:51:18'),
-(12, 'ram', 'ram@gmail.com', '5545875655', 'male', '2005-03-11', 'AB+', 'surat', 4, 'MA', 'English', 'English', 100000.00, '5,6', '5', 'Morning', 0, NULL, 'schooladmin', '2025-07-24 09:34:16'),
-(14, 'Hemant', 'hemant@gmail.com', '5674231495', 'male', '2000-03-11', 'AB+', 'Surat', 4, 'MA', 'account', 'English', 150000.00, '11,12', '5', 'Morning', 1, '12', 'schooladmin', '2025-07-25 08:19:17'),
-(17, 'Yug gandhi', 'yug@gmail.com', '5874693214', 'male', '2005-03-11', 'B-', 'surat', 4, 'MA', 'maths', 'English', 250000.00, '7,9', '5', 'Morning', 1, '7', 'schooladmin', '2025-07-30 08:10:40');
+(1, 'JAY', 'jay@gmail.com', '5674298791', 'male', '2005-11-03', 'AB-', '0', 3, 'BA', 'Account', 'Hindi', 500000.00, 'Nursery,Junior,1', '5', 'Evening', 0, NULL, 'principal', '2025-07-22 11:51:18'),
+(12, 'ram', 'ram@gmail.com', '5545875655', 'male', '2005-03-11', 'AB+', 'surat', 4, 'MA', 'English', 'English', 100000.00, '5,6', '5', 'Morning', 0, NULL, 'principal', '2025-07-24 09:34:16'),
+(14, 'Hemant', 'hemant@gmail.com', '5674231495', 'male', '2000-03-11', 'AB+', 'Surat', 4, 'MA', 'account', 'English', 150000.00, '11,12', '5', 'Morning', 1, '12', 'principal', '2025-07-25 08:19:17'),
+(17, 'Yug gandhi', 'yug@gmail.com', '5874693214', 'male', '2005-03-11', 'B-', 'surat', 4, 'MA', 'maths', 'English', 250000.00, '7,9', '5', 'Morning', 1, '7', 'principal', '2025-07-30 08:10:40');
 
 -- --------------------------------------------------------
 
@@ -424,7 +424,9 @@ INSERT INTO `notice` (`id`, `user_id`, `title`, `content`, `file_path`, `origina
 (5, 8, 'aafafasdf', 'zcasfasfasf', NULL, NULL, '2025-07-31 09:53:31'),
 (6, 8, 'efewf', 'cdwdwffffffffffffffffff', NULL, NULL, '2025-07-31 11:01:54'),
 (7, 8, 'wefwsee', 'seeeeeeeeee', NULL, NULL, '2025-07-31 11:08:15'),
-(8, 8, 'fweff', 'wffw', NULL, NULL, '2025-07-31 12:21:46');
+(8, 8, 'fweff', 'wffw', NULL, NULL, '2025-07-31 12:21:46'),
+(9, 8, 'URGENT', 'blaw blaw', '/BMC-SMS/pages/bmc/uploads/notice_688e2241b1dbe4.49890246_UNIT 2 APPLET.pdf', 'UNIT 2 APPLET.pdf', '2025-08-02 14:35:45'),
+(10, 8, 'test', 'test test', NULL, NULL, '2025-08-02 14:50:23');
 
 -- --------------------------------------------------------
 
@@ -508,7 +510,9 @@ INSERT INTO `notifications` (`id`, `user_id`, `message`, `link`, `is_read`, `cre
 (82, 10, 'New notice from BMC: fweff', '/pages/principal/view_notice.php', 1, '2025-07-31 12:21:46', 'new_notice'),
 (83, 8, 'New Notice from Fenil Pastagia', '/pages/bmc/view_principal_notices.php', 1, '2025-08-01 16:33:57', 'principal_notice'),
 (84, 6, 'New Exam Timetable: Final Exam Timetable', '/pages/teacher/view_exam_timetable.php', 1, '2025-08-01 17:24:58', 'exam_timetable'),
-(85, 15, 'New Exam Timetable: Final Exam Timetable', '/pages/student/view_exam_timetable.php', 1, '2025-08-01 17:24:58', 'exam_timetable');
+(85, 15, 'New Exam Timetable: Final Exam Timetable', '/pages/student/view_exam_timetable.php', 1, '2025-08-01 17:24:58', 'exam_timetable'),
+(86, 10, 'New notice from BMC: URGENT', '/pages/principal/view_notice.php', 1, '2025-08-02 14:35:45', 'new_notice'),
+(87, 10, 'New notice from BMC: test', '/pages/principal/view_notice.php', 1, '2025-08-02 14:50:23', 'new_notice');
 
 -- --------------------------------------------------------
 
@@ -560,7 +564,7 @@ CREATE TABLE `principal` (
 --
 
 INSERT INTO `principal` (`id`, `principal_image`, `school_id`, `principal_name`, `email`, `password`, `phone`, `dob`, `gender`, `blood_group`, `address`, `qualification`, `salary`, `batch`) VALUES
-(10, '', 4, 'Fenil Pastagia', '17fenill@gmail.com', '$2y$10$KsFTLXtWQesQqvKcNCr3T.5DW9koNn/lVcXkd6qH4auh1xEgLMjZq', '9924976503', '0000-00-00', 'Female', 'B+', 'canal road', 'M.A. M.Ed', 90000.00, 'Morning');
+(10, 'pages/principal/uploads/principal_688e1e9a2a4f50.30741006.jpg', 4, 'Fenil Pastagia', '17fenill@gmail.com', '$2y$10$KsFTLXtWQesQqvKcNCr3T.5DW9koNn/lVcXkd6qH4auh1xEgLMjZq', '9924976503', '1990-08-17', 'Female', 'B+', 'canal road', 'M.A. M.Ed', 90000.00, 'Morning');
 
 -- --------------------------------------------------------
 
@@ -587,7 +591,8 @@ CREATE TABLE `principal_attendance` (
 INSERT INTO `principal_attendance` (`id`, `principal_id`, `school_id`, `attendance_date`, `status`, `login_latitude`, `login_longitude`, `login_time`, `updated_at`) VALUES
 (1, 10, 4, '2025-07-30', 'Absent', 21.21014980, 72.77075840, '23:47:25', '2025-07-30 18:17:25'),
 (12, 10, 4, '2025-07-31', 'Absent', NULL, NULL, '17:44:31', '2025-07-31 12:14:31'),
-(20, 10, 4, '2025-08-01', 'Absent', 21.18451200, 72.83671040, '22:54:28', '2025-08-01 17:24:28');
+(20, 10, 4, '2025-08-01', 'Absent', 21.18451200, 72.83671040, '22:54:28', '2025-08-01 17:24:28'),
+(31, 10, 4, '2025-08-02', 'Absent', 21.19761920, 72.83998720, '21:57:48', '2025-08-02 16:27:48');
 
 -- --------------------------------------------------------
 
@@ -1113,7 +1118,7 @@ INSERT INTO `timetables` (`id`, `school_id`, `standard`, `class_teacher_id`, `ti
 
 CREATE TABLE `users` (
   `id` int(11) NOT NULL,
-  `role` enum('student','teacher','schooladmin','bmc','librarian') NOT NULL,
+  `role` enum('student','teacher','principal','superadmin','librarian') NOT NULL,
   `email` varchar(50) NOT NULL,
   `password` varchar(255) NOT NULL,
   `account_status` enum('active','suspended') NOT NULL DEFAULT 'active'
@@ -1125,8 +1130,8 @@ CREATE TABLE `users` (
 
 INSERT INTO `users` (`id`, `role`, `email`, `password`, `account_status`) VALUES
 (6, 'teacher', 'otherswayam@gmail.com', '$2y$10$sdz4DZ5oaMJNrUA9mld44uiBNIIkAQCPjs2XrrnUcl.Bp6wlzYz1a', 'active'),
-(8, 'bmc', 'shahswayam7125@gmail.com', '$2y$10$T74F9Gb05l.StKcZg2sy/ub6PHeH.l3tT3Lv1JwOZzioXJCdEN0zO', 'active'),
-(10, 'schooladmin', '17fenill@gmail.com', '$2y$10$KsFTLXtWQesQqvKcNCr3T.5DW9koNn/lVcXkd6qH4auh1xEgLMjZq', 'active'),
+(8, 'superadmin', 'shahswayam7125@gmail.com', '$2y$10$T74F9Gb05l.StKcZg2sy/ub6PHeH.l3tT3Lv1JwOZzioXJCdEN0zO', 'active'),
+(10, 'principal', '17fenill@gmail.com', '$2y$10$KsFTLXtWQesQqvKcNCr3T.5DW9koNn/lVcXkd6qH4auh1xEgLMjZq', 'active'),
 (15, 'student', 'shh.260105@gmail.com', '$2y$10$nj4MFVjg.rCq6AmmAOX3jewd9VDTeNZCvWoeE138bfbUQaFAZmtY2', 'active');
 
 --
@@ -1451,13 +1456,13 @@ ALTER TABLE `notes`
 -- AUTO_INCREMENT for table `notice`
 --
 ALTER TABLE `notice`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=86;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=88;
 
 --
 -- AUTO_INCREMENT for table `password_resets`
@@ -1469,7 +1474,7 @@ ALTER TABLE `password_resets`
 -- AUTO_INCREMENT for table `principal_attendance`
 --
 ALTER TABLE `principal_attendance`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=30;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=38;
 
 --
 -- AUTO_INCREMENT for table `principal_timings`

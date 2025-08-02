@@ -11,8 +11,8 @@ if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
 
-// Authorization Check: Only allow 'schooladmin'
-if (!$role || $role !== 'schooladmin') {
+// Authorization Check: Only allow 'principal'
+if (!$role || $role !== 'principal') {
     header("Location: /BMC-SMS/login.php");
     exit();
 }

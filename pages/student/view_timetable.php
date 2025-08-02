@@ -43,7 +43,7 @@ switch ($role) {
         $stmt->close();
         break;
     case 'teacher':
-    case 'schooladmin':
+    case 'principal':
         // Fetch school ID for teacher/admin
         $tableName = ($role === 'teacher') ? 'teacher' : 'principal';
         $stmt = $conn->prepare("SELECT school_id FROM $tableName WHERE id = ?");
@@ -146,7 +146,7 @@ $pageTitle = 'View Timetable';
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Class Timetable</h1>
 
-                    <?php if (in_array($role, ['teacher', 'schooladmin'])): ?>
+                    <?php if (in_array($role, ['teacher', 'principal'])): ?>
                     <div class="card shadow mb-4">
                         <div class="card-body">
                             <form method="GET" class="form-inline">

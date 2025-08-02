@@ -108,7 +108,7 @@ $result = mysqli_query($conn, $query);
                                                 <a href="edit.php?id=<?php echo $row['id']; ?>"
                                                     class="btn btn-primary btn-sm" title="Edit"><i
                                                         class="fas fa-edit"></i></a>
-                                                <?php if ($role === 'bmc'): ?>
+                                                <?php if ($role === 'superadmin'): ?>
                                                 <?php
                                                             $return_url = urlencode('/BMC-SMS/pages/principal/principal_list.php');
                                                             if ($row['account_status'] === 'active'):

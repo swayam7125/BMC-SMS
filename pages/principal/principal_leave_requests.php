@@ -5,8 +5,8 @@ include_once '../../encryption.php';
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : '';
 $current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
 
-// Ensure user is a schooladmin and has a valid ID
-if ($role !== 'schooladmin' || !$current_user_id) {
+// Ensure user is a principal and has a valid ID
+if ($role !== 'principal' || !$current_user_id) {
     header("Location: /BMC-SMS/dashboard.php");
     exit;
 }

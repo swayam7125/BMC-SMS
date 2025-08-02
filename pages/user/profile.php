@@ -54,7 +54,6 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
             $image_field = 'student_image';
             $name_field = 'student_name';
             break;
-        case 'schooladmin':
         case 'principal':
             $table_name = 'principal';
             $image_field = 'principal_image';
@@ -143,7 +142,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                                 </div>
                                 <div class="card-body text-center">
                                     <?php
-                                        $path_role = ($user_role === 'schooladmin') ? 'principal' : $user_role;
+                                        $path_role = ($user_role === 'principal');
                                         $defaultImagePath = BASE_WEB_PATH . 'assets/img/default-user.jpg';
                                         $imagePathFromDB = $user_data[$image_field] ?? '';
                                         $profileImagePath = getWebAccessibleImagePath($imagePathFromDB, BASE_WEB_PATH, $path_role) ?? $defaultImagePath;
@@ -172,7 +171,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                                     </div>
                                     <hr>
                                     
-                                    <?php if ($user_role === 'teacher' || $user_role === 'principal' || $user_role === 'schooladmin'): ?>
+                                    <?php if ($user_role === 'teacher'): ?>
                                     <div class="row info-row">
                                         <div class="col-sm-4 info-label">Phone:</div>
                                         <div class="col-sm-8 info-value">
@@ -238,7 +237,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                                             </div>
                                         </div>
                                         
-                                        <?php if ($user_role === 'principal' || $user_role === 'schooladmin'): ?>
+                                        <?php if ($user_role === 'principal'): ?>
                                         <div class="col-md-6">
                                             <div class="row info-row">
                                                 <div class="col-sm-5 info-label">Qualification:</div>

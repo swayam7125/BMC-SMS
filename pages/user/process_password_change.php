@@ -45,7 +45,6 @@ switch ($user_role) {
     case 'student':
         $table_name = 'student';
         break;
-    case 'schooladmin':
     case 'principal':
         $table_name = 'principal';
         break;

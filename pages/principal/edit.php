@@ -165,7 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             if ($new_email !== $original_email) {
-                $update_user_query = "UPDATE users SET email=? WHERE id=? AND role='schooladmin'";
+                $update_user_query = "UPDATE users SET email=? WHERE id=? AND role='principal'";
                 $stmt_user = mysqli_prepare($conn, $update_user_query);
                 mysqli_stmt_bind_param($stmt_user, "si", $new_email, $principal_id);
                 if (!mysqli_stmt_execute($stmt_user)) throw new Exception("Error updating user record: " . mysqli_stmt_error($stmt_user));

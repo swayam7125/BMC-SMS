@@ -21,8 +21,8 @@ if (isset($_COOKIE['encrypted_user_id'])) {
     $userId = decrypt_id($_COOKIE['encrypted_user_id']);
 }
 
-// Authorization Check: Ensure user is a logged-in principal/schooladmin
-if (!$role || $role !== 'schooladmin') {
+// Authorization Check: Ensure user is a logged-in principal
+if (!$role || $role !== 'principal') {
     header("Location: /BMC-SMS/login.php");
     exit();
 }

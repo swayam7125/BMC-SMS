@@ -161,7 +161,7 @@ $default_photo = getDefaultImagePath('student', BASE_WEB_PATH);
                             <a href="student_list.php" class="btn btn-secondary btn-sm mr-2">
                                 <i class="fas fa-arrow-left"></i> Back to List
                             </a>
-                            <?php if ($role === 'schooladmin'): ?>
+                            <?php if ($role === 'principal'): ?>
                                 <a href="edit.php?id=<?php echo $student['id']; ?>" class="btn btn-primary btn-sm">
                                     <i class="fas fa-edit"></i> Edit Student
                                 </a>

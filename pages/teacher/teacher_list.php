@@ -105,7 +105,7 @@ $result = mysqli_query($conn, $query);
                                                 <a href="edit.php?id=<?php echo $row['id']; ?>"
                                                     class="btn btn-primary btn-sm" title="Edit"><i
                                                         class="fas fa-edit"></i></a>
-                                                <?php if ($role === 'schooladmin'): ?>
+                                                <?php if ($role === 'principal'): ?>
                                                 <?php
                                                             $return_url = urlencode('/BMC-SMS/pages/teacher/teacher_list.php');
                                                             if ($row['account_status'] === 'active'): 

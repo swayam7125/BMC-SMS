@@ -10,8 +10,8 @@ ini_set('display_errors', 1);
 // --- END: CORRECTED CORE FILE INCLUDES ---
 
 
-// Check if the user is a BMC admin
-if (!isset($_COOKIE['encrypted_user_role']) || decrypt_id($_COOKIE['encrypted_user_role']) !== 'bmc') {
+// Check if the user is a Super Admin admin
+if (!isset($_COOKIE['encrypted_user_role']) || decrypt_id($_COOKIE['encrypted_user_role']) !== 'superadmin') {
     header("Location: /BMC-SMS/login.php");
     exit();
 }

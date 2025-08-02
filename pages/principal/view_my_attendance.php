@@ -9,8 +9,8 @@ ini_set('display_errors', 1);
 // --- END: CORE FILE INCLUDES ---
 
 
-// Check if the user is a Principal (schooladmin) and get their ID
-if (!isset($_COOKIE['encrypted_user_role']) || decrypt_id($_COOKIE['encrypted_user_role']) !== 'schooladmin') {
+// Check if the user is a Principal and get their ID
+if (!isset($_COOKIE['encrypted_user_role']) || decrypt_id($_COOKIE['encrypted_user_role']) !== 'principal') {
     header("Location: /BMC-SMS/login.php");
     exit();
 }

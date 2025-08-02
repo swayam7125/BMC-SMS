@@ -72,7 +72,7 @@ switch ($role) {
         }
         $stmt->close();
         break;
-    case 'schooladmin':
+    case 'principal':
         $stmt = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
         $stmt->bind_param("i", $userId);
         $stmt->execute();
@@ -96,7 +96,7 @@ $base_sql = "SELECT
              FROM notes n 
              JOIN users u ON n.user_id = u.id
              LEFT JOIN teacher t ON u.id = t.id AND u.role = 'teacher'
-             LEFT JOIN principal p ON u.id = p.id AND u.role = 'schooladmin'";
+             LEFT JOIN principal p ON u.id = p.id AND u.role = 'principal'";
 $params = [];
 $types = '';
 
@@ -118,7 +118,7 @@ switch ($role) {
             $types = "i";
         }
         break;
-    case 'schooladmin':
+    case 'principal':
         $base_sql .= " WHERE n.school_id = ?";
         $params = [$schoolId];
         $types = "i";

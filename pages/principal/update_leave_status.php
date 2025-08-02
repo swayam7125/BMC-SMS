@@ -3,9 +3,9 @@ include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/email_functions.php'; // Include the email functions
 
-// Security Check: Ensure user is a logged-in schooladmin
+// Security Check: Ensure user is a logged-in principal
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : '';
-if ($role !== 'schooladmin') {
+if ($role !== 'principal') {
     header("Location: /BMC-SMS/login.php?error=unauthorized");
     exit;
 }

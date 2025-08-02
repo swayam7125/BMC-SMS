@@ -70,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
             // Step 1. Insert into users table
-            $user_role = 'schooladmin';
+            $user_role = 'principal';
             $insert_user_query = "INSERT INTO users (role, email, password) VALUES (?, ?, ?)";
             $stmt_user = mysqli_prepare($conn, $insert_user_query);
             mysqli_stmt_bind_param($stmt_user, "sss", $user_role, $email, $hashed_password);

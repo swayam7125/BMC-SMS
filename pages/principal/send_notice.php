@@ -20,7 +20,7 @@ if (isset($_COOKIE['encrypted_user_id'])) {
 }
 
 // Security check
-if ($role !== 'schooladmin' || !$userId) {
+if ($role !== 'principal' || !$userId) {
     header("Location: ../login.php");
     exit;
 }

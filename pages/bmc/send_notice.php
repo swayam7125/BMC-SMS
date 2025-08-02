@@ -13,8 +13,8 @@ if (isset($_COOKIE['encrypted_user_id'])) {
     $userId = decrypt_id($_COOKIE['encrypted_user_id']);
 }
 
-// Ensure only bmc admin can access
-if ($role !== 'bmc' || !$userId) {
+// Ensure only Super Admin can access
+if ($role !== 'superadmin' || !$userId) {
     header("Location: ../login.php");
     exit;
 }
@@ -50,13 +50,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
     $stmt->close();
 
     // --- START: Notification Logic ---
-    // Create notifications for all school admins (principals)
+    // Create notifications for all principals
     $message = "New notice from BMC: " . substr($title, 0, 50);
     $link = "/pages/principal/view_notice.php";
     $type = 'new_notice';
 
     // Get all user IDs for principals
-    $stmt_principals = $conn->prepare("SELECT id FROM users WHERE role = 'schooladmin'");
+    $stmt_principals = $conn->prepare("SELECT id FROM users WHERE role = 'principal'");
     $stmt_principals->execute();
     $result_principals = $stmt_principals->get_result();
     

@@ -38,7 +38,7 @@ switch ($role) {
         }
         $stmt->close();
         break;
-    case 'schooladmin':
+    case 'principal':
         $stmt = $conn->prepare("SELECT school_id, principal_name FROM principal WHERE id = ?");
         $stmt->bind_param("i", $userId);
         $stmt->execute();

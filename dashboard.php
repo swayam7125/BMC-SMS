@@ -57,8 +57,8 @@ $totalAbsent = 0;
 
 // Fetch data based on user role
 switch ($role) {
-    case 'bmc':
-        // BMC role sees all global counts
+    case 'superadmin':
+        // superadmin role sees all global counts
         $sql = "SELECT COUNT(*) AS total FROM school";
         $result = $conn->query($sql);
         if ($result && $result->num_rows > 0) {
@@ -88,8 +88,8 @@ switch ($role) {
         }
         break;
 
-    case 'schooladmin':
-        // School Admin sees data related to their school
+    case 'principal':
+        // principal sees data related to their school
         $stmt = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
         if ($stmt) {
             $stmt->bind_param("i", $userId);
@@ -262,14 +262,14 @@ if ($userId && isset($conn) && $conn->ping()) {
     <meta name="author" content="">
     <?php
     $pageTitle = 'Dashboard'; // Default title
-    if ($role == 'bmc') {
-        $pageTitle = 'BMC - Dashboard';
+    if ($role == 'superadmin') {
+        $pageTitle = 'Super Admin - Dashboard';
     } elseif ($role == 'teacher') {
         $pageTitle = 'Teacher - Dashboard';
     } elseif ($role == 'student') {
         $pageTitle = 'Student - Dashboard';
-    } elseif ($role == 'schooladmin') {
-        $pageTitle = 'School Admin - Dashboard';
+    } elseif ($role == 'principal') {
+        $pageTitle = 'Principal Admin - Dashboard';
     }
     ?>
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
@@ -314,7 +314,7 @@ if ($userId && isset($conn) && $conn->ping()) {
                     </div>
 
                     <div class="row">
-                        <?php if ($role == 'bmc'): ?>
+                        <?php if ($role == 'superadmin'): ?>
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <a class="card-link" href="./pages/school/school_list.php">
                                     <div class="card border-left-primary shadow h-100 py-2">
@@ -390,7 +390,7 @@ if ($userId && isset($conn) && $conn->ping()) {
                                     </div>
                                 </a>
                             </div>
-                        <?php elseif ($role == 'schooladmin'): ?>
+                        <?php elseif ($role == 'principal'): ?>
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <a class="card-link" href="./pages/teacher/teacher_list.php">
                                     <div class="card border-left-primary shadow h-100 py-2">

@@ -57,7 +57,7 @@ $success_message = '';
 if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'])) {
     $user_id = decrypt_id($_COOKIE['encrypted_user_id']);
     $user_role = decrypt_id($_COOKIE['encrypted_user_role']);
-    $path_role = ($user_role === 'schooladmin') ? 'principal' : $user_role;
+    $path_role = ($user_role === 'principal') ? 'principal' : $user_role;
 
     $table_name = '';
     $image_field = '';
@@ -75,7 +75,6 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
             $name_field = 'student_name';
             break;
         case 'principal':
-        case 'schooladmin':
             $table_name = 'principal';
             $image_field = 'principal_image';
             $name_field = 'principal_name';
@@ -163,7 +162,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                 $params = [$name, $email, $dob, $gender, $blood_group, $address, $new_image_path];
                 $param_types = "sssssss";
 
-                if ($user_role === 'teacher' || $user_role === 'principal' || $user_role === 'schooladmin') {
+                if ($user_role === 'teacher' || $user_role === 'principal') {
                     $update_fields[] = "phone = ?";
                     $params[] = $phone;
                     $param_types .= "s";
@@ -286,7 +285,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                                             <label for="email">Email *</label>
                                             <input type="email" class="form-control" id="email" name="email" value="<?php echo htmlspecialchars($user_data['email'] ?? ''); ?>" required>
                                         </div>
-                                        <?php if ($user_role === 'teacher' || $user_role === 'principal' || $user_role === 'schooladmin'): ?>
+                                        <?php if ($user_role === 'teacher' || $user_role === 'principal'): ?>
                                         <div class="form-group">
                                             <label for="phone">Phone</label>
                                             <input type="tel" class="form-control" id="phone" name="phone" value="<?php echo htmlspecialchars($user_data['phone'] ?? ''); ?>">

@@ -64,7 +64,7 @@ $result = mysqli_query($conn, $query);
                     <div class="card shadow mb-4">
                         <div class="card-header py-3 d-flex justify-content-between align-items-center">
                             <h6 class="m-0 font-weight-bold text-primary">Student List</h6>
-                            <?php if ($role === 'schooladmin'): ?>
+                            <?php if ($role === 'principal'): ?>
                             <a href="/BMC-SMS/includes/forms/student_enrollment.php"
                                 class="btn btn-primary btn-icon-split btn-sm"><span class="icon text-white-50"><i
                                         class="fas fa-plus"></i></span><span class="text">Add New Student</span></a>
@@ -105,7 +105,7 @@ $result = mysqli_query($conn, $query);
                                                     class="btn btn-info btn-sm" title="View"><i
                                                         class="fas fa-eye"></i></a>
                                                 
-                                                <?php if ($role === 'schooladmin'): ?>
+                                                <?php if ($role === 'principal'): ?>
                                                     <a href="edit.php?id=<?php echo $row['id']; ?>"
                                                         class="btn btn-primary btn-sm" title="Edit"><i
                                                             class="fas fa-edit"></i></a>

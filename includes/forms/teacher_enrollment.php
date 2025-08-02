@@ -20,7 +20,7 @@ if (!$role) {
 //Logic to get School Admin's school details ---
 $admin_school_id = null;
 $admin_school_name = null;
-if ($role === 'schooladmin' && $userId) {
+if ($role === 'principal' && $userId) {
     $stmt = $conn->prepare("SELECT s.id, s.school_name FROM principal p JOIN school s ON p.school_id = s.id WHERE p.id = ?");
     if ($stmt) {
         $stmt->bind_param("i", $userId);
@@ -59,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $class_teacher = isset($_POST['class_teacher']) ? 1 : 0;
     $class_teacher_std = $class_teacher ? ($_POST['class_teacher_std'] ?? null) : null;
 
-    $school_id = ($role === 'schooladmin') ? $admin_school_id : $_POST['school_id'];
+    $school_id = ($role === 'principal') ? $admin_school_id : $_POST['school_id'];
 
     $image_path_for_db = null;
 
@@ -230,7 +230,7 @@ $school_result = mysqli_query($conn, $school_query);
                                 <div class="form-row mt-3">
                                     <div class="form-group col-md-6">
                                         <label for="school_id">Assign to School *</label>
-                                        <?php if ($role === 'schooladmin'): ?>
+                                        <?php if ($role === 'principal'): ?>
                                             <select class="form-control" name="school_id_disabled" disabled>
                                                 <option value="<?php echo $admin_school_id; ?>" selected><?php echo htmlspecialchars($admin_school_name); ?></option>
                                             </select>

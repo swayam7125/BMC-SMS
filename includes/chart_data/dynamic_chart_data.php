@@ -22,10 +22,10 @@ if (empty($role)) {
 
 // --- Main Switch for Role-Based Data Fetching ---
 switch ($role) {
-    case 'bmc':
-        generateBmcData($conn);
+    case 'superadmin':
+        generateSuperAdminData($conn);
         break;
-    case 'schooladmin':
+    case 'principal':
         generatePrincipalData($conn, $userId);
         break;
     case 'teacher':
@@ -42,8 +42,8 @@ switch ($role) {
 // Close the database connection
 $conn->close();
 
-// --- Function for BMC: School Growth ---
-function generateBmcData($conn)
+// --- Function for SuperAdmin: School Growth ---
+function generateSuperAdminData($conn)
 {
     $sql = "SELECT YEAR(school_opening) as year, COUNT(id) as school_count 
             FROM school 
@@ -113,7 +113,7 @@ function generateBmcData($conn)
     echo json_encode($response);
 }
 
-// --- Function for Principal/SchoolAdmin: Admission Growth ---
+// --- Function for Principal: Admission Growth ---
 function generatePrincipalData($conn, $userId)
 {
     // First, get the school_id for the principal

@@ -19,7 +19,7 @@ if (isset($_COOKIE['encrypted_user_id'])) {
 }
 
 // Security check
-if ($role !== 'schooladmin' || !$userId) {
+if ($role !== 'principal' || !$userId) {
     header("Location: ../../login.php");
     exit;
 }
@@ -67,11 +67,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice_to_bmc']))
         $stmt_content->close();
         
         // Find all BMC admin user IDs
-        $stmt_bmc_users = $conn->query("SELECT id FROM users WHERE role = 'bmc'");
+        $stmt_bmc_users = $conn->query("SELECT id FROM users WHERE role = 'superadmin'");
         $bmc_user_ids = $stmt_bmc_users->fetch_all(MYSQLI_ASSOC);
         $stmt_bmc_users->close();
 
-        // Create a notification for each BMC admin
+        // Create a notification for each Super admin
         if (!empty($bmc_user_ids)) {
             $notification_message = "New Notice from " . htmlspecialchars($principalName);
             $notification_link = "/pages/bmc/view_principal_notices.php";

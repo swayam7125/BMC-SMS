@@ -46,7 +46,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['password']) && !isset(
                     } else {
 
                         // --- START: GEOLOCATION AND TIME-BASED ATTENDANCE LOGIC FOR PRINCIPAL ---
-                        if ($user['role'] === 'schooladmin') {
+                        if ($user['role'] === 'principal') {
                             $principal_id = $user['id'];
                             $attendance_status = 'Absent'; // Default status
 
@@ -124,7 +124,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['password']) && !isset(
                             case 'teacher':
                                 $detail_query = "SELECT teacher_image, teacher_name FROM teacher WHERE id = ?";
                                 break;
-                            case 'schooladmin':
+                            case 'principal':
                                 $detail_query = "SELECT principal_image, principal_name FROM principal WHERE id = ?";
                                 break;
                             default:
@@ -147,7 +147,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['password']) && !isset(
                                     } elseif ($user['role'] == 'teacher') {
                                         $profile_image = !empty($detail_row['teacher_image']) ? 'pages/teacher/uploads/' . basename($detail_row['teacher_image']) : '/BMC-SMS/assets/images/undraw_profile.svg';
                                         $user_name = $detail_row['teacher_name'];
-                                    } elseif ($user['role'] == 'schooladmin') {
+                                    } elseif ($user['role'] == 'principal') {
                                         $profile_image = !empty($detail_row['principal_image']) ? 'pages/principal/uploads/' . basename($detail_row['principal_image']) : '/BMC-SMS/assets/images/undraw_profile.svg';
                                         $user_name = $detail_row['principal_name'];
                                     }
