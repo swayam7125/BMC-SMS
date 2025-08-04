@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Aug 02, 2025 at 06:44 PM
+-- Generation Time: Aug 04, 2025 at 09:52 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -366,6 +366,28 @@ INSERT INTO `leave_applications` (`id`, `teacher_id`, `from_date`, `to_date`, `r
 (17, 6, '2025-08-08', '2025-08-09', 'bhugv nk nn n', 'Full Day', 'Approved', '2025-07-31 11:23:31', NULL),
 (18, 6, '2025-08-08', '2025-08-09', 'bhugv nk nn n', 'Full Day', 'Approved', '2025-07-31 11:24:31', NULL),
 (19, 6, '2025-08-01', '2025-08-05', 'csdff', 'Full Day', 'Approved', '2025-07-31 12:11:58', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `librarian`
+--
+
+CREATE TABLE `librarian` (
+  `id` int(11) NOT NULL,
+  `librarian_image` varchar(255) DEFAULT NULL,
+  `librarian_name` varchar(50) NOT NULL,
+  `school_id` int(11) NOT NULL,
+  `email` varchar(50) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `phone` varchar(10) NOT NULL,
+  `dob` date NOT NULL,
+  `gender` enum('Male','Female','Others') NOT NULL,
+  `blood_group` enum('A+','A-','B+','B-','AB+','AB-','O+','O-') NOT NULL,
+  `address` text DEFAULT NULL,
+  `qualification` varchar(100) DEFAULT NULL,
+  `salary` decimal(10,2) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -1224,6 +1246,15 @@ ALTER TABLE `leave_applications`
   ADD KEY `fk_leave_teacher_id` (`teacher_id`);
 
 --
+-- Indexes for table `librarian`
+--
+ALTER TABLE `librarian`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `email` (`email`),
+  ADD UNIQUE KEY `phone` (`phone`),
+  ADD KEY `fk_librarian_school_id` (`school_id`);
+
+--
 -- Indexes for table `notes`
 --
 ALTER TABLE `notes`
@@ -1597,6 +1628,13 @@ ALTER TABLE `exam_timetables`
 --
 ALTER TABLE `leave_applications`
   ADD CONSTRAINT `fk_leave_teacher_id` FOREIGN KEY (`teacher_id`) REFERENCES `teacher` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `librarian`
+--
+ALTER TABLE `librarian`
+  ADD CONSTRAINT `fk_librarian_school_id` FOREIGN KEY (`school_id`) REFERENCES `school` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_librarian_user_id` FOREIGN KEY (`id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `notes`
