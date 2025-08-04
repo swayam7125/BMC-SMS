@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Aug 04, 2025 at 09:52 AM
+-- Generation Time: Aug 04, 2025 at 12:07 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -159,6 +159,36 @@ CREATE TABLE `borrowing_records` (
   `return_date` date DEFAULT NULL,
   `is_returned` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `deleted_librarians`
+--
+
+CREATE TABLE `deleted_librarians` (
+  `id` int(11) NOT NULL,
+  `librarian_name` varchar(100) DEFAULT NULL,
+  `email` varchar(100) DEFAULT NULL,
+  `phone` varchar(15) DEFAULT NULL,
+  `dob` date DEFAULT NULL,
+  `gender` enum('Male','Female','Others') DEFAULT NULL,
+  `blood_group` enum('A+','A-','B+','B-','AB+','AB-','O+','O-') DEFAULT NULL,
+  `address` text DEFAULT NULL,
+  `qualification` varchar(100) DEFAULT NULL,
+  `salary` decimal(10,2) DEFAULT NULL,
+  `school_id` int(11) DEFAULT NULL,
+  `deleted_by_role` varchar(50) DEFAULT NULL,
+  `deleted_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `deleted_librarians`
+--
+
+INSERT INTO `deleted_librarians` (`id`, `librarian_name`, `email`, `phone`, `dob`, `gender`, `blood_group`, `address`, `qualification`, `salary`, `school_id`, `deleted_by_role`, `deleted_at`) VALUES
+(21, 'Devang Odedra', 'devang@gmail.com', '9567845678', '1980-09-01', 'Male', 'AB+', 'Surat', 'B.A', 30000.00, 4, 'principal', '2025-08-04 09:06:44'),
+(22, 'Devang Odedra', 'devang@gmail.com', '9654378291', '1980-09-01', 'Male', 'AB+', 'Surat', 'B.A', 30000.00, 4, 'principal', '2025-08-04 09:56:08');
 
 -- --------------------------------------------------------
 
@@ -389,6 +419,13 @@ CREATE TABLE `librarian` (
   `salary` decimal(10,2) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `librarian`
+--
+
+INSERT INTO `librarian` (`id`, `librarian_image`, `librarian_name`, `school_id`, `email`, `password`, `phone`, `dob`, `gender`, `blood_group`, `address`, `qualification`, `salary`) VALUES
+(23, '/BMC-SMS/pages/librarian/uploads/librarian_68908540cde142.65959337.jpg', 'Devang Odedra', 4, 'devang@gmail.com', '$2y$10$gwi.CWfIjYwlqScnYMzLbeTB1KEryLZ8tb1TTwv7r68rXwj/K1Z3u', '9654378291', '1980-09-01', 'Male', 'A+', 'Canal Road', 'B.A', 30000.00);
+
 -- --------------------------------------------------------
 
 --
@@ -586,7 +623,7 @@ CREATE TABLE `principal` (
 --
 
 INSERT INTO `principal` (`id`, `principal_image`, `school_id`, `principal_name`, `email`, `password`, `phone`, `dob`, `gender`, `blood_group`, `address`, `qualification`, `salary`, `batch`) VALUES
-(10, 'pages/principal/uploads/principal_688e1e9a2a4f50.30741006.jpg', 4, 'Fenil Pastagia', '17fenill@gmail.com', '$2y$10$KsFTLXtWQesQqvKcNCr3T.5DW9koNn/lVcXkd6qH4auh1xEgLMjZq', '9924976503', '1990-08-17', 'Female', 'B+', 'canal road', 'M.A. M.Ed', 90000.00, 'Morning');
+(10, 'pages/principal/uploads/principal_688e1e9a2a4f50.30741006.jpg', 4, 'Fenil Pastagia', '17fenill@gmail.com', '$2y$10$WSgb/L7db17vIrhYjlXHguX6.gSNxFJq513rpU0JvlIZETe7eLTty', '9924976503', '1990-08-17', 'Female', 'B+', 'canal road', 'M.A. M.Ed', 90000.00, 'Morning');
 
 -- --------------------------------------------------------
 
@@ -614,7 +651,8 @@ INSERT INTO `principal_attendance` (`id`, `principal_id`, `school_id`, `attendan
 (1, 10, 4, '2025-07-30', 'Absent', 21.21014980, 72.77075840, '23:47:25', '2025-07-30 18:17:25'),
 (12, 10, 4, '2025-07-31', 'Absent', NULL, NULL, '17:44:31', '2025-07-31 12:14:31'),
 (20, 10, 4, '2025-08-01', 'Absent', 21.18451200, 72.83671040, '22:54:28', '2025-08-01 17:24:28'),
-(31, 10, 4, '2025-08-02', 'Absent', 21.19761920, 72.83998720, '21:57:48', '2025-08-02 16:27:48');
+(31, 10, 4, '2025-08-02', 'Absent', 21.19761920, 72.83998720, '21:57:48', '2025-08-02 16:27:48'),
+(38, 10, 4, '2025-08-04', 'Absent', 21.20495680, 72.76881110, '15:25:47', '2025-08-04 09:55:47');
 
 -- --------------------------------------------------------
 
@@ -1153,8 +1191,9 @@ CREATE TABLE `users` (
 INSERT INTO `users` (`id`, `role`, `email`, `password`, `account_status`) VALUES
 (6, 'teacher', 'otherswayam@gmail.com', '$2y$10$sdz4DZ5oaMJNrUA9mld44uiBNIIkAQCPjs2XrrnUcl.Bp6wlzYz1a', 'active'),
 (8, 'superadmin', 'shahswayam7125@gmail.com', '$2y$10$T74F9Gb05l.StKcZg2sy/ub6PHeH.l3tT3Lv1JwOZzioXJCdEN0zO', 'active'),
-(10, 'principal', '17fenill@gmail.com', '$2y$10$KsFTLXtWQesQqvKcNCr3T.5DW9koNn/lVcXkd6qH4auh1xEgLMjZq', 'active'),
-(15, 'student', 'shh.260105@gmail.com', '$2y$10$nj4MFVjg.rCq6AmmAOX3jewd9VDTeNZCvWoeE138bfbUQaFAZmtY2', 'active');
+(10, 'principal', '17fenill@gmail.com', '$2y$10$WSgb/L7db17vIrhYjlXHguX6.gSNxFJq513rpU0JvlIZETe7eLTty', 'active'),
+(15, 'student', 'shh.260105@gmail.com', '$2y$10$nj4MFVjg.rCq6AmmAOX3jewd9VDTeNZCvWoeE138bfbUQaFAZmtY2', 'active'),
+(23, 'librarian', 'devang@gmail.com', '$2y$10$gwi.CWfIjYwlqScnYMzLbeTB1KEryLZ8tb1TTwv7r68rXwj/K1Z3u', 'active');
 
 --
 -- Indexes for dumped tables
@@ -1205,6 +1244,12 @@ ALTER TABLE `borrowing_records`
   ADD PRIMARY KEY (`record_id`),
   ADD KEY `book_id` (`book_id`),
   ADD KEY `borrower_id` (`borrower_id`);
+
+--
+-- Indexes for table `deleted_librarians`
+--
+ALTER TABLE `deleted_librarians`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `deleted_principals`
@@ -1448,6 +1493,12 @@ ALTER TABLE `borrowing_records`
   MODIFY `record_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `deleted_librarians`
+--
+ALTER TABLE `deleted_librarians`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+
+--
 -- AUTO_INCREMENT for table `deleted_principals`
 --
 ALTER TABLE `deleted_principals`
@@ -1505,7 +1556,7 @@ ALTER TABLE `password_resets`
 -- AUTO_INCREMENT for table `principal_attendance`
 --
 ALTER TABLE `principal_attendance`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=38;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=42;
 
 --
 -- AUTO_INCREMENT for table `principal_timings`
@@ -1577,7 +1628,7 @@ ALTER TABLE `timetables`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
 
 --
 -- Constraints for dumped tables
