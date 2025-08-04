@@ -142,7 +142,9 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                                 </div>
                                 <div class="card-body text-center">
                                     <?php
-                                        $path_role = ($user_role === 'principal');
+                                        // ** THIS IS THE CORRECTED LINE **
+                                        $path_role = $user_role; // Correctly assigns 'student', 'teacher', or 'principal'
+                                        
                                         $defaultImagePath = BASE_WEB_PATH . 'assets/img/default-user.jpg';
                                         $imagePathFromDB = $user_data[$image_field] ?? '';
                                         $profileImagePath = getWebAccessibleImagePath($imagePathFromDB, BASE_WEB_PATH, $path_role) ?? $defaultImagePath;
@@ -171,7 +173,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                                     </div>
                                     <hr>
                                     
-                                    <?php if ($user_role === 'teacher'): ?>
+                                    <?php if ($user_role === 'teacher' || $user_role === 'principal'): ?>
                                     <div class="row info-row">
                                         <div class="col-sm-4 info-label">Phone:</div>
                                         <div class="col-sm-8 info-value">
