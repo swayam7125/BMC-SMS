@@ -57,7 +57,7 @@ $success_message = '';
 if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'])) {
     $user_id = decrypt_id($_COOKIE['encrypted_user_id']);
     $user_role = decrypt_id($_COOKIE['encrypted_user_role']);
-    $path_role = ($user_role === 'principal') ? 'principal' : $user_role;
+    $path_role = ($user_role === 'principal' || $user_role === 'librarian') ? $user_role : $user_role;
 
     $table_name = '';
     $image_field = '';
@@ -78,6 +78,11 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
             $table_name = 'principal';
             $image_field = 'principal_image';
             $name_field = 'principal_name';
+            break;
+        case 'librarian':
+            $table_name = 'librarian';
+            $image_field = 'librarian_image';
+            $name_field = 'librarian_name';
             break;
         default:
             header("Location: profile.php?error=Invalid user role for editing.");
@@ -162,7 +167,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                 $params = [$name, $email, $dob, $gender, $blood_group, $address, $new_image_path];
                 $param_types = "sssssss";
 
-                if ($user_role === 'teacher' || $user_role === 'principal') {
+                if ($user_role === 'teacher' || $user_role === 'principal' || $user_role === 'librarian') {
                     $update_fields[] = "phone = ?";
                     $params[] = $phone;
                     $param_types .= "s";
@@ -285,7 +290,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                                             <label for="email">Email *</label>
                                             <input type="email" class="form-control" id="email" name="email" value="<?php echo htmlspecialchars($user_data['email'] ?? ''); ?>" required>
                                         </div>
-                                        <?php if ($user_role === 'teacher' || $user_role === 'principal'): ?>
+                                        <?php if ($user_role === 'teacher' || $user_role === 'principal' || $user_role === 'librarian'): ?>
                                         <div class="form-group">
                                             <label for="phone">Phone</label>
                                             <input type="tel" class="form-control" id="phone" name="phone" value="<?php echo htmlspecialchars($user_data['phone'] ?? ''); ?>">

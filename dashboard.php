@@ -53,6 +53,7 @@ $salary = 0;
 $totalPresent = 0;
 $totalLeaves = 0;
 $totalAbsent = 0;
+$totalBooks = 0; // Added for librarian
 
 
 // Fetch data based on user role
@@ -200,6 +201,39 @@ switch ($role) {
         }
         break;
 
+    case 'librarian':
+        // Librarian sees data related to their school and library stats
+        $stmt = $conn->prepare("SELECT school_id FROM librarian WHERE id = ?");
+        if ($stmt) {
+            $stmt->bind_param("i", $userId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            if ($result && $result->num_rows > 0) {
+                $librarianData = $result->fetch_assoc();
+                $schoolId = $librarianData['school_id'];
+
+                // Get total students in the librarian's school
+                $studentStmt = $conn->prepare("SELECT COUNT(*) AS total FROM student WHERE school_id = ?");
+                if ($studentStmt) {
+                    $studentStmt->bind_param("i", $schoolId);
+                    $studentStmt->execute();
+                    $studentResult = $studentStmt->get_result();
+                    if ($studentResult && $studentResult->num_rows > 0) {
+                        $studentRow = $studentResult->fetch_assoc();
+                        $totalStudents = $studentRow['total'];
+                    }
+                    $studentStmt->close();
+                }
+
+                // Placeholder for total books
+                // You would need a real query for your 'books' table, e.g.:
+                // $booksStmt = $conn->prepare("SELECT COUNT(*) AS total FROM books WHERE school_id = ?");
+                $totalBooks = 5000; // Example static value
+            }
+            $stmt->close();
+        }
+        break;
+
     case 'student':
         // Student sees data related to their school and personal attendance
 
@@ -270,14 +304,13 @@ if ($userId && isset($conn) && $conn->ping()) {
         $pageTitle = 'Student - Dashboard';
     } elseif ($role == 'principal') {
         $pageTitle = 'Principal Admin - Dashboard';
+    } elseif ($role == 'librarian') {
+        $pageTitle = 'Librarian - Dashboard';
     }
     ?>
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
-    <!-- Corrected Asset Paths -->
-
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
     <link href="/BMC-SMS/assets/css/sb-admin-2.min.css" rel="stylesheet">
-    <!-- ** REMOVED CALENDAR CSS, ADDED NOTIFICATION CSS ** -->
     <link rel="stylesheet" href="/BMC-SMS/assets/css/notification_window.css">
     <link rel="stylesheet" href="/BMC-SMS/assets/css/sidebar.css">
     <link rel="stylesheet" href="/BMC-SMS/assets/css/scrollbar_hidden.css">
@@ -538,6 +571,79 @@ if ($userId && isset($conn) && $conn->ping()) {
                                     </div>
                                 </a>
                             </div>
+                        <?php elseif ($role == 'librarian'): ?>
+                             <div class="col-xl-3 col-md-6 mb-4">
+                                <a class="card-link" href="#">
+                                    <div class="card border-left-primary shadow h-100 py-2">
+                                        <div class="card-body">
+                                            <div class="row no-gutters align-items-center">
+                                                <div class="col mr-2">
+                                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                                        TOTAL Books in Library</div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo number_format($totalBooks); ?></div>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <i class="fas fa-book-bookmark fa-2x text-gray-300"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                             <div class="col-xl-3 col-md-6 mb-4">
+                                <a class="card-link" href="#">
+                                    <div class="card border-left-success shadow h-100 py-2">
+                                        <div class="card-body">
+                                            <div class="row no-gutters align-items-center">
+                                                <div class="col mr-2">
+                                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                                        Total Students in School</div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalStudents; ?></div>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <i class="fas fa-children fa-2x text-gray-300"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                             <div class="col-xl-3 col-md-6 mb-4">
+                                <a class="card-link" href="#">
+                                    <div class="card border-left-info shadow h-100 py-2">
+                                        <div class="card-body">
+                                            <div class="row no-gutters align-items-center">
+                                                <div class="col mr-2">
+                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                                        Issued Books (Today)</div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800">0</div>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <i class="fas fa-right-from-bracket fa-2x text-gray-300"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                             <div class="col-xl-3 col-md-6 mb-4">
+                                <a class="card-link" href="#">
+                                    <div class="card border-left-warning shadow h-100 py-2">
+                                        <div class="card-body">
+                                            <div class="row no-gutters align-items-center">
+                                                <div class="col mr-2">
+                                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                                        Overdue Books</div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800">0</div>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <i class="fas fa-triangle-exclamation fa-2x text-gray-300"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
                         <?php elseif ($role == 'student'): ?>
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <a class="card-link" href="dashboard.php">
@@ -641,8 +747,8 @@ if ($userId && isset($conn) && $conn->ping()) {
                                 <div class="card-body">
                                     <div class="chart-area">
                                         <canvas id="myAreaChart"
-                                            data-role="<?php echo htmlspecialchars($role); ?>"
-                                            data-user-id="<?php echo htmlspecialchars($userId); ?>"
+                                            data-role="<?php echo htmlspecialchars($role ?? ''); ?>"
+                                            data-user-id="<?php echo htmlspecialchars($userId ?? ''); ?>"
                                             data-base-url="/BMC-SMS/">
                                         </canvas>
                                     </div>
@@ -725,13 +831,11 @@ if ($userId && isset($conn) && $conn->ping()) {
         </div>
     </div>
 
-        <!-- Corrected Script Paths -->
         <script src="/BMC-SMS/assets/vendor/jquery/jquery.min.js"></script>
         <script src="/BMC-SMS/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
         <script src="/BMC-SMS/assets/vendor/jquery-easing/jquery.easing.min.js"></script>
         <script src="/BMC-SMS/assets/js/sb-admin-2.min.js"></script>
         <script src="/BMC-SMS/assets/vendor/chart.js/Chart.min.js"></script>
-        <!-- ** REMOVED CALENDAR JS, ADDED NOTIFICATION JS ** -->
         <script src="/BMC-SMS/assets/js/notification_window.js"></script>
         <script src="/BMC-SMS/assets/js/dynamic_chart.js"></script>
 

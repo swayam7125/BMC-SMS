@@ -2,7 +2,7 @@
 include_once "encryption.php";
 
 // List of valid roles
-$allowed_roles = ['student', 'teacher', 'principal', 'superadmin'];
+$allowed_roles = ['student', 'teacher', 'principal', 'superadmin', 'librarian'];
 
 // Initialize role
 $role = null;
@@ -21,15 +21,10 @@ if (isset($_COOKIE['encrypted_user_role'])) {
 if ($role) {
     switch ($role) {
         case 'student':
-            header("Location: dashboard.php");
-            break;
         case 'teacher':
-            header("Location: dashboard.php");
-            break;
         case 'principal':
-            header("Location: dashboard.php");
-            break;
         case 'superadmin':
+        case 'librarian': // Added librarian case
             header("Location: dashboard.php");
             break;
     }
@@ -39,3 +34,5 @@ if ($role) {
 // If no valid role, redirect to login
 header("Location: login.php");
 exit;
+
+?>

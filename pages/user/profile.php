@@ -59,6 +59,11 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
             $image_field = 'principal_image';
             $name_field = 'principal_name';
             break;
+        case 'librarian':
+            $table_name = 'librarian';
+            $image_field = 'librarian_image';
+            $name_field = 'librarian_name';
+            break;
         default:
             $error_message = "Invalid user role.";
             break;
@@ -142,7 +147,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                                 </div>
                                 <div class="card-body text-center">
                                     <?php
-                                        $path_role = ($user_role === 'principal');
+                                        $path_role = ($user_role === 'principal' || $user_role === 'librarian') ? $user_role : '';
                                         $defaultImagePath = BASE_WEB_PATH . 'assets/img/default-user.jpg';
                                         $imagePathFromDB = $user_data[$image_field] ?? '';
                                         $profileImagePath = getWebAccessibleImagePath($imagePathFromDB, BASE_WEB_PATH, $path_role) ?? $defaultImagePath;
@@ -171,7 +176,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                                     </div>
                                     <hr>
                                     
-                                    <?php if ($user_role === 'teacher'): ?>
+                                    <?php if ($user_role === 'teacher' || $user_role === 'librarian' || $user_role === 'principal'): ?>
                                     <div class="row info-row">
                                         <div class="col-sm-4 info-label">Phone:</div>
                                         <div class="col-sm-8 info-value">
@@ -273,6 +278,13 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                                             <div class="row info-row">
                                                 <div class="col-sm-5 info-label">Experience:</div>
                                                 <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['experience'] ?? '0'); ?> years</div>
+                                            </div>
+                                        </div>
+                                        <?php elseif ($user_role === 'librarian'): ?>
+                                        <div class="col-md-6">
+                                            <div class="row info-row">
+                                                <div class="col-sm-5 info-label">Qualification:</div>
+                                                <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['qualification'] ?? 'N/A'); ?></div>
                                             </div>
                                         </div>
                                         <?php elseif ($user_role === 'student'): ?>

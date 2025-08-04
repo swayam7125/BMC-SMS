@@ -220,6 +220,18 @@ if (isset($conn) && $conn->ping() && $user_id) {
                     </div>
                 </div>
             </li>
+             <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseLibrarian">
+                    <i class="fas fa-fw fa-book-reader"></i>
+                    <span>Manage Librarians</span>
+                </a>
+                <div id="collapseLibrarian" class="collapse" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>includes/forms/librarian_enrollment.php">Enroll Librarian</a>
+                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/librarian_list.php">Librarian List</a>
+                    </div>
+                </div>
+            </li>
             <li class="nav-item">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseStudent">
                     <i class="fas fa-fw fa-children"></i>
@@ -321,6 +333,7 @@ if (isset($conn) && $conn->ping() && $user_id) {
                 <div id="collapsePastData" class="collapse" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
                         <a class="collapse-item" href="/BMC-SMS/pages/past_record/past_teacher.php">Past Teacher List</a>
+                        <a class="collapse-item" href="/BMC-SMS/pages/past_record/past_librarian.php">Past Librarian List</a>
                         <a class="collapse-item" href="/BMC-SMS/pages/past_record/past_student.php">Past Student List</a>
                     </div>
                 </div>
@@ -527,6 +540,43 @@ if (isset($conn) && $conn->ping() && $user_id) {
                             <?php echo ($unread_exam_timetables > 9) ? '9+' : $unread_exam_timetables; ?>
                         </span>
                     <?php endif; ?>
+                </a>
+            </li>
+        <?php
+            break;
+
+        // ====== Librarian Panel ======
+        case 'librarian':
+        ?>
+            <div class="sidebar-heading font-weight-semibold">Library Management</div>
+            <li class="nav-item">
+                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/user/profile.php">
+                    <i class="fas fa-fw fa-id-card"></i>
+                    <span>My Profile</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseBooks">
+                    <i class="fas fa-fw fa-book-journal-whills"></i>
+                    <span>Manage Books</span>
+                </a>
+                <div id="collapseBooks" class="collapse" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item" href="#">Book List</a>
+                        <a class="collapse-item" href="#">Add New Book</a>
+                    </div>
+                </div>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="fas fa-fw fa-right-left"></i>
+                    <span>Issue & Return</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="fas fa-fw fa-inbox"></i>
+                    <span>Book Requests</span>
                 </a>
             </li>
     <?php

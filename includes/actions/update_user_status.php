@@ -46,8 +46,8 @@ switch ($current_user_role) {
         if ($target_role === 'principal') $is_authorized = true;
         break;
     case 'principal':
-        // A Principal can manage both teachers AND students
-        if ($target_role === 'teacher' || $target_role === 'student') $is_authorized = true;
+        // A Principal can manage teachers, students, AND librarians
+        if ($target_role === 'teacher' || $target_role === 'student' || $target_role === 'librarian') $is_authorized = true;
         break;
     // The 'teacher' case has been removed. Teachers are no longer authorized.
 }

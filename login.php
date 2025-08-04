@@ -127,6 +127,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['password']) && !isset(
                             case 'principal':
                                 $detail_query = "SELECT principal_image, principal_name FROM principal WHERE id = ?";
                                 break;
+                            case 'librarian': // Added librarian case
+                                $detail_query = "SELECT librarian_image, librarian_name FROM librarian WHERE id = ?";
+                                break;
                             default:
                                 $profile_image = '/BMC-SMS/assets/images/undraw_profile.svg';
                                 $user_name = $email;
@@ -150,6 +153,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['password']) && !isset(
                                     } elseif ($user['role'] == 'principal') {
                                         $profile_image = !empty($detail_row['principal_image']) ? 'pages/principal/uploads/' . basename($detail_row['principal_image']) : '/BMC-SMS/assets/images/undraw_profile.svg';
                                         $user_name = $detail_row['principal_name'];
+                                    } elseif ($user['role'] == 'librarian') { // Added librarian logic
+                                        $profile_image = !empty($detail_row['librarian_image']) ? 'pages/librarian/uploads/' . basename($detail_row['librarian_image']) : '/BMC-SMS/assets/images/undraw_profile.svg';
+                                        $user_name = $detail_row['librarian_name'];
                                     }
                                 }
                                 mysqli_stmt_close($detail_stmt);
@@ -199,7 +205,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['password']) && !isset(
 
     <div class="container-fluid p-0">
         <div class="row g-0">
-            <!-- Branding Panel (Left Side) - Hidden on small screens -->
             <div class="col-lg-5 d-none d-lg-flex login-branding-panel">
                 <div class="logo">
                     <i class="far fa-smile"></i>
@@ -208,7 +213,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['password']) && !isset(
                 <p>Your central hub for school management and monitoring.</p>
             </div>
 
-            <!-- Form Panel (Right Side) -->
             <div class="col-12 col-lg-7 login-form-panel">
                 <div class="login-form-container">
                     <h2>Login</h2>
@@ -245,7 +249,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['password']) && !isset(
         </div>
     </div>
 
-    <!-- Forgot Password Modal -->
     <div class="modal fade" id="forgotPasswordModal" tabindex="-1" aria-labelledby="forgotPasswordModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -255,7 +258,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['password']) && !isset(
                 </div>
                 <div class="modal-body">
                     <div id="reset-alert-placeholder"></div>
-                    <!-- Step 1: Enter Email -->
                     <form id="sendOtpForm">
                         <p>Enter your email address and we'll send you an OTP to reset your password.</p>
                         <div class="mb-3">
@@ -265,7 +267,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['password']) && !isset(
                         <button type="submit" class="btn btn-custom-login">Send OTP</button>
                     </form>
 
-                    <!-- Step 2: Enter OTP and New Password -->
                     <form id="resetPasswordForm" class="d-none">
                         <p>An OTP has been sent to <strong id="userEmailDisplay"></strong>. Please enter it below along with your new password.</p>
                         <input type="hidden" id="hiddenEmail" name="email">
@@ -289,7 +290,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['password']) && !isset(
     </div>
 
 
-    <!-- ========= JAVASCRIPT ========= -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="./assets/js/login.js"></script>
 </body>

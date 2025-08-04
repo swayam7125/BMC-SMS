@@ -48,6 +48,9 @@ switch ($user_role) {
     case 'principal':
         $table_name = 'principal';
         break;
+    case 'librarian':
+        $table_name = 'librarian';
+        break;
     default:
         header("Location: profile.php?error=Invalid user role.");
         exit;
