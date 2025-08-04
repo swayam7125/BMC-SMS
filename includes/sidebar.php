@@ -461,6 +461,22 @@ if (isset($conn) && $conn->ping() && $user_id) {
                     <?php endif; ?>
                 </a>
             </li>
+            
+            <hr class="sidebar-divider">
+            <div class="sidebar-heading font-weight-semibold">Library</div>
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseLibraryTeacher">
+                    <i class="fas fa-fw fa-book-reader"></i>
+                    <span>Library Services</span>
+                </a>
+                <div id="collapseLibraryTeacher" class="collapse" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/browse_books.php">Browse & Request Books</a>
+                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/my_library_record.php">My Borrowing Record</a>
+                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/user/request_new_book.php">Request New Book</a>
+                    </div>
+                </div>
+            </li>
 
         <?php
             break;
@@ -542,6 +558,22 @@ if (isset($conn) && $conn->ping() && $user_id) {
                     <?php endif; ?>
                 </a>
             </li>
+
+            <hr class="sidebar-divider">
+            <div class="sidebar-heading font-weight-semibold">Library</div>
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseLibraryStudent">
+                    <i class="fas fa-fw fa-book-reader"></i>
+                    <span>Library Services</span>
+                </a>
+                <div id="collapseLibraryStudent" class="collapse" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/student/browse_books.php">Browse & Request Books</a>
+                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/student/my_library_record.php">My Borrowing Record</a>
+                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/user/request_new_book.php">Request New Book</a>
+                    </div>
+                </div>
+            </li>
         <?php
             break;
 
@@ -562,21 +594,27 @@ if (isset($conn) && $conn->ping() && $user_id) {
                 </a>
                 <div id="collapseBooks" class="collapse" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="#">Book List</a>
-                        <a class="collapse-item" href="#">Add New Book</a>
+                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/book_list.php">Book List</a>
+                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/add_new_book.php">Add New Book</a>
                     </div>
                 </div>
             </li>
             <li class="nav-item">
-                <a class="nav-link" href="#">
+                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/issue_return.php">
                     <i class="fas fa-fw fa-right-left"></i>
                     <span>Issue & Return</span>
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" href="#">
+                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/borrow_requests.php">
+                    <i class="fas fa-fw fa-hand-holding-hand"></i>
+                    <span>Borrow Requests</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/book_requests.php">
                     <i class="fas fa-fw fa-inbox"></i>
-                    <span>Book Requests</span>
+                    <span>Acquisition Requests</span>
                 </a>
             </li>
     <?php

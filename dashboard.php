@@ -53,7 +53,10 @@ $salary = 0;
 $totalPresent = 0;
 $totalLeaves = 0;
 $totalAbsent = 0;
-$totalBooks = 0; // Added for librarian
+$totalBooks = 0;
+$issuedToday = 0;
+$overdueBooks = 0;
+$totalLibraryMembers = 0; // New variable for librarian dashboard
 
 
 // Fetch data based on user role
@@ -212,27 +215,120 @@ switch ($role) {
                 $librarianData = $result->fetch_assoc();
                 $schoolId = $librarianData['school_id'];
 
-                // Get total students in the librarian's school
-                $studentStmt = $conn->prepare("SELECT COUNT(*) AS total FROM student WHERE school_id = ?");
-                if ($studentStmt) {
-                    $studentStmt->bind_param("i", $schoolId);
-                    $studentStmt->execute();
-                    $studentResult = $studentStmt->get_result();
-                    if ($studentResult && $studentResult->num_rows > 0) {
-                        $studentRow = $studentResult->fetch_assoc();
-                        $totalStudents = $studentRow['total'];
-                    }
-                    $studentStmt->close();
+                // Card 1: Get total books in the library for this school
+                $booksStmt = $conn->prepare("SELECT COUNT(*) AS total FROM books WHERE school_id = ?");
+                if ($booksStmt) {
+                    $booksStmt->bind_param("i", $schoolId);
+                    $booksStmt->execute();
+                    $booksResult = $booksStmt->get_result()->fetch_assoc();
+                    $totalBooks = $booksResult['total'] ?? 0;
+                    $booksStmt->close();
                 }
 
-                // Placeholder for total books
-                // You would need a real query for your 'books' table, e.g.:
-                // $booksStmt = $conn->prepare("SELECT COUNT(*) AS total FROM books WHERE school_id = ?");
-                $totalBooks = 5000; // Example static value
+                // Card 2: Get total unique library members (students and teachers)
+                $membersStmt = $conn->prepare("
+                    SELECT COUNT(DISTINCT br.borrower_id) as total
+                    FROM borrowing_records br
+                    JOIN books b ON br.book_id = b.book_id
+                    WHERE b.school_id = ? AND br.borrower_role IN ('student', 'teacher')
+                ");
+                if ($membersStmt) {
+                    $membersStmt->bind_param("i", $schoolId);
+                    $membersStmt->execute();
+                    $membersResult = $membersStmt->get_result()->fetch_assoc();
+                    $totalLibraryMembers = $membersResult['total'] ?? 0;
+                    $membersStmt->close();
+                }
+
+                // Card 3: Get total books issued today
+                $issuedTodayStmt = $conn->prepare("SELECT COUNT(*) as total FROM borrowing_records br JOIN books b ON br.book_id = b.book_id WHERE b.school_id = ? AND br.checkout_date = CURDATE()");
+                if ($issuedTodayStmt) {
+                    $issuedTodayStmt->bind_param("i", $schoolId);
+                    $issuedTodayStmt->execute();
+                    $issuedTodayResult = $issuedTodayStmt->get_result()->fetch_assoc();
+                    $issuedToday = $issuedTodayResult['total'] ?? 0;
+                    $issuedTodayStmt->close();
+                }
+
+                // Card 4: Get total overdue books
+                $overdueStmt = $conn->prepare("SELECT COUNT(*) as total FROM borrowing_records br JOIN books b ON br.book_id = b.book_id WHERE b.school_id = ? AND br.due_date < CURDATE() AND br.is_returned = 0");
+                if ($overdueStmt) {
+                    $overdueStmt->bind_param("i", $schoolId);
+                    $overdueStmt->execute();
+                    $overdueResult = $overdueStmt->get_result()->fetch_assoc();
+                    $overdueBooks = $overdueResult['total'] ?? 0;
+                    $overdueStmt->close();
+                }
+                
+                /*
+                =============================================================================
+                LIBRARIAN GRAPH DATA LOGIC (New Library Members Per Month)
+                =============================================================================
+                The 'dynamic_chart.js' file should be configured to make an AJAX call to a
+                backend script (e.g., /api/chart_data.php) when the role is 'librarian'.
+                That backend script should contain the following PHP and SQL logic to generate
+                the data for the "New Library Members Per Month" chart.
+                
+                -- PHP Backend Script Example (/api/chart_data.php) --
+                
+                <?php
+                // include connect.php, encryption.php, etc.
+                // ... authentication and role check logic ...
+                
+                $schoolId = ... // get librarian's schoolId
+                
+                $sql = "
+                    WITH FirstCheckout AS (
+                        SELECT
+                            br.borrower_id,
+                            MIN(br.checkout_date) as first_checkout_date
+                        FROM borrowing_records br
+                        JOIN books b ON br.book_id = b.book_id
+                        WHERE b.school_id = ?
+                        GROUP BY br.borrower_id
+                    )
+                    SELECT
+                        DATE_FORMAT(first_checkout_date, '%b %Y') as month,
+                        COUNT(borrower_id) as new_members
+                    FROM FirstCheckout
+                    WHERE first_checkout_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+                    GROUP BY month
+                    ORDER BY first_checkout_date ASC;
+                ";
+                
+                $stmt = $conn->prepare($sql);
+                $stmt->bind_param("i", $schoolId);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                
+                $db_data = [];
+                while ($row = $result->fetch_assoc()) {
+                    $db_data[$row['month']] = $row['new_members'];
+                }
+                
+                // Create a full list of the last 12 months to ensure no gaps
+                $chart_labels = [];
+                $chart_data = [];
+                for ($i = 11; $i >= 0; $i--) {
+                    $month_key = date('M Y', strtotime("-$i months"));
+                    $chart_labels[] = $month_key;
+                    $chart_data[] = $db_data[$month_key] ?? 0;
+                }
+                
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'title' => 'New Library Members Per Month',
+                    'labels' => $chart_labels,
+                    'data' => $chart_data,
+                ]);
+                ?>
+                */
+
             }
             $stmt->close();
         }
         break;
+
 
     case 'student':
         // Student sees data related to their school and personal attendance
@@ -573,7 +669,7 @@ if ($userId && isset($conn) && $conn->ping()) {
                             </div>
                         <?php elseif ($role == 'librarian'): ?>
                              <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="#">
+                                <a class="card-link" href="/BMC-SMS/pages/librarian/book_list.php">
                                     <div class="card border-left-primary shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
@@ -591,17 +687,17 @@ if ($userId && isset($conn) && $conn->ping()) {
                                 </a>
                             </div>
                              <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="#">
+                                <a class="card-link" href="/BMC-SMS/pages/librarian/issue_return.php">
                                     <div class="card border-left-success shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
                                                     <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                                        Total Students in School</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalStudents; ?></div>
+                                                        Total Library Members</div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalLibraryMembers; ?></div>
                                                 </div>
                                                 <div class="col-auto">
-                                                    <i class="fas fa-children fa-2x text-gray-300"></i>
+                                                    <i class="fas fa-users-line fa-2x text-gray-300"></i>
                                                 </div>
                                             </div>
                                         </div>
@@ -609,14 +705,14 @@ if ($userId && isset($conn) && $conn->ping()) {
                                 </a>
                             </div>
                              <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="#">
+                                <a class="card-link" href="/BMC-SMS/pages/librarian/issue_return.php">
                                     <div class="card border-left-info shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
                                                     <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
                                                         Issued Books (Today)</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800">0</div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $issuedToday; ?></div>
                                                 </div>
                                                 <div class="col-auto">
                                                     <i class="fas fa-right-from-bracket fa-2x text-gray-300"></i>
@@ -627,14 +723,14 @@ if ($userId && isset($conn) && $conn->ping()) {
                                 </a>
                             </div>
                              <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="#">
+                                <a class="card-link" href="/BMC-SMS/pages/librarian/issue_return.php">
                                     <div class="card border-left-warning shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
                                                     <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                                                         Overdue Books</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800">0</div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $overdueBooks; ?></div>
                                                 </div>
                                                 <div class="col-auto">
                                                     <i class="fas fa-triangle-exclamation fa-2x text-gray-300"></i>
@@ -812,7 +908,7 @@ if ($userId && isset($conn) && $conn->ping()) {
         <i class="fas fa-angle-up"></i>
     </a>
 
-        <?php include_once "../../includes/logout_modal.php"?>
+        <?php include_once "./includes/logout_modal.php"?>
 
 
         <script src="/BMC-SMS/assets/vendor/jquery/jquery.min.js"></script>

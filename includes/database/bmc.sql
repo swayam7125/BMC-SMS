@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Aug 04, 2025 at 12:07 PM
+-- Generation Time: Aug 04, 2025 at 06:43 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -125,6 +125,13 @@ CREATE TABLE `books` (
   `is_digital` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `books`
+--
+
+INSERT INTO `books` (`book_id`, `school_id`, `title`, `author`, `isbn`, `publisher`, `quantity_total`, `quantity_available`, `created_at`, `file_path`, `is_digital`) VALUES
+(1, 4, 'Clean Code: A Handbook of Agile Software Craftsmanship', 'Robert C. Martin', '9780132350884', 'Prentice Hall', 10, 9, '2025-08-04 15:41:08', NULL, 0);
+
 -- --------------------------------------------------------
 
 --
@@ -134,7 +141,7 @@ CREATE TABLE `books` (
 CREATE TABLE `book_requests` (
   `request_id` int(11) NOT NULL,
   `requester_id` int(11) NOT NULL,
-  `requester_role` enum('teacher','principal') NOT NULL,
+  `requester_role` enum('teacher','principal','student') NOT NULL,
   `school_id` int(11) NOT NULL,
   `book_title` varchar(255) NOT NULL,
   `author` varchar(255) DEFAULT NULL,
@@ -157,8 +164,48 @@ CREATE TABLE `borrowing_records` (
   `checkout_date` date NOT NULL,
   `due_date` date NOT NULL,
   `return_date` date DEFAULT NULL,
-  `is_returned` tinyint(1) NOT NULL DEFAULT 0
+  `is_returned` tinyint(1) NOT NULL DEFAULT 0,
+  `fine_amount` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `fine_status` enum('Paid','Unpaid') NOT NULL DEFAULT 'Unpaid'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `borrowing_records`
+--
+
+INSERT INTO `borrowing_records` (`record_id`, `book_id`, `borrower_id`, `borrower_role`, `checkout_date`, `due_date`, `return_date`, `is_returned`, `fine_amount`, `fine_status`) VALUES
+(2, 1, 6, 'teacher', '2025-08-04', '2025-08-18', '2025-08-04', 1, 0.00, 'Unpaid'),
+(3, 1, 6, 'teacher', '2025-08-04', '2025-08-18', '2025-08-04', 1, 0.00, 'Unpaid');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `borrow_requests`
+--
+
+CREATE TABLE `borrow_requests` (
+  `request_id` int(11) NOT NULL,
+  `book_id` int(11) NOT NULL,
+  `school_id` int(11) NOT NULL,
+  `borrower_id` int(11) NOT NULL,
+  `borrower_role` enum('student','teacher') NOT NULL,
+  `requested_due_date` date DEFAULT NULL,
+  `request_date` timestamp NOT NULL DEFAULT current_timestamp(),
+  `status` enum('Pending','Approved','Rejected','Collected') NOT NULL DEFAULT 'Pending',
+  `librarian_id` int(11) DEFAULT NULL,
+  `action_date` datetime DEFAULT NULL,
+  `rejection_reason` text DEFAULT NULL,
+  `due_date` date DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `borrow_requests`
+--
+
+INSERT INTO `borrow_requests` (`request_id`, `book_id`, `school_id`, `borrower_id`, `borrower_role`, `requested_due_date`, `request_date`, `status`, `librarian_id`, `action_date`, `rejection_reason`, `due_date`) VALUES
+(3, 1, 4, 15, 'student', '2025-08-15', '2025-08-04 16:37:04', 'Rejected', 23, '2025-08-04 22:08:34', 'My choice', NULL),
+(4, 1, 4, 6, 'teacher', '2025-08-18', '2025-08-04 16:37:39', 'Approved', 23, '2025-08-04 22:08:15', NULL, '2025-08-18'),
+(5, 1, 4, 6, 'teacher', '2025-08-04', '2025-08-04 16:41:20', 'Approved', 23, '2025-08-04 22:11:42', NULL, '2025-08-18');
 
 -- --------------------------------------------------------
 
@@ -652,7 +699,7 @@ INSERT INTO `principal_attendance` (`id`, `principal_id`, `school_id`, `attendan
 (12, 10, 4, '2025-07-31', 'Absent', NULL, NULL, '17:44:31', '2025-07-31 12:14:31'),
 (20, 10, 4, '2025-08-01', 'Absent', 21.18451200, 72.83671040, '22:54:28', '2025-08-01 17:24:28'),
 (31, 10, 4, '2025-08-02', 'Absent', 21.19761920, 72.83998720, '21:57:48', '2025-08-02 16:27:48'),
-(38, 10, 4, '2025-08-04', 'Absent', 21.20495680, 72.76881110, '15:25:47', '2025-08-04 09:55:47');
+(38, 10, 4, '2025-08-04', 'Absent', 21.21010290, 72.77055590, '21:26:25', '2025-08-04 15:56:25');
 
 -- --------------------------------------------------------
 
@@ -1246,6 +1293,16 @@ ALTER TABLE `borrowing_records`
   ADD KEY `borrower_id` (`borrower_id`);
 
 --
+-- Indexes for table `borrow_requests`
+--
+ALTER TABLE `borrow_requests`
+  ADD PRIMARY KEY (`request_id`),
+  ADD KEY `book_id` (`book_id`),
+  ADD KEY `school_id` (`school_id`),
+  ADD KEY `borrower_id` (`borrower_id`),
+  ADD KEY `librarian_id` (`librarian_id`);
+
+--
 -- Indexes for table `deleted_librarians`
 --
 ALTER TABLE `deleted_librarians`
@@ -1478,7 +1535,7 @@ ALTER TABLE `attendance`
 -- AUTO_INCREMENT for table `books`
 --
 ALTER TABLE `books`
-  MODIFY `book_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `book_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `book_requests`
@@ -1490,7 +1547,13 @@ ALTER TABLE `book_requests`
 -- AUTO_INCREMENT for table `borrowing_records`
 --
 ALTER TABLE `borrowing_records`
-  MODIFY `record_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `record_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT for table `borrow_requests`
+--
+ALTER TABLE `borrow_requests`
+  MODIFY `request_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `deleted_librarians`
@@ -1556,7 +1619,7 @@ ALTER TABLE `password_resets`
 -- AUTO_INCREMENT for table `principal_attendance`
 --
 ALTER TABLE `principal_attendance`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=42;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=43;
 
 --
 -- AUTO_INCREMENT for table `principal_timings`
@@ -1666,6 +1729,15 @@ ALTER TABLE `book_requests`
 ALTER TABLE `borrowing_records`
   ADD CONSTRAINT `borrowing_records_ibfk_1` FOREIGN KEY (`book_id`) REFERENCES `books` (`book_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `borrowing_records_ibfk_2` FOREIGN KEY (`borrower_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `borrow_requests`
+--
+ALTER TABLE `borrow_requests`
+  ADD CONSTRAINT `borrow_requests_ibfk_1` FOREIGN KEY (`book_id`) REFERENCES `books` (`book_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `borrow_requests_ibfk_2` FOREIGN KEY (`school_id`) REFERENCES `school` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `borrow_requests_ibfk_3` FOREIGN KEY (`borrower_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `borrow_requests_ibfk_4` FOREIGN KEY (`librarian_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `exam_timetables`

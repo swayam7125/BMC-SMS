@@ -338,6 +338,14 @@ document.addEventListener('DOMContentLoaded', function () {
             { title: 'View Notes', url: `${BASE_URL}pages/student/view_notes.php`, keywords: 'view notes study material' },
             { title: 'View Lecture Timetable', url: `${BASE_URL}pages/student/view_timetable.php`, keywords: 'view lecture timetable schedule' },
             { title: 'View Exam Timetable', url: `${BASE_URL}pages/student/view_exam_timetable.php`, keywords: 'view exam timetable schedule test' },
+        ],
+        librarian: [
+            { title: 'Dashboard', url: `${BASE_URL}dashboard.php`, keywords: 'dashboard home main overview' },
+            { title: 'My Profile', url: `${BASE_URL}pages/user/profile.php`, keywords: 'my profile details information account' },
+            { title: 'Book List', url: `${BASE_URL}pages/librarian/book_list.php`, keywords: 'book list view all books library inventory' },
+            { title: 'Add New Book', url: `${BASE_URL}pages/librarian/add_new_book.php`, keywords: 'add new book enroll create library' },
+            { title: 'Issue & Return Books', url: `${BASE_URL}pages/librarian/issue_return.php`, keywords: 'issue return borrow checkout books management' },
+            { title: 'Book Requests', url: `${BASE_URL}pages/librarian/book_requests.php`, keywords: 'book requests pending approval suggestions' }
         ]
     };
 
