@@ -58,7 +58,6 @@ $issuedToday = 0;
 $overdueBooks = 0;
 $totalLibraryMembers = 0; // New variable for librarian dashboard
 
-
 // Fetch data based on user role
 switch ($role) {
     case 'superadmin':
@@ -260,70 +259,6 @@ switch ($role) {
                     $overdueStmt->close();
                 }
                 
-                /*
-                =============================================================================
-                LIBRARIAN GRAPH DATA LOGIC (New Library Members Per Month)
-                =============================================================================
-                The 'dynamic_chart.js' file should be configured to make an AJAX call to a
-                backend script (e.g., /api/chart_data.php) when the role is 'librarian'.
-                That backend script should contain the following PHP and SQL logic to generate
-                the data for the "New Library Members Per Month" chart.
-                
-                -- PHP Backend Script Example (/api/chart_data.php) --
-                
-                <?php
-                // include connect.php, encryption.php, etc.
-                // ... authentication and role check logic ...
-                
-                $schoolId = ... // get librarian's schoolId
-                
-                $sql = "
-                    WITH FirstCheckout AS (
-                        SELECT
-                            br.borrower_id,
-                            MIN(br.checkout_date) as first_checkout_date
-                        FROM borrowing_records br
-                        JOIN books b ON br.book_id = b.book_id
-                        WHERE b.school_id = ?
-                        GROUP BY br.borrower_id
-                    )
-                    SELECT
-                        DATE_FORMAT(first_checkout_date, '%b %Y') as month,
-                        COUNT(borrower_id) as new_members
-                    FROM FirstCheckout
-                    WHERE first_checkout_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
-                    GROUP BY month
-                    ORDER BY first_checkout_date ASC;
-                ";
-                
-                $stmt = $conn->prepare($sql);
-                $stmt->bind_param("i", $schoolId);
-                $stmt->execute();
-                $result = $stmt->get_result();
-                
-                $db_data = [];
-                while ($row = $result->fetch_assoc()) {
-                    $db_data[$row['month']] = $row['new_members'];
-                }
-                
-                // Create a full list of the last 12 months to ensure no gaps
-                $chart_labels = [];
-                $chart_data = [];
-                for ($i = 11; $i >= 0; $i--) {
-                    $month_key = date('M Y', strtotime("-$i months"));
-                    $chart_labels[] = $month_key;
-                    $chart_data[] = $db_data[$month_key] ?? 0;
-                }
-                
-                header('Content-Type: application/json');
-                echo json_encode([
-                    'title' => 'New Library Members Per Month',
-                    'labels' => $chart_labels,
-                    'data' => $chart_data,
-                ]);
-                ?>
-                */
-
             }
             $stmt->close();
         }
@@ -364,20 +299,20 @@ switch ($role) {
         break;
 }
 
-// --- START: Dashboard Historical Notification Logic ---
-$historical_notifications = [];
+// --- MODIFIED: Dashboard Notification Logic ---
+$dashboard_notifications = [];
 if ($userId && isset($conn) && $conn->ping()) {
-    // Fetches the 6 most recent READ notifications for the dashboard view.
-    $stmt_hist_notif = $conn->prepare("SELECT id, message, link, type, created_at FROM notifications WHERE user_id = ? AND is_read = 1 ORDER BY created_at DESC LIMIT 6");
-    $stmt_hist_notif->bind_param("i", $userId);
-    $stmt_hist_notif->execute();
-    $result_hist_notif = $stmt_hist_notif->get_result();
-    while ($row = $result_hist_notif->fetch_assoc()) {
-        $historical_notifications[] = $row;
+    // Fetches the 6 most recent notifications (read and unread) for the dashboard view.
+    $stmt_dash_notif = $conn->prepare("SELECT id, message, link, type, created_at, is_read FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 6");
+    $stmt_dash_notif->bind_param("i", $userId);
+    $stmt_dash_notif->execute();
+    $result_dash_notif = $stmt_dash_notif->get_result();
+    while ($row = $result_dash_notif->fetch_assoc()) {
+        $dashboard_notifications[] = $row;
     }
-    $stmt_hist_notif->close();
+    $stmt_dash_notif->close();
 }
-// --- END: Dashboard Historical Notification Logic ---
+// --- END: Dashboard Notification Logic ---
 
 ?>
 <!DOCTYPE html>
@@ -414,9 +349,8 @@ if ($userId && isset($conn) && $conn->ping()) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
 
     <style>
-        /* Add custom style to prevent oversized notification list */
         .notification-dashboard-list {
-            max-height: 350px; /* Adjust as needed */
+            max-height: 350px; 
             overflow-y: auto;
         }
     </style>
@@ -855,11 +789,11 @@ if ($userId && isset($conn) && $conn->ping()) {
                         <div class="col-xl-4 col-lg-5">
                             <div class="card shadow mb-4 h-100">
                                 <div class="card-header py-3">
-                                    <h6 class="m-0 font-weight-bold text-primary">Notification History</h6>
+                                    <h6 class="m-0 font-weight-bold text-primary">Recent Notifications</h6>
                                 </div>
                                 <div class="card-body d-flex flex-column">
                                     <div class="list-group list-group-flush notification-dashboard-list">
-                                        <?php if (empty($historical_notifications)): ?>
+                                        <?php if (empty($dashboard_notifications)): ?>
                                             <div class="list-group-item d-flex align-items-center">
                                                 <div class="mr-3">
                                                     <div class="icon-circle bg-secondary">
@@ -868,15 +802,18 @@ if ($userId && isset($conn) && $conn->ping()) {
                                                 </div>
                                                 <div>
                                                     <div class="small text-gray-500">All caught up!</div>
-                                                    No older notifications found.
+                                                    No notifications found.
                                                 </div>
                                             </div>
                                         <?php else: ?>
-                                            <?php foreach ($historical_notifications as $notification): ?>
+                                            <?php foreach ($dashboard_notifications as $notification): ?>
                                                 <?php
+                                                    // --- ADDED: Logic to build the link correctly to mark as read ---
                                                     $base_link = htmlspecialchars(BASE_WEB_PATH . ltrim($notification['link'], '/'));
+                                                    $separator = (strpos($base_link, '?') === false) ? '?' : '&';
+                                                    $final_link = $base_link . $separator . 'notif_id=' . $notification['id'];
                                                 ?>
-                                                <a class="list-group-item list-group-item-action d-flex align-items-center" href="<?php echo $base_link; ?>">
+                                                <a class="list-group-item list-group-item-action d-flex align-items-center" href="<?php echo $final_link; ?>">
                                                     <div class="mr-3">
                                                         <div class="icon-circle bg-primary">
                                                             <i class="<?php echo getNotificationIcon($notification['type']); ?>"></i>
@@ -886,7 +823,9 @@ if ($userId && isset($conn) && $conn->ping()) {
                                                         <div class="small text-gray-500">
                                                             <?php echo date('F j, Y', strtotime($notification['created_at'])); ?>
                                                         </div>
-                                                        <span class="font-weight-bold"><?php echo htmlspecialchars($notification['message']); ?></span>
+                                                        <span class="<?php echo ($notification['is_read'] == 0) ? 'font-weight-bold' : 'text-gray-800'; ?>">
+                                                            <?php echo htmlspecialchars($notification['message']); ?>
+                                                        </span>
                                                     </div>
                                                 </a>
                                             <?php endforeach; ?>
