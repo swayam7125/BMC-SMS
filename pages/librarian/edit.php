@@ -1,131 +1,109 @@
 <?php
-include_once "../../includes/connect.php";
-include_once "../../encryption.php";
+session_start();
+include_once '../../includes/connect.php';
+include_once '../../encryption.php';
 
+// 1. --- AUTHENTICATION & AUTHORIZATION USING COOKIES ---
 $role = null;
+$user_id = null;
+
+// This block reads and decrypts the cookies to verify the user's role and ID.
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
+if (isset($_COOKIE['encrypted_user_id'])) {
+    $user_id = decrypt_id($_COOKIE['encrypted_user_id']);
+}
 
-if (!$role || $role !== 'principal') {
+// This line checks the role obtained from the cookie and redirects if it's not correct.
+if ($role !== 'librarian') {
     header("Location: ../../login.php");
     exit;
 }
 
+// Get the librarian's school_id for security checks using the ID from the cookie.
+$school_id = null;
+if ($user_id) {
+    $stmt_school = $conn->prepare("SELECT school_id FROM librarian WHERE id = ?");
+    $stmt_school->bind_param("i", $user_id);
+    $stmt_school->execute();
+    $result_school = $stmt_school->get_result();
+    if ($result_school->num_rows > 0) {
+        $school_id = $result_school->fetch_assoc()['school_id'];
+    }
+    $stmt_school->close();
+}
+
+// If school_id could not be determined, deny access.
+if (!$school_id) {
+    header("Location: ../../login.php?error=Could not verify user's school.");
+    exit;
+}
+
+// Check if a book ID is provided in the URL.
 if (!isset($_GET['id']) || empty($_GET['id'])) {
-    header("Location: librarian_list.php?error=Invalid ID provided");
+    header("Location: book_list.php?error=No book ID specified.");
     exit;
 }
+$book_id = intval($_GET['id']);
 
-$librarian_id = intval($_GET['id']);
-$errors = [];
 
-$query_librarian = "SELECT * FROM librarian WHERE id = ?";
-$stmt_librarian_fetch = mysqli_prepare($conn, $query_librarian);
-mysqli_stmt_bind_param($stmt_librarian_fetch, "i", $librarian_id);
-mysqli_stmt_execute($stmt_librarian_fetch);
-$result_librarian = mysqli_stmt_get_result($stmt_librarian_fetch);
-
-if (mysqli_num_rows($result_librarian) === 0) {
-    header("Location: librarian_list.php?error=Librarian not found");
-    exit;
-}
-$librarian = mysqli_fetch_assoc($result_librarian);
-$original_email = $librarian['email'];
-$original_image_path = $librarian['librarian_image'];
-mysqli_stmt_close($stmt_librarian_fetch);
-
+// 2. --- HANDLE FORM SUBMISSION (POST Request) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $librarian_name = trim($_POST['librarian_name']);
-    $new_email = trim($_POST['email']);
-    $phone = trim($_POST['phone']);
-    $dob = $_POST['dob'];
-    $gender = $_POST['gender'];
-    $blood_group = $_POST['blood_group'];
-    $address = trim($_POST['address']);
-    $qualification = trim($_POST['qualification']);
-    $salary = trim($_POST['salary']);
-    
-    $image_path_for_db = $original_image_path;
+    $title = $_POST['title'];
+    $author = $_POST['author'];
+    $isbn = $_POST['isbn'];
+    $quantity_total = intval($_POST['quantity_total']);
+    $quantity_available = intval($_POST['quantity_available']);
+    $is_digital = isset($_POST['is_digital']) ? 1 : 0;
 
-    if (empty($librarian_name)) $errors[] = "Librarian name is required.";
-    if (empty($new_email) || !filter_var($new_email, FILTER_VALIDATE_EMAIL)) $errors[] = "A valid email is required.";
+    if ($quantity_available > $quantity_total) {
+        $_SESSION['error_message'] = "Available quantity cannot be greater than the total quantity.";
+    } else {
+        // Add school_id to the WHERE clause for security.
+        $stmt_update = $conn->prepare("UPDATE books SET title = ?, author = ?, isbn = ?, quantity_total = ?, quantity_available = ?, is_digital = ? WHERE book_id = ? AND school_id = ?");
+        $stmt_update->bind_param("sssiisii", $title, $author, $isbn, $quantity_total, $quantity_available, $is_digital, $book_id, $school_id);
 
-    if (isset($_FILES['librarian_image']) && $_FILES['librarian_image']['error'] === UPLOAD_ERR_OK) {
-        $file = $_FILES['librarian_image'];
-        $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        $allowed_exts = ['jpg', 'jpeg', 'png', 'gif'];
-        if (in_array($file_ext, $allowed_exts)) {
-            
-            $web_upload_path = '/BMC-SMS/pages/librarian/uploads/';
-            $server_upload_dir = $_SERVER['DOCUMENT_ROOT'] . $web_upload_path;
-
-            if (!file_exists($server_upload_dir)) {
-                mkdir($server_upload_dir, 0777, true);
-            }
-            
-            $new_filename = uniqid('librarian_', true) . '.' . $file_ext;
-            $destination = $server_upload_dir . $new_filename;
-
-            if (move_uploaded_file($file['tmp_name'], $destination)) {
-                $image_path_for_db = $web_upload_path . $new_filename;
-                // Delete old image if it exists
-                if (!empty($original_image_path)) {
-                    $old_image_server_path = $_SERVER['DOCUMENT_ROOT'] . $original_image_path;
-                    if (file_exists($old_image_server_path)) {
-                        @unlink($old_image_server_path);
-                    }
-                }
-            } else {
-                $errors[] = "Failed to move uploaded file.";
-            }
-        } else {
-            $errors[] = "Invalid file type. Only JPG, JPEG, PNG, and GIF are allowed.";
-        }
-    }
-
-    if (empty($errors)) {
-        mysqli_begin_transaction($conn);
-        try {
-            if ($new_email !== $original_email) {
-                $update_users = "UPDATE users SET email = ? WHERE id = ? AND role = 'librarian'";
-                $stmt_users = mysqli_prepare($conn, $update_users);
-                mysqli_stmt_bind_param($stmt_users, "si", $new_email, $librarian_id);
-                if (!mysqli_stmt_execute($stmt_users)) {
-                    throw new Exception("Failed to update users table: " . mysqli_stmt_error($stmt_users));
-                }
-                mysqli_stmt_close($stmt_users);
-            }
-
-            $update_librarian = "UPDATE librarian SET librarian_image = ?, librarian_name = ?, phone = ?, dob = ?, gender = ?, blood_group = ?, address = ?, email = ?, qualification = ?, salary = ? WHERE id = ?";
-            $stmt_update = mysqli_prepare($conn, $update_librarian);
-            mysqli_stmt_bind_param($stmt_update, "sssssssssdi", $image_path_for_db, $librarian_name, $phone, $dob, $gender, $blood_group, $address, $new_email, $qualification, $salary, $librarian_id);
-            if (!mysqli_stmt_execute($stmt_update)) {
-                throw new Exception("Failed to update librarian table: " . mysqli_stmt_error($stmt_update));
-            }
-            mysqli_stmt_close($stmt_update);
-            
-            mysqli_commit($conn);
-            header("Location: librarian_list.php?success=Librarian updated successfully");
+        if ($stmt_update->execute()) {
+            $_SESSION['success_message'] = "Book updated successfully!";
+            header("Location: book_list.php");
             exit;
-        } catch (Exception $e) {
-            mysqli_rollback($conn);
-            $errors[] = "Database update failed: " . $e->getMessage();
+        } else {
+            $_SESSION['error_message'] = "Error updating book: " . $conn->error;
         }
+        $stmt_update->close();
     }
-    $librarian = array_merge($librarian, $_POST);
 }
+
+
+// 3. --- FETCH BOOK DATA FOR THE FORM (GET Request) ---
+$book = null;
+// Add school_id to the WHERE clause for security.
+$stmt_fetch = $conn->prepare("SELECT * FROM books WHERE book_id = ? AND school_id = ?");
+$stmt_fetch->bind_param("ii", $book_id, $school_id);
+$stmt_fetch->execute();
+$result = $stmt_fetch->get_result();
+
+// Redirect with a friendly error if book not found or not part of the librarian's school.
+if ($result->num_rows === 1) {
+    $book = $result->fetch_assoc();
+} else {
+    $_SESSION['error_message'] = "Error: Book not found or you do not have permission to edit it.";
+    header("Location: book_list.php");
+    exit;
+}
+$stmt_fetch->close();
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <title>Edit Librarian - School Management System</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Book</title>
+    <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-    <link rel="stylesheet" href="../../assets/css/sidebar.css">
-    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
 <body id="page-top">
     <div id="wrapper">
@@ -134,72 +112,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
                 <div class="container-fluid">
-                    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                        <h1 class="h3 mb-0 text-gray-800">Edit Librarian</h1>
-                        <a href="librarian_list.php" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm"><i class="fas fa-arrow-left fa-sm"></i> Back to List</a>
-                    </div>
-                    <?php if (!empty($errors)): ?>
-                        <div class="alert alert-danger"><ul class="mb-0"><?php foreach ($errors as $error): ?><li><?php echo htmlspecialchars($error); ?></li><?php endforeach; ?></ul></div>
+                    <h1 class="h3 mb-4 text-gray-800">Edit Book</h1>
+
+                    <?php if (isset($_SESSION['error_message'])): ?>
+                        <div class="alert alert-danger"><?php echo $_SESSION['error_message']; unset($_SESSION['error_message']); ?></div>
                     <?php endif; ?>
+
                     <div class="card shadow mb-4">
-                        <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Librarian Information</h6></div>
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">Update Book Details</h6>
+                        </div>
                         <div class="card-body">
-                            <form method="POST" enctype="multipart/form-data">
+                            <form action="edit.php?id=<?php echo $book_id; ?>" method="POST">
+                                <div class="form-group">
+                                    <label for="title">Title</label>
+                                    <input type="text" class="form-control" id="title" name="title" value="<?php echo htmlspecialchars($book['title']); ?>" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="author">Author</label>
+                                    <input type="text" class="form-control" id="author" name="author" value="<?php echo htmlspecialchars($book['author']); ?>" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="isbn">ISBN</label>
+                                    <input type="text" class="form-control" id="isbn" name="isbn" value="<?php echo htmlspecialchars($book['isbn']); ?>">
+                                </div>
                                 <div class="row">
-                                    <div class="col-md-3 text-center">
-                                        <img src="<?php echo htmlspecialchars(!empty($librarian['librarian_image']) && file_exists($_SERVER['DOCUMENT_ROOT'] . $librarian['librarian_image']) ? $librarian['librarian_image'] : '/BMC-SMS/assets/img/default-user.jpg'); ?>" alt="Librarian Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
-                                        <div class="form-group"><label for="librarian_image" class="small btn btn-sm btn-info"><i class="fas fa-upload fa-sm"></i> Change Photo</label><input type="file" class="d-none" id="librarian_image" name="librarian_image"></div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="quantity_total">Total Quantity</label>
+                                            <input type="number" class="form-control" id="quantity_total" name="quantity_total" value="<?php echo htmlspecialchars($book['quantity_total']); ?>" required>
+                                        </div>
                                     </div>
-                                    <div class="col-md-9">
-                                        <div class="row">
-                                            <div class="col-md-6 form-group"><label for="librarian_name">Librarian Name *</label><input type="text" class="form-control" id="librarian_name" name="librarian_name" value="<?php echo htmlspecialchars($librarian['librarian_name']); ?>" required></div>
-                                            <div class="col-md-6 form-group"><label for="email">Email *</label><input type="email" class="form-control" id="email" name="email" value="<?php echo htmlspecialchars($librarian['email']); ?>" required></div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="quantity_available">Available Quantity</label>
+                                            <input type="number" class="form-control" id="quantity_available" name="quantity_available" value="<?php echo htmlspecialchars($book['quantity_available']); ?>" required>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="row">
-                                    <div class="col-md-4 form-group"><label for="phone">Phone *</label><input type="text" class="form-control" id="phone" name="phone" value="<?php echo htmlspecialchars($librarian['phone']); ?>" maxlength="10" required></div>
-                                    <div class="col-md-4 form-group"><label for="dob">Date of Birth</label><input type="date" class="form-control" id="dob" name="dob" value="<?php echo htmlspecialchars($librarian['dob']); ?>"></div>
-                                    <div class="col-md-4 form-group"><label for="gender">Gender *</label><select class="form-control" id="gender" name="gender" required>
-                                            <option value="Male" <?php echo ($librarian['gender'] == 'Male') ? 'selected' : ''; ?>>Male</option>
-                                            <option value="Female" <?php echo ($librarian['gender'] == 'Female') ? 'selected' : ''; ?>>Female</option>
-                                            <option value="Others" <?php echo ($librarian['gender'] == 'Others') ? 'selected' : ''; ?>>Others</option>
-                                        </select></div>
-                                    <div class="col-md-4 form-group"><label for="blood_group">Blood Group *</label><select class="form-control" id="blood_group" name="blood_group" required><?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-                                        foreach ($bg_options as $bg) {
-                                            $selected = ($librarian['blood_group'] == $bg) ? 'selected' : '';
-                                            echo "<option value='{$bg}' {$selected}>{$bg}</option>";
-                                        } ?></select></div>
-                                    <div class="col-md-4 form-group"><label for="qualification">Qualification</label><input type="text" class="form-control" id="qualification" name="qualification" value="<?php echo htmlspecialchars($librarian['qualification']); ?>"></div>
-                                    <div class="col-md-4 form-group"><label for="salary">Salary</label><input type="number" class="form-control" id="salary" name="salary" value="<?php echo htmlspecialchars($librarian['salary']); ?>" step="0.01" min="0"></div>
+                                <div class="form-group form-check">
+                                    <input type="checkbox" class="form-check-input" id="is_digital" name="is_digital" <?php if ($book['is_digital']) echo 'checked'; ?>>
+                                    <label class="form-check-label" for="is_digital">This is a digital book (eBook)</label>
                                 </div>
-                                <div class="form-group"><label for="address">Address</label><textarea class="form-control" id="address" name="address" rows="2"><?php echo htmlspecialchars($librarian['address']); ?></textarea></div>
-                                
-                                <div class="form-group mt-4">
-                                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update Librarian</button>
-                                    <a href="librarian_list.php" class="btn btn-secondary"><i class="fas fa-times"></i> Cancel</a>
-                                </div>
+                                <button type="submit" class="btn btn-primary">Update Book</button>
+                                <a href="book_list.php" class="btn btn-secondary">Cancel</a>
                             </form>
                         </div>
                     </div>
                 </div>
             </div>
-            <?php include '../../includes/footer.php'; ?>
+            <?php include_once '../../includes/footer.php'; ?>
         </div>
     </div>
-        <?php include_once "../../includes/logout_modal.php"?>
-
+    <?php include_once "../../includes/logout_modal.php"?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
-    <script>
-    $(document).ready(function() {
-        $('#librarian_image').on('change', function(event) {
-            if (event.target.files[0]) {
-                $('#imagePreview').attr('src', URL.createObjectURL(event.target.files[0]));
-            }
-        });
-    });
-    </script>
 </body>
 </html>

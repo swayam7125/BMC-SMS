@@ -26,7 +26,7 @@ $unread_exam_timetables = 0;
 if (isset($conn) && $conn->ping() && $user_id) {
     switch ($role) {
         case 'student':
-            $sql_counts = "SELECT 
+            $sql_counts = "SELECT
                                 SUM(CASE WHEN type = 'new_assignment' THEN 1 ELSE 0 END) AS assignments,
                                 SUM(CASE WHEN type = 'marks_uploaded' THEN 1 ELSE 0 END) AS results,
                                 SUM(CASE WHEN type = 'school_notice' THEN 1 ELSE 0 END) AS notices,
@@ -50,7 +50,7 @@ if (isset($conn) && $conn->ping() && $user_id) {
             break;
 
         case 'principal':
-            $sql_principal_counts = "SELECT 
+            $sql_principal_counts = "SELECT
                                         SUM(CASE WHEN type = 'new_notice' THEN 1 ELSE 0 END) AS bmc_notices,
                                         SUM(CASE WHEN type = 'leave_request' THEN 1 ELSE 0 END) AS leave_requests
                                      FROM notifications WHERE user_id = ? AND is_read = 0";
@@ -68,7 +68,7 @@ if (isset($conn) && $conn->ping() && $user_id) {
             break;
 
         case 'teacher':
-            $sql_teacher_counts = "SELECT 
+            $sql_teacher_counts = "SELECT
                                       SUM(CASE WHEN type = 'school_notice' THEN 1 ELSE 0 END) AS teacher_notices,
                                       SUM(CASE WHEN type = 'assignment_submission' THEN 1 ELSE 0 END) AS submissions,
                                       SUM(CASE WHEN type = 'leave_status' THEN 1 ELSE 0 END) AS leave_status,
@@ -88,7 +88,7 @@ if (isset($conn) && $conn->ping() && $user_id) {
                 $stmt_teacher_counts->close();
             }
             break;
-            
+
         case 'superadmin':
             $sql_bmc_counts = "SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND type = 'principal_notice' AND is_read = 0";
             $stmt_bmc_counts = $conn->prepare($sql_bmc_counts);
@@ -248,11 +248,11 @@ if (isset($conn) && $conn->ping() && $user_id) {
                 </div>
             </li>
             <li class="nav-item">
-    <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_my_attendance.php">
-        <i class="fas fa-fw fa-user-check"></i>
-        <span>My Attendance</span>
-    </a>
-</li>
+                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_my_attendance.php">
+                    <i class="fas fa-fw fa-user-check"></i>
+                    <span>My Attendance</span>
+                </a>
+            </li>
             <li class="nav-item">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseNotices">
                     <i class="fas fa-fw fa-bullhorn"></i>
@@ -326,11 +326,11 @@ if (isset($conn) && $conn->ping() && $user_id) {
                 </div>
             </li>
             <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePastData">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePastDataPrincipal">
                     <i class="fas fa-fw fa-history"></i>
                     <span>View Past Data</span>
                 </a>
-                <div id="collapsePastData" class="collapse" data-parent="#accordionSidebar">
+                <div id="collapsePastDataPrincipal" class="collapse" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
                         <a class="collapse-item" href="/BMC-SMS/pages/past_record/past_teacher.php">Past Teacher List</a>
                         <a class="collapse-item" href="/BMC-SMS/pages/past_record/past_librarian.php">Past Librarian List</a>
@@ -617,6 +617,17 @@ if (isset($conn) && $conn->ping() && $user_id) {
                     <span>Acquisition Requests</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePastDataLibrarian">
+                    <i class="fas fa-fw fa-history"></i>
+                    <span>View Past Data</span>
+                </a>
+                <div id="collapsePastDataLibrarian" class="collapse" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/past_books.php">Past Book Records</a>
+                    </div>
+                </div>
+            </li>
     <?php
             break;
     }
@@ -633,14 +644,25 @@ if (isset($conn) && $conn->ping() && $user_id) {
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     if (window.jQuery) {
-        $('#accordionSidebar').on('click', 'a', function(e) {
+        // Function to handle badge removal on click
+        var removeBadge = function() {
             var badge = $(this).find('.badge-counter');
             if (badge.length > 0) {
+                // If it's a main link, fade out its own badge
                 badge.fadeOut('fast', function() {
                     $(this).remove();
                 });
+            } else {
+                // If it's a dropdown toggle, find badges in the parent and related sub-menu
+                var parentNavItem = $(this).closest('.nav-item');
+                parentNavItem.find('.badge-counter').fadeOut('fast', function() {
+                    $(this).remove();
+                });
             }
-        });
+        };
+
+        // Attach click event to all sidebar links and dropdown toggles
+        $('#accordionSidebar .nav-link').on('click', removeBadge);
     }
 });
 </script>
