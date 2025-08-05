@@ -1,11 +1,25 @@
 <?php
-session_start();
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 
 $role = null;
 $user_id = null;
 $school_id = null;
+$success_message = null;
+$error_message = null;
+
+// Check for success or error message cookies
+if (isset($_COOKIE['success_message'])) {
+    $success_message = $_COOKIE['success_message'];
+    // Clear the cookie by setting its expiration time to the past
+    setcookie('success_message', '', time() - 3600, "/");
+}
+if (isset($_COOKIE['error_message'])) {
+    $error_message = $_COOKIE['error_message'];
+    // Clear the cookie
+    setcookie('error_message', '', time() - 3600, "/");
+}
+
 
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
@@ -36,8 +50,30 @@ if (!$school_id) {
     die("Could not determine the librarian's school. Access denied.");
 }
 
-$available_books = $conn->query("SELECT book_id, title, author FROM books WHERE school_id = $school_id AND quantity_available > 0 AND is_digital = 0")->fetch_all(MYSQLI_ASSOC);
-$issued_books = $conn->query("SELECT br.*, b.title, u.email as borrower_email FROM borrowing_records br JOIN books b ON br.book_id = b.book_id JOIN users u ON br.borrower_id = u.id WHERE b.school_id = $school_id AND br.is_returned = 0")->fetch_all(MYSQLI_ASSOC);
+// Get available physical books for issuing
+$available_books_query = "SELECT book_id, title, author FROM books WHERE school_id = ? AND quantity_available > 0 AND is_digital = 0";
+$stmt_avail = $conn->prepare($available_books_query);
+$stmt_avail->bind_param("i", $school_id);
+$stmt_avail->execute();
+$available_books = $stmt_avail->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt_avail->close();
+
+// Get currently issued (not returned) books
+$issued_books_query = "SELECT br.*, b.title, u.email as borrower_email FROM borrowing_records br JOIN books b ON br.book_id = b.book_id JOIN users u ON br.borrower_id = u.id WHERE b.school_id = ? AND br.is_returned = 0 ORDER BY br.due_date ASC";
+$stmt_issued = $conn->prepare($issued_books_query);
+$stmt_issued->bind_param("i", $school_id);
+$stmt_issued->execute();
+$issued_books = $stmt_issued->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt_issued->close();
+
+// Get history of returned books
+$returned_history_query = "SELECT br.*, b.title, u.email as borrower_email FROM borrowing_records br JOIN books b ON br.book_id = b.book_id JOIN users u ON br.borrower_id = u.id WHERE b.school_id = ? AND br.is_returned = 1 ORDER BY br.return_date DESC";
+$stmt_history = $conn->prepare($returned_history_query);
+$stmt_history->bind_param("i", $school_id);
+$stmt_history->execute();
+$returned_history = $stmt_history->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt_history->close();
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -61,18 +97,22 @@ $issued_books = $conn->query("SELECT br.*, b.title, u.email as borrower_email FR
             <div class="container-fluid">
                 <h1 class="h3 mb-4 text-gray-800">Issue & Return Books</h1>
                 
-                <?php if (isset($_SESSION['success_message'])): ?>
-                    <div class="alert alert-success"><?php echo $_SESSION['success_message']; ?></div>
-                    <?php unset($_SESSION['success_message']); ?>
+                <?php if ($success_message): ?>
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <?php echo htmlspecialchars($success_message); ?>
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    </div>
                 <?php endif; ?>
-                <?php if (isset($_SESSION['error_message'])): ?>
-                    <div class="alert alert-danger"><?php echo $_SESSION['error_message']; ?></div>
-                    <?php unset($_SESSION['error_message']); ?>
+                <?php if ($error_message): ?>
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <?php echo htmlspecialchars($error_message); ?>
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    </div>
                 <?php endif; ?>
 
                 <div class="row">
                     <div class="col-lg-6">
-                        <div class="card shadow mb-4">
+                        <div class="card shadow mb-4 h-100">
                             <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Issue a Book (In-Person)</h6></div>
                             <div class="card-body">
                                 <form action="handle_issue.php" method="post">
@@ -106,34 +146,59 @@ $issued_books = $conn->query("SELECT br.*, b.title, u.email as borrower_email FR
                         </div>
                     </div>
                     <div class="col-lg-6">
-                         <div class="card shadow mb-4">
-                            <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Return a Book</h6></div>
+                         <div class="card shadow mb-4 h-100">
+                            <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Currently Issued Books</h6></div>
                             <div class="card-body">
-                               <p>To process a return, find the book in the "Currently Issued Books" list below and click the 'Return' button.</p>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered">
+                                        <thead>
+                                            <tr><th>Book Title</th><th>Borrower</th><th>Due Date</th><th>Action</th></tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php if (empty($issued_books)): ?>
+                                                <tr><td colspan='4' class='text-center'>No books are currently issued.</td></tr>
+                                            <?php else: foreach($issued_books as $ib): ?>
+                                            <tr>
+                                                <td><?= htmlspecialchars($ib['title']) ?></td>
+                                                <td><?= htmlspecialchars($ib['borrower_email']) ?></td>
+                                                <td><?= date('d-m-Y', strtotime($ib['due_date'])) ?></td>
+                                                <td><a href="handle_return.php?record_id=<?= $ib['record_id']?>" class="btn btn-info btn-sm" onclick="return confirm('Are you sure you want to mark this book as returned?');">Return</a></td>
+                                            </tr>
+                                            <?php endforeach; endif; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Currently Issued Books</h6></div>
+                <div class="card shadow mt-5 mb-4">
+                    <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Returned Books History</h6></div>
                     <div class="card-body">
                         <div class="table-responsive">
-                            <table class="table table-bordered">
+                            <table class="table table-bordered" id="returnedHistoryTable">
                                 <thead>
-                                    <tr><th>Book Title</th><th>Borrower Email</th><th>Role</th><th>Checkout Date</th><th>Due Date</th><th>Action</th></tr>
+                                    <tr>
+                                        <th>Book Title</th>
+                                        <th>Borrower Email</th>
+                                        <th>Role</th>
+                                        <th>Checkout Date</th>
+                                        <th>Due Date</th>
+                                        <th>Return Date</th>
+                                    </tr>
                                 </thead>
                                 <tbody>
-                                    <?php if (empty($issued_books)): ?>
-                                        <tr><td colspan='6' class='text-center'>No books are currently issued.</td></tr>
-                                    <?php else: foreach($issued_books as $ib): ?>
+                                    <?php if (empty($returned_history)): ?>
+                                        <tr><td colspan='6' class='text-center'>No returned book records found.</td></tr>
+                                    <?php else: foreach($returned_history as $rh): ?>
                                     <tr>
-                                        <td><?= htmlspecialchars($ib['title']) ?></td>
-                                        <td><?= htmlspecialchars($ib['borrower_email']) ?></td>
-                                        <td><?= ucfirst($ib['borrower_role']) ?></td>
-                                        <td><?= date('d-m-Y', strtotime($ib['checkout_date'])) ?></td>
-                                        <td><?= date('d-m-Y', strtotime($ib['due_date'])) ?></td>
-                                        <td><a href="handle_return.php?record_id=<?= $ib['record_id']?>" class="btn btn-info btn-sm" onclick="return confirm('Are you sure you want to mark this book as returned?');">Return</a></td>
+                                        <td><?= htmlspecialchars($rh['title']) ?></td>
+                                        <td><?= htmlspecialchars($rh['borrower_email']) ?></td>
+                                        <td><?= ucfirst($rh['borrower_role']) ?></td>
+                                        <td><?= date('d-m-Y', strtotime($rh['checkout_date'])) ?></td>
+                                        <td><?= date('d-m-Y', strtotime($rh['due_date'])) ?></td>
+                                        <td><?= date('d-m-Y', strtotime($rh['return_date'])) ?></td>
                                     </tr>
                                     <?php endforeach; endif; ?>
                                 </tbody>
@@ -141,6 +206,7 @@ $issued_books = $conn->query("SELECT br.*, b.title, u.email as borrower_email FR
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
         <?php include_once '../../includes/footer.php'; ?>

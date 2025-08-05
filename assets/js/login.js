@@ -1,3 +1,68 @@
+// Add this new code block at the top of your login.js file
+
+// --- AJAX Login Form Submission ---
+document.getElementById("loginForm").addEventListener("submit", function (e) {
+  // Prevent the default form submission (which causes the page reload)
+  e.preventDefault();
+
+  const form = this;
+  const submitBtn = form.querySelector('button[type="submit"]');
+  const alertPlaceholder = document.getElementById("login-alert-placeholder");
+  const formData = new FormData(form);
+
+  // Disable the button and show a loading state
+  submitBtn.disabled = true;
+  submitBtn.innerHTML =
+    '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Logging In...';
+
+  // Clear any previous alerts
+  alertPlaceholder.innerHTML = "";
+
+  fetch(form.action, {
+    method: "POST",
+    body: formData,
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.status === "success") {
+        // On success, show a success message and redirect
+        showAlert(
+          "Login successful! Redirecting...",
+          "success",
+          alertPlaceholder
+        );
+        setTimeout(() => {
+          window.location.href = data.redirect;
+        }, 1000); // Redirect after 1 second
+      } else {
+        // On error, show the error message from the server
+        showAlert(data.message, "danger", alertPlaceholder);
+      }
+    })
+    .catch((error) => {
+      // Handle network errors or other unexpected issues
+      console.error("Login Error:", error);
+      showAlert(
+        "An unexpected error occurred. Please try again.",
+        "danger",
+        alertPlaceholder
+      );
+    })
+    .finally(() => {
+      // Re-enable the button unless login was successful
+      if (
+        document
+          .getElementById("login-alert-placeholder")
+          .querySelector(".alert-danger")
+      ) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = "Login";
+      }
+    });
+});
+
+// --- Your existing code remains below ---
+
 // Geolocation Script
 window.addEventListener("load", function () {
   if (navigator.geolocation) {
@@ -144,11 +209,12 @@ document
 
 function showAlert(message, type, placeholder) {
   const wrapper = document.createElement("div");
+  // Add a margin to the bottom of the alert for spacing
   wrapper.innerHTML =
-    `<div class="alert alert-${type} alert-dismissible" role="alert">` +
+    `<div class="alert alert-${type} alert-dismissible fade show mb-3" role="alert">` +
     `   <div>${message}</div>` +
     '   <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +
     "</div>";
-  placeholder.innerHTML = "";
+  placeholder.innerHTML = ""; // Clear old alerts
   placeholder.append(wrapper);
 }

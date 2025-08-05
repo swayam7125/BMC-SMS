@@ -236,6 +236,32 @@ INSERT INTO `deleted_books` (`archived_book_id`, `original_book_id`, `title`, `a
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `deleted_books`
+--
+
+CREATE TABLE `deleted_books` (
+  `archived_book_id` int(11) NOT NULL,
+  `original_book_id` int(11) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `author` varchar(255) NOT NULL,
+  `isbn` varchar(25) DEFAULT NULL,
+  `quantity_total` int(11) DEFAULT NULL,
+  `school_id` int(11) NOT NULL,
+  `is_digital` tinyint(1) DEFAULT NULL,
+  `deleted_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `deleted_by_role` varchar(50) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `deleted_books`
+--
+
+INSERT INTO `deleted_books` (`archived_book_id`, `original_book_id`, `title`, `author`, `isbn`, `quantity_total`, `school_id`, `is_digital`, `deleted_at`, `deleted_by_role`) VALUES
+(1, 1, 'Harry', 'Devam', '7965412BD', 2, 4, 0, '2025-08-05 03:31:40', 'librarian');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `deleted_librarians`
 --
 
@@ -571,7 +597,8 @@ INSERT INTO `notes` (`id`, `user_id`, `school_id`, `target_standard`, `title`, `
 (4, 6, 4, '11', 'Hello test notification', 'this is test notification for educational purposes only', '/BMC-SMS/pages/teacher/uploads/note_688756ecdc5275.27306642_research sign paper.pdf', 'research sign paper.pdf', '2025-07-28 10:54:36'),
 (5, 6, 4, '11', 'safafdevammmmmmmmmmmm', 'devammmmmmmmmmmmmm', NULL, NULL, '2025-07-31 09:02:53'),
 (6, 6, 4, '11', 'njisijfj', 'happpp', '/BMC-SMS/pages/teacher/uploads/note_688b317e718586.38465640_view_attendence.txt', 'view_attendence.txt', '2025-07-31 09:03:58'),
-(7, 6, 4, '11', 'csfxasc', 'cddddddddddddddddddddddddddddddddddd', NULL, NULL, '2025-07-31 12:12:31');
+(7, 6, 4, '11', 'csfxasc', 'cddddddddddddddddddddddddddddddddddd', NULL, NULL, '2025-07-31 12:12:31'),
+(8, 6, 4, '10', 'notification testing', 'testing of notifications', NULL, NULL, '2025-08-05 08:53:01');
 
 -- --------------------------------------------------------
 
@@ -689,7 +716,8 @@ INSERT INTO `notifications` (`id`, `user_id`, `message`, `link`, `is_read`, `cre
 (84, 6, 'New Exam Timetable: Final Exam Timetable', '/pages/teacher/view_exam_timetable.php', 1, '2025-08-01 17:24:58', 'exam_timetable'),
 (85, 15, 'New Exam Timetable: Final Exam Timetable', '/pages/student/view_exam_timetable.php', 1, '2025-08-01 17:24:58', 'exam_timetable'),
 (86, 10, 'New notice from BMC: URGENT', '/pages/principal/view_notice.php', 1, '2025-08-02 14:35:45', 'new_notice'),
-(87, 10, 'New notice from BMC: test', '/pages/principal/view_notice.php', 1, '2025-08-02 14:50:23', 'new_notice');
+(87, 10, 'New notice from BMC: test', '/pages/principal/view_notice.php', 1, '2025-08-02 14:50:23', 'new_notice'),
+(88, 15, 'New notes posted: notification testing...', '/pages/student/view_notes.php', 1, '2025-08-05 08:53:01', 'new_notes');
 
 -- --------------------------------------------------------
 
@@ -1381,6 +1409,12 @@ ALTER TABLE `deleted_books`
   ADD PRIMARY KEY (`archived_book_id`);
 
 --
+-- Indexes for table `deleted_books`
+--
+ALTER TABLE `deleted_books`
+  ADD PRIMARY KEY (`archived_book_id`);
+
+--
 -- Indexes for table `deleted_librarians`
 --
 ALTER TABLE `deleted_librarians`
@@ -1648,6 +1682,12 @@ ALTER TABLE `deleted_books`
   MODIFY `archived_book_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
+-- AUTO_INCREMENT for table `deleted_books`
+--
+ALTER TABLE `deleted_books`
+  MODIFY `archived_book_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
 -- AUTO_INCREMENT for table `deleted_librarians`
 --
 ALTER TABLE `deleted_librarians`
@@ -1693,7 +1733,7 @@ ALTER TABLE `messages`
 -- AUTO_INCREMENT for table `notes`
 --
 ALTER TABLE `notes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `notice`
@@ -1705,7 +1745,7 @@ ALTER TABLE `notice`
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=88;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=89;
 
 --
 -- AUTO_INCREMENT for table `password_resets`

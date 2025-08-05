@@ -2,9 +2,6 @@
 include_once "./includes/connect.php"; // Ensure this path is correct
 include_once "encryption.php"; // Ensure this path is correct
 
-// Initialize error message to avoid undefined variable warnings
-$error_message = '';
-
 // FUNCTION: Calculate distance between two GPS coordinates using the Haversine formula.
 function haversine_distance($lat1, $lon1, $lat2, $lon2)
 {
@@ -16,18 +13,19 @@ function haversine_distance($lat1, $lon1, $lat2, $lon2)
     return $earth_radius * $c * 1000; // Return distance in meters
 }
 
-// This part of the code only runs when the main login form is submitted,
-// not during the AJAX calls for password reset.
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['password']) && !isset($_POST['otp'])) {
+// This part of the code now handles the AJAX request from the login form.
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email']) && isset($_POST['password'])) {
+    // We will send a JSON response, so set the content type header.
+    header('Content-Type: application/json');
+    $response = []; // Initialize the response array.
+
     $email = trim($_POST['email']);
     $password = trim($_POST['password']);
-
-    // Get latitude and longitude from the hidden form fields.
     $user_lat = !empty($_POST['latitude']) ? $_POST['latitude'] : null;
     $user_lon = !empty($_POST['longitude']) ? $_POST['longitude'] : null;
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $error_message = "Invalid email or password";
+        $response = ['status' => 'error', 'message' => 'Invalid email or password.'];
     } else {
         $query = "SELECT id, password, role, account_status FROM users WHERE email = ?";
         $stmt = mysqli_prepare($conn, $query);
@@ -42,15 +40,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['password']) && !isset(
 
                 if (password_verify($password, $user['password'])) {
                     if ($user['account_status'] === 'suspended') {
-                        $error_message = "Your account has been suspended. Please contact the administrator.";
+                        $response = ['status' => 'error', 'message' => 'Your account has been suspended. Please contact the administrator.'];
                     } else {
-
                         // --- START: GEOLOCATION AND TIME-BASED ATTENDANCE LOGIC FOR PRINCIPAL ---
                         if ($user['role'] === 'principal') {
                             $principal_id = $user['id'];
                             $attendance_status = 'Absent'; // Default status
 
-                            // 1. Get the principal's school_id and batch
+                            // Get principal's school and batch
                             $details_query = mysqli_prepare($conn, "SELECT school_id, batch FROM principal WHERE id = ?");
                             mysqli_stmt_bind_param($details_query, "i", $principal_id);
                             mysqli_stmt_execute($details_query);
@@ -59,61 +56,48 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['password']) && !isset(
                             if ($details_result && mysqli_num_rows($details_result) > 0) {
                                 $principal_details = mysqli_fetch_assoc($details_result);
                                 $school_id = $principal_details['school_id'];
-                                $principal_batch = $principal_details['batch']; // e.g., 'Morning' or 'Evening'
+                                $principal_batch = $principal_details['batch'];
 
-                                // 2. Get the school's official coordinates
+                                // Get school's location
                                 $school_loc_query = mysqli_prepare($conn, "SELECT latitude, longitude FROM school WHERE id = ?");
                                 mysqli_stmt_bind_param($school_loc_query, "i", $school_id);
                                 mysqli_stmt_execute($school_loc_query);
                                 $school_loc_result = mysqli_stmt_get_result($school_loc_query);
                                 $school_location = mysqli_fetch_assoc($school_loc_result);
 
-                                // 3. Perform location and time checks
                                 $location_ok = false;
-                                $time_ok = false;
-
-                                // Location Check
                                 if ($user_lat && $user_lon && !empty($school_location['latitude']) && !empty($school_location['longitude'])) {
                                     $distance = haversine_distance($user_lat, $user_lon, $school_location['latitude'], $school_location['longitude']);
-                                    $tolerance_radius = 300; // Allow a 300-meter radius
-
-                                    if ($distance <= $tolerance_radius) {
+                                    if ($distance <= 300) { // 300-meter tolerance
                                         $location_ok = true;
                                     }
                                 }
 
-                                // Time Check
-                                $current_hour = (int)date('H'); // Get current hour in 24-hour format
-                                if ($principal_batch === 'Morning' && $current_hour < 10) { // Must log in before 10:00 AM
-                                    $time_ok = true;
-                                } elseif ($principal_batch === 'Evening' && $current_hour < 14) { // Must log in before 2:00 PM (14:00)
-                                    $time_ok = true;
-                                }
+                                $current_hour = (int)date('H');
+                                $time_ok = ($principal_batch === 'Morning' && $current_hour < 10) || ($principal_batch === 'Evening' && $current_hour < 14);
 
-                                // Final attendance status depends on both checks passing
                                 if ($location_ok && $time_ok) {
                                     $attendance_status = 'Present';
                                 }
 
-                                // 4. Insert or update the attendance record
+                                // Insert/Update attendance
                                 $current_date = date("Y-m-d");
-
                                 $att_stmt = mysqli_prepare(
                                     $conn,
                                     "INSERT INTO principal_attendance (principal_id, school_id, attendance_date, status, login_latitude, login_longitude, login_time)
                                     VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIME())
                                     ON DUPLICATE KEY UPDATE status = VALUES(status), login_latitude = VALUES(login_latitude), login_longitude = VALUES(login_longitude), login_time = CURRENT_TIME()"
                                 );
-
                                 mysqli_stmt_bind_param($att_stmt, "iisssd", $principal_id, $school_id, $current_date, $attendance_status, $user_lat, $user_lon);
                                 mysqli_stmt_execute($att_stmt);
                             }
                         }
                         // --- END OF ATTENDANCE LOGIC ---
 
-                        // Continue with existing login process
+                        // Continue with setting cookies
                         $encrypted_id = encrypt_id($user['id']);
                         $encrypted_role = encrypt_id($user['role']);
+                        // ... [rest of your cookie-setting and detail fetching logic] ...
                         $profile_image = '';
                         $user_name = '';
 
@@ -127,7 +111,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['password']) && !isset(
                             case 'principal':
                                 $detail_query = "SELECT principal_image, principal_name FROM principal WHERE id = ?";
                                 break;
-                            case 'librarian': // Added librarian case
+                            case 'librarian':
                                 $detail_query = "SELECT librarian_image, librarian_name FROM librarian WHERE id = ?";
                                 break;
                             default:
@@ -153,7 +137,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['password']) && !isset(
                                     } elseif ($user['role'] == 'principal') {
                                         $profile_image = !empty($detail_row['principal_image']) ? 'pages/principal/uploads/' . basename($detail_row['principal_image']) : '/BMC-SMS/assets/images/undraw_profile.svg';
                                         $user_name = $detail_row['principal_name'];
-                                    } elseif ($user['role'] == 'librarian') { // Added librarian logic
+                                    } elseif ($user['role'] == 'librarian') {
                                         $profile_image = !empty($detail_row['librarian_image']) ? 'pages/librarian/uploads/' . basename($detail_row['librarian_image']) : '/BMC-SMS/assets/images/undraw_profile.svg';
                                         $user_name = $detail_row['librarian_name'];
                                     }
@@ -170,21 +154,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['password']) && !isset(
                         setcookie("encrypted_profile_image", $encrypted_profile_image, time() + 86400, "/");
                         setcookie("encrypted_user_name", $encrypted_user_name, time() + 86400, "/");
 
-                        header("Location: index.php");
-                        exit();
+                        // Set success response
+                        $response = ['status' => 'success', 'redirect' => 'index.php'];
                     }
                 } else {
-                    $error_message = "Invalid email or password";
+                    $response = ['status' => 'error', 'message' => 'Invalid email or password.'];
                 }
             } else {
-                $error_message = "Invalid email or password";
+                $response = ['status' => 'error', 'message' => 'Invalid email or password.'];
             }
             mysqli_stmt_close($stmt);
         } else {
-            $error_message = "System error. Please try again later.";
+            $response = ['status' => 'error', 'message' => 'System error. Please try again later.'];
         }
     }
+    // Echo the JSON response and exit the script.
+    echo json_encode($response);
+    exit();
 }
+// The rest of your HTML file remains below.
+// This part will now only be rendered on the initial page load (a GET request).
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -197,7 +186,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['password']) && !isset(
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
     <link rel="stylesheet" href="./assets/css/login.css">
 </head>
 
@@ -218,11 +206,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['password']) && !isset(
                     <h2>Login</h2>
                     <p class="subtitle">Please enter your credentials to proceed.</p>
 
-                    <?php if (!empty($error_message)): ?>
-                        <div class="alert alert-danger text-center"><?php echo htmlspecialchars($error_message); ?></div>
-                    <?php endif; ?>
+                    <div id="login-alert-placeholder"></div>
 
-                    <form id="loginForm" method="POST" action="login.php">
+                    <?php /* if (!empty($error_message)): ?>
+                        <div class="alert alert-danger text-center"><?php echo htmlspecialchars($error_message); ?></div>
+                    <?php endif; */ ?>
+
+                    <form id="loginForm" method="POST" action="login.php" novalidate>
                         <div class="form-group">
                             <input type="email" class="form-control form-control-custom" id="email" name="email" placeholder="Email Address" required>
                             <i class="fas fa-envelope form-icon"></i>

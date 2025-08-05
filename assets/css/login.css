@@ -36,7 +36,8 @@ body {
     var(--primary-blue-light)
   );
   background-size: 200% 200%;
-  animation: animated-gradient 15s ease infinite, slideInLeft 1s ease-out;
+  /* CHANGED: Reduced animation durations for a faster, smoother feel */
+  animation: animated-gradient 12s ease infinite, slideInLeft 0.7s ease-out;
   min-height: 100vh;
 }
 
@@ -52,21 +53,24 @@ body {
   align-items: center;
   justify-content: center;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-  animation: fadeIn 1.5s ease-in-out;
+  /* CHANGED: Faster fade-in for the logo */
+  animation: fadeIn 0.8s ease-in-out;
 }
 
 .login-branding-panel h1 {
   font-weight: 600;
   font-size: 2.2rem;
   margin-bottom: 0.5rem;
-  animation: fadeIn 1.8s ease-in-out;
+  /* CHANGED: Faster fade-in for the heading */
+  animation: fadeIn 1s ease-in-out;
 }
 
 .login-branding-panel p {
   font-size: 1.1rem;
   opacity: 0.8;
   max-width: 350px;
-  animation: fadeIn 2.1s ease-in-out;
+  /* CHANGED: Faster fade-in for the paragraph */
+  animation: fadeIn 1.2s ease-in-out;
 }
 
 .login-form-panel {
@@ -84,24 +88,26 @@ body {
 }
 
 .login-form-container > * {
-  animation: fadeIn 1s ease-out forwards;
+  /* CHANGED: Faster fade-in for all form elements */
+  animation: fadeIn 0.6s ease-out forwards;
   opacity: 0;
 }
 
+/* CHANGED: Reduced animation delays for quicker appearance */
 .login-form-container h2 {
-  animation-delay: 0.5s;
+  animation-delay: 0.2s;
 }
 
 .login-form-container .subtitle {
-  animation-delay: 0.7s;
+  animation-delay: 0.3s;
 }
 
 .login-form-container .alert {
-  animation-delay: 0.8s;
+  animation-delay: 0.4s;
 }
 
 .login-form-container form {
-  animation-delay: 0.9s;
+  animation-delay: 0.5s;
 }
 
 .login-form-container h2 {
@@ -128,7 +134,8 @@ body {
   padding: 0.9rem 1rem 0.9rem 2.8rem;
   color: var(--text-dark);
   font-size: 0.95rem;
-  transition: all 0.3s ease;
+  /* CHANGED: Faster transition for a snappier focus effect */
+  transition: all 0.2s ease;
 }
 
 .form-control-custom:focus {
@@ -147,7 +154,8 @@ body {
   top: 50%;
   transform: translateY(-50%);
   color: #bdc3c7;
-  transition: all 0.3s ease;
+  /* CHANGED: Faster transition for the icon */
+  transition: all 0.2s ease;
   pointer-events: none;
 }
 
@@ -167,10 +175,10 @@ body {
   padding: 0.9rem;
   border-radius: 8px;
   border: 2px solid transparent;
-  /* Add transparent border to prevent size jump */
   width: 100%;
   position: relative;
-  transition: all 0.3s ease-in-out;
+  /* CHANGED: Faster transition for the button hover effect */
+  transition: all 0.2s ease-in-out;
 }
 
 .btn-custom-login:hover {
@@ -190,7 +198,8 @@ body {
   color: var(--text-muted);
   font-size: 0.9rem;
   text-decoration: none;
-  transition: color 0.3s ease;
+  /* CHANGED: Faster transition for link hover */
+  transition: color 0.2s ease;
   cursor: pointer;
 }
 
@@ -218,6 +227,7 @@ body {
   border-top: none;
 }
 
+/* CHANGED: Faster background gradient animation */
 @keyframes animated-gradient {
   0% {
     background-position: 0% 50%;

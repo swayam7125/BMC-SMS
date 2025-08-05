@@ -1,61 +1,121 @@
+/* =========================================
+   PROFESSIONAL UI/UX IMPROVEMENTS
+   - Active link mate vadhare saru indication.
+   - Smooth hover effects.
+   - Aadhunik scrollbar design.
+   ========================================= */
+
 /* --- Base Sidebar Adjustments --- */
 #accordionSidebar {
   position: -webkit-sticky; /* For Safari */
   position: sticky;
   top: 0;
   height: 100vh;
-  max-height: 100vh;
-  /* Add a smooth transition for expand/collapse animations */
+  /* **SCROLLING FIX:** Jo options vadhare hoy to sidebar scroll thashe */
+  overflow-y: auto; 
+  overflow-x: hidden;
   transition: width 0.3s ease;
   flex-shrink: 0;
-  /* Prevents sidebar from shrinking */
 }
+
+/* --- Aadhunik Scrollbar --- */
+#accordionSidebar::-webkit-scrollbar {
+  width: 6px;
+}
+#accordionSidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+#accordionSidebar::-webkit-scrollbar-thumb {
+  background: #224abe; /* Darker blue for scrollbar */
+  border-radius: 10px;
+}
+#accordionSidebar::-webkit-scrollbar-thumb:hover {
+  background: #1e42a3;
+}
+
 
 /* --- Dropdown Arrow Fix --- */
-/* This is the main fix for the arrow position. */
 #accordionSidebar .nav-item .nav-link[data-toggle="collapse"]::after {
   display: inline-block;
-  margin-left: 0.5rem;
-  transition: transform 0.2s ease; /* Adds smooth rotation */
+  margin-left: auto; /* Arrow ne hamesha jamanij baju rakhe chhe */
+  transition: transform 0.2s ease;
 }
 
-/* --- Fix for Sticky Sidebar Scrolling --- */
-/* --- CORE LAYOUT FIX --- */
-html,
-body {
+/* =========================================
+CORE LAYOUT & STICKY SIDEBAR SOLUTION
+=========================================
+- Aa navo layout Flexbox no upyog kare chhe.
+- Aa `html, body` mathi `overflow: hidden` kadhi nakhe chhe, jethi scrolling ni samasya dur thay chhe.
+*/
+html, body {
   height: 100%;
-  overflow: hidden !important;
+  width: 100%;
+  margin: 0;
+  padding: 0;
 }
+
 #wrapper {
+  display: flex;
   height: 100vh;
 }
+
 #content-wrapper {
+  flex-grow: 1;
   overflow-y: auto;
+  height: 100vh;
 }
 /* --- END OF FIX --- */
 
+
 /* --- Responsive Overrides (for screens 768px and wider) --- */
 @media (min-width: 768px) {
-  /* 1. Set a slightly wider width for the expanded sidebar */
+  /* Tamari original sidebar ni width */
   #accordionSidebar {
     width: 250px !important;
   }
 
-  /* 2. Set a custom width for the collapsed sidebar */
+  /* **TOGGLE FIX:** Nani (toggled) sidebar ni width */
   #accordionSidebar.toggled {
-    width: 110px !important;
-    overflow: hidden; /* Prevents text from spilling out */
+    width: 100px !important;
   }
 
-  /* 3. UX FIX: Keep icon and text visible on the same line in the collapsed state */
-  #accordionSidebar.toggled .nav-item .nav-link span {
-    display: inline !important;
-    font-size: 0.75rem; /* Make text slightly smaller to fit better */
-    margin-left: 0.4rem;
+  /* **TOGGLE FIX:** Toggled state ma text (span) and arrow ne hide karo */
+  #accordionSidebar.toggled .nav-item .nav-link span,
+  #accordionSidebar.toggled .nav-item .nav-link[data-toggle="collapse"]::after,
+  #accordionSidebar.toggled .sidebar-heading {
+    display: none;
   }
 
-  /* 4. Center-align text and icon when collapsed */
+  /* **ICON SHIFT FIX (FINAL):** Toggled state ma icon ne shift thata atkayo */
+  #accordionSidebar .nav-item .nav-link {
+    /* Ban ne state ma vertical padding sarkhu rakho jethi jump na thay */
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    transition: background-color 0.2s ease-in-out; /* Smooth hover effect */
+  }
+  
+  /* **UX IMPROVEMENT:** Active link mate vadhare saru indication */
+  #accordionSidebar .nav-item.active .nav-link {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
   #accordionSidebar.toggled .nav-item .nav-link {
+    /* User ni request pramane icon ne center ma rakho */
     justify-content: center;
+  }
+  
+  /* Toggled state ma dropdown menu ni position barabar karo */
+  #accordionSidebar.toggled .nav-item .collapse {
+    position: absolute;
+    left: calc(100px + 0.5rem); /* Sidebar ni baju ma batavo */
+    top: 0;
+    z-index: 1000;
+    width: auto; /* Submenu ni width content pramane adjust thashe */
+  }
+  
+  /* **UX IMPROVEMENT:** Submenu item mate vadhare sari style */
+  #accordionSidebar .collapse-inner .collapse-item.active {
+      background-color: #eaecf4;
+      font-weight: bold;
   }
 }
