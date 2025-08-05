@@ -13,3 +13,4 @@ function decrypt_id($encrypted)
 {
     return openssl_decrypt($encrypted, ENCRYPTION_METHOD, ENCRYPTION_KEY, 0, ENCRYPTION_IV);
 }
+?>
