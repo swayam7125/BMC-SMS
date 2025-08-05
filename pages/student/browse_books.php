@@ -33,13 +33,31 @@ if (!$school_id) {
     die("Could not determine your school. Access denied.");
 }
 
+$search_query = isset($_GET['search']) ? trim($_GET['search']) : '';
+
 $books = [];
-$sql = "SELECT book_id, title, author, isbn, publisher FROM books WHERE school_id = ? AND quantity_available > 0 ORDER BY title";
+$sql = "SELECT book_id, title, author, isbn, publisher FROM books WHERE school_id = ? AND quantity_available > 0";
+
+if (!empty($search_query)) {
+    $sql .= " AND (title LIKE ? OR author LIKE ? OR publisher LIKE ?)";
+}
+$sql .= " ORDER BY title";
+
 $stmt_books = $conn->prepare($sql);
-$stmt_books->bind_param("i", $school_id);
-$stmt_books->execute();
-$books = $stmt_books->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt_books->close();
+
+if ($stmt_books) {
+    if (!empty($search_query)) {
+        $search_param = "%" . $search_query . "%";
+        $stmt_books->bind_param("isss", $school_id, $search_param, $search_param, $search_param);
+    } else {
+        $stmt_books->bind_param("i", $school_id);
+    }
+    $stmt_books->execute();
+    $result = $stmt_books->get_result();
+    $books = $result->fetch_all(MYSQLI_ASSOC);
+    $stmt_books->close();
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -64,10 +82,10 @@ $stmt_books->close();
                     <h1 class="h3 mb-4 text-gray-800">Browse & Request Books</h1>
                     
                     <?php if (isset($_GET['success'])): ?>
-                        <div class="alert alert-success"><?php echo htmlspecialchars($_GET['success']); ?></div>
+                        <div class="alert alert-success alert-dismissible fade show" role="alert"><?php echo htmlspecialchars($_GET['success']); ?><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
                     <?php endif; ?>
                     <?php if (isset($_GET['error'])): ?>
-                        <div class="alert alert-danger"><?php echo htmlspecialchars($_GET['error']); ?></div>
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert"><?php echo htmlspecialchars($_GET['error']); ?><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
                     <?php endif; ?>
 
                     <div class="card shadow mb-4">
@@ -75,6 +93,21 @@ $stmt_books->close();
                             <h6 class="m-0 font-weight-bold text-primary">Available Books</h6>
                         </div>
                         <div class="card-body">
+                            <form method="GET" action="browse_books.php" class="mb-4">
+                                <div class="input-group">
+                                    <input type="text" name="search" class="form-control" placeholder="Search by title, author, publisher..." value="<?php echo htmlspecialchars($search_query); ?>">
+                                    <div class="input-group-append">
+                                        <button class="btn btn-primary" type="submit" aria-label="Search">
+                                            <i class="fas fa-search fa-sm"></i>
+                                        </button>
+                                        <?php if (!empty($search_query)): ?>
+                                            <a href="browse_books.php" class="btn btn-secondary" title="Clear Search" aria-label="Clear Search">
+                                                <i class="fas fa-times fa-sm"></i>
+                                            </a>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </form>
                             <div class="table-responsive">
                                 <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
                                     <thead>
@@ -104,7 +137,15 @@ $stmt_books->close();
                                                 </tr>
                                             <?php endforeach; ?>
                                         <?php else: ?>
-                                            <tr><td colspan="4" class="text-center">No books are currently available in the library.</td></tr>
+                                            <tr>
+                                                <td colspan="4" class="text-center">
+                                                    <?php if (!empty($search_query)): ?>
+                                                        No books found matching your search for "<?php echo htmlspecialchars($search_query); ?>".
+                                                    <?php else: ?>
+                                                        No books are currently available in the library.
+                                                    <?php endif; ?>
+                                                </td>
+                                            </tr>
                                         <?php endif; ?>
                                     </tbody>
                                 </table>
@@ -150,11 +191,9 @@ $stmt_books->close();
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script>
     $(document).ready(function() {
-        // Set min date for date picker to today
         var today = new Date().toISOString().split('T')[0];
         $('#requested_due_date').attr('min', today);
 
-        // Populate modal with book info when "Request" button is clicked
         $('.request-btn').on('click', function() {
             var bookId = $(this).data('book-id');
             var bookTitle = $(this).data('book-title');
