@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Aug 04, 2025 at 06:43 PM
+-- Generation Time: Aug 05, 2025 at 02:31 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -206,6 +206,32 @@ INSERT INTO `borrow_requests` (`request_id`, `book_id`, `school_id`, `borrower_i
 (3, 1, 4, 15, 'student', '2025-08-15', '2025-08-04 16:37:04', 'Rejected', 23, '2025-08-04 22:08:34', 'My choice', NULL),
 (4, 1, 4, 6, 'teacher', '2025-08-18', '2025-08-04 16:37:39', 'Approved', 23, '2025-08-04 22:08:15', NULL, '2025-08-18'),
 (5, 1, 4, 6, 'teacher', '2025-08-04', '2025-08-04 16:41:20', 'Approved', 23, '2025-08-04 22:11:42', NULL, '2025-08-18');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `deleted_books`
+--
+
+CREATE TABLE `deleted_books` (
+  `archived_book_id` int(11) NOT NULL,
+  `original_book_id` int(11) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `author` varchar(255) NOT NULL,
+  `isbn` varchar(25) DEFAULT NULL,
+  `quantity_total` int(11) DEFAULT NULL,
+  `school_id` int(11) NOT NULL,
+  `is_digital` tinyint(1) DEFAULT NULL,
+  `deleted_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `deleted_by_role` varchar(50) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `deleted_books`
+--
+
+INSERT INTO `deleted_books` (`archived_book_id`, `original_book_id`, `title`, `author`, `isbn`, `quantity_total`, `school_id`, `is_digital`, `deleted_at`, `deleted_by_role`) VALUES
+(1, 1, 'Harry', 'Devam', '7965412BD', 2, 4, 0, '2025-08-05 03:31:40', 'librarian');
 
 -- --------------------------------------------------------
 
@@ -476,6 +502,51 @@ INSERT INTO `librarian` (`id`, `librarian_image`, `librarian_name`, `school_id`,
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `messages`
+--
+
+CREATE TABLE `messages` (
+  `id` int(11) NOT NULL,
+  `sender_id` int(11) NOT NULL,
+  `receiver_id` int(11) NOT NULL,
+  `message_text` text NOT NULL,
+  `timestamp` timestamp NOT NULL DEFAULT current_timestamp(),
+  `is_read` tinyint(1) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `messages`
+--
+
+INSERT INTO `messages` (`id`, `sender_id`, `receiver_id`, `message_text`, `timestamp`, `is_read`) VALUES
+(1, 15, 6, 'hello sir', '2025-08-05 09:07:09', 1),
+(2, 6, 15, 'Hello, Harsh!', '2025-08-05 09:09:09', 1),
+(3, 6, 15, 'bol su kaam che?', '2025-08-05 09:43:22', 1),
+(4, 15, 6, 'i will not come tomm. to school', '2025-08-05 09:43:57', 1),
+(5, 6, 15, 'hrg', '2025-08-05 09:47:09', 1),
+(6, 6, 15, 'jkslgd', '2025-08-05 09:47:15', 1),
+(7, 15, 6, 'jfkdlf;g', '2025-08-05 09:48:49', 1),
+(8, 15, 6, 'hyy', '2025-08-05 11:12:58', 1),
+(9, 15, 6, 'hiiiiiiiiiiiiii', '2025-08-05 11:13:53', 1),
+(10, 6, 15, 'bolo', '2025-08-05 11:14:33', 1),
+(11, 15, 6, 'I want to ask you something', '2025-08-05 11:59:27', 1),
+(12, 6, 15, 'yes, you can', '2025-08-05 12:00:02', 1),
+(13, 6, 15, 'say it', '2025-08-05 12:07:41', 1),
+(14, 15, 6, 'no I want', '2025-08-05 12:08:19', 1),
+(15, 6, 15, 'please say it harsh beta!', '2025-08-05 12:13:44', 1),
+(16, 15, 6, 'no meet sir!', '2025-08-05 12:14:21', 1),
+(17, 6, 15, 'please say it na..', '2025-08-05 12:18:34', 1),
+(18, 15, 6, 'na', '2025-08-05 12:19:13', 1),
+(19, 6, 15, 'please', '2025-08-05 12:25:06', 1),
+(20, 15, 6, 'na\\', '2025-08-05 12:26:34', 1),
+(21, 15, 6, 'na', '2025-08-05 12:26:41', 1),
+(22, 6, 15, 'please', '2025-08-05 12:27:28', 1),
+(23, 15, 6, 'yes', '2025-08-05 12:29:47', 1),
+(24, 6, 15, 'yesssssssssssssssss', '2025-08-05 12:30:12', 1);
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `notes`
 --
 
@@ -699,7 +770,8 @@ INSERT INTO `principal_attendance` (`id`, `principal_id`, `school_id`, `attendan
 (12, 10, 4, '2025-07-31', 'Absent', NULL, NULL, '17:44:31', '2025-07-31 12:14:31'),
 (20, 10, 4, '2025-08-01', 'Absent', 21.18451200, 72.83671040, '22:54:28', '2025-08-01 17:24:28'),
 (31, 10, 4, '2025-08-02', 'Absent', 21.19761920, 72.83998720, '21:57:48', '2025-08-02 16:27:48'),
-(38, 10, 4, '2025-08-04', 'Absent', 21.21010290, 72.77055590, '21:26:25', '2025-08-04 15:56:25');
+(38, 10, 4, '2025-08-04', 'Absent', 21.21010290, 72.77055590, '21:26:25', '2025-08-04 15:56:25'),
+(43, 10, 4, '2025-08-05', 'Absent', 21.18434140, 72.78727900, '13:35:01', '2025-08-05 08:05:01');
 
 -- --------------------------------------------------------
 
@@ -1303,6 +1375,12 @@ ALTER TABLE `borrow_requests`
   ADD KEY `librarian_id` (`librarian_id`);
 
 --
+-- Indexes for table `deleted_books`
+--
+ALTER TABLE `deleted_books`
+  ADD PRIMARY KEY (`archived_book_id`);
+
+--
 -- Indexes for table `deleted_librarians`
 --
 ALTER TABLE `deleted_librarians`
@@ -1355,6 +1433,14 @@ ALTER TABLE `librarian`
   ADD UNIQUE KEY `email` (`email`),
   ADD UNIQUE KEY `phone` (`phone`),
   ADD KEY `fk_librarian_school_id` (`school_id`);
+
+--
+-- Indexes for table `messages`
+--
+ALTER TABLE `messages`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `sender_id` (`sender_id`),
+  ADD KEY `receiver_id` (`receiver_id`);
 
 --
 -- Indexes for table `notes`
@@ -1556,6 +1642,12 @@ ALTER TABLE `borrow_requests`
   MODIFY `request_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
+-- AUTO_INCREMENT for table `deleted_books`
+--
+ALTER TABLE `deleted_books`
+  MODIFY `archived_book_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
 -- AUTO_INCREMENT for table `deleted_librarians`
 --
 ALTER TABLE `deleted_librarians`
@@ -1592,6 +1684,12 @@ ALTER TABLE `leave_applications`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
 
 --
+-- AUTO_INCREMENT for table `messages`
+--
+ALTER TABLE `messages`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
+
+--
 -- AUTO_INCREMENT for table `notes`
 --
 ALTER TABLE `notes`
@@ -1619,7 +1717,7 @@ ALTER TABLE `password_resets`
 -- AUTO_INCREMENT for table `principal_attendance`
 --
 ALTER TABLE `principal_attendance`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=43;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=44;
 
 --
 -- AUTO_INCREMENT for table `principal_timings`
@@ -1758,6 +1856,13 @@ ALTER TABLE `leave_applications`
 ALTER TABLE `librarian`
   ADD CONSTRAINT `fk_librarian_school_id` FOREIGN KEY (`school_id`) REFERENCES `school` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_librarian_user_id` FOREIGN KEY (`id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `messages`
+--
+ALTER TABLE `messages`
+  ADD CONSTRAINT `messages_ibfk_1` FOREIGN KEY (`sender_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `messages_ibfk_2` FOREIGN KEY (`receiver_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `notes`

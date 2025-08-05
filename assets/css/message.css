@@ -1,0 +1,147 @@
+/* assets/css/message.css */
+
+#contacts-list {
+    max-height: 65vh;
+    overflow-y: auto;
+}
+
+.contact-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 20px;
+    cursor: pointer;
+    border-bottom: 1px solid #e3e6f0;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.contact-item:last-child {
+    border-bottom: none;
+}
+
+.contact-item:hover {
+    background-color: #f8f9fc;
+}
+
+.contact-item.active {
+    background-color: #4e73df;
+    color: #fff;
+    font-weight: 600;
+}
+
+.contact-image {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 15px;
+    border: 2px solid #fff;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.contact-item.active .contact-image {
+    border-color: #8fa8e9;
+}
+
+.message-display {
+    height: 60vh;
+    padding: 20px;
+    overflow-y: auto;
+    background-color: #f8f9fc;
+    display: flex;
+    flex-direction: column;
+}
+
+.message-container, .message-container-grouped {
+    display: flex;
+    align-items: flex-end;
+    margin-bottom: 5px;
+    max-width: 85%;
+}
+
+/* NOTE: Alignment is now handled directly in message.js 
+  to prevent browser caching issues.
+*/
+
+.message-image {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.message-container-grouped {
+    margin-bottom: 2px;
+}
+
+.message-container-grouped .message-image {
+    visibility: hidden; 
+}
+
+.message-bubble {
+    padding: 10px 15px;
+    border-radius: 18px;
+    position: relative;
+    max-width: 100%;
+}
+
+/* This rule colors YOUR sent messages BLUE */
+.sent .message-bubble {
+    background-color: #4e73df; 
+    color: #fff;
+    margin-left: 12px;
+    border-bottom-left-radius: 5px;
+}
+
+/* This rule keeps incoming messages GRAY */
+.received .message-bubble {
+    background-color: #e9ecef; 
+    color: #3a3b45; 
+    margin-left: 12px;
+    border-bottom-left-radius: 5px;
+}
+
+.message-text {
+    margin: 0;
+    padding: 0;
+    word-wrap: break-word;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.message-timestamp {
+    display: block;
+    font-size: 11px;
+    margin-top: 5px;
+    text-align: right;
+}
+
+.sent .message-timestamp {
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.received .message-timestamp {
+    color: #858796;
+}
+
+.card-footer {
+    border-top: 1px solid #e3e6f0;
+}
+
+#message-text.form-control {
+    border-right: none;
+}
+
+#message-text.form-control:focus {
+    box-shadow: none;
+    border-color: #d1d3e2;
+}
+
+#send-button {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+#send-button .fa-paper-plane {
+    margin-right: 5px;
+}
