@@ -4,6 +4,8 @@ include_once "../../includes/connect.php";
 
 $role = null;
 $userId = null;
+$notices = [];
+
 if (isset($_COOKIE['encrypted_user_role'])) {
     $decrypted_role = decrypt_id($_COOKIE['encrypted_user_role']);
     $role = $decrypted_role ? strtolower(trim($decrypted_role)) : null;
@@ -12,107 +14,75 @@ if (isset($_COOKIE['encrypted_user_id'])) {
     $userId = decrypt_id($_COOKIE['encrypted_user_id']);
 }
 
-// --- ADDED THIS BLOCK TO CLEAR NOTIFICATIONS ---
-if (($role === 'student' || $role === 'teacher') && $userId) {
-    $stmt_mark_all_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND type = 'school_notice' AND is_read = 0");
-    if($stmt_mark_all_read){
-        $stmt_mark_all_read->bind_param("i", $userId);
-        $stmt_mark_all_read->execute();
-        $stmt_mark_all_read->close();
-    }
-}
-// --- END OF NEW BLOCK ---
-
-// --- START: MARK INDIVIDUAL AS READ LOGIC ---
-if (isset($_GET['notif_id']) && is_numeric($_GET['notif_id'])) {
-    $notification_id = $_GET['notif_id'];
-    $current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
-    if ($current_user_id) {
-        $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?");
-        $stmt_mark_read->bind_param("ii", $notification_id, $current_user_id);
-        $stmt_mark_read->execute();
-        $stmt_mark_read->close();
-    }
-}
-// --- END: MARK INDIVIDUAL AS READ LOGIC ---
-
-$schoolId = null;
-$studentStd = null;
-
-// Redirect if user is not properly logged in
 if (!$role || !$userId) {
-    header("Location: ../login.php");
+    header("Location: ../../login.php");
     exit;
 }
 
-// Fetch user-specific data
-if ($role == 'student') {
-    $stmt = $conn->prepare("SELECT school_id, std FROM student WHERE id = ?");
-    $stmt->bind_param("i", $userId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    if ($row = $result->fetch_assoc()) {
-        $schoolId = $row['school_id'];
-        $studentStd = $row['std'];
+try {
+    if (($role === 'student' || $role === 'teacher') && $userId) {
+        $stmt_mark_all_read = $conn->prepare("UPDATE notifications SET is_read = TRUE WHERE user_id = ? AND type = 'school_notice' AND is_read = FALSE");
+        $stmt_mark_all_read->execute([$userId]);
     }
-    $stmt->close();
-} elseif ($role == 'teacher') {
-    $stmt = $conn->prepare("SELECT school_id FROM teacher WHERE id = ?");
-    $stmt->bind_param("i", $userId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    if ($row = $result->fetch_assoc()) {
-        $schoolId = $row['school_id'];
+
+    if (isset($_GET['notif_id']) && is_numeric($_GET['notif_id'])) {
+        $notification_id = $_GET['notif_id'];
+        $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = TRUE WHERE id = ? AND user_id = ?");
+        $stmt_mark_read->execute([$notification_id, $userId]);
     }
-    $stmt->close();
-}
 
-$notices = [];
+    $schoolId = null;
+    $studentStd = null;
 
-// Query to join content and recipient tables
-$sql = "SELECT DISTINCT c.title, c.content, c.file_path, c.original_filename, c.created_at
-        FROM school_notices_content c
-        JOIN school_notice_recipients r ON c.id = r.notice_id
-        WHERE c.school_id = ?";
-
-$params = [$schoolId];
-$types = "i";
-
-// Add condition based on user role
-if ($role == 'teacher') {
-    $sql .= " AND r.recipient_type = 'teacher' AND (r.recipient_identifier = ? OR r.recipient_identifier = 'all')";
-    $params[] = $userId;
-    $types .= "s";
-} elseif ($role == 'student' && $studentStd) {
-    $sql .= " AND r.recipient_type = 'standard' AND (r.recipient_identifier = ? OR r.recipient_identifier = 'all')";
-    $params[] = $studentStd;
-    $types .= "s";
-} else {
-    $sql .= " AND 1=0";
-}
-
-$sql .= " ORDER BY c.created_at DESC";
-
-$stmt = $conn->prepare($sql);
-if ($stmt && !empty($params) && $params[0] !== null) {
-    $stmt->bind_param($types, ...$params);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    while ($row = $result->fetch_assoc()) {
-        $notices[] = $row;
+    if ($role == 'student') {
+        $stmt = $conn->prepare("SELECT school_id, std FROM student WHERE id = ?");
+        $stmt->execute([$userId]);
+        if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $schoolId = $row['school_id'];
+            $studentStd = $row['std'];
+        }
+    } elseif ($role == 'teacher') {
+        $stmt = $conn->prepare("SELECT school_id FROM teacher WHERE id = ?");
+        $stmt->execute([$userId]);
+        if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $schoolId = $row['school_id'];
+        }
     }
-    $stmt->close();
-}
 
+    if ($schoolId) {
+        $sql = "SELECT DISTINCT c.title, c.content, c.file_path, c.original_filename, c.created_at
+                FROM school_notices_content c
+                JOIN school_notice_recipients r ON c.id = r.notice_id
+                WHERE c.school_id = ?";
+        $params = [$schoolId];
+
+        if ($role == 'teacher') {
+            $sql .= " AND r.recipient_type = 'teacher'";
+        } elseif ($role == 'student' && $studentStd) {
+            $sql .= " AND r.recipient_type = 'standard' AND r.recipient_identifier = ?";
+            $params[] = $studentStd;
+        } else {
+            $sql .= " AND 1=0"; // Prevent query from running if no role match
+        }
+        $sql .= " ORDER BY c.created_at DESC";
+
+        $stmt = $conn->prepare($sql);
+        $stmt->execute($params);
+        $notices = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+} catch (PDOException $e) {
+    error_log("View Notice Error: " . $e->getMessage());
+    die("A database error occurred.");
+}
 
 $pageTitle = 'View School Notices';
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
-    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400i,600,700" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
@@ -120,6 +90,7 @@ $pageTitle = 'View School Notices';
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -135,8 +106,7 @@ $pageTitle = 'View School Notices';
                         <div class="card-body">
                             <?php if (empty($notices)): ?>
                                 <div class="text-center">No notices have been sent to you yet.</div>
-                            <?php else: ?>
-                                <?php foreach ($notices as $notice): ?>
+                                <?php else: foreach ($notices as $notice): ?>
                                     <div class="card mb-3">
                                         <div class="card-header d-flex justify-content-between align-items-center">
                                             <h5 class="card-title mb-0"><?php echo htmlspecialchars($notice['title']); ?></h5>
@@ -146,14 +116,14 @@ $pageTitle = 'View School Notices';
                                             <p class="card-text"><?php echo nl2br(htmlspecialchars($notice['content'])); ?></p>
                                             <?php if ($notice['file_path']): ?>
                                                 <hr>
-                                                <a href="<?php echo htmlspecialchars(BASE_WEB_PATH . ltrim($notice['file_path'], '/')); ?>" class="btn btn-success btn-sm" download="<?php echo htmlspecialchars($notice['original_filename']); ?>">
+                                                <a href="<?php echo htmlspecialchars(BASE_URL . ltrim($notice['file_path'], '/')); ?>" class="btn btn-success btn-sm" download="<?php echo htmlspecialchars($notice['original_filename']); ?>">
                                                     <i class="fas fa-download"></i> Download Attachment
                                                 </a>
                                             <?php endif; ?>
                                         </div>
                                     </div>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
+                            <?php endforeach;
+                            endif; ?>
                         </div>
                     </div>
                 </div>
@@ -162,12 +132,9 @@ $pageTitle = 'View School Notices';
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php" ?>
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
-    <?php
-    $conn->close();
-    ?>
 </body>
+
 </html>

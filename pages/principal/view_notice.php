@@ -4,6 +4,7 @@ include_once "../../includes/connect.php";
 
 $role = null;
 $userId = null;
+$notices = [];
 
 if (isset($_COOKIE['encrypted_user_role'])) {
     $decrypted_role = decrypt_id($_COOKIE['encrypted_user_role']);
@@ -18,37 +19,28 @@ if ($role !== 'principal' || !$userId) {
     exit;
 }
 
-// --- START: Mark all unread BMC notices as read to clear sidebar counter ---
-if ($userId) {
-    $stmt_mark_all_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND type = 'new_notice' AND is_read = 0");
-    if ($stmt_mark_all_read) {
-        $stmt_mark_all_read->bind_param("i", $userId);
-        $stmt_mark_all_read->execute();
-        $stmt_mark_all_read->close();
+try {
+    if ($userId) {
+        $stmt_mark_all_read = $conn->prepare("UPDATE notifications SET is_read = TRUE WHERE user_id = ? AND type = 'new_notice' AND is_read = FALSE");
+        $stmt_mark_all_read->execute([$userId]);
     }
-}
-// --- END: Mark notifications as read ---
 
+    $sql = "SELECT 
+                n.title, 
+                n.content, 
+                n.file_path, 
+                n.original_filename, 
+                n.created_at,
+                'BMC Admin' as sender
+             FROM notice n 
+             ORDER BY n.created_at DESC";
 
-$notices = [];
-$sql = "SELECT 
-            n.title, 
-            n.content, 
-            n.file_path, 
-            n.original_filename, 
-            n.created_at,
-            'BMC Admin' as sender
-         FROM notice n 
-         ORDER BY n.created_at DESC";
-
-$stmt = $conn->prepare($sql);
-if ($stmt) {
+    $stmt = $conn->prepare($sql);
     $stmt->execute();
-    $result = $stmt->get_result();
-    while ($row = $result->fetch_assoc()) {
-        $notices[] = $row;
-    }
-    $stmt->close();
+    $notices = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Principal View Notice Error: " . $e->getMessage());
+    die("A database error occurred.");
 }
 
 $pageTitle = 'View Notices';
@@ -64,10 +56,8 @@ $pageTitle = 'View Notices';
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.10.21/css/dataTables.bootstrap4.min.css">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-    
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-
 </head>
 
 <body id="page-top">
@@ -103,7 +93,7 @@ $pageTitle = 'View Notices';
                                                 <td><?php echo date('d-m-Y H:i', strtotime($notice['created_at'])); ?></td>
                                                 <td>
                                                     <?php if ($notice['file_path']): ?>
-                                                        <a href="<?php echo htmlspecialchars($notice['file_path']); ?>" class="btn btn-success btn-sm" download="<?php echo htmlspecialchars($notice['original_filename']); ?>">
+                                                        <a href="<?php echo htmlspecialchars(BASE_URL . ltrim($notice['file_path'], '/')); ?>" class="btn btn-success btn-sm" download="<?php echo htmlspecialchars($notice['original_filename']); ?>">
                                                             <i class="fas fa-download"></i> Download
                                                         </a>
                                                     <?php else: ?>
@@ -127,24 +117,17 @@ $pageTitle = 'View Notices';
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
-
-        <?php include_once "../../includes/logout_modal.php"?>
-
-
+    <?php include_once "../../includes/logout_modal.php" ?>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.4.1/jquery.easing.min.js"></script>
     <script src="https://cdn.datatables.net/1.10.21/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.10.21/js/dataTables.bootstrap4.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
-
-    <script src="../../assets/js/custom_principal.js"></script>
-
+    <script>
+        $(document).ready(function() {
+            $('#principal-viewNoticeTable').DataTable();
+        });
+    </script>
 </body>
 
 </html>
-<?php
-if (isset($conn) && $conn->ping()) {
-    $conn->close();
-}
-?>

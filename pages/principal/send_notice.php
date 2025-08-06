@@ -1,8 +1,10 @@
 <?php
+// Include necessary files
 include_once "../../encryption.php";
-include_once "../../includes/connect.php";
-include_once "../../includes/email_functions.php"; // Include email functions
+include_once "../../includes/connect.php"; // Your PDO connection file
+include_once "../../includes/email_functions.php"; // Email functions
 
+// Initialize variables
 $role = null;
 $userId = null;
 $schoolId = null;
@@ -19,42 +21,45 @@ if (isset($_COOKIE['encrypted_user_id'])) {
     $userId = decrypt_id($_COOKIE['encrypted_user_id']);
 }
 
-// Security check
+// Security check: ensure user is a principal and logged in
 if ($role !== 'principal' || !$userId) {
     header("Location: ../login.php");
     exit;
 }
 
-// Get School ID, principal name, all available standards, and all teachers for the school
-$stmt_school = $conn->prepare("SELECT school_id, principal_name FROM principal WHERE id = ?");
-$stmt_school->bind_param("i", $userId);
-$stmt_school->execute();
-$result_school = $stmt_school->get_result();
-if ($row_school = $result_school->fetch_assoc()) {
-    $schoolId = $row_school['school_id'];
-    $principalName = $row_school['principal_name'];
+try {
+    // Get School ID, principal name, all available standards, and all teachers for the school
+    $sql_school = "SELECT school_id, principal_name FROM principal WHERE id = ?";
+    $stmt_school = $conn->prepare($sql_school);
+    $stmt_school->execute([$userId]);
 
-    // Fetch standards
-    $std_stmt = $conn->prepare("SELECT DISTINCT std FROM student WHERE school_id = ? ORDER BY CAST(std AS UNSIGNED)");
-    $std_stmt->bind_param("i", $schoolId);
-    $std_stmt->execute();
-    $std_result = $std_stmt->get_result();
-    while ($std_row = $std_result->fetch_assoc()) {
-        $availableStandards[] = $std_row['std'];
-    }
-    $std_stmt->close();
+    // Use fetch instead of get_result and fetch_assoc
+    if ($row_school = $stmt_school->fetch(PDO::FETCH_ASSOC)) {
+        $schoolId = $row_school['school_id'];
+        $principalName = $row_school['principal_name'];
 
-    // Fetch teachers
-    $teacher_stmt = $conn->prepare("SELECT id, teacher_name FROM teacher WHERE school_id = ? ORDER BY teacher_name");
-    $teacher_stmt->bind_param("i", $schoolId);
-    $teacher_stmt->execute();
-    $teacher_result = $teacher_stmt->get_result();
-    while ($teacher_row = $teacher_result->fetch_assoc()) {
-        $availableTeachers[] = $teacher_row;
+        // Fetch standards
+        // Note: CAST(std AS UNSIGNED) is MySQL-specific. In PostgreSQL, we use INTEGER.
+        $sql_std = "SELECT DISTINCT std FROM student WHERE school_id = ? ORDER BY CAST(std AS INTEGER)";
+        $stmt_std = $conn->prepare($sql_std);
+        $stmt_std->execute([$schoolId]);
+        while ($std_row = $stmt_std->fetch(PDO::FETCH_ASSOC)) {
+            $availableStandards[] = $std_row['std'];
+        }
+
+        // Fetch teachers
+        $sql_teacher = "SELECT id, teacher_name FROM teacher WHERE school_id = ? ORDER BY teacher_name";
+        $stmt_teacher = $conn->prepare($sql_teacher);
+        $stmt_teacher->execute([$schoolId]);
+        while ($teacher_row = $stmt_teacher->fetch(PDO::FETCH_ASSOC)) {
+            $availableTeachers[] = $teacher_row;
+        }
     }
-    $teacher_stmt->close();
+} catch (PDOException $e) {
+    // Handle database errors during initial data fetch
+    die("Error fetching initial data: " . $e->getMessage());
 }
-$stmt_school->close();
+
 
 // --- FORM PROCESSING ---
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
@@ -70,7 +75,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
     $teacher_ids_to_notify = [];
     $standards_to_notify = [];
 
-    // --- FILE UPLOAD ---
+    // --- FILE UPLOAD (No changes needed here) ---
     $filePathForDB = null;
     $originalFilename = null;
     if (isset($_FILES['notice_file']) && $_FILES['notice_file']['error'] == 0) {
@@ -87,128 +92,115 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
         }
     }
 
-    // --- DATABASE INSERTION ---
-    $conn->begin_transaction();
+    // --- DATABASE INSERTION (Using PDO Transaction) ---
     try {
-        $stmt_content = $conn->prepare("INSERT INTO school_notices_content (user_id, school_id, title, content, file_path, original_filename) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt_content->bind_param("iissss", $userId, $schoolId, $title, $content, $filePathForDB, $originalFilename);
-        $stmt_content->execute();
-        $noticeId = $conn->insert_id;
-        $stmt_content->close();
+        // Start transaction
+        $conn->beginTransaction();
 
-        $stmt_recipient = $conn->prepare("INSERT INTO school_notice_recipients (notice_id, recipient_type, recipient_identifier) VALUES (?, ?, ?)");
-        $recipient_type = '';
-        $recipient_identifier = '';
-        $stmt_recipient->bind_param("iss", $noticeId, $recipient_type, $recipient_identifier);
+        $sql_content = "INSERT INTO school_notices_content (user_id, school_id, title, content, file_path, original_filename) VALUES (?, ?, ?, ?, ?, ?)";
+        $stmt_content = $conn->prepare($sql_content);
+        $stmt_content->execute([$userId, $schoolId, $title, $content, $filePathForDB, $originalFilename]);
+
+        // Use lastInsertId() to get the ID of the new notice
+        $noticeId = $conn->lastInsertId();
+
+        $sql_recipient = "INSERT INTO school_notice_recipients (notice_id, recipient_type, recipient_identifier) VALUES (?, ?, ?)";
+        $stmt_recipient = $conn->prepare($sql_recipient);
 
         if ($send_to_group == 'both') {
-            $recipient_type = 'teacher';
+            // All Teachers
             foreach ($availableTeachers as $teacher) {
-                $recipient_identifier = $teacher['id'];
-                $stmt_recipient->execute();
+                $stmt_recipient->execute([$noticeId, 'teacher', $teacher['id']]);
                 $teacher_ids_to_notify[] = $teacher['id'];
             }
-            $recipient_type = 'standard';
+            // All Standards
             foreach ($availableStandards as $standard) {
-                $recipient_identifier = $standard;
-                $stmt_recipient->execute();
+                $stmt_recipient->execute([$noticeId, 'standard', $standard]);
                 $standards_to_notify[] = $standard;
             }
         } elseif ($send_to_group == 'teacher' && !empty($_POST['teacher_ids'])) {
-            $recipient_type = 'teacher';
             if (in_array('all', $_POST['teacher_ids'])) {
                 foreach ($availableTeachers as $teacher) {
-                    $recipient_identifier = $teacher['id'];
-                    $stmt_recipient->execute();
+                    $stmt_recipient->execute([$noticeId, 'teacher', $teacher['id']]);
                     $teacher_ids_to_notify[] = $teacher['id'];
                 }
             } else {
                 foreach ($_POST['teacher_ids'] as $teacher_id) {
-                    $recipient_identifier = $teacher_id;
-                    $stmt_recipient->execute();
+                    $stmt_recipient->execute([$noticeId, 'teacher', $teacher_id]);
                     $teacher_ids_to_notify[] = $teacher_id;
                 }
             }
         } elseif ($send_to_group == 'student' && !empty($_POST['standard_ids'])) {
-            $recipient_type = 'standard';
             if (in_array('all', $_POST['standard_ids'])) {
                 foreach ($availableStandards as $standard) {
-                    $recipient_identifier = $standard;
-                    $stmt_recipient->execute();
+                    $stmt_recipient->execute([$noticeId, 'standard', $standard]);
                     $standards_to_notify[] = $standard;
                 }
             } else {
                 foreach ($_POST['standard_ids'] as $standard_id) {
-                    $recipient_identifier = $standard_id;
-                    $stmt_recipient->execute();
+                    $stmt_recipient->execute([$noticeId, 'standard', $standard_id]);
                     $standards_to_notify[] = $standard_id;
                 }
             }
         }
-        $stmt_recipient->close();
+
+        // Commit the transaction if all inserts were successful
         $conn->commit();
     } catch (Exception $e) {
-        $conn->rollback();
+        // Roll back the transaction on error
+        if ($conn->inTransaction()) {
+            $conn->rollBack();
+        }
         die("Failed to send notice: " . $e->getMessage());
     }
 
     // --- NOTIFICATION & EMAIL LOGIC ---
-    $notification_message = "New notice from Principal: " . substr($title, 0, 40) . "...";
-    $notification_type = "school_notice";
-    $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");
+    try {
+        $notification_message = "New notice from Principal: " . substr($title, 0, 40) . "...";
+        $notification_type = "school_notice";
+        $sql_notify = "INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)";
+        $stmt_notify = $conn->prepare($sql_notify);
 
-    $email_subject = "New Notice from Principal: " . htmlspecialchars($title);
-    $email_content_base = "<p>A new notice titled '<strong>" . htmlspecialchars($title) . "</strong>' has been posted by the principal, " . htmlspecialchars($principalName) . ".</p>"
-        . "<p><strong>Content:</strong><br>" . nl2br(htmlspecialchars($content)) . "</p>"
-        . "<p>Please log in to the portal for more details.</p>";
+        $email_subject = "New Notice from Principal: " . htmlspecialchars($title);
+        $email_content_base = "<p>A new notice titled '<strong>" . htmlspecialchars($title) . "</strong>' has been posted by the principal, " . htmlspecialchars($principalName) . ".</p>"
+            . "<p><strong>Content:</strong><br>" . nl2br(htmlspecialchars($content)) . "</p>"
+            . "<p>Please log in to the portal for more details.</p>";
 
-    // 1. Notify and Email Teachers
-    if (!empty($teacher_ids_to_notify)) {
-        $unique_teacher_ids = array_unique($teacher_ids_to_notify);
-        $placeholders = implode(',', array_fill(0, count($unique_teacher_ids), '?'));
-        $sql_teachers = "SELECT id, email, teacher_name FROM teacher WHERE id IN ($placeholders)";
-        $stmt_teachers = $conn->prepare($sql_teachers);
-        $stmt_teachers->bind_param(str_repeat('i', count($unique_teacher_ids)), ...$unique_teacher_ids);
-        $stmt_teachers->execute();
-        $result_teachers = $stmt_teachers->get_result();
-
-        $notification_link = "/pages/teacher/view_notice.php";
-
-        while ($teacher = $result_teachers->fetch_assoc()) {
-            $stmt_notify->bind_param("isss", $teacher['id'], $notification_message, $notification_link, $notification_type);
-            $stmt_notify->execute();
-
-            $email_body = "<p>Dear " . htmlspecialchars($teacher['teacher_name']) . ",</p>" . $email_content_base;
-            send_email($teacher['email'], $email_subject, $email_body);
+        // 1. Notify and Email Teachers
+        if (!empty($teacher_ids_to_notify)) {
+            $unique_teacher_ids = array_unique($teacher_ids_to_notify);
+            $placeholders = implode(',', array_fill(0, count($unique_teacher_ids), '?'));
+            $sql_teachers = "SELECT id, email, teacher_name FROM teacher WHERE id IN ($placeholders)";
+            $stmt_teachers = $conn->prepare($sql_teachers);
+            $stmt_teachers->execute($unique_teacher_ids);
+            $notification_link = "/pages/teacher/view_notice.php";
+            while ($teacher = $stmt_teachers->fetch(PDO::FETCH_ASSOC)) {
+                $stmt_notify->execute([$teacher['id'], $notification_message, $notification_link, $notification_type]);
+                $email_body = "<p>Dear " . htmlspecialchars($teacher['teacher_name']) . ",</p>" . $email_content_base;
+                send_email($teacher['email'], $email_subject, $email_body);
+            }
         }
-        $stmt_teachers->close();
-    }
 
-    // 2. Notify and Email Students
-    if (!empty($standards_to_notify)) {
-        $unique_standards = array_unique($standards_to_notify);
-        $placeholders = implode(',', array_fill(0, count($unique_standards), '?'));
-        $sql_students = "SELECT id, email, student_name FROM student WHERE school_id = ? AND std IN ($placeholders)";
-        $stmt_students = $conn->prepare($sql_students);
-        $types = "i" . str_repeat('s', count($unique_standards));
-        $params = array_merge([$schoolId], $unique_standards);
-        $stmt_students->bind_param($types, ...$params);
-        $stmt_students->execute();
-        $result_students = $stmt_students->get_result();
-
-        $notification_link = "/pages/student/view_notice.php";
-
-        while ($student = $result_students->fetch_assoc()) {
-            $stmt_notify->bind_param("isss", $student['id'], $notification_message, $notification_link, $notification_type);
-            $stmt_notify->execute();
-
-            $email_body = "<p>Dear " . htmlspecialchars($student['student_name']) . ",</p>" . $email_content_base;
-            send_email($student['email'], $email_subject, $email_body);
+        // 2. Notify and Email Students
+        if (!empty($standards_to_notify)) {
+            $unique_standards = array_unique($standards_to_notify);
+            $placeholders = implode(',', array_fill(0, count($unique_standards), '?'));
+            $sql_students = "SELECT id, email, student_name FROM student WHERE school_id = ? AND std IN ($placeholders)";
+            $stmt_students = $conn->prepare($sql_students);
+            $params = array_merge([$schoolId], $unique_standards);
+            $stmt_students->execute($params);
+            $notification_link = "/pages/student/view_notice.php";
+            while ($student = $stmt_students->fetch(PDO::FETCH_ASSOC)) {
+                $stmt_notify->execute([$student['id'], $notification_message, $notification_link, $notification_type]);
+                $email_body = "<p>Dear " . htmlspecialchars($student['student_name']) . ",</p>" . $email_content_base;
+                send_email($student['email'], $email_subject, $email_body);
+            }
         }
-        $stmt_students->close();
+    } catch (PDOException $e) {
+        // Log or handle notification errors, but don't stop the script
+        // The main notice was already sent successfully.
+        error_log("Notification/Email Error: " . $e->getMessage());
     }
-
-    $stmt_notify->close();
 
     header("Location: send_notice.php?success=1");
     exit();
@@ -230,11 +222,11 @@ $pageTitle = 'Send School Notice';
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <style>
-    .select2-container--default .select2-selection--multiple {
-        border: 1px solid #d1d3e2;
-        height: auto;
-        padding: .375rem .75rem;
-    }
+        .select2-container--default .select2-selection--multiple {
+            border: 1px solid #d1d3e2;
+            height: auto;
+            padding: .375rem .75rem;
+        }
     </style>
 </head>
 
@@ -247,7 +239,7 @@ $pageTitle = 'Send School Notice';
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Send a Notice</h1>
                     <?php if (isset($_GET['success'])): ?>
-                    <div class="alert alert-success">Notice sent successfully!</div>
+                        <div class="alert alert-success">Notice sent successfully!</div>
                     <?php endif; ?>
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
@@ -270,8 +262,8 @@ $pageTitle = 'Send School Notice';
                                         multiple="multiple">
                                         <option value="all">All Teachers</option>
                                         <?php foreach ($availableTeachers as $teacher): ?>
-                                        <option value="<?php echo htmlspecialchars($teacher['id']); ?>">
-                                            <?php echo htmlspecialchars($teacher['teacher_name']); ?></option>
+                                            <option value="<?php echo htmlspecialchars($teacher['id']); ?>">
+                                                <?php echo htmlspecialchars($teacher['teacher_name']); ?></option>
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
@@ -281,8 +273,8 @@ $pageTitle = 'Send School Notice';
                                         multiple="multiple">
                                         <option value="all">All Standards</option>
                                         <?php foreach ($availableStandards as $standard): ?>
-                                        <option value="<?php echo htmlspecialchars($standard); ?>">Standard
-                                            <?php echo htmlspecialchars($standard); ?></option>
+                                            <option value="<?php echo htmlspecialchars($standard); ?>">Standard
+                                                <?php echo htmlspecialchars($standard); ?></option>
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
@@ -308,28 +300,28 @@ $pageTitle = 'Send School Notice';
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
-        <?php include_once "../../includes/logout_modal.php"?>
+    <?php include_once "../../includes/logout_modal.php" ?>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
-    $(document).ready(function() {
-        $('.multi-select').select2();
-        $('#send_to_group').on('change', function() {
-            var selected = $(this).val();
-            $('#teacher_group').hide();
-            $('#student_group').hide();
-            if (selected === 'teacher') {
-                $('#teacher_group').show();
-            } else if (selected === 'student') {
-                $('#student_group').show();
-            } else if (selected === 'both') {
-                // No need to show dropdowns as it's for all
-            }
+        $(document).ready(function() {
+            $('.multi-select').select2();
+            $('#send_to_group').on('change', function() {
+                var selected = $(this).val();
+                $('#teacher_group').hide();
+                $('#student_group').hide();
+                if (selected === 'teacher') {
+                    $('#teacher_group').show();
+                } else if (selected === 'student') {
+                    $('#student_group').show();
+                } else if (selected === 'both') {
+                    // No need to show dropdowns as it's for all
+                }
+            });
         });
-    });
     </script>
 </body>
 

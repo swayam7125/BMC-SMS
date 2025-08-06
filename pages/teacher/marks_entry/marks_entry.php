@@ -18,21 +18,24 @@ if ($role !== 'teacher' || !$teacher_id) {
     exit;
 }
 
-// Check if the teacher is a class teacher and get their assigned standard
-$query = "SELECT class_teacher_std FROM teacher WHERE id = ? AND class_teacher = 1";
-$stmt = mysqli_prepare($conn, $query);
-mysqli_stmt_bind_param($stmt, "i", $teacher_id);
-mysqli_stmt_execute($stmt);
-$result = mysqli_stmt_get_result($stmt);
+try {
+    // PDO Change: Converted mysqli query to PDO
+    $query = "SELECT class_teacher_std FROM teacher WHERE id = ? AND class_teacher = B'1'"; // PostgreSQL boolean is B'1' or TRUE
+    $stmt = $conn->prepare($query);
+    $stmt->execute([$teacher_id]);
 
-if (mysqli_num_rows($result) > 0) {
-    $teacher_data = mysqli_fetch_assoc($result);
-    $class_teacher_std = $teacher_data['class_teacher_std'];
-} else {
-    header("Location: ../../../dashboard.php?error=Access denied. Only class teachers can enter marks.");
-    exit;
+    if ($stmt->rowCount() > 0) {
+        $teacher_data = $stmt->fetch(PDO::FETCH_ASSOC);
+        $class_teacher_std = $teacher_data['class_teacher_std'];
+    } else {
+        header("Location: ../../../dashboard.php?error=Access denied. Only class teachers can enter marks.");
+        exit;
+    }
+} catch (PDOException $e) {
+    error_log("Marks Entry Auth Error: " . $e->getMessage());
+    die("A database error occurred.");
 }
-mysqli_stmt_close($stmt);
+
 
 $current_year = date('Y');
 $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
@@ -43,16 +46,11 @@ $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
 <head>
     <meta charset="utf-8">
     <title>Marks Entry - School Management System</title>
-
-    <!-- <link href="../../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css"> -->
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-
-
 </head>
 
 <body id="page-top" data-class-std="<?php echo htmlspecialchars($class_teacher_std); ?>">
@@ -121,8 +119,7 @@ $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
             <?php include '../../../includes/footer.php'; ?>
         </div>
     </div>
-        <?php include_once "../../../includes/logout_modal.php" ?>
-
+    <?php include_once "../../../includes/logout_modal.php" ?>
     <script src="../../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../../assets/js/sb-admin-2.min.js"></script>

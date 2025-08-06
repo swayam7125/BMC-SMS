@@ -27,18 +27,23 @@ if (!$role || $role !== 'student') {
 $filter_year = isset($_GET['year']) ? intval($_GET['year']) : date('Y');
 $filter_month = isset($_GET['month']) ? intval($_GET['month']) : date('m');
 
-// Fetch attendance records for the logged-in student for the filtered month/year
-$stmt = $conn->prepare(
-    "SELECT attendance_date, status 
-     FROM attendance 
-     WHERE student_id = ? AND YEAR(attendance_date) = ? AND MONTH(attendance_date) = ?
-     ORDER BY attendance_date ASC"
-);
-$stmt->bind_param("iii", $userId, $filter_year, $filter_month);
-$stmt->execute();
-$result = $stmt->get_result();
-$attendance_records = $result->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+// PDO & PostgreSQL Change: Converted MySQLi to PDO and used EXTRACT for date parts.
+$query = "SELECT attendance_date, status 
+          FROM attendance 
+          WHERE student_id = ? 
+            AND EXTRACT(YEAR FROM attendance_date) = ? 
+            AND EXTRACT(MONTH FROM attendance_date) = ?
+          ORDER BY attendance_date ASC";
+
+try {
+    $stmt = $conn->prepare($query);
+    $stmt->execute([$userId, $filter_year, $filter_month]);
+    $attendance_records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    // Log error and handle it gracefully
+    error_log("DB Error in view_attendance.php: " . $e->getMessage());
+    $attendance_records = []; // Ensure the page doesn't break
+}
 
 // Calculate summary
 foreach ($attendance_records as $record) {
@@ -56,12 +61,11 @@ foreach ($attendance_records as $record) {
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>My Attendance - School Management System</title>
 
-    <!-- <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css"> -->
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
-    
+
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 
@@ -165,7 +169,7 @@ foreach ($attendance_records as $record) {
     </div>
 
     <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
-    <?php include_once "../../includes/logout_modal.php"?>
+    <?php include_once "../../includes/logout_modal.php" ?>
 
 
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>

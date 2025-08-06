@@ -2,23 +2,6 @@
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
-// --- START: This code marks the notification as read ---
-if (isset($_GET['notif_id']) && is_numeric($_GET['notif_id'])) {
-    $notification_id = $_GET['notif_id'];
-    $current_user_id = null;
-    if (isset($_COOKIE['encrypted_user_id'])) {
-        $current_user_id = decrypt_id($_COOKIE['encrypted_user_id']);
-    }
-    
-    if ($current_user_id) {
-        $update_stmt = mysqli_prepare($conn, "UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?");
-        mysqli_stmt_bind_param($update_stmt, "ii", $notification_id, $current_user_id);
-        mysqli_stmt_execute($update_stmt);
-        mysqli_stmt_close($update_stmt);
-    }
-}
-// --- END: Mark notification as read ---
-
 $role = null;
 $student_id = null;
 $student_std = null;
@@ -31,29 +14,40 @@ if ($role !== 'student' || !$student_id) {
     exit;
 }
 
-// --- START: MARK RESULT NOTIFICATIONS AS READ ---
-if ($student_id) {
-    $stmt_mark_read = mysqli_prepare($conn, "UPDATE notifications SET is_read = 1 WHERE user_id = ? AND type = 'marks_uploaded' AND is_read = 0");
-    if ($stmt_mark_read) {
-        mysqli_stmt_bind_param($stmt_mark_read, "i", $student_id);
-        mysqli_stmt_execute($stmt_mark_read);
-        mysqli_stmt_close($stmt_mark_read);
+try {
+    // PDO Change: Converted all queries to PDO
+    // --- START: This code marks the notification as read ---
+    if (isset($_GET['notif_id']) && is_numeric($_GET['notif_id'])) {
+        $notification_id = $_GET['notif_id'];
+        $update_stmt = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?");
+        $update_stmt->execute([$notification_id, $student_id]);
+        $update_stmt = null;
     }
-}
-// --- END: MARK RESULT NOTIFICATIONS AS READ ---
+    // --- END: Mark notification as read ---
 
-$query_std = "SELECT std FROM student WHERE id = ?";
-$stmt_std = mysqli_prepare($conn, $query_std);
-mysqli_stmt_bind_param($stmt_std, "i", $student_id);
-mysqli_stmt_execute($stmt_std);
-$result_std = mysqli_stmt_get_result($stmt_std);
-if ($student_data = mysqli_fetch_assoc($result_std)) {
-    $student_std = $student_data['std'];
-} else {
-    header("Location: ../../dashboard.php?error=Student profile not found.");
+    // --- START: MARK ALL RESULT NOTIFICATIONS AS READ ---
+    $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND type = 'marks_uploaded' AND is_read = 0");
+    $stmt_mark_read->execute([$student_id]);
+    $stmt_mark_read = null;
+    // --- END: MARK ALL RESULT NOTIFICATIONS AS READ ---
+
+    $query_std = "SELECT std FROM student WHERE id = ?";
+    $stmt_std = $conn->prepare($query_std);
+    $stmt_std->execute([$student_id]);
+
+    if ($student_data = $stmt_std->fetch(PDO::FETCH_ASSOC)) {
+        $student_std = $student_data['std'];
+    } else {
+        header("Location: ../../dashboard.php?error=Student profile not found.");
+        exit;
+    }
+    $stmt_std = null;
+} catch (PDOException $e) {
+    error_log("DB Error in view_my_marks.php: " . $e->getMessage());
+    // Optionally, redirect to an error page
+    header("Location: ../../dashboard.php?error=A database error occurred.");
     exit;
 }
-mysqli_stmt_close($stmt_std);
 
 $current_year = date('Y');
 $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
@@ -65,7 +59,6 @@ $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
     <meta charset="utf-8">
     <title>My Marks Report - School Management System</title>
 
-    <!-- <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css"> -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
@@ -135,7 +128,7 @@ $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
-        <?php include_once "../../includes/logout_modal.php"?>
+    <?php include_once "../../includes/logout_modal.php" ?>
 
 
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>

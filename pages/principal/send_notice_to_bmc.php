@@ -10,7 +10,6 @@ $userId = null;
 $schoolId = null;
 $principalName = 'Principal';
 
-// Get user info from cookies
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
@@ -18,97 +17,79 @@ if (isset($_COOKIE['encrypted_user_id'])) {
     $userId = decrypt_id($_COOKIE['encrypted_user_id']);
 }
 
-// Security check
 if ($role !== 'principal' || !$userId) {
     header("Location: ../../login.php");
     exit;
 }
 
-// Get School ID and principal name
-$stmt_principal = $conn->prepare("SELECT school_id, principal_name FROM principal WHERE id = ?");
-$stmt_principal->bind_param("i", $userId);
-$stmt_principal->execute();
-$result_principal = $stmt_principal->get_result();
-if ($row = $result_principal->fetch_assoc()) {
-    $schoolId = $row['school_id'];
-    $principalName = $row['principal_name'];
-}
-$stmt_principal->close();
-
-
-// --- FORM PROCESSING ---
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice_to_bmc'])) {
-    $title = $_POST['title'];
-    $content = $_POST['content'];
-
-    // --- FILE UPLOAD ---
-    $filePathForDB = null;
-    $originalFilename = null;
-    if (isset($_FILES['notice_file']) && $_FILES['notice_file']['error'] == 0) {
-        $originalFilename = basename($_FILES["notice_file"]["name"]);
-        $uploadDirServer = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/principal/uploads/bmc_notices/';
-        $uploadDirWeb = '/BMC-SMS/pages/principal/uploads/bmc_notices/';
-        if (!is_dir($uploadDirServer)) mkdir($uploadDirServer, 0777, true);
-
-        $storageFilename = uniqid('p2b_notice_', true) . '_' . $originalFilename;
-        $serverFilePath = $uploadDirServer . $storageFilename;
-        if (move_uploaded_file($_FILES["notice_file"]["tmp_name"], $serverFilePath)) {
-            $filePathForDB = $uploadDirWeb . $storageFilename;
-        }
+try {
+    $stmt_principal = $conn->prepare("SELECT school_id, principal_name FROM principal WHERE id = ?");
+    $stmt_principal->execute([$userId]);
+    if ($row = $stmt_principal->fetch(PDO::FETCH_ASSOC)) {
+        $schoolId = $row['school_id'];
+        $principalName = $row['principal_name'];
     }
 
-    // --- DATABASE INSERTION AND NOTIFICATION ---
-    $conn->begin_transaction();
-    try {
-        // Insert notice into the new table
-        $stmt_content = $conn->prepare("INSERT INTO principal_to_bmc_notices (principal_id, school_id, title, content, file_path, original_filename) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt_content->bind_param("iissss", $userId, $schoolId, $title, $content, $filePathForDB, $originalFilename);
-        $stmt_content->execute();
-        $stmt_content->close();
-        
-        // Find all BMC admin user IDs
-        $stmt_bmc_users = $conn->query("SELECT id FROM users WHERE role = 'superadmin'");
-        $bmc_user_ids = $stmt_bmc_users->fetch_all(MYSQLI_ASSOC);
-        $stmt_bmc_users->close();
+    if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice_to_bmc'])) {
+        $title = $_POST['title'];
+        $content = $_POST['content'];
+        $filePathForDB = null;
+        $originalFilename = null;
 
-        // Create a notification for each Super admin
+        if (isset($_FILES['notice_file']) && $_FILES['notice_file']['error'] == 0) {
+            $originalFilename = basename($_FILES["notice_file"]["name"]);
+            $uploadDirServer = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/principal/uploads/bmc_notices/';
+            $uploadDirWeb = 'pages/principal/uploads/bmc_notices/';
+            if (!is_dir($uploadDirServer)) mkdir($uploadDirServer, 0777, true);
+            $storageFilename = uniqid('p2b_notice_', true) . '_' . preg_replace('/[^A-Za-z0-9\._-]/', '', $originalFilename);
+            $serverFilePath = $uploadDirServer . $storageFilename;
+            if (move_uploaded_file($_FILES["notice_file"]["tmp_name"], $serverFilePath)) {
+                $filePathForDB = $uploadDirWeb . $storageFilename;
+            }
+        }
+
+        $conn->beginTransaction();
+
+        $stmt_content = $conn->prepare("INSERT INTO principal_to_bmc_notices (principal_id, school_id, title, content, file_path, original_filename) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt_content->execute([$userId, $schoolId, $title, $content, $filePathForDB, $originalFilename]);
+
+        $stmt_bmc_users = $conn->query("SELECT id FROM users WHERE role = 'superadmin'");
+        $bmc_user_ids = $stmt_bmc_users->fetchAll(PDO::FETCH_COLUMN, 0);
+
         if (!empty($bmc_user_ids)) {
             $notification_message = "New Notice from " . htmlspecialchars($principalName);
-            $notification_link = "/pages/bmc/view_principal_notices.php";
+            $notification_link = "/BMC-SMS/pages/bmc/view_principal_notices.php";
             $notification_type = "principal_notice";
-            
+
             $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");
-            foreach ($bmc_user_ids as $bmc_user) {
-                $bmc_id = $bmc_user['id'];
-                $stmt_notify->bind_param("isss", $bmc_id, $notification_message, $notification_link, $notification_type);
-                $stmt_notify->execute();
+            foreach ($bmc_user_ids as $bmc_id) {
+                $stmt_notify->execute([$bmc_id, $notification_message, $notification_link, $notification_type]);
             }
-            $stmt_notify->close();
         }
-        
+
         $conn->commit();
         header("Location: send_notice_to_bmc.php?success=1");
         exit();
-    } catch (Exception $e) {
-        $conn->rollback();
-        die("Failed to send notice: " . $e->getMessage());
     }
+} catch (Exception $e) {
+    if (isset($conn) && $conn->inTransaction()) $conn->rollBack();
+    error_log("Send Notice to BMC Error: " . $e->getMessage());
+    die("Failed to send notice: " . $e->getMessage());
 }
 
 $pageTitle = 'Send Notice to BMC';
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-
-    <!-- <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet"> -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -126,18 +107,9 @@ $pageTitle = 'Send Notice to BMC';
                         </div>
                         <div class="card-body">
                             <form method="POST" action="send_notice_to_bmc.php" enctype="multipart/form-data">
-                                <div class="form-group">
-                                    <label for="title">Title</label>
-                                    <input type="text" class="form-control" id="title" name="title" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="content">Content</label>
-                                    <textarea class="form-control" id="content" name="content" rows="6" required></textarea>
-                                </div>
-                                <div class="form-group">
-                                    <label for="notice_file">Attach File (Optional)</label>
-                                    <input type="file" class="form-control-file" id="notice_file" name="notice_file">
-                                </div>
+                                <div class="form-group"><label for="title">Title</label><input type="text" class="form-control" id="title" name="title" required></div>
+                                <div class="form-group"><label for="content">Content</label><textarea class="form-control" id="content" name="content" rows="6" required></textarea></div>
+                                <div class="form-group"><label for="notice_file">Attach File (Optional)</label><input type="file" class="form-control-file" id="notice_file" name="notice_file"></div>
                                 <button type="submit" name="send_notice_to_bmc" class="btn btn-primary">Send to BMC</button>
                             </form>
                         </div>
@@ -147,10 +119,10 @@ $pageTitle = 'Send Notice to BMC';
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
-        <?php include_once "../../includes/logout_modal.php"?>
-
+    <?php include_once "../../includes/logout_modal.php" ?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
+
 </html>

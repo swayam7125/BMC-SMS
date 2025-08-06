@@ -8,6 +8,7 @@ $role = null;
 $userId = null;
 $errorMessage = '';
 $teacherDetails = null;
+$students = [];
 
 // Retrieve and decrypt user role and ID from cookies
 if (isset($_COOKIE['encrypted_user_role'])) {
@@ -23,81 +24,67 @@ if (!$role || $role !== 'teacher') {
     exit();
 }
 
-// Fetch teacher details to verify they are a class teacher
-$stmt = $conn->prepare("SELECT class_teacher, class_teacher_std, school_id FROM teacher WHERE id = ?");
-$stmt->bind_param("i", $userId);
-$stmt->execute();
-$result = $stmt->get_result();
-$teacherDetails = $result->fetch_assoc();
-$stmt->close();
+try {
+    // PDO Change: Converted to PDO. Note B'1' for boolean TRUE in PostgreSQL.
+    $stmt = $conn->prepare("SELECT class_teacher, class_teacher_std, school_id FROM teacher WHERE id = ? AND class_teacher = B'1'");
+    $stmt->execute([$userId]);
+    $teacherDetails = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if (!$teacherDetails || !$teacherDetails['class_teacher'] || empty($teacherDetails['class_teacher_std'])) {
-    $errorMessage = "Access Denied: You are not assigned as a class teacher and cannot add attendance.";
-}
+    if (!$teacherDetails || empty($teacherDetails['class_teacher_std'])) {
+        $errorMessage = "Access Denied: You are not assigned as a class teacher and cannot add attendance.";
+    }
 
-// Handle form submission to save attendance
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($errorMessage)) {
-    $attendance_date = $_POST['attendance_date'];
-    $attendance_data = $_POST['attendance'];
-    $class_std = $teacherDetails['class_teacher_std'];
-    $school_id = $teacherDetails['school_id'];
+    // Handle form submission to save attendance
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($errorMessage)) {
+        $attendance_date = $_POST['attendance_date'];
+        $attendance_data = $_POST['attendance'];
+        $class_std = $teacherDetails['class_teacher_std'];
+        $school_id = $teacherDetails['school_id'];
 
-    $conn->begin_transaction();
-    try {
+        $conn->beginTransaction();
+
+        // PostgreSQL Change: Using ON CONFLICT for INSERT/UPDATE logic
+        // Assumes a UNIQUE constraint exists on (student_id, attendance_date)
+        $upsert_sql = "INSERT INTO attendance (student_id, teacher_id, school_id, std, attendance_date, status) 
+                       VALUES (?, ?, ?, ?, ?, ?)
+                       ON CONFLICT (student_id, attendance_date) 
+                       DO UPDATE SET status = EXCLUDED.status, teacher_id = EXCLUDED.teacher_id";
+
+        $stmt_upsert = $conn->prepare($upsert_sql);
+
         foreach ($attendance_data as $student_id => $status) {
-            // Check if a record for this student and date already exists
-            $check_stmt = $conn->prepare("SELECT attendance_id FROM attendance WHERE student_id = ? AND attendance_date = ?");
-            $check_stmt->bind_param("is", $student_id, $attendance_date);
-            $check_stmt->execute();
-            $existing_record = $check_stmt->get_result()->fetch_assoc();
-            $check_stmt->close();
-
-            if ($existing_record) {
-                // Update existing record
-                $update_stmt = $conn->prepare("UPDATE attendance SET status = ?, teacher_id = ? WHERE attendance_id = ?");
-                $update_stmt->bind_param("sii", $status, $userId, $existing_record['attendance_id']);
-                $update_stmt->execute();
-                $update_stmt->close();
-            } else {
-                // Insert new record
-                $insert_stmt = $conn->prepare("INSERT INTO attendance (student_id, teacher_id, school_id, std, attendance_date, status) VALUES (?, ?, ?, ?, ?, ?)");
-                $insert_stmt->bind_param("iiisss", $student_id, $userId, $school_id, $class_std, $attendance_date, $status);
-                $insert_stmt->execute();
-                $insert_stmt->close();
-            }
+            $stmt_upsert->execute([$student_id, $userId, $school_id, $class_std, $attendance_date, $status]);
         }
+
         $conn->commit();
         $successMessage = "Attendance for " . htmlspecialchars($attendance_date) . " has been saved successfully!";
-    } catch (Exception $e) {
-        $conn->rollback();
-        $errorMessage = "Failed to save attendance. Please try again.";
     }
-}
 
-// Fetch students for the form
-$students = [];
-$attendance_date_display = isset($_GET['attendance_date']) ? $_GET['attendance_date'] : date('Y-m-d');
+    // Fetch students for the form
+    $attendance_date_display = $_GET['attendance_date'] ?? date('Y-m-d');
 
-if (empty($errorMessage)) {
-    // Fetch the list of students in the teacher's class
-    $student_stmt = $conn->prepare("SELECT id, rollno, student_name FROM student WHERE std = ? AND school_id = ? ORDER BY rollno ASC");
-    $student_stmt->bind_param("si", $teacherDetails['class_teacher_std'], $teacherDetails['school_id']);
-    $student_stmt->execute();
-    $students = $student_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-    $student_stmt->close();
+    if (empty($errorMessage)) {
+        // Fetch students
+        $student_stmt = $conn->prepare("SELECT id, rollno, student_name FROM student WHERE std = ? AND school_id = ? ORDER BY rollno ASC");
+        $student_stmt->execute([$teacherDetails['class_teacher_std'], $teacherDetails['school_id']]);
+        $students = $student_stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // ★ NEW: Fetch existing attendance records for the selected date to pre-fill the form
-    $existing_attendance = [];
-    if (!empty($students)) {
-        $att_stmt = $conn->prepare("SELECT student_id, status FROM attendance WHERE std = ? AND school_id = ? AND attendance_date = ?");
-        $att_stmt->bind_param("sis", $teacherDetails['class_teacher_std'], $teacherDetails['school_id'], $attendance_date_display);
-        $att_stmt->execute();
-        $att_result = $att_stmt->get_result();
-        while ($row = $att_result->fetch_assoc()) {
-            $existing_attendance[$row['student_id']] = $row['status']; // Store as [student_id => status]
+        // Fetch existing attendance records
+        $existing_attendance = [];
+        if (!empty($students)) {
+            $att_stmt = $conn->prepare("SELECT student_id, status FROM attendance WHERE std = ? AND school_id = ? AND attendance_date = ?");
+            $att_stmt->execute([$teacherDetails['class_teacher_std'], $teacherDetails['school_id'], $attendance_date_display]);
+            while ($row = $att_stmt->fetch(PDO::FETCH_ASSOC)) {
+                $existing_attendance[$row['student_id']] = $row['status'];
+            }
         }
-        $att_stmt->close();
     }
+} catch (PDOException $e) {
+    if ($conn->inTransaction()) {
+        $conn->rollBack();
+    }
+    $errorMessage = "A database error occurred. Please try again. Details: " . $e->getMessage();
+    error_log("Add Attendance Error: " . $e->getMessage());
 }
 ?>
 <!DOCTYPE html>
@@ -105,20 +92,12 @@ if (empty($errorMessage)) {
 
 <head>
     <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>Add Attendance - School Management System</title>
-
-    <!-- <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css"> -->
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-    <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
-
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-
-
 </head>
 
 <body id="page-top">
@@ -131,9 +110,7 @@ if (empty($errorMessage)) {
                     <h1 class="h3 mb-4 text-gray-800">Add/Update Attendance</h1>
 
                     <?php if (isset($successMessage)): ?>
-                        <div class="alert alert-success alert-dismissible fade show" role="alert">
-                            <?php echo $successMessage; ?><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                        </div>
+                        <div class="alert alert-success alert-dismissible fade show" role="alert"><?php echo $successMessage; ?><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
                     <?php endif; ?>
                     <?php if (!empty($errorMessage)): ?>
                         <div class="alert alert-danger"><?php echo $errorMessage; ?></div>
@@ -144,10 +121,7 @@ if (empty($errorMessage)) {
                             </div>
                             <div class="card-body">
                                 <form method="GET" action="" class="form-inline mb-4">
-                                    <div class="form-group">
-                                        <label for="attendance_date" class="mr-2">Select Date:</label>
-                                        <input type="date" id="attendance_date" name="attendance_date" class="form-control" value="<?php echo $attendance_date_display; ?>">
-                                    </div>
+                                    <div class="form-group"><label for="attendance_date" class="mr-2">Select Date:</label><input type="date" id="attendance_date" name="attendance_date" class="form-control" value="<?php echo $attendance_date_display; ?>"></div>
                                     <button type="submit" class="btn btn-primary ml-2">Load Sheet</button>
                                 </form>
 
@@ -155,7 +129,7 @@ if (empty($errorMessage)) {
                                     <form method="POST" action="add_attendance.php?attendance_date=<?php echo $attendance_date_display; ?>">
                                         <input type="hidden" name="attendance_date" value="<?php echo $attendance_date_display; ?>">
                                         <div class="table-responsive">
-                                            <table class="table table-bordered" id="addAttendanceTable " width="100%" cellspacing="0">
+                                            <table class="table table-bordered" id="addAttendanceTable" width="100%" cellspacing="0">
                                                 <thead>
                                                     <tr>
                                                         <th>Roll No</th>
@@ -169,10 +143,7 @@ if (empty($errorMessage)) {
                                                             <td><?php echo htmlspecialchars($student['rollno']); ?></td>
                                                             <td><?php echo htmlspecialchars($student['student_name']); ?></td>
                                                             <td>
-                                                                <?php
-                                                                // ★ MODIFIED: Determine the student's current status, defaulting to 'Present'
-                                                                $current_status = $existing_attendance[$student['id']] ?? 'Present';
-                                                                ?>
+                                                                <?php $current_status = $existing_attendance[$student['id']] ?? 'Present'; ?>
                                                                 <div class="form-check form-check-inline">
                                                                     <input class="form-check-input" type="radio" name="attendance[<?php echo $student['id']; ?>]" id="present_<?php echo $student['id']; ?>" value="Present" <?php if ($current_status == 'Present') echo 'checked'; ?>>
                                                                     <label class="form-check-label" for="present_<?php echo $student['id']; ?>">Present</label>
@@ -204,19 +175,12 @@ if (empty($errorMessage)) {
             <?php include_once '../../includes/footer.php'; ?>
         </div>
     </div>
-
     <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
-
     <?php include_once "../../includes/logout_modal.php" ?>
-
-
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
-    <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
-    <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
-    <script src="../../assets/js/custom_teacher_scripts.js"></script>
 </body>
 
 </html>

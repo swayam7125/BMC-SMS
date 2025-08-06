@@ -10,8 +10,8 @@ $response = [
     'percentage' => 0,
     'total_obtained' => 0,
     'total_possible' => 0,
-    // --- NEW: Add status to the response ---
-    'status' => 'N/A'
+    'status' => 'N/A',
+    'student_name' => 'Unknown Student'
 ];
 
 $role = null;
@@ -31,14 +31,13 @@ if (isset($_POST['exam_type']) && isset($_POST['academic_year'])) {
     $academic_year = $_POST['academic_year'];
 
     try {
-        $student_query = "SELECT student_name FROM student WHERE id = ?";
-        $stmt_student = mysqli_prepare($conn, $student_query);
-        mysqli_stmt_bind_param($stmt_student, "i", $student_id);
-        mysqli_stmt_execute($stmt_student);
-        $student_result = mysqli_stmt_get_result($stmt_student);
-        $student_data = mysqli_fetch_assoc($student_result);
-        $response['student_name'] = $student_data ? $student_data['student_name'] : 'Unknown Student';
-        mysqli_stmt_close($stmt_student);
+        // PDO Change: Converted to PDO
+        $stmt_student = $conn->prepare("SELECT student_name FROM student WHERE id = ?");
+        $stmt_student->execute([$student_id]);
+        $student_data = $stmt_student->fetch(PDO::FETCH_ASSOC);
+        if ($student_data) {
+            $response['student_name'] = $student_data['student_name'];
+        }
 
         $marks_query = "SELECT subject_name, marks_obtained, total_marks 
                         FROM student_marks 
@@ -47,16 +46,14 @@ if (isset($_POST['exam_type']) && isset($_POST['academic_year'])) {
                         AND academic_year = ?
                         ORDER BY subject_name";
 
-        $stmt_marks = mysqli_prepare($conn, $marks_query);
-        mysqli_stmt_bind_param($stmt_marks, "iss", $student_id, $exam_type, $academic_year);
-        mysqli_stmt_execute($stmt_marks);
-        $marks_result = mysqli_stmt_get_result($stmt_marks);
+        $stmt_marks = $conn->prepare($marks_query);
+        $stmt_marks->execute([$student_id, $exam_type, $academic_year]);
 
         $marks = [];
         $total_obtained = 0;
         $total_possible = 0;
 
-        while ($mark_row = mysqli_fetch_assoc($marks_result)) {
+        while ($mark_row = $stmt_marks->fetch(PDO::FETCH_ASSOC)) {
             $marks[$mark_row['subject_name']] = [
                 'marks_obtained' => $mark_row['marks_obtained'],
                 'total_marks' => $mark_row['total_marks']
@@ -64,12 +61,10 @@ if (isset($_POST['exam_type']) && isset($_POST['academic_year'])) {
             $total_obtained += $mark_row['marks_obtained'];
             $total_possible += $mark_row['total_marks'];
         }
-        mysqli_stmt_close($stmt_marks);
 
         $percentage = 0;
         if ($total_possible > 0) {
             $percentage = ($total_obtained / $total_possible) * 100;
-            // --- NEW: Determine Pass/Fail status based on percentage ---
             $response['status'] = ($percentage >= 33) ? 'Pass' : 'Fail';
         }
 
@@ -79,8 +74,9 @@ if (isset($_POST['exam_type']) && isset($_POST['academic_year'])) {
         $response['total_possible'] = $total_possible;
         $response['percentage'] = round($percentage, 2);
         $response['message'] = 'Marks loaded successfully.';
-    } catch (Exception $e) {
-        $response['message'] = 'Database error: ' . $e->getMessage();
+    } catch (PDOException $e) {
+        $response['message'] = 'Database error. Could not retrieve marks.';
+        error_log("Get Marks Error: " . $e->getMessage());
     }
 } else {
     $response['message'] = 'Required parameters are missing.';

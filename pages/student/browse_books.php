@@ -5,6 +5,7 @@ include_once '../../encryption.php';
 $role = null;
 $user_id = null;
 $school_id = null;
+$books = [];
 
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
@@ -18,49 +19,49 @@ if ($role !== 'student') {
     exit;
 }
 
-if ($user_id) {
-    $stmt = $conn->prepare("SELECT school_id FROM student WHERE id = ?");
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    if ($data = $result->fetch_assoc()) {
-        $school_id = $data['school_id'];
+try {
+    if ($user_id) {
+        // PDO Change: Converted to PDO
+        $stmt = $conn->prepare("SELECT school_id FROM student WHERE id = ?");
+        $stmt->execute([$user_id]);
+        $data = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($data) {
+            $school_id = $data['school_id'];
+        }
+        $stmt = null;
     }
-    $stmt->close();
-}
 
-if (!$school_id) {
-    die("Could not determine your school. Access denied.");
-}
+    if (!$school_id) {
+        die("Could not determine your school. Access denied.");
+    }
 
-$search_query = isset($_GET['search']) ? trim($_GET['search']) : '';
+    $search_query = isset($_GET['search']) ? trim($_GET['search']) : '';
 
-$books = [];
-$sql = "SELECT book_id, title, author, isbn, publisher FROM books WHERE school_id = ? AND quantity_available > 0";
+    // PostgreSQL Change: Using ILIKE for case-insensitive search
+    $sql = "SELECT book_id, title, author, isbn, publisher FROM books WHERE school_id = ? AND quantity_available > 0";
+    $params = [$school_id];
 
-if (!empty($search_query)) {
-    $sql .= " AND (title LIKE ? OR author LIKE ? OR publisher LIKE ?)";
-}
-$sql .= " ORDER BY title";
-
-$stmt_books = $conn->prepare($sql);
-
-if ($stmt_books) {
     if (!empty($search_query)) {
+        $sql .= " AND (title ILIKE ? OR author ILIKE ? OR publisher ILIKE ?)";
         $search_param = "%" . $search_query . "%";
-        $stmt_books->bind_param("isss", $school_id, $search_param, $search_param, $search_param);
-    } else {
-        $stmt_books->bind_param("i", $school_id);
+        array_push($params, $search_param, $search_param, $search_param);
     }
-    $stmt_books->execute();
-    $result = $stmt_books->get_result();
-    $books = $result->fetch_all(MYSQLI_ASSOC);
-    $stmt_books->close();
-}
+    $sql .= " ORDER BY title";
 
+    // PDO Change: Converted to PDO
+    $stmt_books = $conn->prepare($sql);
+    $stmt_books->execute($params);
+    $books = $stmt_books->fetchAll(PDO::FETCH_ASSOC);
+    $stmt_books = null;
+} catch (PDOException $e) {
+    error_log("DB Error in browse_books.php: " . $e->getMessage());
+    // Display a friendly error message
+    die("An error occurred while fetching books. Please try again later.");
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -72,6 +73,7 @@ if ($stmt_books) {
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -80,7 +82,7 @@ if ($stmt_books) {
                 <?php include_once '../../includes/header.php'; ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Browse & Request Books</h1>
-                    
+
                     <?php if (isset($_GET['success'])): ?>
                         <div class="alert alert-success alert-dismissible fade show" role="alert"><?php echo htmlspecialchars($_GET['success']); ?><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
                     <?php endif; ?>
@@ -126,11 +128,11 @@ if ($stmt_books) {
                                                     <td><?php echo htmlspecialchars($book['author']); ?></td>
                                                     <td><?php echo htmlspecialchars($book['publisher']); ?></td>
                                                     <td>
-                                                        <button type="button" class="btn btn-primary btn-sm request-btn" 
-                                                                data-toggle="modal" 
-                                                                data-target="#requestModal" 
-                                                                data-book-id="<?php echo $book['book_id']; ?>" 
-                                                                data-book-title="<?php echo htmlspecialchars($book['title']); ?>">
+                                                        <button type="button" class="btn btn-primary btn-sm request-btn"
+                                                            data-toggle="modal"
+                                                            data-target="#requestModal"
+                                                            data-book-id="<?php echo $book['book_id']; ?>"
+                                                            data-book-title="<?php echo htmlspecialchars($book['title']); ?>">
                                                             <i class="fas fa-hand-holding-hand"></i> Request to Borrow
                                                         </button>
                                                     </td>
@@ -171,7 +173,7 @@ if ($stmt_books) {
                         <input type="hidden" name="book_id" id="modal_book_id">
                         <div class="form-group">
                             <label for="requested_due_date">Desired Return Date *</label>
-                            <input type="date" class="form-control" id="requested_due_date" name="requested_due_date" required>
+                            <input type="text" class="form-control" id="requested_due_date" name="requested_due_date" required onfocus="(this.type='date')" onblur="(this.type='text')">
                             <small class="form-text text-muted">Please select your preferred return date. The librarian will confirm the final due date upon approval.</small>
                         </div>
                     </div>
@@ -184,23 +186,24 @@ if ($stmt_books) {
         </div>
     </div>
 
-    <?php include_once "../../includes/logout_modal.php"?>
+    <?php include_once "../../includes/logout_modal.php" ?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script>
-    $(document).ready(function() {
-        var today = new Date().toISOString().split('T')[0];
-        $('#requested_due_date').attr('min', today);
+        $(document).ready(function() {
+            var today = new Date().toISOString().split('T')[0];
+            $('#requested_due_date').attr('min', today);
 
-        $('.request-btn').on('click', function() {
-            var bookId = $(this).data('book-id');
-            var bookTitle = $(this).data('book-title');
-            $('#modal_book_id').val(bookId);
-            $('#modal_book_title').text(bookTitle);
+            $('.request-btn').on('click', function() {
+                var bookId = $(this).data('book-id');
+                var bookTitle = $(this).data('book-title');
+                $('#modal_book_id').val(bookId);
+                $('#modal_book_title').text(bookTitle);
+            });
         });
-    });
     </script>
 </body>
+
 </html>

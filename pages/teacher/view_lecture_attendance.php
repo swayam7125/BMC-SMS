@@ -1,9 +1,7 @@
 <?php
-session_start();
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 
-// Authorization: Ensure the user is a logged-in teacher
 $role = decrypt_id($_COOKIE['encrypted_user_role'] ?? '');
 $userId = decrypt_id($_COOKIE['encrypted_user_id'] ?? '');
 
@@ -15,56 +13,53 @@ if ($role !== 'teacher') {
 $school_id = null;
 $teacher_lectures = [];
 $attendance_records = [];
+$errorMessage = '';
 
-// Get the school ID for the logged-in teacher
-$stmt_school = $conn->prepare("SELECT school_id FROM teacher WHERE id = ?");
-$stmt_school->bind_param("i", $userId);
-$stmt_school->execute();
-$school_id_result = $stmt_school->get_result()->fetch_assoc();
-if ($school_id_result) {
-    $school_id = $school_id_result['school_id'];
-}
-$stmt_school->close();
-
-// Get the filter values from the URL, with defaults
-$view_date = $_GET['view_date'] ?? date('Y-m-d');
-$selected_lecture_id = $_GET['lecture_id'] ?? null;
-
-// Fetch all unique lectures for the teacher to populate the filter dropdown
-$stmt_lectures = $conn->prepare(
-    "SELECT id, standard, period_number, subject_name 
-     FROM school_timetable 
-     WHERE teacher_id = ? 
-     GROUP BY standard, period_number, subject_name 
-     ORDER BY standard, period_number"
-);
-$stmt_lectures->bind_param("i", $userId);
-$stmt_lectures->execute();
-$teacher_lectures = $stmt_lectures->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt_lectures->close();
-
-// If filters are set, fetch the attendance records
-if ($selected_lecture_id) {
-    // First, get the details of the selected lecture
-    $stmt_lecture_details = $conn->prepare("SELECT standard, period_number FROM school_timetable WHERE id = ?");
-    $stmt_lecture_details->bind_param("i", $selected_lecture_id);
-    $stmt_lecture_details->execute();
-    $lecture_details = $stmt_lecture_details->get_result()->fetch_assoc();
-    $stmt_lecture_details->close();
-
-    if ($lecture_details) {
-        $stmt_att = $conn->prepare(
-            "SELECT s.rollno, s.student_name, a.status 
-             FROM attendance a
-             JOIN student s ON a.student_id = s.id
-             WHERE a.teacher_id = ? AND a.attendance_date = ? AND a.standard = ? AND a.period_number = ?
-             ORDER BY s.rollno ASC"
-        );
-        $stmt_att->bind_param("isss", $userId, $view_date, $lecture_details['standard'], $lecture_details['period_number']);
-        $stmt_att->execute();
-        $attendance_records = $stmt_att->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmt_att->close();
+try {
+    $stmt_school = $conn->prepare("SELECT school_id FROM teacher WHERE id = ?");
+    $stmt_school->execute([$userId]);
+    $school_id_result = $stmt_school->fetch(PDO::FETCH_ASSOC);
+    if ($school_id_result) {
+        $school_id = $school_id_result['school_id'];
     }
+
+    if (!$school_id) {
+        throw new Exception("Could not determine school for teacher.");
+    }
+
+    $view_date = $_GET['view_date'] ?? date('Y-m-d');
+    $selected_lecture_id = $_GET['lecture_id'] ?? null;
+
+    $stmt_lectures = $conn->prepare(
+        "SELECT id, standard, period_number, subject_name 
+         FROM school_timetable 
+         WHERE teacher_id = ? 
+         GROUP BY id, standard, period_number, subject_name 
+         ORDER BY standard, period_number"
+    );
+    $stmt_lectures->execute([$userId]);
+    $teacher_lectures = $stmt_lectures->fetchAll(PDO::FETCH_ASSOC);
+
+    if ($selected_lecture_id) {
+        $stmt_lecture_details = $conn->prepare("SELECT standard, period_number FROM school_timetable WHERE id = ?");
+        $stmt_lecture_details->execute([$selected_lecture_id]);
+        $lecture_details = $stmt_lecture_details->fetch(PDO::FETCH_ASSOC);
+
+        if ($lecture_details) {
+            $stmt_att = $conn->prepare(
+                "SELECT s.rollno, s.student_name, a.status 
+                 FROM attendance a
+                 JOIN student s ON a.student_id = s.id
+                 WHERE a.teacher_id = ? AND a.attendance_date = ? AND a.std = ? AND a.period_number = ?
+                 ORDER BY s.rollno ASC"
+            );
+            $stmt_att->execute([$userId, $view_date, $lecture_details['standard'], $lecture_details['period_number']]);
+            $attendance_records = $stmt_att->fetchAll(PDO::FETCH_ASSOC);
+        }
+    }
+} catch (Exception $e) {
+    $errorMessage = "A database error occurred: " . $e->getMessage();
+    error_log("View Lecture Attendance Error: " . $e->getMessage());
 }
 ?>
 <!DOCTYPE html>
@@ -72,18 +67,11 @@ if ($selected_lecture_id) {
 
 <head>
     <title>View Lecture Attendance</title>
-
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-
-    <!-- <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet"> -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-    
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-
 </head>
 
 <body id="page-top">
@@ -94,7 +82,9 @@ if ($selected_lecture_id) {
                 <?php include '../../includes/header.php'; ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">View Lecture Attendance</h1>
-
+                    <?php if ($errorMessage): ?>
+                        <div class="alert alert-danger"><?php echo htmlspecialchars($errorMessage); ?></div>
+                    <?php endif; ?>
                     <div class="card shadow mb-4">
                         <div class="card-header">
                             <h6 class="m-0 font-weight-bold text-primary">Filter Attendance Records</h6>
@@ -124,52 +114,47 @@ if ($selected_lecture_id) {
                     </div>
 
                     <?php if ($selected_lecture_id): ?>
-                    <div class="card shadow mb-4">
-                        <div class="card-header">
-                            <h6 class="m-0 font-weight-bold text-primary">Displaying Records for <?php echo htmlspecialchars($view_date); ?></h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-bordered" id="attendanceTable" width="100%" cellspacing="0">
-                                    <thead>
-                                        <tr>
-                                            <th>Roll No</th>
-                                            <th>Student Name</th>
-                                            <th>Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php if (!empty($attendance_records)): ?>
-                                            <?php foreach ($attendance_records as $record): ?>
+                        <div class="card shadow mb-4">
+                            <div class="card-header">
+                                <h6 class="m-0 font-weight-bold text-primary">Displaying Records for <?php echo htmlspecialchars($view_date); ?></h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered" id="attendanceTable" width="100%" cellspacing="0">
+                                        <thead>
                                             <tr>
-                                                <td><?php echo htmlspecialchars($record['rollno']); ?></td>
-                                                <td><?php echo htmlspecialchars($record['student_name']); ?></td>
-                                                <td>
-                                                    <?php
-                                                    $status = htmlspecialchars($record['status']);
-                                                    $badge_class = 'badge-secondary'; // Default
-                                                    if ($status == 'Present') {
-                                                        $badge_class = 'badge-success';
-                                                    } elseif ($status == 'Absent') {
-                                                        $badge_class = 'badge-danger';
-                                                    } elseif ($status == 'Leave') {
-                                                        $badge_class = 'badge-warning';
-                                                    }
-                                                    echo "<span class='badge {$badge_class}'>{$status}</span>";
-                                                    ?>
-                                                </td>
+                                                <th>Roll No</th>
+                                                <th>Student Name</th>
+                                                <th>Status</th>
                                             </tr>
-                                            <?php endforeach; ?>
-                                        <?php else: ?>
-                                            <tr>
-                                                <td colspan="3" class="text-center">No attendance records found for the selected lecture and date.</td>
-                                            </tr>
-                                        <?php endif; ?>
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody>
+                                            <?php if (!empty($attendance_records)): foreach ($attendance_records as $record): ?>
+                                                    <tr>
+                                                        <td><?php echo htmlspecialchars($record['rollno']); ?></td>
+                                                        <td><?php echo htmlspecialchars($record['student_name']); ?></td>
+                                                        <td>
+                                                            <?php
+                                                            $status = htmlspecialchars($record['status']);
+                                                            $badge_class = 'badge-secondary';
+                                                            if ($status == 'Present') $badge_class = 'badge-success';
+                                                            elseif ($status == 'Absent') $badge_class = 'badge-danger';
+                                                            elseif ($status == 'Leave') $badge_class = 'badge-warning';
+                                                            echo "<span class='badge {$badge_class}'>{$status}</span>";
+                                                            ?>
+                                                        </td>
+                                                    </tr>
+                                                <?php endforeach;
+                                            else: ?>
+                                                <tr>
+                                                    <td colspan="3" class="text-center">No attendance records found for the selected lecture and date.</td>
+                                                </tr>
+                                            <?php endif; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
-                    </div>
                     <?php endif; ?>
                 </div>
             </div>
@@ -177,7 +162,6 @@ if ($selected_lecture_id) {
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php" ?>
-    
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
@@ -188,4 +172,5 @@ if ($selected_lecture_id) {
         });
     </script>
 </body>
+
 </html>

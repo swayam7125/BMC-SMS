@@ -12,18 +12,23 @@ if ($role !== 'student') {
 
 $filter_year = isset($_GET['year']) ? intval($_GET['year']) : date('Y');
 $filter_month = isset($_GET['month']) ? intval($_GET['month']) : date('m');
+$attendance_records = [];
 
-// Fetch detailed lecture attendance records
-$stmt = $conn->prepare(
-    "SELECT attendance_date, period_number, subject, status 
-     FROM attendance 
-     WHERE student_id = ? AND YEAR(attendance_date) = ? AND MONTH(attendance_date) = ?
-     ORDER BY attendance_date DESC, period_number ASC"
-);
-$stmt->bind_param("iii", $userId, $filter_year, $filter_month);
-$stmt->execute();
-$attendance_records = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+// PDO & PostgreSQL Change: Converted to PDO and used EXTRACT for date parts.
+$query = "SELECT attendance_date, period_number, subject, status 
+          FROM attendance 
+          WHERE student_id = ? 
+            AND EXTRACT(YEAR FROM attendance_date) = ? 
+            AND EXTRACT(MONTH FROM attendance_date) = ?
+          ORDER BY attendance_date DESC, period_number ASC";
+
+try {
+    $stmt = $conn->prepare($query);
+    $stmt->execute([$userId, $filter_year, $filter_month]);
+    $attendance_records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("DB Error in view_lecture_attendance.php: " . $e->getMessage());
+}
 
 // Calculate percentage-based summary
 $total_lectures = count($attendance_records);
@@ -42,14 +47,10 @@ $attendance_percentage = ($total_lectures > 0) ? round(($present_count / $total_
     <title>My Lecture Attendance</title>
 
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-    <!-- <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet"> -->
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
-    <!-- Corrected Font Awesome link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-
 
 </head>
 
@@ -101,6 +102,7 @@ $attendance_percentage = ($total_lectures > 0) ? round(($present_count / $total_
                         </div>
                         <div class="card-body">
                             <form method="GET" class="form-inline mb-4">
+                                <!-- Filter form can be enhanced here if needed -->
                                 <button type="submit" class="btn btn-primary">Filter</button>
                             </form>
                             <div class="table-responsive">
@@ -115,26 +117,26 @@ $attendance_percentage = ($total_lectures > 0) ? round(($present_count / $total_
                                     </thead>
                                     <tbody>
                                         <?php if (!empty($attendance_records)): ?>
-                                        <?php foreach ($attendance_records as $record): ?>
-                                        <tr>
-                                            <td><?php echo date("d-m-Y", strtotime($record['attendance_date'])); ?></td>
-                                            <td><?php echo htmlspecialchars($record['period_number']); ?></td>
-                                            <td><?php echo htmlspecialchars($record['subject']); ?></td>
-                                            <td>
-                                                <?php
+                                            <?php foreach ($attendance_records as $record): ?>
+                                                <tr>
+                                                    <td><?php echo date("d-m-Y", strtotime($record['attendance_date'])); ?></td>
+                                                    <td><?php echo htmlspecialchars($record['period_number']); ?></td>
+                                                    <td><?php echo htmlspecialchars($record['subject']); ?></td>
+                                                    <td>
+                                                        <?php
                                                         $status = htmlspecialchars($record['status']);
                                                         $badge = 'badge-secondary';
                                                         if ($status == 'Present') $badge = 'badge-success';
                                                         if ($status == 'Absent') $badge = 'badge-danger';
                                                         echo "<span class='badge {$badge}'>{$status}</span>";
                                                         ?>
-                                            </td>
-                                        </tr>
-                                        <?php endforeach; ?>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
                                         <?php else: ?>
-                                        <tr>
-                                            <td colspan="4" class="text-center">No records found.</td>
-                                        </tr>
+                                            <tr>
+                                                <td colspan="4" class="text-center">No records found.</td>
+                                            </tr>
                                         <?php endif; ?>
                                     </tbody>
                                 </table>
@@ -147,20 +149,20 @@ $attendance_percentage = ($total_lectures > 0) ? round(($present_count / $total_
         </div>
     </div>
 
-        <?php include_once "../../includes/logout_modal.php"?>
+    <?php include_once "../../includes/logout_modal.php" ?>
 
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
     <script>
-    $(document).ready(function() {
-        $('#dataTable').DataTable({
-            "order": [
-                [0, "desc"]
-            ]
+        $(document).ready(function() {
+            $('#dataTable').DataTable({
+                "order": [
+                    [0, "desc"]
+                ]
+            });
         });
-    });
     </script>
 </body>
 

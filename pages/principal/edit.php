@@ -2,35 +2,26 @@
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
-if (!defined('BASE_WEB_PATH')) {
-    define('BASE_WEB_PATH', '/BMC-SMS/');
+if (!defined('BASE_URL')) {
+    define('BASE_URL', '/BMC-SMS/');
 }
 
-// --- NEW: ROBUST IMAGE PATH FUNCTION ---
-function getWebAccessibleImagePath($db_image_path, $base_web_path, $default_sub_folder = '') {
+function getWebAccessibleImagePath($db_image_path, $base_web_path, $default_sub_folder = '')
+{
     if (empty($db_image_path)) return null;
     $full_web_path = $base_web_path . ltrim($db_image_path, '/');
     $filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $full_web_path;
-    if (@file_exists($filesystem_path) && @is_file($filesystem_path)) {
-        return $full_web_path;
-    }
-    $possible_locations = [ "pages/{$default_sub_folder}/uploads/", "uploads/{$default_sub_folder}s/", "uploads/" ];
+    if (@file_exists($filesystem_path) && @is_file($filesystem_path)) return $full_web_path;
+    $possible_locations = ["pages/{$default_sub_folder}/uploads/", "uploads/{$default_sub_folder}s/", "uploads/"];
     foreach ($possible_locations as $location) {
         $test_path = $base_web_path . $location . basename($db_image_path);
         $test_filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $test_path;
-        if (@file_exists($test_filesystem_path) && @is_file($test_filesystem_path)) {
-            return $test_path;
-        }
+        if (@file_exists($test_filesystem_path) && @is_file($test_filesystem_path)) return $test_path;
     }
     return null;
 }
-// --- END OF NEW FUNCTION ---
 
-// Check if user is logged in
-$role = null;
-if (isset($_COOKIE['encrypted_user_role'])) {
-    $role = decrypt_id($_COOKIE['encrypted_user_role']);
-}
+$role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 if (!$role) {
     header("Location: ../../login.php");
     exit;
@@ -43,184 +34,115 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
 
 $principal_id = intval($_GET['id']);
 $errors = [];
-
-//FETCH EXISTING DATA ---
 $principal = null;
 $timings = [];
+$schools_result = [];
 
-// Fetch main principal data
-$query_principal = "SELECT * FROM principal WHERE id = ?";
-$stmt_principal_fetch = mysqli_prepare($conn, $query_principal);
-mysqli_stmt_bind_param($stmt_principal_fetch, "i", $principal_id);
-mysqli_stmt_execute($stmt_principal_fetch);
-$result_principal = mysqli_stmt_get_result($stmt_principal_fetch);
-if (mysqli_num_rows($result_principal) === 0) {
-    header("Location: principal_list.php?error=Principal not found");
-    exit;
-}
-$principal = mysqli_fetch_assoc($result_principal);
-$original_image_path = $principal['principal_image'];
-$original_email = $principal['email'];
-$original_batch = $principal['batch'];
-mysqli_stmt_close($stmt_principal_fetch);
-
-// Fetch timings data
-$query_timings = "SELECT * FROM principal_timings WHERE principal_id = ?";
-$stmt_timings_fetch = mysqli_prepare($conn, $query_timings);
-mysqli_stmt_bind_param($stmt_timings_fetch, "i", $principal_id);
-mysqli_stmt_execute($stmt_timings_fetch);
-$result_timings = mysqli_stmt_get_result($stmt_timings_fetch);
-while ($row = mysqli_fetch_assoc($result_timings)) {
-    $timings[$row['day_of_week']] = $row;
-}
-mysqli_stmt_close($stmt_timings_fetch);
-
-
-// Handle form submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $principal_name = trim($_POST['principal_name']);
-    $new_email = trim($_POST['email']);
-    $phone = trim($_POST['phone']);
-    $dob = $_POST['dob'];
-    $gender = $_POST['gender'];
-    $blood_group = $_POST['blood_group'];
-    $address = trim($_POST['address']);
-    $qualification = trim($_POST['qualification']);
-    $salary = trim($_POST['salary']);
-    $school_id = intval($_POST['school_id']);
-    $new_batch = $_POST['batch'];
-    $posted_timings = $_POST['timings'] ?? [];
-
-    $image_path_for_db = $original_image_path;
-
-    // --- MODIFICATION: Corrected Photo Upload Logic ---
-    if (isset($_FILES['principal_image']) && $_FILES['principal_image']['error'] === UPLOAD_ERR_OK) {
-        $file = $_FILES['principal_image'];
-        $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        $allowed_exts = ['jpg', 'jpeg', 'png', 'gif'];
-        if (in_array($file_ext, $allowed_exts)) {
-            // Define the directory relative to the project root
-            $target_dir_relative = "pages/principal/uploads/";
-            $full_target_dir = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . BASE_WEB_PATH . $target_dir_relative;
-
-            if (!file_exists($full_target_dir)) {
-                 mkdir($full_target_dir, 0777, true);
-            }
-            
-            $new_filename = uniqid('principal_', true) . '.' . $file_ext;
-            $destination = $full_target_dir . $new_filename;
-
-            if (move_uploaded_file($file['tmp_name'], $destination)) {
-                // Correctly get the full path of the old image to delete it
-                if (!empty($original_image_path)) {
-                    $old_file_system_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . getWebAccessibleImagePath($original_image_path, BASE_WEB_PATH, 'principal');
-                    if ($old_file_system_path && file_exists($old_file_system_path) && is_file($old_file_system_path)) {
-                        @unlink($old_file_system_path);
-                    }
-                }
-                // Store the clean, root-relative path for the database
-                $image_path_for_db = $target_dir_relative . $new_filename;
-            } else {
-                $errors[] = "Failed to move uploaded file.";
-            }
-        } else {
-            $errors[] = "Invalid file type. Only JPG, JPEG, PNG, and GIF are allowed.";
-        }
+try {
+    $stmt_principal_fetch = $conn->prepare("SELECT * FROM principal WHERE id = ?");
+    $stmt_principal_fetch->execute([$principal_id]);
+    if ($stmt_principal_fetch->rowCount() === 0) {
+        header("Location: principal_list.php?error=Principal not found");
+        exit;
     }
-    // --- END OF MODIFICATION ---
+    $principal = $stmt_principal_fetch->fetch(PDO::FETCH_ASSOC);
+    $original_image_path = $principal['principal_image'];
+    $original_email = $principal['email'];
+    $original_batch = $principal['batch'];
 
-    //Validation ---
-    if (empty($school_id)) $errors[] = "A school must be selected.";
-    if (empty($principal_name)) $errors[] = "Principal name is required.";
-    if (empty($new_batch)) $errors[] = "Batch selection is required.";
-    if (!filter_var($new_email, FILTER_VALIDATE_EMAIL)) $errors[] = "A valid email is required.";
-    if (empty($gender)) $errors[] = "Gender is required.";
+    $stmt_timings_fetch = $conn->prepare("SELECT * FROM principal_timings WHERE principal_id = ?");
+    $stmt_timings_fetch->execute([$principal_id]);
+    while ($row = $stmt_timings_fetch->fetch(PDO::FETCH_ASSOC)) {
+        $timings[$row['day_of_week']] = $row;
+    }
 
-    if (empty($errors)) {
-        mysqli_autocommit($conn, false);
-        try {
-            // Batch Swap Logic
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $principal_name = trim($_POST['principal_name']);
+        $new_email = trim($_POST['email']);
+        $phone = trim($_POST['phone']);
+        $dob = $_POST['dob'];
+        $gender = $_POST['gender'];
+        $blood_group = $_POST['blood_group'];
+        $address = trim($_POST['address']);
+        $qualification = trim($_POST['qualification']);
+        $salary = trim($_POST['salary']);
+        $school_id = intval($_POST['school_id']);
+        $new_batch = $_POST['batch'];
+        $posted_timings = $_POST['timings'] ?? [];
+        $image_path_for_db = $original_image_path;
+
+        if (isset($_FILES['principal_image']) && $_FILES['principal_image']['error'] === UPLOAD_ERR_OK) {
+            $file = $_FILES['principal_image'];
+            $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+            $allowed_exts = ['jpg', 'jpeg', 'png', 'gif'];
+            if (in_array($file_ext, $allowed_exts)) {
+                $target_dir_relative = "pages/principal/uploads/";
+                $full_target_dir = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . BASE_URL . $target_dir_relative;
+                if (!file_exists($full_target_dir)) mkdir($full_target_dir, 0777, true);
+                $new_filename = uniqid('principal_', true) . '.' . $file_ext;
+                $destination = $full_target_dir . $new_filename;
+                if (move_uploaded_file($file['tmp_name'], $destination)) {
+                    if (!empty($original_image_path)) {
+                        $old_file_system_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . getWebAccessibleImagePath($original_image_path, BASE_URL, 'principal');
+                        if ($old_file_system_path && file_exists($old_file_system_path) && is_file($old_file_system_path)) @unlink($old_file_system_path);
+                    }
+                    $image_path_for_db = $target_dir_relative . $new_filename;
+                } else {
+                    $errors[] = "Failed to move uploaded file.";
+                }
+            } else {
+                $errors[] = "Invalid file type.";
+            }
+        }
+
+        if (empty($errors)) {
+            $conn->beginTransaction();
+
             $other_principal_id_to_swap = null;
             if ($new_batch !== $original_batch) {
-                $swap_check_query = "SELECT id FROM principal WHERE school_id = ? AND batch = ? AND id != ?";
-                $stmt_swap_check = mysqli_prepare($conn, $swap_check_query);
-                mysqli_stmt_bind_param($stmt_swap_check, "isi", $school_id, $new_batch, $principal_id);
-                mysqli_stmt_execute($stmt_swap_check);
-                $swap_result = mysqli_stmt_get_result($stmt_swap_check);
-                if ($other_principal = mysqli_fetch_assoc($swap_result)) {
+                $stmt_swap_check = $conn->prepare("SELECT id FROM principal WHERE school_id = ? AND batch = ? AND id != ?");
+                $stmt_swap_check->execute([$school_id, $new_batch, $principal_id]);
+                if ($other_principal = $stmt_swap_check->fetch(PDO::FETCH_ASSOC)) {
                     $other_principal_id_to_swap = $other_principal['id'];
                 }
-                mysqli_stmt_close($stmt_swap_check);
             }
             if ($other_principal_id_to_swap) {
-                $temp_batch_name = 'TEMP_SWAP';
-                $stmt_step1 = mysqli_prepare($conn, "UPDATE principal SET batch = ? WHERE id = ?");
-                mysqli_stmt_bind_param($stmt_step1, "si", $temp_batch_name, $other_principal_id_to_swap);
-                if (!mysqli_stmt_execute($stmt_step1)) throw new Exception("Swap Step 1 Failed: " . mysqli_stmt_error($stmt_step1));
-                mysqli_stmt_close($stmt_step1);
-                $stmt_step3 = mysqli_prepare($conn, "UPDATE principal SET batch = ? WHERE id = ? AND batch = ?");
-                mysqli_stmt_bind_param($stmt_step3, "sis", $original_batch, $other_principal_id_to_swap, $temp_batch_name);
-                if (!mysqli_stmt_execute($stmt_step3)) throw new Exception("Swap Step 3 Failed: " . mysqli_stmt_error($stmt_step3));
-                mysqli_stmt_close($stmt_step3);
+                $stmt_swap = $conn->prepare("UPDATE principal SET batch = ? WHERE id = ?");
+                $stmt_swap->execute([$original_batch, $other_principal_id_to_swap]);
             }
 
             if ($new_email !== $original_email) {
-                $update_user_query = "UPDATE users SET email=? WHERE id=? AND role='principal'";
-                $stmt_user = mysqli_prepare($conn, $update_user_query);
-                mysqli_stmt_bind_param($stmt_user, "si", $new_email, $principal_id);
-                if (!mysqli_stmt_execute($stmt_user)) throw new Exception("Error updating user record: " . mysqli_stmt_error($stmt_user));
-                mysqli_stmt_close($stmt_user);
+                $stmt_user = $conn->prepare("UPDATE users SET email=? WHERE id=? AND role='principal'");
+                $stmt_user->execute([$new_email, $principal_id]);
             }
 
             $update_principal_query = "UPDATE principal SET principal_image=?, principal_name=?, email=?, phone=?, dob=?, gender=?, blood_group=?, address=?, qualification=?, salary=?, school_id=?, batch=? WHERE id=?";
-            $stmt_principal_update = mysqli_prepare($conn, $update_principal_query);
-            mysqli_stmt_bind_param($stmt_principal_update, "sssssssssdisi", $image_path_for_db, $principal_name, $new_email, $phone, $dob, $gender, $blood_group, $address, $qualification, $salary, $school_id, $new_batch, $principal_id);
-            if (!mysqli_stmt_execute($stmt_principal_update)) throw new Exception("Error updating principal record: " . mysqli_stmt_error($stmt_principal_update));
-            mysqli_stmt_close($stmt_principal_update);
+            $stmt_principal_update = $conn->prepare($update_principal_query);
+            $stmt_principal_update->execute([$image_path_for_db, $principal_name, $new_email, $phone, $dob, $gender, $blood_group, $address, $qualification, $salary, $school_id, $new_batch, $principal_id]);
 
-            $upsert_timing_query = "INSERT INTO principal_timings (principal_id, day_of_week, opens_at, closes_at, is_closed) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE opens_at = VALUES(opens_at), closes_at = VALUES(closes_at), is_closed = VALUES(is_closed)";
-            $stmt_timing_upsert = mysqli_prepare($conn, $upsert_timing_query);
-
+            $upsert_timing_query = "INSERT INTO principal_timings (principal_id, day_of_week, opens_at, closes_at, is_closed) VALUES (?, ?, ?, ?, ?) ON CONFLICT (principal_id, day_of_week) DO UPDATE SET opens_at = EXCLUDED.opens_at, closes_at = EXCLUDED.closes_at, is_closed = EXCLUDED.is_closed";
+            $stmt_timing_upsert = $conn->prepare($upsert_timing_query);
             foreach ($posted_timings as $day => $details) {
-                $is_closed = isset($details['is_closed']) ? 1 : 0;
+                $is_closed = isset($details['is_closed']) ? true : false;
                 $opens_at = ($is_closed || empty($details['opens_at'])) ? null : $details['opens_at'];
                 $closes_at = ($is_closed || empty($details['closes_at'])) ? null : $details['closes_at'];
-
-                mysqli_stmt_bind_param($stmt_timing_upsert, "isssi", $principal_id, $day, $opens_at, $closes_at, $is_closed);
-
-                if (!mysqli_stmt_execute($stmt_timing_upsert)) {
-                    throw new Exception("Failed to save timings for $day: " . mysqli_stmt_error($stmt_timing_upsert));
-                }
+                $stmt_timing_upsert->execute([$principal_id, $day, $opens_at, $closes_at, $is_closed]);
             }
-            mysqli_stmt_close($stmt_timing_upsert);
 
-            mysqli_commit($conn);
+            $conn->commit();
             $success_message = "Principal updated successfully.";
             if ($other_principal_id_to_swap) $success_message .= " Batches were swapped.";
             header("Location: principal_list.php?success=" . urlencode($success_message));
             exit;
-        } catch (Exception $e) {
-            mysqli_rollback($conn);
-            $errors[] = "Database error: " . $e->getMessage();
-            $principal = $_POST;
-            $principal['id'] = $principal_id;
-            $principal['principal_image'] = $image_path_for_db;
-            $timings = [];
-            foreach ($posted_timings as $day => $details) {
-                $timings[$day] = $details;
-            }
-        }
-    } else {
-        $principal = array_merge($principal, $_POST);
-        $timings = [];
-        foreach ($posted_timings as $day => $details) {
-            $timings[$day] = $details;
         }
     }
-}
 
-$schools_query = "SELECT id, school_name FROM school ORDER BY school_name";
-$schools_result = mysqli_query($conn, $schools_query);
+    $schools_result = $conn->query("SELECT id, school_name FROM school ORDER BY school_name")->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    if (isset($conn) && $conn->inTransaction()) $conn->rollBack();
+    $errors[] = "Database error: " . $e->getMessage();
+    error_log("Edit Principal Error: " . $e->getMessage());
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -232,9 +154,6 @@ $schools_result = mysqli_query($conn, $schools_query);
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
-    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-
-
 </head>
 
 <body id="page-top">
@@ -262,19 +181,12 @@ $schools_result = mysqli_query($conn, $schools_query);
                                 <div class="row">
                                     <div class="col-md-3 text-center">
                                         <?php
-                                            // --- MODIFICATION: Use function to get correct image path ---
-                                            $default_image_path = BASE_WEB_PATH . 'assets/img/default-user.jpg';
-                                            $imagePathFromDB = $principal['principal_image'] ?? '';
-                                            $current_image_web_path = getWebAccessibleImagePath($imagePathFromDB, BASE_WEB_PATH, 'principal') ?? $default_image_path;
+                                        $default_image_path = BASE_URL . 'assets/img/default-user.jpg';
+                                        $imagePathFromDB = $principal['principal_image'] ?? '';
+                                        $current_image_web_path = getWebAccessibleImagePath($imagePathFromDB, BASE_URL, 'principal') ?? $default_image_path;
                                         ?>
-                                        <img src="<?php echo htmlspecialchars($current_image_web_path); ?>" 
-                                             alt="Principal Photo" id="imagePreview" class="img-thumbnail mb-2" 
-                                             style="width: 150px; height: 150px; object-fit: cover;"
-                                             onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($default_image_path); ?>';">
-                                        <div class="form-group">
-                                            <label for="principal_image" class="small btn btn-sm btn-info"><i class="fas fa-upload fa-sm"></i> Change Photo</label>
-                                            <input type="file" class="d-none" id="principal_image" name="principal_image">
-                                        </div>
+                                        <img src="<?php echo htmlspecialchars($current_image_web_path); ?>" alt="Principal Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;" onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($default_image_path); ?>';">
+                                        <div class="form-group"><label for="principal_image" class="small btn btn-sm btn-info"><i class="fas fa-upload fa-sm"></i> Change Photo</label><input type="file" class="d-none" id="principal_image" name="principal_image"></div>
                                     </div>
                                     <div class="col-md-9">
                                         <div class="form-row">
@@ -289,26 +201,21 @@ $schools_result = mysqli_query($conn, $schools_query);
                                 <hr>
                                 <div class="form-row">
                                     <div class="form-group col-md-6"><label for="school_id">School *</label><select class="form-control" id="school_id" name="school_id" required>
-                                            <option value="">-- Select School --</option><?php mysqli_data_seek($schools_result, 0);
-                                                                                            while ($school = mysqli_fetch_assoc($schools_result)) {
+                                            <option value="">-- Select School --</option><?php foreach ($schools_result as $school) {
                                                                                                 $selected = ($school['id'] == $principal['school_id']) ? 'selected' : '';
                                                                                                 echo "<option value='{$school['id']}' {$selected}>" . htmlspecialchars($school['school_name']) . "</option>";
                                                                                             } ?>
                                         </select></div>
-                                    <div class="form-group col-md-6">
-                                        <label for="batch">Batch *</label>
-                                        <select class="form-control" id="batch" name="batch" required>
+                                    <div class="form-group col-md-6"><label for="batch">Batch *</label><select class="form-control" id="batch" name="batch" required>
                                             <option value="">-- Select Batch --</option>
                                             <option value="Morning" <?php echo ($principal['batch'] == 'Morning') ? 'selected' : ''; ?>>Morning</option>
                                             <option value="Evening" <?php echo ($principal['batch'] == 'Evening') ? 'selected' : ''; ?>>Evening</option>
-                                        </select>
-                                    </div>
+                                        </select></div>
                                 </div>
                                 <hr>
                                 <h6 class="font-weight-bold text-primary mb-3">Weekly Timings</h6>
                                 <div id="timings-schedule">
-                                    <?php
-                                    $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                                    <?php $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
                                     foreach ($days as $day):
                                         $day_timing = $timings[$day] ?? [];
                                         $is_closed = !empty($day_timing['is_closed']);
@@ -318,21 +225,16 @@ $schools_result = mysqli_query($conn, $schools_query);
                                         <div class="form-row align-items-center mb-2 timing-row" data-day="<?php echo $day; ?>">
                                             <div class="col-md-2"><label class="mb-0"><?php echo $day; ?></label></div>
                                             <div class="col-md-2">
-                                                <div class="custom-control custom-checkbox">
-                                                    <input type="checkbox" class="custom-control-input closed-checkbox" id="closed_<?php echo $day; ?>" name="timings[<?php echo $day; ?>][is_closed]" <?php if ($is_closed) echo 'checked'; ?>>
-                                                    <label class="custom-control-label" for="closed_<?php echo $day; ?>">Closed</label>
+                                                <div class="custom-control custom-checkbox"><input type="checkbox" class="custom-control-input closed-checkbox" id="closed_<?php echo $day; ?>" name="timings[<?php echo $day; ?>][is_closed]" <?php if ($is_closed) echo 'checked'; ?>><label class="custom-control-label" for="closed_<?php echo $day; ?>">Closed</label></div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="input-group">
+                                                    <div class="input-group-prepend"><span class="input-group-text small">Opens at</span></div><input type="time" class="form-control opens-at" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
                                                 </div>
                                             </div>
                                             <div class="col-md-3">
                                                 <div class="input-group">
-                                                    <div class="input-group-prepend"><span class="input-group-text small">Opens at</span></div>
-                                                    <input type="time" class="form-control opens-at" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-3">
-                                                <div class="input-group">
-                                                    <div class="input-group-prepend"><span class="input-group-text small">Closes at</span></div>
-                                                    <input type="time" class="form-control closes-at" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                    <div class="input-group-prepend"><span class="input-group-text small">Closes at</span></div><input type="time" class="form-control closes-at" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
                                                 </div>
                                             </div>
                                         </div>
@@ -373,12 +275,10 @@ $schools_result = mysqli_query($conn, $schools_query);
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
-
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script src="../../assets/js/custom_principal.js"></script>
-
 </body>
 
 </html>

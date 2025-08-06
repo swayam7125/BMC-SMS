@@ -17,115 +17,94 @@ if ($role !== 'principal' || !$userId) {
     exit;
 }
 
-// Get School ID
-$stmt_school = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
-$stmt_school->bind_param("i", $userId);
-$stmt_school->execute();
-$schoolId = $stmt_school->get_result()->fetch_assoc()['school_id'];
-$stmt_school->close();
+try {
+    $stmt_school = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
+    $stmt_school->execute([$userId]);
+    $schoolId = $stmt_school->fetchColumn();
 
-
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_timetable'])) {
-    $title = $_POST['title'];
-    $description = $_POST['description'];
-
-    if (empty($title)) {
-        header("Location: send_exam_timetable.php?error=Please select a timetable title.");
-        exit;
+    if (!$schoolId) {
+        throw new Exception("Principal not associated with any school.");
     }
 
-    if (!isset($_FILES['timetable_file']) || $_FILES['timetable_file']['error'] != 0) {
-        header("Location: send_exam_timetable.php?error=File upload is required.");
-        exit;
-    }
+    if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_timetable'])) {
+        $title = $_POST['title'];
+        $description = $_POST['description'];
 
-    // --- FILE UPLOAD ---
-    $originalFilename = basename($_FILES["timetable_file"]["name"]);
-    $uploadDirServer = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/uploads/timetables/';
-    $uploadDirWeb = '/BMC-SMS/uploads/timetables/';
-    if (!is_dir($uploadDirServer)) mkdir($uploadDirServer, 0777, true);
+        if (empty($title)) {
+            header("Location: send_exam_timetable.php?error=Please select a timetable title.");
+            exit;
+        }
 
-    $storageFilename = uniqid('examtt_', true) . '_' . $originalFilename;
-    $serverFilePath = $uploadDirServer . $storageFilename;
-    
-    if (!move_uploaded_file($_FILES["timetable_file"]["tmp_name"], $serverFilePath)) {
-        header("Location: send_exam_timetable.php?error=Failed to move uploaded file.");
-        exit;
-    }
-    
-    $filePathForDB = $uploadDirWeb . $storageFilename;
+        if (!isset($_FILES['timetable_file']) || $_FILES['timetable_file']['error'] != 0) {
+            header("Location: send_exam_timetable.php?error=File upload is required.");
+            exit;
+        }
 
-    // --- DATABASE & NOTIFICATIONS ---
-    $conn->begin_transaction();
-    try {
-        // 1. Insert timetable into the new table
+        $originalFilename = basename($_FILES["timetable_file"]["name"]);
+        $uploadDirServer = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/uploads/timetables/';
+        $uploadDirWeb = 'uploads/timetables/';
+        if (!is_dir($uploadDirServer)) mkdir($uploadDirServer, 0777, true);
+
+        $storageFilename = uniqid('examtt_', true) . '_' . preg_replace('/[^A-Za-z0-9\._-]/', '', $originalFilename);
+        $serverFilePath = $uploadDirServer . $storageFilename;
+
+        if (!move_uploaded_file($_FILES["timetable_file"]["tmp_name"], $serverFilePath)) {
+            header("Location: send_exam_timetable.php?error=Failed to move uploaded file.");
+            exit;
+        }
+
+        $filePathForDB = $uploadDirWeb . $storageFilename;
+
+        $conn->beginTransaction();
+
         $stmt_insert = $conn->prepare("INSERT INTO exam_timetables (principal_id, school_id, title, description, file_path, original_filename) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt_insert->bind_param("iissss", $userId, $schoolId, $title, $description, $filePathForDB, $originalFilename);
-        $stmt_insert->execute();
-        $stmt_insert->close();
+        $stmt_insert->execute([$userId, $schoolId, $title, $description, $filePathForDB, $originalFilename]);
 
-        // 2. Prepare for notifications
         $notification_message = "New Exam Timetable: " . htmlspecialchars($title);
         $notification_type = "exam_timetable";
         $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");
 
-        // 3. Get all teachers of the school
         $stmt_teachers = $conn->prepare("SELECT id FROM teacher WHERE school_id = ?");
-        $stmt_teachers->bind_param("i", $schoolId);
-        $stmt_teachers->execute();
-        $teachers = $stmt_teachers->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmt_teachers->close();
+        $stmt_teachers->execute([$schoolId]);
+        $teachers = $stmt_teachers->fetchAll(PDO::FETCH_COLUMN, 0);
 
-        // 4. Get all students of the school
         $stmt_students = $conn->prepare("SELECT id FROM student WHERE school_id = ?");
-        $stmt_students->bind_param("i", $schoolId);
-        $stmt_students->execute();
-        $students = $stmt_students->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmt_students->close();
+        $stmt_students->execute([$schoolId]);
+        $students = $stmt_students->fetchAll(PDO::FETCH_COLUMN, 0);
 
-        // 5. Send notifications to teachers
-        $teacher_link = "/pages/teacher/view_exam_timetable.php";
-        foreach ($teachers as $teacher) {
-            $teacher_id = $teacher['id'];
-            $stmt_notify->bind_param("isss", $teacher_id, $notification_message, $teacher_link, $notification_type);
-            $stmt_notify->execute();
+        $teacher_link = "/BMC-SMS/pages/teacher/view_exam_timetable.php";
+        foreach ($teachers as $teacher_id) {
+            $stmt_notify->execute([$teacher_id, $notification_message, $teacher_link, $notification_type]);
         }
 
-        // 6. Send notifications to students
-        $student_link = "/pages/student/view_exam_timetable.php";
-        foreach ($students as $student) {
-            $student_id = $student['id'];
-            $stmt_notify->bind_param("isss", $student_id, $notification_message, $student_link, $notification_type);
-            $stmt_notify->execute();
+        $student_link = "/BMC-SMS/pages/student/view_exam_timetable.php";
+        foreach ($students as $student_id) {
+            $stmt_notify->execute([$student_id, $notification_message, $student_link, $notification_type]);
         }
 
-        $stmt_notify->close();
         $conn->commit();
         header("Location: send_exam_timetable.php?success=Timetable sent successfully!");
         exit();
-
-    } catch (Exception $e) {
-        $conn->rollback();
-        die("Failed to send timetable: " . $e->getMessage());
     }
+} catch (Exception $e) {
+    if (isset($conn) && $conn->inTransaction()) $conn->rollBack();
+    error_log("Send Exam Timetable Error: " . $e->getMessage());
+    die("Failed to send timetable: " . $e->getMessage());
 }
 
 $pageTitle = 'Send Exam Timetable';
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
-
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-
-    <!-- <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet"> -->
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -155,14 +134,8 @@ $pageTitle = 'Send Exam Timetable';
                                         <option value="Final Exam Timetable">Final Exam Timetable</option>
                                     </select>
                                 </div>
-                                <div class="form-group">
-                                    <label for="description">Description (Optional)</label>
-                                    <textarea class="form-control" id="description" name="description" rows="3"></textarea>
-                                </div>
-                                <div class="form-group">
-                                    <label for="timetable_file">Timetable File (PDF, JPG, PNG)</label>
-                                    <input type="file" class="form-control-file" id="timetable_file" name="timetable_file" required>
-                                </div>
+                                <div class="form-group"><label for="description">Description (Optional)</label><textarea class="form-control" id="description" name="description" rows="3"></textarea></div>
+                                <div class="form-group"><label for="timetable_file">Timetable File (PDF, JPG, PNG)</label><input type="file" class="form-control-file" id="timetable_file" name="timetable_file" required></div>
                                 <button type="submit" name="send_timetable" class="btn btn-primary">Send to All</button>
                             </form>
                         </div>
@@ -172,10 +145,10 @@ $pageTitle = 'Send Exam Timetable';
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
-       <?php include_once "../../includes/logout_modal.php"?>
-
+    <?php include_once "../../includes/logout_modal.php" ?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
+
 </html>

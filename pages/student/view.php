@@ -23,22 +23,31 @@ if ($student_id <= 0) {
 }
 
 // Fetch student data with school information
+// PDO Change: Switched from mysqli_prepare to PDO prepare/execute
 $query = "SELECT s.*, sc.school_name, sc.address as school_address
           FROM student s 
           LEFT JOIN school sc ON s.school_id = sc.id
           WHERE s.id = ?";
 
-$stmt = mysqli_prepare($conn, $query);
-mysqli_stmt_bind_param($stmt, "i", $student_id);
-mysqli_stmt_execute($stmt);
-$result = mysqli_stmt_get_result($stmt);
+try {
+    $stmt = $conn->prepare($query);
+    $stmt->execute([$student_id]);
 
-if (!$result || mysqli_num_rows($result) == 0) {
-    header("Location: student_list.php?error=Student not found");
+    // PDO Change: Use rowCount() to check if a record was found
+    if ($stmt->rowCount() == 0) {
+        header("Location: student_list.php?error=Student not found");
+        exit;
+    }
+
+    // PDO Change: Use fetch() to get the result
+    $student = $stmt->fetch(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    // It's a good practice to log the error message for debugging
+    // error_log("Database error in view.php: " . $e->getMessage());
+    header("Location: student_list.php?error=An error occurred");
     exit;
 }
 
-$student = mysqli_fetch_assoc($result);
 
 // --- Robust Photo/Logo Handling Logic ---
 // This function assumes the image_path stored in the DB is relative to your project's web root (e.g., 'pages/student/uploads/photo.jpg')
@@ -390,7 +399,7 @@ $default_photo = getDefaultImagePath('student', BASE_WEB_PATH);
         <i class="fas fa-angle-up"></i>
     </a>
 
-        <?php include_once "../../includes/logout_modal.php"?>
+    <?php include_once "../../includes/logout_modal.php" ?>
 
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
         aria-hidden="true">

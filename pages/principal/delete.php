@@ -1,55 +1,65 @@
 <?php
+// No session handling is used, as requested.
+
+// Include your existing PDO connection file for PostgreSQL.
+// This file should create a PDO object named $conn.
 include_once "../../includes/connect.php";
+
+// Include your custom encryption library.
 include_once "../../encryption.php";
 
-// Check if user is logged in and has a valid role
+// --- User Authentication and Role Check (using Cookie) ---
 $role = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
+    // Assuming decrypt_id is a function from your encryption.php file.
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
 
-// Redirect to login if not logged in
+// Redirect to login if the user is not logged in or has no role.
 if (!$role) {
     header("Location: ../../login.php");
     exit;
 }
 
-// Ensure a valid Principal ID is provided
-if (!isset($_GET['id']) || empty($_GET['id'])) {
-    header("Location: principal_list.php?error=Invalid Principal ID provided");
+// --- Input Validation ---
+// Ensure a valid Principal ID is provided in the URL.
+if (!isset($_GET['id']) || !filter_var($_GET['id'], FILTER_VALIDATE_INT)) {
+    header("Location: principal_list.php?error=Invalid or missing Principal ID.");
     exit;
 }
 
-$principal_id = intval($_GET['id']);
+$principal_id = (int)$_GET['id'];
 
-// Start a database transaction to ensure data integrity
-mysqli_begin_transaction($conn);
-
+// --- Database Transaction Logic ---
 try {
-    // Step 1: Fetch the full record of the principal to be deleted
-    // We select all columns needed for the `deleted_principals` table.
-    $query_fetch_principal = "SELECT * FROM principal WHERE id = ?";
-    $stmt_fetch = mysqli_prepare($conn, $query_fetch_principal);
-    mysqli_stmt_bind_param($stmt_fetch, "i", $principal_id);
-    mysqli_stmt_execute($stmt_fetch);
-    $result_principal = mysqli_stmt_get_result($stmt_fetch);
-    $principal_data = mysqli_fetch_assoc($result_principal);
-    mysqli_stmt_close($stmt_fetch);
+    // Start a database transaction using your $conn object.
+    // This ensures that all queries must succeed, or none of them will be saved.
+    $conn->beginTransaction();
 
-    // If no principal record is found, throw an error and stop
+    // Step 1: Fetch the full record of the principal to be deleted.
+    $sql_fetch_principal = "SELECT * FROM principal WHERE id = ?";
+    $stmt_fetch = $conn->prepare($sql_fetch_principal);
+
+    // Execute the statement, passing the parameter in an array.
+    $stmt_fetch->execute([$principal_id]);
+
+    // Fetch the data as an associative array.
+    $principal_data = $stmt_fetch->fetch(PDO::FETCH_ASSOC);
+
+    // If no record is found, throw an exception to stop the process and roll back.
     if (!$principal_data) {
         throw new Exception("Principal with ID $principal_id not found.");
     }
 
     // Step 2: Insert the fetched data into the `deleted_principals` table for archiving.
-    $query_archive_principal = "INSERT INTO deleted_principals 
+    $sql_archive_principal = "INSERT INTO deleted_principals 
                                 (id, principal_name, email, phone, dob, gender, blood_group, address, qualification, salary, batch, school_id, deleted_by_role) 
                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-    $stmt_archive = mysqli_prepare($conn, $query_archive_principal);
-    mysqli_stmt_bind_param(
-        $stmt_archive,
-        "issssssssssis",
+    $stmt_archive = $conn->prepare($sql_archive_principal);
+
+    // Create an array of values to be inserted.
+    $archive_params = [
         $principal_data['id'],
         $principal_data['principal_name'],
         $principal_data['email'],
@@ -62,51 +72,50 @@ try {
         $principal_data['salary'],
         $principal_data['batch'],
         $principal_data['school_id'],
-        $role // The role of the user performing the deletion
-    );
+        $role // The role of the user performing the deletion.
+    ];
 
-    // Execute the archiving query
-    if (!mysqli_stmt_execute($stmt_archive)) {
-        throw new Exception("Failed to archive principal data: " . mysqli_stmt_error($stmt_archive));
-    }
-    mysqli_stmt_close($stmt_archive);
+    // Execute the insert statement with the parameters.
+    $stmt_archive->execute($archive_params);
 
     // Step 3: Delete the user from the 'users' table.
-    // The `ON DELETE CASCADE` constraint on the `principal` table will automatically delete the principal's record.
-    $query_delete_user = "DELETE FROM users WHERE id = ?";
-    $stmt_delete = mysqli_prepare($conn, $query_delete_user);
-    mysqli_stmt_bind_param($stmt_delete, "i", $principal_id);
+    // Assuming `ON DELETE CASCADE` is set up in your PostgreSQL database,
+    // this will also delete the corresponding record from the `principal` table.
+    $sql_delete_user = "DELETE FROM users WHERE id = ?";
+    $stmt_delete = $conn->prepare($sql_delete_user);
+    $stmt_delete->execute([$principal_id]);
 
-    if (!mysqli_stmt_execute($stmt_delete)) {
-        throw new Exception("Failed to delete principal from active records: " . mysqli_stmt_error($stmt_delete));
-    }
-
-    // Verify that a row was actually deleted
-    if (mysqli_stmt_affected_rows($stmt_delete) === 0) {
+    // Verify that a row was actually deleted using rowCount().
+    if ($stmt_delete->rowCount() === 0) {
         throw new Exception("Principal could not be deleted (record may have already been removed).");
     }
-    mysqli_stmt_close($stmt_delete);
 
-    // Step 4: Delete the principal's image file from the server
-    $image_path = $principal_data['principal_image'];
+    // Step 4: Delete the principal's image file from the server.
+    $image_path = $principal_data['principal_image'] ?? null;
     if (!empty($image_path) && file_exists($image_path)) {
-        unlink($image_path);
+        if (!unlink($image_path)) {
+            // If file deletion fails, you might want to log this error,
+            // but we'll allow the database transaction to commit regardless,
+            // matching the original script's behavior.
+        }
     }
 
-    // If all steps succeeded, commit the transaction to make the changes permanent
-    mysqli_commit($conn);
+    // If all steps succeeded, commit the transaction to make the changes permanent.
+    $conn->commit();
 
-    // Redirect back to the list with a success message
+    // Redirect back to the list with a success message.
     header("Location: principal_list.php?success=Principal was successfully deleted and archived.");
     exit;
 } catch (Exception $e) {
-    // If any step failed, roll back the entire transaction
-    mysqli_rollback($conn);
+    // If any step failed, roll back the entire transaction.
+    if ($conn && $conn->inTransaction()) {
+        $conn->rollBack();
+    }
 
-    // Redirect back with an error message
+    // Redirect back with an error message.
     header("Location: principal_list.php?error=" . urlencode($e->getMessage()));
     exit;
 } finally {
-    // Always close the database connection
-    mysqli_close($conn);
+    // Close the database connection by setting the PDO object to null.
+    $conn = null;
 }

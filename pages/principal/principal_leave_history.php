@@ -2,12 +2,25 @@
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 
-// Ensure user is a principal
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : '';
 if ($role !== 'principal') {
-    // Redirect non-admins away
     header("Location: /BMC-SMS/dashboard.php");
     exit;
+}
+
+$leave_history = [];
+try {
+    $query = "SELECT t.teacher_name, l.from_date, l.to_date, l.leave_type, l.reason, l.status, l.rejection_reason
+              FROM leave_applications l
+              JOIN teacher t ON l.teacher_id = t.id
+              WHERE l.status IN ('Approved', 'Rejected')
+              ORDER BY l.applied_on DESC";
+    $stmt = $conn->prepare($query);
+    $stmt->execute();
+    $leave_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Principal Leave History Error: " . $e->getMessage());
+    die("A database error occurred.");
 }
 ?>
 <!DOCTYPE html>
@@ -17,14 +30,9 @@ if ($role !== 'principal') {
     <meta charset="UTF-8">
     <title>Leave Application History</title>
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-    <!-- <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet"> -->
-
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-
 </head>
 
 <body id="page-top">
@@ -35,7 +43,6 @@ if ($role !== 'principal') {
                 <?php include '../../includes/header.php'; ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Leave Application History</h1>
-
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
                             <h6 class="m-0 font-weight-bold text-primary">Approved & Rejected Applications</h6>
@@ -54,40 +61,26 @@ if ($role !== 'principal') {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php
-                                        // Fetch all leave applications that are NOT 'Pending', including leave_type and rejection_reason
-                                        $query = "SELECT t.teacher_name, l.from_date, l.to_date, l.leave_type, l.reason, l.status, l.rejection_reason
-                                                  FROM leave_applications l
-                                                  JOIN teacher t ON l.teacher_id = t.id
-                                                  WHERE l.status IN ('Approved', 'Rejected')
-                                                  ORDER BY l.applied_on DESC";
-                                        $result = $conn->query($query);
-                                        if ($result->num_rows > 0) {
-                                            while ($row = $result->fetch_assoc()) {
-                                                // Set badge color based on status
-                                                $status_color = ($row['status'] == 'Approved') ? 'success' : 'danger';
-
-                                                echo "<tr>";
-                                                echo "<td>" . htmlspecialchars($row['teacher_name']) . "</td>";
-                                                echo "<td>" . htmlspecialchars($row['from_date']) . "</td>";
-                                                echo "<td>" . htmlspecialchars($row['to_date']) . "</td>";
-                                                echo "<td>" . htmlspecialchars($row['leave_type']) . "</td>"; // Display Leave Type
-                                                echo "<td>" . htmlspecialchars($row['reason']) . "</td>";
-                                                // Display status and rejection reason if available
-                                                echo '<td>
-                                                        <span class="badge badge-' . $status_color . ' p-2">' . htmlspecialchars($row['status']) . '</span>';
-                                                if ($row['status'] == 'Rejected' && !empty($row['rejection_reason'])) {
-                                                    echo '<br><small class="text-muted mt-1"><strong>Reason:</strong> ' . htmlspecialchars($row['rejection_reason']) . '</small>';
-                                                }
-                                                echo '</td>';
-                                                echo "</tr>";
-                                            }
-                                        } else {
-                                            // Adjusted colspan to 6
-                                            echo '<tr><td colspan="6" class="text-center">No processed leave applications found.</td></tr>';
-                                        }
-                                        $conn->close();
-                                        ?>
+                                        <?php if (!empty($leave_history)): foreach ($leave_history as $row): ?>
+                                                <tr>
+                                                    <td><?php echo htmlspecialchars($row['teacher_name']); ?></td>
+                                                    <td><?php echo htmlspecialchars($row['from_date']); ?></td>
+                                                    <td><?php echo htmlspecialchars($row['to_date']); ?></td>
+                                                    <td><?php echo htmlspecialchars($row['leave_type']); ?></td>
+                                                    <td><?php echo htmlspecialchars($row['reason']); ?></td>
+                                                    <td>
+                                                        <span class="badge badge-<?php echo ($row['status'] == 'Approved') ? 'success' : 'danger'; ?> p-2"><?php echo htmlspecialchars($row['status']); ?></span>
+                                                        <?php if ($row['status'] == 'Rejected' && !empty($row['rejection_reason'])): ?>
+                                                            <br><small class="text-muted mt-1"><strong>Reason:</strong> <?php echo htmlspecialchars($row['rejection_reason']); ?></small>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach;
+                                        else: ?>
+                                            <tr>
+                                                <td colspan="6" class="text-center">No processed leave applications found.</td>
+                                            </tr>
+                                        <?php endif; ?>
                                     </tbody>
                                 </table>
                             </div>
@@ -98,13 +91,10 @@ if ($role !== 'principal') {
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
-        <?php include_once "../../includes/logout_modal.php"?>
-
+    <?php include_once "../../includes/logout_modal.php" ?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
-    <script src="../../assets/js/custom_principal.js"></script>
-
 </body>
 
 </html>

@@ -1,26 +1,27 @@
 <?php
 // Database credentials for your Supabase project
-$host = 'aws-0-ap-south-1.pooler.supabase.com'; // ✅ Correct host from your screenshot
-$port = '5432';                                 // Usually 5432 for Supabase
-$dbname = 'postgres';                           // Usually 'postgres' for Supabase
-$user = 'postgres.fwkvbvmmfwyjpqjileil';         // ✅ Correct user from your screenshot
-$password = '0407111726';  // 👈 IMPORTANT: Add your password here
+$host = 'aws-0-ap-south-1.pooler.supabase.com';
+$port = '5432';
+$dbname = 'postgres';
+$user = 'postgres.fwkvbvmmfwyjpqjileil';
+$password = '0407111726'; // It's recommended to use environment variables for passwords
+
+// This constant can help with file paths and URLs in your application.
+define('BASE_URL', '/BMC-SMS/');
 
 // Create a PostgreSQL connection string (DSN)
 $dsn = "pgsql:host=$host;port=$port;dbname=$dbname;user=$user;password=$password";
 
 try {
-    // Create a PDO instance
+    // Create a PDO instance to establish the database connection
     $conn = new PDO($dsn);
 
-    // Set the PDO error mode to exception
+    // Set the PDO error mode to exception for better error handling
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-    // You can uncomment the line below to test if the connection is successful
-    // echo "Connected to Supabase Successfully!";
-
 } catch (PDOException $e) {
-    // If connection fails, stop the script and show the error
-    die("Connection failed: " . $e->getMessage());
+    // If the connection fails, stop the script and display a generic error.
+    // Logging the actual error ($e->getMessage()) is better for production.
+    die("Connection failed. Please try again later.");
 }
-?>
+
+// The $conn variable is now ready to be used for queries in other files.

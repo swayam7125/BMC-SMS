@@ -1,16 +1,14 @@
 <?php
-// Includes and session start
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
-// Check for valid session and role
 if (!isset($_COOKIE['encrypted_user_role']) || decrypt_id($_COOKIE['encrypted_user_role']) !== 'principal') {
     header("Location: ../../login.php");
     exit;
 }
 
-if (!defined('BASE_WEB_PATH')) {
-    define('BASE_WEB_PATH', '/BMC-SMS/');
+if (!defined('BASE_URL')) {
+    define('BASE_URL', '/BMC-SMS/');
 }
 ?>
 <!DOCTYPE html>
@@ -33,7 +31,7 @@ if (!defined('BASE_WEB_PATH')) {
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
                 <div class="container-fluid">
-                    <h1 class="h3 mb-4 text-gray-800">Generate Leave Certificate</h1>
+                    <h1 class="h3 mb-4 text-gray-800">Generate Leaving Certificate</h1>
 
                     <?php if (isset($_GET['success'])): ?>
                         <div class="alert alert-success"><?php echo htmlspecialchars($_GET['success']); ?></div>
@@ -48,18 +46,9 @@ if (!defined('BASE_WEB_PATH')) {
                         </div>
                         <div class="card-body">
                             <form action="process_lc.php" method="POST">
-                                <div class="form-group">
-                                    <label for="student_email">Student's Email Address</label>
-                                    <input type="email" class="form-control" id="student_email" name="student_email" placeholder="Enter student's email" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="leaving_date">Leaving Date</label>
-                                    <input type="date" class="form-control" id="leaving_date" name="leaving_date" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="reason_for_leaving">Reason for Leaving</label>
-                                    <textarea class="form-control" id="reason_for_leaving" name="reason_for_leaving" rows="3" required></textarea>
-                                </div>
+                                <div class="form-group"><label for="student_email">Student's Email Address</label><input type="email" class="form-control" id="student_email" name="student_email" placeholder="Enter student's email" required></div>
+                                <div class="form-group"><label for="leaving_date">Leaving Date</label><input type="date" class="form-control" id="leaving_date" name="leaving_date" required></div>
+                                <div class="form-group"><label for="reason_for_leaving">Reason for Leaving</label><textarea class="form-control" id="reason_for_leaving" name="reason_for_leaving" rows="3" required></textarea></div>
                                 <button type="submit" class="btn btn-primary">Generate LC</button>
                             </form>
                         </div>
@@ -70,9 +59,9 @@ if (!defined('BASE_WEB_PATH')) {
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php" ?>
-    
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
+
 </html>
