@@ -13,14 +13,14 @@ if (!defined('BASE_WEB_PATH')) {
     define('BASE_WEB_PATH', '/BMC-SMS/');
 }
 
-// --- CORRECTED: FETCH UNREAD NOTIFICATION COUNTS WITH PDO ---
+// Initialize all notification count variables
 $unread_assignments = 0; $unread_results = 0; $unread_student_notices = 0; $unread_notes = 0;
 $unread_bmc_notices = 0; $unread_leave_requests = 0; $unread_principal_notices = 0;
 $unread_teacher_notices = 0; $unread_submissions = 0; $unread_leave_status = 0;
 $unread_exam_timetables = 0; $unread_borrow_requests = 0; $unread_acquisition_requests = 0; $unread_library_status = 0;
 $is_class_teacher = false;
 
-// The check `$conn->ping()` has been removed as it is not a PDO method.
+// Check for a valid PDO connection and user ID before running queries
 if (isset($conn) && $user_id) {
     try {
         switch ($role) {
@@ -79,10 +79,10 @@ if (isset($conn) && $user_id) {
                     $unread_library_status = (int) ($result_teacher['library_status'] ?? 0);
                 }
                 
-                // --- CORRECTED: Using PDO to check if class teacher ---
+                // This is the correct way to check if the user is a class teacher using PDO
                 $stmt_check = $conn->prepare('SELECT "class_teacher" FROM "teacher" WHERE "id" = ?');
                 $stmt_check->execute([$user_id]);
-                $is_class_teacher = $stmt_check->fetchColumn();
+                $is_class_teacher = (bool) $stmt_check->fetchColumn(); // fetchColumn() gets a single value
                 break;
 
             case 'librarian':
@@ -107,6 +107,7 @@ if (isset($conn) && $user_id) {
                 break;
         }
     } catch (PDOException $e) {
+        // Log error instead of breaking the page
         error_log("Sidebar notification count failed: " . $e->getMessage());
     }
 }
@@ -302,8 +303,8 @@ if (isset($conn) && $user_id) {
             </li>
             <li class="nav-item">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/principal/school_settings.php">
-                    <i class="fas fa-fw fa-children"></i>
-                    <span>Passing Criteria</span>
+                    <i class="fas fa-fw fa-cogs"></i>
+                    <span>School Settings</span>
                 </a>
             </li>
             <li class="nav-item">
@@ -351,21 +352,6 @@ if (isset($conn) && $user_id) {
 
         // ====== Teacher Panel ======
         case 'teacher':
-            $is_class_teacher = false;
-            if ($user_id && isset($conn)) {
-                $stmt_check = $conn->prepare("SELECT class_teacher FROM teacher WHERE id = ?");
-                if ($stmt_check) {
-                    $stmt_check->bind_param("i", $user_id);
-                    $stmt_check->execute();
-                    $result_check = $stmt_check->get_result();
-                    if ($teacher_details = $result_check->fetch_assoc()) {
-                        if ($teacher_details['class_teacher'] == 1) {
-                            $is_class_teacher = true;
-                        }
-                    }
-                    $stmt_check->close();
-                }
-            }
         ?>
             <div class="sidebar-heading font-weight-semibold">Classroom & Actions</div>
             <li class="nav-item">
@@ -572,7 +558,7 @@ if (isset($conn) && $user_id) {
                 <a class="nav-link" href="/BMC-SMS/pages/student/view_exam_timetable.php" data-notification-type="exam_timetable">
                     <i class="fas fa-fw fa-calendar-alt"></i>
                     <span>View Exam Timetable</span>
-                    <?php if ($unread_exam_timetables > 0): ?>
+                    <?php if ($unread_exam_timetables >0): ?>
                         <span class="badge badge-danger badge-counter">
                             <?php echo ($unread_exam_timetables > 9) ? '9+' : $unread_exam_timetables; ?>
                         </span>
