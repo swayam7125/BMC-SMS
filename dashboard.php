@@ -4,7 +4,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 include_once "encryption.php";
-include_once "./includes/connect.php"; // This path is likely correct for a PHP include
+include_once "./includes/connect.php"; // Uses the new PDO $conn object
 
 $role = null;
 $userId = null;
@@ -22,19 +22,13 @@ if (isset($_COOKIE['encrypted_user_id'])) {
 
 // Fetch user email from the 'users' table using userId
 if ($userId) {
-    $stmt_email = $conn->prepare("SELECT email FROM users WHERE id = ?");
-    if ($stmt_email) {
-        $stmt_email->bind_param("i", $userId);
-        $stmt_email->execute();
-        $result_email = $stmt_email->get_result();
-        if ($result_email && $result_email->num_rows > 0) {
-            $user_data = $result_email->fetch_assoc();
-            $userEmail = $user_data['email'];
-        }
-        $stmt_email->close();
+    $stmt_email = $conn->prepare('SELECT "email" FROM "users" WHERE "id" = ?');
+    $stmt_email->execute([$userId]);
+    $user_data = $stmt_email->fetch(PDO::FETCH_ASSOC);
+    if ($user_data) {
+        $userEmail = $user_data['email'];
     }
 }
-
 
 // Redirect to login if not logged in or role is not set
 if (!$role) {
@@ -56,270 +50,116 @@ $totalAbsent = 0;
 $totalBooks = 0;
 $issuedToday = 0;
 $overdueBooks = 0;
-$totalLibraryMembers = 0; // New variable for librarian dashboard
+$totalLibraryMembers = 0;
 
 // Fetch data based on user role
 switch ($role) {
     case 'superadmin':
-        // superadmin role sees all global counts
-        $sql = "SELECT COUNT(*) AS total FROM school";
-        $result = $conn->query($sql);
-        if ($result && $result->num_rows > 0) {
-            $row = $result->fetch_assoc();
-            $totalSchools = $row['total'];
-        }
-
-        $sql = "SELECT COUNT(*) AS total FROM principal";
-        $result = $conn->query($sql);
-        if ($result && $result->num_rows > 0) {
-            $row = $result->fetch_assoc();
-            $totalPrincipals = $row['total'];
-        }
-
-        $sql = "SELECT COUNT(*) AS total FROM teacher";
-        $result = $conn->query($sql);
-        if ($result && $result->num_rows > 0) {
-            $row = $result->fetch_assoc();
-            $totalTeachers = $row['total'];
-        }
-
-        $sql = "SELECT COUNT(*) AS total FROM student";
-        $result = $conn->query($sql);
-        if ($result && $result->num_rows > 0) {
-            $row = $result->fetch_assoc();
-            $totalStudents = $row['total'];
-        }
+        $totalSchools = $conn->query('SELECT COUNT(*) FROM "school"')->fetchColumn();
+        $totalPrincipals = $conn->query('SELECT COUNT(*) FROM "principal"')->fetchColumn();
+        $totalTeachers = $conn->query('SELECT COUNT(*) FROM "teacher"')->fetchColumn();
+        $totalStudents = $conn->query('SELECT COUNT(*) FROM "student"')->fetchColumn();
         break;
 
     case 'principal':
-        // principal sees data related to their school
-        $stmt = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
-        if ($stmt) {
-            $stmt->bind_param("i", $userId);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            if ($result && $result->num_rows > 0) {
-                $principalData = $result->fetch_assoc();
-                $schoolId = $principalData['school_id'];
+        $stmt = $conn->prepare('SELECT "school_id" FROM "principal" WHERE "id" = ?');
+        $stmt->execute([$userId]);
+        $principalData = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($principalData) {
+            $schoolId = $principalData['school_id'];
 
-                // Get total teachers in this school
-                $teacherStmt = $conn->prepare("SELECT COUNT(*) AS total FROM teacher WHERE school_id = ?");
-                if ($teacherStmt) {
-                    $teacherStmt->bind_param("i", $schoolId);
-                    $teacherStmt->execute();
-                    $teacherResult = $teacherStmt->get_result();
-                    if ($teacherResult && $teacherResult->num_rows > 0) {
-                        $teacherRow = $teacherResult->fetch_assoc();
-                        $totalTeachers = $teacherRow['total'];
-                    }
-                    $teacherStmt->close();
-                }
+            $teacherStmt = $conn->prepare('SELECT COUNT(*) FROM "teacher" WHERE "school_id" = ?');
+            $teacherStmt->execute([$schoolId]);
+            $totalTeachers = $teacherStmt->fetchColumn();
 
-                // Get total current students in this school
-                $studentStmt = $conn->prepare("SELECT COUNT(*) AS total FROM student WHERE school_id = ?");
-                if ($studentStmt) {
-                    $studentStmt->bind_param("i", $schoolId);
-                    $studentStmt->execute();
-                    $studentResult = $studentStmt->get_result();
-                    if ($studentResult && $studentResult->num_rows > 0) {
-                        $studentRow = $studentResult->fetch_assoc();
-                        $totalStudents = $studentRow['total'];
-                    }
-                    $studentStmt->close();
-                }
+            $studentStmt = $conn->prepare('SELECT COUNT(*) FROM "student" WHERE "school_id" = ?');
+            $studentStmt->execute([$schoolId]);
+            $totalStudents = $studentStmt->fetchColumn();
 
-                // Get total students who have left from this school
-                $studentLeftStmt = $conn->prepare("SELECT COUNT(*) AS total FROM deleted_students WHERE school_id = ?");
-                if ($studentLeftStmt) {
-                    $studentLeftStmt->bind_param("i", $schoolId);
-                    $studentLeftStmt->execute();
-                    $studentLeftResult = $studentLeftStmt->get_result();
-                    if ($studentLeftResult && $studentLeftResult->num_rows > 0) {
-                        $studentLeftRow = $studentLeftResult->fetch_assoc();
-                        $totalStudentsLeft = $studentLeftRow['total'];
-                    }
-                    $studentLeftStmt->close();
-                }
+            $studentLeftStmt = $conn->prepare('SELECT COUNT(*) FROM "deleted_students" WHERE "school_id" = ?');
+            $studentLeftStmt->execute([$schoolId]);
+            $totalStudentsLeft = $studentLeftStmt->fetchColumn();
 
-                // Calculate total admissions (current students + students who left)
-                $totalAdmissions = $totalStudents + $totalStudentsLeft;
-            }
-            $stmt->close();
+            $totalAdmissions = $totalStudents + $totalStudentsLeft;
         }
         break;
 
     case 'teacher':
-        // Teacher sees data related to their school and personal stats
-        $stmt = $conn->prepare("SELECT school_id, salary FROM teacher WHERE id = ?");
-        if ($stmt) {
-            $stmt->bind_param("i", $userId);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            if ($result && $result->num_rows > 0) {
-                $teacherData = $result->fetch_assoc();
-                $schoolId = $teacherData['school_id'];
-                $salary = $teacherData['salary'] ?? 0; // Fetch salary
+        $stmt = $conn->prepare('SELECT "school_id", "salary" FROM "teacher" WHERE "id" = ?');
+        $stmt->execute([$userId]);
+        $teacherData = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($teacherData) {
+            $schoolId = $teacherData['school_id'];
+            $salary = $teacherData['salary'] ?? 0;
 
-                // Get total students in the teacher's school
-                $studentStmt = $conn->prepare("SELECT COUNT(*) AS total FROM student WHERE school_id = ?");
-                if ($studentStmt) {
-                    $studentStmt->bind_param("i", $schoolId);
-                    $studentStmt->execute();
-                    $studentResult = $studentStmt->get_result();
-                    if ($studentResult && $studentResult->num_rows > 0) {
-                        $studentRow = $studentResult->fetch_assoc();
-                        $totalStudents = $studentRow['total'];
-                    }
-                    $studentStmt->close();
-                }
+            $studentStmt = $conn->prepare('SELECT COUNT(*) FROM "student" WHERE "school_id" = ?');
+            $studentStmt->execute([$schoolId]);
+            $totalStudents = $studentStmt->fetchColumn();
 
-                // Get total approved leaves for this teacher
-                $leavesStmt = $conn->prepare("SELECT COUNT(*) AS total FROM leave_applications WHERE teacher_id = ? AND status = 'Approved'");
-                if ($leavesStmt) {
-                    $leavesStmt->bind_param("i", $userId);
-                    $leavesStmt->execute();
-                    $leavesResult = $leavesStmt->get_result();
-                    if ($leavesResult && $leavesResult->num_rows > 0) {
-                        $leavesRow = $leavesResult->fetch_assoc();
-                        $totalLeaves = $leavesRow['total'];
-                    }
-                    $leavesStmt->close();
-                }
+            $leavesStmt = $conn->prepare('SELECT COUNT(*) FROM "leave_applications" WHERE "teacher_id" = ? AND "status" = \'Approved\'');
+            $leavesStmt->execute([$userId]);
+            $totalLeaves = $leavesStmt->fetchColumn();
 
-                // **CORRECTED LOGIC**: Get the teacher's own overall present days (counting each day once)
-                $presentStmt = $conn->prepare("SELECT COUNT(DISTINCT attendance_date) AS total FROM teacher_attendance WHERE teacher_id = ? AND status = 'Present'");
-                if ($presentStmt) {
-                    $presentStmt->bind_param("i", $userId);
-                    $presentStmt->execute();
-                    $presentResult = $presentStmt->get_result();
-                    if ($presentResult && $presentResult->num_rows > 0) {
-                        $presentRow = $presentResult->fetch_assoc();
-                        $totalPresent = $presentRow['total'];
-                    }
-                    $presentStmt->close();
-                }
-            }
-            $stmt->close();
+            $presentStmt = $conn->prepare('SELECT COUNT(DISTINCT "attendance_date") FROM "teacher_attendance" WHERE "teacher_id" = ? AND "status" = \'Present\'');
+            $presentStmt->execute([$userId]);
+            $totalPresent = $presentStmt->fetchColumn();
         }
         break;
 
     case 'librarian':
-        // Librarian sees data related to their school and library stats
-        $stmt = $conn->prepare("SELECT school_id FROM librarian WHERE id = ?");
-        if ($stmt) {
-            $stmt->bind_param("i", $userId);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            if ($result && $result->num_rows > 0) {
-                $librarianData = $result->fetch_assoc();
-                $schoolId = $librarianData['school_id'];
+        $stmt = $conn->prepare('SELECT "school_id" FROM "librarian" WHERE "id" = ?');
+        $stmt->execute([$userId]);
+        $librarianData = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($librarianData) {
+            $schoolId = $librarianData['school_id'];
 
-                // Card 1: Get total books in the library for this school
-                $booksStmt = $conn->prepare("SELECT COUNT(*) AS total FROM books WHERE school_id = ?");
-                if ($booksStmt) {
-                    $booksStmt->bind_param("i", $schoolId);
-                    $booksStmt->execute();
-                    $booksResult = $booksStmt->get_result()->fetch_assoc();
-                    $totalBooks = $booksResult['total'] ?? 0;
-                    $booksStmt->close();
-                }
+            $booksStmt = $conn->prepare('SELECT COUNT(*) FROM "books" WHERE "school_id" = ?');
+            $booksStmt->execute([$schoolId]);
+            $totalBooks = $booksStmt->fetchColumn();
 
-                // Card 2: Get total unique library members (students and teachers)
-                $membersStmt = $conn->prepare("
-                    SELECT COUNT(DISTINCT br.borrower_id) as total
-                    FROM borrowing_records br
-                    JOIN books b ON br.book_id = b.book_id
-                    WHERE b.school_id = ? AND br.borrower_role IN ('student', 'teacher')
-                ");
-                if ($membersStmt) {
-                    $membersStmt->bind_param("i", $schoolId);
-                    $membersStmt->execute();
-                    $membersResult = $membersStmt->get_result()->fetch_assoc();
-                    $totalLibraryMembers = $membersResult['total'] ?? 0;
-                    $membersStmt->close();
-                }
+            $membersStmt = $conn->prepare('
+                SELECT COUNT(DISTINCT br."borrower_id")
+                FROM "borrowing_records" br
+                JOIN "books" b ON br."book_id" = b."book_id"
+                WHERE b."school_id" = ? AND br."borrower_role" IN (\'student\', \'teacher\')
+            ');
+            $membersStmt->execute([$schoolId]);
+            $totalLibraryMembers = $membersStmt->fetchColumn();
 
-                // Card 3: Get total books issued today
-                $issuedTodayStmt = $conn->prepare("SELECT COUNT(*) as total FROM borrowing_records br JOIN books b ON br.book_id = b.book_id WHERE b.school_id = ? AND br.checkout_date = CURDATE()");
-                if ($issuedTodayStmt) {
-                    $issuedTodayStmt->bind_param("i", $schoolId);
-                    $issuedTodayStmt->execute();
-                    $issuedTodayResult = $issuedTodayStmt->get_result()->fetch_assoc();
-                    $issuedToday = $issuedTodayResult['total'] ?? 0;
-                    $issuedTodayStmt->close();
-                }
+            $issuedTodayStmt = $conn->prepare('SELECT COUNT(*) FROM "borrowing_records" br JOIN "books" b ON br."book_id" = b."book_id" WHERE b."school_id" = ? AND br."checkout_date" = CURRENT_DATE');
+            $issuedTodayStmt->execute([$schoolId]);
+            $issuedToday = $issuedTodayStmt->fetchColumn();
 
-                // Card 4: Get total overdue books
-                $overdueStmt = $conn->prepare("SELECT COUNT(*) as total FROM borrowing_records br JOIN books b ON br.book_id = b.book_id WHERE b.school_id = ? AND br.due_date < CURDATE() AND br.is_returned = 0");
-                if ($overdueStmt) {
-                    $overdueStmt->bind_param("i", $schoolId);
-                    $overdueStmt->execute();
-                    $overdueResult = $overdueStmt->get_result()->fetch_assoc();
-                    $overdueBooks = $overdueResult['total'] ?? 0;
-                    $overdueStmt->close();
-                }
-                
-            }
-            $stmt->close();
+            $overdueStmt = $conn->prepare('SELECT COUNT(*) FROM "borrowing_records" br JOIN "books" b ON br."book_id" = b."book_id" WHERE b."school_id" = ? AND br."due_date" < CURRENT_DATE AND br."is_returned" = false');
+            $overdueStmt->execute([$schoolId]);
+            $overdueBooks = $overdueStmt->fetchColumn();
         }
         break;
 
-
     case 'student':
-        // Student sees data related to their school and personal attendance
+        $presentStmt = $conn->prepare("SELECT COUNT(DISTINCT \"attendance_date\") FROM \"attendance\" WHERE \"student_id\" = ? AND \"status\" = 'Present'");
+        $presentStmt->execute([$userId]);
+        $totalPresent = $presentStmt->fetchColumn();
 
-        // Get total unique days the student was present
-        $presentStmt = $conn->prepare("SELECT COUNT(DISTINCT attendance_date) AS total FROM attendance WHERE student_id = ? AND status = 'Present'");
-        if ($presentStmt) {
-            $presentStmt->bind_param("i", $userId);
-            $presentStmt->execute();
-            $presentResult = $presentStmt->get_result();
-            if ($presentResult && $presentResult->num_rows > 0) {
-                $presentRow = $presentResult->fetch_assoc();
-                $totalPresent = $presentRow['total'];
-            }
-            $presentStmt->close();
-        }
-
-        // Get total absent lectures for the logged-in student
-        $absentStmt = $conn->prepare("SELECT COUNT(*) AS total FROM attendance WHERE student_id = ? AND status = 'Absent'");
-        if ($absentStmt) {
-            $absentStmt->bind_param("i", $userId);
-            $absentStmt->execute();
-            $absentResult = $absentStmt->get_result();
-            if ($absentResult && $absentResult->num_rows > 0) {
-                $absentRow = $absentResult->fetch_assoc();
-                $totalAbsent = $absentRow['total'];
-            }
-            $absentStmt->close();
-        }
-
-        // NOTE: Total Leaves is set to 0 as there is no student leave application system.
+        $absentStmt = $conn->prepare("SELECT COUNT(*) FROM \"attendance\" WHERE \"student_id\" = ? AND \"status\" = 'Absent'");
+        $absentStmt->execute([$userId]);
+        $totalAbsent = $absentStmt->fetchColumn();
+        
         $totalLeaves = 0;
         break;
 }
 
-// --- MODIFIED: Dashboard Notification Logic ---
 $dashboard_notifications = [];
-if ($userId && isset($conn) && $conn->ping()) {
-    // Fetches the 6 most recent notifications (read and unread) for the dashboard view.
-    $stmt_dash_notif = $conn->prepare("SELECT id, message, link, type, created_at, is_read FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 6");
-    $stmt_dash_notif->bind_param("i", $userId);
-    $stmt_dash_notif->execute();
-    $result_dash_notif = $stmt_dash_notif->get_result();
-    while ($row = $result_dash_notif->fetch_assoc()) {
-        $dashboard_notifications[] = $row;
-    }
-    $stmt_dash_notif->close();
+if ($userId && isset($conn)) {
+    $stmt_dash_notif = $conn->prepare('SELECT "id", "message", "link", "type", "created_at", "is_read" FROM "notifications" WHERE "user_id" = ? ORDER BY "created_at" DESC LIMIT 6');
+    $stmt_dash_notif->execute([$userId]);
+    $dashboard_notifications = $stmt_dash_notif->fetchAll(PDO::FETCH_ASSOC);
 }
-// --- END: Dashboard Notification Logic ---
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
-
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -345,128 +185,100 @@ if ($userId && isset($conn) && $conn->ping()) {
     <link rel="stylesheet" href="/BMC-SMS/assets/css/notification_window.css">
     <link rel="stylesheet" href="/BMC-SMS/assets/css/sidebar.css">
     <link rel="stylesheet" href="/BMC-SMS/assets/css/scrollbar_hidden.css">
-
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-
     <style>
         .notification-dashboard-list {
             max-height: 350px; 
             overflow-y: auto;
         }
     </style>
-
 </head>
 
 <body id="page-top">
     <div id="wrapper">
-
-        <?php
-        include './includes/sidebar.php';
-        ?>
+        <?php include './includes/sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
-
             <div id="content">
-
-                <?php
-                include './includes/header.php';
-                ?>
+                <?php include './includes/header.php'; ?>
                 <div class="container-fluid">
-
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
                     </div>
-
                     <div class="row">
                         <?php if ($role == 'superadmin'): ?>
+                            <!-- Superadmin Cards -->
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <a class="card-link" href="./pages/school/school_list.php">
                                     <div class="card border-left-primary shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                                        TOTAL Schools</div>
+                                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">TOTAL Schools</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalSchools; ?></div>
                                                 </div>
-                                                <div class="col-auto">
-                                                    <i class="fas fa-school fa-2x text-gray-300"></i>
-                                                </div>
+                                                <div class="col-auto"><i class="fas fa-school fa-2x text-gray-300"></i></div>
                                             </div>
                                         </div>
                                     </div>
                                 </a>
                             </div>
-
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <a class="card-link" href="./pages/principal/principal_list.php">
                                     <div class="card border-left-success shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                                        TOTAL Principals</div>
+                                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">TOTAL Principals</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalPrincipals; ?></div>
                                                 </div>
-                                                <div class="col-auto">
-                                                    <i class="fas fa-user-tie fa-2x text-gray-300"></i>
-                                                </div>
+                                                <div class="col-auto"><i class="fas fa-user-tie fa-2x text-gray-300"></i></div>
                                             </div>
                                         </div>
                                     </div>
                                 </a>
                             </div>
-
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <a class="card-link" href="./pages/teacher/teacher_list.php">
                                     <div class="card border-left-info shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                                        TOTAL Teachers</div>
+                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">TOTAL Teachers</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalTeachers; ?></div>
                                                 </div>
-                                                <div class="col-auto">
-                                                    <i class="fas fa-person-chalkboard fa-2x text-gray-300"></i>
-                                                </div>
+                                                <div class="col-auto"><i class="fas fa-person-chalkboard fa-2x text-gray-300"></i></div>
                                             </div>
                                         </div>
                                     </div>
                                 </a>
                             </div>
-
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <a class="card-link" href="./pages/student/student_list.php">
                                     <div class="card border-left-warning shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                                        TOTAL Students</div>
+                                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">TOTAL Students</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalStudents; ?></div>
                                                 </div>
-                                                <div class="col-auto">
-                                                    <i class="fas fa-children fa-2x text-gray-300"></i>
-                                                </div>
+                                                <div class="col-auto"><i class="fas fa-children fa-2x text-gray-300"></i></div>
                                             </div>
                                         </div>
                                     </div>
                                 </a>
                             </div>
                         <?php elseif ($role == 'principal'): ?>
+                            <!-- Principal Cards -->
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <a class="card-link" href="./pages/teacher/teacher_list.php">
                                     <div class="card border-left-primary shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                                        TOTAL Teachers in School</div>
+                                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">TOTAL Teachers in School</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalTeachers; ?></div>
                                                 </div>
-                                                <div class="col-auto">
-                                                    <i class="fas fa-person-chalkboard fa-2x text-gray-300"></i>
-                                                </div>
+                                                <div class="col-auto"><i class="fas fa-person-chalkboard fa-2x text-gray-300"></i></div>
                                             </div>
                                         </div>
                                     </div>
@@ -478,13 +290,10 @@ if ($userId && isset($conn) && $conn->ping()) {
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                                        TOTAL Students in School</div>
+                                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">TOTAL Students in School</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalStudents; ?></div>
                                                 </div>
-                                                <div class="col-auto">
-                                                    <i class="fas fa-children fa-2x text-gray-300"></i>
-                                                </div>
+                                                <div class="col-auto"><i class="fas fa-children fa-2x text-gray-300"></i></div>
                                             </div>
                                         </div>
                                     </div>
@@ -496,13 +305,10 @@ if ($userId && isset($conn) && $conn->ping()) {
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                                        TOTAL Admissions in School</div>
+                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">TOTAL Admissions in School</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalAdmissions; ?></div>
                                                 </div>
-                                                <div class="col-auto">
-                                                    <i class="fas fa-user-plus fa-2x text-gray-300"></i>
-                                                </div>
+                                                <div class="col-auto"><i class="fas fa-user-plus fa-2x text-gray-300"></i></div>
                                             </div>
                                         </div>
                                     </div>
@@ -514,34 +320,27 @@ if ($userId && isset($conn) && $conn->ping()) {
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                                        TOTAL Students Left from School</div>
+                                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">TOTAL Students Left</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalStudentsLeft; ?></div>
                                                 </div>
-                                                <div class="col-auto">
-                                                    <i class="fas fa-right-from-bracket fa-2x text-gray-300"></i>
-                                                </div>
+                                                <div class="col-auto"><i class="fas fa-right-from-bracket fa-2x text-gray-300"></i></div>
                                             </div>
                                         </div>
                                     </div>
                                 </a>
                             </div>
                         <?php elseif ($role == 'teacher'): ?>
+                            <!-- Teacher Cards -->
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <a class="card-link" href="./pages/student/student_list.php">
                                     <div class="card border-left-primary shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                                        TOTAL Students</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                                        <?php echo $totalStudents; ?>
-                                                    </div>
+                                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">TOTAL Students</div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalStudents; ?></div>
                                                 </div>
-                                                <div class="col-auto">
-                                                    <i class="fas fa-children fa-2x text-gray-300"></i>
-                                                </div>
+                                                <div class="col-auto"><i class="fas fa-children fa-2x text-gray-300"></i></div>
                                             </div>
                                         </div>
                                     </div>
@@ -553,13 +352,10 @@ if ($userId && isset($conn) && $conn->ping()) {
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                                        Salary</div>
+                                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Salary</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800">₹<?php echo number_format($salary); ?></div>
                                                 </div>
-                                                <div class="col-auto">
-                                                    <i class="fas fa-indian-rupee-sign fa-2x text-gray-300"></i>
-                                                </div>
+                                                <div class="col-auto"><i class="fas fa-indian-rupee-sign fa-2x text-gray-300"></i></div>
                                             </div>
                                         </div>
                                     </div>
@@ -571,13 +367,10 @@ if ($userId && isset($conn) && $conn->ping()) {
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                                        Total Present Days</div>
+                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Total Present Days</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalPresent; ?></div>
                                                 </div>
-                                                <div class="col-auto">
-                                                    <i class="fas fa-user-check fa-2x text-gray-300"></i>
-                                                </div>
+                                                <div class="col-auto"><i class="fas fa-user-check fa-2x text-gray-300"></i></div>
                                             </div>
                                         </div>
                                     </div>
@@ -589,123 +382,101 @@ if ($userId && isset($conn) && $conn->ping()) {
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                                        TOTAL Leaves</div>
+                                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">TOTAL Leaves</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalLeaves; ?></div>
                                                 </div>
-                                                <div class="col-auto">
-                                                    <i class="fas fa-envelope-circle-check fa-2x text-gray-300"></i>
-                                                </div>
+                                                <div class="col-auto"><i class="fas fa-envelope-circle-check fa-2x text-gray-300"></i></div>
                                             </div>
                                         </div>
                                     </div>
                                 </a>
                             </div>
                         <?php elseif ($role == 'librarian'): ?>
-                             <div class="col-xl-3 col-md-6 mb-4">
+                            <!-- Librarian Cards -->
+                            <div class="col-xl-3 col-md-6 mb-4">
                                 <a class="card-link" href="/BMC-SMS/pages/librarian/book_list.php">
                                     <div class="card border-left-primary shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                                        TOTAL Books in Library</div>
+                                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">TOTAL Books in Library</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo number_format($totalBooks); ?></div>
                                                 </div>
-                                                <div class="col-auto">
-                                                    <i class="fas fa-book-bookmark fa-2x text-gray-300"></i>
-                                                </div>
+                                                <div class="col-auto"><i class="fas fa-book-bookmark fa-2x text-gray-300"></i></div>
                                             </div>
                                         </div>
                                     </div>
                                 </a>
                             </div>
-                             <div class="col-xl-3 col-md-6 mb-4">
+                            <div class="col-xl-3 col-md-6 mb-4">
                                 <a class="card-link" href="/BMC-SMS/pages/librarian/issue_return.php">
                                     <div class="card border-left-success shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                                        Total Library Members</div>
+                                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Library Members</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalLibraryMembers; ?></div>
                                                 </div>
-                                                <div class="col-auto">
-                                                    <i class="fas fa-users-line fa-2x text-gray-300"></i>
-                                                </div>
+                                                <div class="col-auto"><i class="fas fa-users-line fa-2x text-gray-300"></i></div>
                                             </div>
                                         </div>
                                     </div>
                                 </a>
                             </div>
-                             <div class="col-xl-3 col-md-6 mb-4">
+                            <div class="col-xl-3 col-md-6 mb-4">
                                 <a class="card-link" href="/BMC-SMS/pages/librarian/issue_return.php">
                                     <div class="card border-left-info shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                                        Issued Books (Today)</div>
+                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Issued Books (Today)</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $issuedToday; ?></div>
                                                 </div>
-                                                <div class="col-auto">
-                                                    <i class="fas fa-right-from-bracket fa-2x text-gray-300"></i>
-                                                </div>
+                                                <div class="col-auto"><i class="fas fa-right-from-bracket fa-2x text-gray-300"></i></div>
                                             </div>
                                         </div>
                                     </div>
                                 </a>
                             </div>
-                             <div class="col-xl-3 col-md-6 mb-4">
+                            <div class="col-xl-3 col-md-6 mb-4">
                                 <a class="card-link" href="/BMC-SMS/pages/librarian/issue_return.php">
                                     <div class="card border-left-warning shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                                        Overdue Books</div>
+                                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Overdue Books</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $overdueBooks; ?></div>
                                                 </div>
-                                                <div class="col-auto">
-                                                    <i class="fas fa-triangle-exclamation fa-2x text-gray-300"></i>
-                                                </div>
+                                                <div class="col-auto"><i class="fas fa-triangle-exclamation fa-2x text-gray-300"></i></div>
                                             </div>
                                         </div>
                                     </div>
                                 </a>
                             </div>
                         <?php elseif ($role == 'student'): ?>
+                            <!-- Student Cards -->
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <a class="card-link" href="dashboard.php">
                                     <div class="card border-left-primary shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                                        My Current Standard
-                                                    </div>
+                                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">My Current Standard</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800">
                                                         <?php
-                                                        // Fetch student's standard
+                                                        // --- FIXED: Converted to PDO syntax ---
                                                         $student_std = 'N/A';
-                                                        $stmt_std = $conn->prepare("SELECT std FROM student WHERE id = ?");
-                                                        if ($stmt_std) {
-                                                            $stmt_std->bind_param("i", $userId);
-                                                            $stmt_std->execute();
-                                                            $result_std = $stmt_std->get_result();
-                                                            if ($result_std && $result_std->num_rows > 0) {
-                                                                $std_data = $result_std->fetch_assoc();
-                                                                $student_std = htmlspecialchars($std_data['std']);
-                                                            }
-                                                            $stmt_std->close();
+                                                        $stmt_std = $conn->prepare('SELECT "std" FROM "student" WHERE "id" = ?');
+                                                        $stmt_std->execute([$userId]);
+                                                        $std_data = $stmt_std->fetch(PDO::FETCH_ASSOC);
+                                                        if ($std_data) {
+                                                            $student_std = htmlspecialchars($std_data['std']);
                                                         }
                                                         echo $student_std;
                                                         ?>
                                                     </div>
                                                 </div>
-                                                <div class="col-auto">
-                                                    <i class="fas fa-book-open fa-2x text-gray-300"></i>
-                                                </div>
+                                                <div class="col-auto"><i class="fas fa-book-open fa-2x text-gray-300"></i></div>
                                             </div>
                                         </div>
                                     </div>
@@ -717,13 +488,10 @@ if ($userId && isset($conn) && $conn->ping()) {
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                                        TOTAL Present Days</div>
+                                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">TOTAL Present Days</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalPresent; ?></div>
                                                 </div>
-                                                <div class="col-auto">
-                                                    <i class="fas fa-user-check fa-2x text-gray-300"></i>
-                                                </div>
+                                                <div class="col-auto"><i class="fas fa-user-check fa-2x text-gray-300"></i></div>
                                             </div>
                                         </div>
                                     </div>
@@ -735,13 +503,10 @@ if ($userId && isset($conn) && $conn->ping()) {
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                                        TOTAL Leaves</div>
+                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">TOTAL Leaves</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalLeaves; ?></div>
                                                 </div>
-                                                <div class="col-auto">
-                                                    <i class="fas fa-envelope-circle-check fa-2x text-gray-300"></i>
-                                                </div>
+                                                <div class="col-auto"><i class="fas fa-envelope-circle-check fa-2x text-gray-300"></i></div>
                                             </div>
                                         </div>
                                     </div>
@@ -753,13 +518,10 @@ if ($userId && isset($conn) && $conn->ping()) {
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                                        TOTAL Absent Lectures</div>
+                                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">TOTAL Absent Lectures</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalAbsent; ?></div>
                                                 </div>
-                                                <div class="col-auto">
-                                                    <i class="fas fa-calendar-xmark fa-2x text-gray-300"></i>
-                                                </div>
+                                                <div class="col-auto"><i class="fas fa-calendar-xmark fa-2x text-gray-300"></i></div>
                                             </div>
                                         </div>
                                     </div>
@@ -767,7 +529,6 @@ if ($userId && isset($conn) && $conn->ping()) {
                             </div>
                         <?php endif; ?>
                     </div>
-
                     <div class="row mb-4">
                         <div class="col-xl-8 col-lg-7">
                             <div class="card shadow mb-4 h-100">
@@ -776,16 +537,11 @@ if ($userId && isset($conn) && $conn->ping()) {
                                 </div>
                                 <div class="card-body">
                                     <div class="chart-area">
-                                        <canvas id="myAreaChart"
-                                            data-role="<?php echo htmlspecialchars($role ?? ''); ?>"
-                                            data-user-id="<?php echo htmlspecialchars($userId ?? ''); ?>"
-                                            data-base-url="/BMC-SMS/">
-                                        </canvas>
+                                        <canvas id="myAreaChart" data-role="<?php echo htmlspecialchars($role ?? ''); ?>" data-user-id="<?php echo htmlspecialchars($userId ?? ''); ?>" data-base-url="/BMC-SMS/"></canvas>
                                     </div>
                                 </div>
                             </div>
                         </div>
-
                         <div class="col-xl-4 col-lg-5">
                             <div class="card shadow mb-4 h-100">
                                 <div class="card-header py-3">
@@ -796,9 +552,7 @@ if ($userId && isset($conn) && $conn->ping()) {
                                         <?php if (empty($dashboard_notifications)): ?>
                                             <div class="list-group-item d-flex align-items-center">
                                                 <div class="mr-3">
-                                                    <div class="icon-circle bg-secondary">
-                                                        <i class="fas fa-info-circle text-white"></i>
-                                                    </div>
+                                                    <div class="icon-circle bg-secondary"><i class="fas fa-info-circle text-white"></i></div>
                                                 </div>
                                                 <div>
                                                     <div class="small text-gray-500">All caught up!</div>
@@ -808,21 +562,16 @@ if ($userId && isset($conn) && $conn->ping()) {
                                         <?php else: ?>
                                             <?php foreach ($dashboard_notifications as $notification): ?>
                                                 <?php
-                                                    // --- ADDED: Logic to build the link correctly to mark as read ---
-                                                    $base_link = htmlspecialchars(BASE_WEB_PATH . ltrim($notification['link'], '/'));
+                                                    $base_link = htmlspecialchars('/BMC-SMS/' . ltrim($notification['link'], '/'));
                                                     $separator = (strpos($base_link, '?') === false) ? '?' : '&';
                                                     $final_link = $base_link . $separator . 'notif_id=' . $notification['id'];
                                                 ?>
                                                 <a class="list-group-item list-group-item-action d-flex align-items-center" href="<?php echo $final_link; ?>">
                                                     <div class="mr-3">
-                                                        <div class="icon-circle bg-primary">
-                                                            <i class="<?php echo getNotificationIcon($notification['type']); ?>"></i>
-                                                        </div>
+                                                        <div class="icon-circle bg-primary"><i class="<?php echo getNotificationIcon($notification['type']); ?>"></i></div>
                                                     </div>
                                                     <div>
-                                                        <div class="small text-gray-500">
-                                                            <?php echo date('F j, Y', strtotime($notification['created_at'])); ?>
-                                                        </div>
+                                                        <div class="small text-gray-500"><?php echo date('F j, Y', strtotime($notification['created_at'])); ?></div>
                                                         <span class="<?php echo ($notification['is_read'] == 0) ? 'font-weight-bold' : 'text-gray-800'; ?>">
                                                             <?php echo htmlspecialchars($notification['message']); ?>
                                                         </span>
@@ -838,30 +587,21 @@ if ($userId && isset($conn) && $conn->ping()) {
                     </div>
                 </div>
             </div>
-            <?php
-            include './includes/footer.php';
-            ?>
+            <?php include './includes/footer.php'; ?>
         </div>
     </div>
-    <a class="scroll-to-top rounded" href="#page-top">
-        <i class="fas fa-angle-up"></i>
-    </a>
-
-        <?php include_once "./includes/logout_modal.php"?>
-
-
-        <script src="/BMC-SMS/assets/vendor/jquery/jquery.min.js"></script>
-        <script src="/BMC-SMS/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-        <script src="/BMC-SMS/assets/vendor/jquery-easing/jquery.easing.min.js"></script>
-        <script src="/BMC-SMS/assets/js/sb-admin-2.min.js"></script>
-        <script src="/BMC-SMS/assets/vendor/chart.js/Chart.min.js"></script>
-        <script src="/BMC-SMS/assets/js/notification_window.js"></script>
-        <script src="/BMC-SMS/assets/js/dynamic_chart.js"></script>
-
+    <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
+    <?php include_once "./includes/logout_modal.php" ?>
+    <script src="/BMC-SMS/assets/vendor/jquery/jquery.min.js"></script>
+    <script src="/BMC-SMS/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/BMC-SMS/assets/vendor/jquery-easing/jquery.easing.min.js"></script>
+    <script src="/BMC-SMS/assets/js/sb-admin-2.min.js"></script>
+    <script src="/BMC-SMS/assets/vendor/chart.js/Chart.min.js"></script>
+    <script src="/BMC-SMS/assets/js/notification_window.js"></script>
+    <script src="/BMC-SMS/assets/js/dynamic_chart.js"></script>
 </body>
-
 </html>
 <?php
-// Close the database connection at the very end of the script.
-$conn->close();
+$conn = null;
 ?>
+

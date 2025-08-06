@@ -22,59 +22,50 @@ if (!$userId) {
     exit;
 }
 
-// Prepare the SQL query to fetch notifications for the logged-in user
-$stmt = $conn->prepare("SELECT message, link, is_read, created_at, type FROM notifications WHERE user_id = ? ORDER BY created_at DESC");
-if (!$stmt) {
-    echo json_encode(['error' => 'Failed to prepare statement: ' . $conn->error]);
-    exit;
-}
+try {
+    // --- FIXED: Converted to PDO syntax ---
+    $stmt = $conn->prepare('SELECT "message", "link", "is_read", "created_at", "type" FROM "notifications" WHERE "user_id" = ? ORDER BY "created_at" DESC');
+    $stmt->execute([$userId]);
+    $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-$stmt->bind_param("i", $userId);
-$stmt->execute();
-$result = $stmt->get_result();
-
-$notifications = [];
-if ($result) {
-    while ($row = $result->fetch_assoc()) {
-        $notifications[] = $row;
-    }
-}
-
-$stmt->close();
-$conn->close();
-
-// --- Categorize Notifications ---
-$categorized = [
-    'Assignments' => [],
-    'Leave Status' => [],
-    'Notices' => [],
-    'Timetables' => [],
-    'Other' => []
-];
-
-foreach ($notifications as $notification) {
-    $type = $notification['type'];
-    // Sanitize and format the notification data
-    $formatted_notification = [
-        'message' => htmlspecialchars($notification['message']),
-        'link' => htmlspecialchars($notification['link'] ?? '#'),
-        'is_read' => (bool)$notification['is_read'],
-        'time_ago' => time_ago($notification['created_at']),
-        'raw_date' => $notification['created_at']
+    // --- Categorize Notifications ---
+    $categorized = [
+        'Assignments' => [],
+        'Leave Status' => [],
+        'Notices' => [],
+        'Timetables' => [],
+        'Other' => []
     ];
 
-    // Categorization logic based on the 'type' column
-    if (strpos($type, 'assignment') !== false) {
-        $categorized['Assignments'][] = $formatted_notification;
-    } elseif (strpos($type, 'leave') !== false) {
-        $categorized['Leave Status'][] = $formatted_notification;
-    } elseif (strpos($type, 'notice') !== false) {
-        $categorized['Notices'][] = $formatted_notification;
-    } elseif (strpos($type, 'timetable') !== false) {
-        $categorized['Timetables'][] = $formatted_notification;
-    } else {
-        $categorized['Other'][] = $formatted_notification;
+    foreach ($notifications as $notification) {
+        $type = $notification['type'];
+        // Sanitize and format the notification data
+        $formatted_notification = [
+            'message' => htmlspecialchars($notification['message']),
+            'link' => htmlspecialchars($notification['link'] ?? '#'),
+            'is_read' => (bool)$notification['is_read'],
+            'time_ago' => time_ago($notification['created_at']),
+            'raw_date' => $notification['created_at']
+        ];
+
+        // Categorization logic based on the 'type' column
+        if (strpos($type, 'assignment') !== false) {
+            $categorized['Assignments'][] = $formatted_notification;
+        } elseif (strpos($type, 'leave') !== false) {
+            $categorized['Leave Status'][] = $formatted_notification;
+        } elseif (strpos($type, 'notice') !== false) {
+            $categorized['Notices'][] = $formatted_notification;
+        } elseif (strpos($type, 'timetable') !== false) {
+            $categorized['Timetables'][] = $formatted_notification;
+        } else {
+            $categorized['Other'][] = $formatted_notification;
+        }
     }
+
+    echo json_encode($categorized);
+
+} catch (PDOException $e) {
+    echo json_encode(['error' => 'Database query failed: ' . $e->getMessage()]);
 }
 
 // Function to calculate "time ago" from a timestamp
@@ -102,4 +93,6 @@ function time_ago($timestamp)
     return 'a moment ago';
 }
 
-echo json_encode($categorized);
+// Close the connection
+$conn = null;
+?>

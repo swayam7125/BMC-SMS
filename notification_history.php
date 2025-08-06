@@ -1,74 +1,55 @@
 <?php
-// Corrected absolute paths for reliability
-include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/connect.php';
-include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/encryption.php';
+include_once "./includes/connect.php";
+include_once "encryption.php";
 
-// For debugging
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-// Redirect to login if not logged in
-if (!isset($_COOKIE['encrypted_user_id'])) {
-    header("Location: /BMC-SMS/login.php");
-    exit;
+function haversine_distance($lat1, $lon1, $lat2, $lon2) {
+    $earth_radius = 6371;
+    $dLat = deg2rad($lat2 - $lat1);
+    $dLon = deg2rad($lon2 - $lon1);
+    $a = sin($dLat / 2) * sin($dLat / 2) + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLon / 2) * sin($dLon / 2);
+    $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+    return $earth_radius * $c * 1000;
 }
 
-$userId = decrypt_id($_COOKIE['encrypted_user_id']);
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email']) && isset($_POST['password'])) {
+    header('Content-Type: application/json');
+    $response = [];
 
-// --- START: Notification Fetching and Filtering Logic ---
-$all_notifications = [];
-$notification_types = [];
-$params = [$userId];
-$param_types = "i";
+    $email = trim($_POST['email']);
+    $password = trim($_POST['password']);
+    $user_lat = !empty($_POST['latitude']) ? $_POST['latitude'] : null;
+    $user_lon = !empty($_POST['longitude']) ? $_POST['longitude'] : null;
 
-// Base query for all READ notifications for the user
-$sql = "SELECT id, message, link, type, created_at FROM notifications WHERE user_id = ? AND is_read = 1";
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $response = ['status' => 'error', 'message' => 'Invalid email or password.'];
+    } else {
+        // --- FIXED: Converted to PDO ---
+        $query = 'SELECT "id", "password", "role", "account_status" FROM "users" WHERE "email" = ?';
+        $stmt = $conn->prepare($query);
+        $stmt->execute([$email]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// Get filter values from GET request
-$filter_type = isset($_GET['filter_type']) ? $_GET['filter_type'] : '';
-$start_date = isset($_GET['start_date']) ? $_GET['start_date'] : '';
-$end_date = isset($_GET['end_date']) ? $_GET['end_date'] : '';
-
-// Append filters to the SQL query
-if (!empty($filter_type)) {
-    $sql .= " AND type = ?";
-    $params[] = $filter_type;
-    $param_types .= "s";
-}
-if (!empty($start_date)) {
-    $sql .= " AND DATE(created_at) >= ?";
-    $params[] = $start_date;
-    $param_types .= "s";
-}
-if (!empty($end_date)) {
-    $sql .= " AND DATE(created_at) <= ?";
-    $params[] = $end_date;
-    $param_types .= "s";
-}
-
-$sql .= " ORDER BY created_at DESC";
-
-// Fetch filtered notifications
-if ($stmt = $conn->prepare($sql)) {
-    $stmt->bind_param($param_types, ...$params);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    while ($row = $result->fetch_assoc()) {
-        $all_notifications[] = $row;
+        if ($user && password_verify($password, $user['password'])) {
+            if ($user['account_status'] === 'suspended') {
+                $response = ['status' => 'error', 'message' => 'Your account has been suspended. Please contact the administrator.'];
+            } else {
+                // User is valid, set cookies and redirect
+                $encrypted_id = encrypt_id($user['id']);
+                $encrypted_role = encrypt_id($user['role']);
+                setcookie("encrypted_user_id", $encrypted_id, time() + 86400, "/");
+                setcookie("encrypted_user_role", $encrypted_role, time() + 86400, "/");
+                
+                // Additional logic for principal attendance can remain here if needed
+                
+                $response = ['status' => 'success', 'redirect' => 'index.php'];
+            }
+        } else {
+            $response = ['status' => 'error', 'message' => 'Invalid email or password.'];
+        }
     }
-    $stmt->close();
+    echo json_encode($response);
+    exit();
 }
-
-// Fetch distinct notification types for the filter dropdown
-$stmt_types = $conn->prepare("SELECT DISTINCT type FROM notifications WHERE user_id = ? AND is_read = 1 ORDER BY type ASC");
-$stmt_types->bind_param("i", $userId);
-$stmt_types->execute();
-$result_types = $stmt_types->get_result();
-while ($row = $result_types->fetch_assoc()) {
-    $notification_types[] = $row['type'];
-}
-$stmt_types->close();
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -230,5 +211,5 @@ $stmt_types->close();
 
 </html>
 <?php
-$conn->close();
+$conn = null;
 ?>

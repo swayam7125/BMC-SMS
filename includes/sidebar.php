@@ -2,7 +2,6 @@
 $role = null;
 $user_id = null;
 
-// Read the encrypted role from the cookie and decrypt it
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
@@ -10,34 +9,32 @@ if (isset($_COOKIE['encrypted_user_id'])) {
     $user_id = decrypt_id($_COOKIE['encrypted_user_id']);
 }
 
-// Define BASE_WEB_PATH if it's not already defined
 if (!defined('BASE_WEB_PATH')) {
     define('BASE_WEB_PATH', '/BMC-SMS/');
 }
 
-// --- START: FETCH UNREAD NOTIFICATION COUNTS ---
-// Initialize all counter variables
+// --- CORRECTED: FETCH UNREAD NOTIFICATION COUNTS WITH PDO ---
 $unread_assignments = 0; $unread_results = 0; $unread_student_notices = 0; $unread_notes = 0;
 $unread_bmc_notices = 0; $unread_leave_requests = 0; $unread_principal_notices = 0;
 $unread_teacher_notices = 0; $unread_submissions = 0; $unread_leave_status = 0;
 $unread_exam_timetables = 0;
+$is_class_teacher = false; // Initialize for teacher role
 
-// Fetch counts based on the user's role
-if (isset($conn) && $conn->ping() && $user_id) {
-    switch ($role) {
-        case 'student':
-            $sql_counts = "SELECT
-                                SUM(CASE WHEN type = 'new_assignment' THEN 1 ELSE 0 END) AS assignments,
-                                SUM(CASE WHEN type = 'marks_uploaded' THEN 1 ELSE 0 END) AS results,
-                                SUM(CASE WHEN type = 'school_notice' THEN 1 ELSE 0 END) AS notices,
-                                SUM(CASE WHEN type = 'new_notes' THEN 1 ELSE 0 END) AS notes,
-                                SUM(CASE WHEN type = 'exam_timetable' THEN 1 ELSE 0 END) AS exam_timetables
-                           FROM notifications WHERE user_id = ? AND is_read = 0";
-            $stmt_counts = $conn->prepare($sql_counts);
-            if ($stmt_counts) {
-                $stmt_counts->bind_param("i", $user_id);
-                $stmt_counts->execute();
-                $result_student = $stmt_counts->get_result()->fetch_assoc();
+// The check `$conn->ping()` has been removed as it is not a PDO method.
+if (isset($conn) && $user_id) {
+    try {
+        switch ($role) {
+            case 'student':
+                $sql_counts = 'SELECT
+                                SUM(CASE WHEN "type" = \'new_assignment\' THEN 1 ELSE 0 END) AS assignments,
+                                SUM(CASE WHEN "type" = \'marks_uploaded\' THEN 1 ELSE 0 END) AS results,
+                                SUM(CASE WHEN "type" = \'school_notice\' THEN 1 ELSE 0 END) AS notices,
+                                SUM(CASE WHEN "type" = \'new_notes\' THEN 1 ELSE 0 END) AS notes,
+                                SUM(CASE WHEN "type" = \'exam_timetable\' THEN 1 ELSE 0 END) AS exam_timetables
+                           FROM "notifications" WHERE "user_id" = ? AND "is_read" = false';
+                $stmt_counts = $conn->prepare($sql_counts);
+                $stmt_counts->execute([$user_id]);
+                $result_student = $stmt_counts->fetch(PDO::FETCH_ASSOC);
                 if ($result_student) {
                     $unread_assignments = (int) ($result_student['assignments'] ?? 0);
                     $unread_results = (int) ($result_student['results'] ?? 0);
@@ -45,92 +42,75 @@ if (isset($conn) && $conn->ping() && $user_id) {
                     $unread_notes = (int) ($result_student['notes'] ?? 0);
                     $unread_exam_timetables = (int) ($result_student['exam_timetables'] ?? 0);
                 }
-                $stmt_counts->close();
-            }
-            break;
+                break;
 
-        case 'principal':
-            $sql_principal_counts = "SELECT
-                                        SUM(CASE WHEN type = 'new_notice' THEN 1 ELSE 0 END) AS bmc_notices,
-                                        SUM(CASE WHEN type = 'leave_request' THEN 1 ELSE 0 END) AS leave_requests
-                                     FROM notifications WHERE user_id = ? AND is_read = 0";
-            $stmt_principal_counts = $conn->prepare($sql_principal_counts);
-            if($stmt_principal_counts) {
-                $stmt_principal_counts->bind_param("i", $user_id);
-                $stmt_principal_counts->execute();
-                $result_principal = $stmt_principal_counts->get_result()->fetch_assoc();
+            case 'principal':
+                $sql_principal_counts = 'SELECT
+                                        SUM(CASE WHEN "type" = \'new_notice\' THEN 1 ELSE 0 END) AS bmc_notices,
+                                        SUM(CASE WHEN "type" = \'leave_request\' THEN 1 ELSE 0 END) AS leave_requests
+                                     FROM "notifications" WHERE "user_id" = ? AND "is_read" = false';
+                $stmt_principal_counts = $conn->prepare($sql_principal_counts);
+                $stmt_principal_counts->execute([$user_id]);
+                $result_principal = $stmt_principal_counts->fetch(PDO::FETCH_ASSOC);
                 if ($result_principal) {
                     $unread_bmc_notices = (int) ($result_principal['bmc_notices'] ?? 0);
                     $unread_leave_requests = (int) ($result_principal['leave_requests'] ?? 0);
                 }
-                $stmt_principal_counts->close();
-            }
-            break;
+                break;
 
-        case 'teacher':
-            $sql_teacher_counts = "SELECT
-                                      SUM(CASE WHEN type = 'school_notice' THEN 1 ELSE 0 END) AS teacher_notices,
-                                      SUM(CASE WHEN type = 'assignment_submission' THEN 1 ELSE 0 END) AS submissions,
-                                      SUM(CASE WHEN type = 'leave_status' THEN 1 ELSE 0 END) AS leave_status,
-                                      SUM(CASE WHEN type = 'exam_timetable' THEN 1 ELSE 0 END) AS exam_timetables
-                                   FROM notifications WHERE user_id = ? AND is_read = 0";
-            $stmt_teacher_counts = $conn->prepare($sql_teacher_counts);
-            if ($stmt_teacher_counts) {
-                $stmt_teacher_counts->bind_param("i", $user_id);
-                $stmt_teacher_counts->execute();
-                $result_teacher = $stmt_teacher_counts->get_result()->fetch_assoc();
+            case 'teacher':
+                $sql_teacher_counts = "SELECT
+                                      SUM(CASE WHEN \"type\" = 'school_notice' THEN 1 ELSE 0 END) AS teacher_notices,
+                                      SUM(CASE WHEN \"type\" = 'assignment_submission' THEN 1 ELSE 0 END) AS submissions,
+                                      SUM(CASE WHEN \"type\" = 'leave_status' THEN 1 ELSE 0 END) AS leave_status,
+                                      SUM(CASE WHEN \"type\" = 'exam_timetable' THEN 1 ELSE 0 END) AS exam_timetables
+                                   FROM \"notifications\" WHERE \"user_id\" = ? AND \"is_read\" = false";
+                $stmt_teacher_counts = $conn->prepare($sql_teacher_counts);
+                $stmt_teacher_counts->execute([$user_id]);
+                $result_teacher = $stmt_teacher_counts->fetch(PDO::FETCH_ASSOC);
                 if ($result_teacher) {
                     $unread_teacher_notices = (int) ($result_teacher['teacher_notices'] ?? 0);
                     $unread_submissions = (int) ($result_teacher['submissions'] ?? 0);
                     $unread_leave_status = (int) ($result_teacher['leave_status'] ?? 0);
                     $unread_exam_timetables = (int) ($result_teacher['exam_timetables'] ?? 0);
                 }
-                $stmt_teacher_counts->close();
-            }
-            break;
 
-        case 'superadmin':
-            $sql_bmc_counts = "SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND type = 'principal_notice' AND is_read = 0";
-            $stmt_bmc_counts = $conn->prepare($sql_bmc_counts);
-            if ($stmt_bmc_counts) {
-                $stmt_bmc_counts->bind_param("i", $user_id);
-                $stmt_bmc_counts->execute();
-                $result_bmc = $stmt_bmc_counts->get_result()->fetch_assoc();
-                if ($result_bmc) {
-                    $unread_principal_notices = (int) ($result_bmc['count'] ?? 0);
+                // --- CORRECTED: Check if the user is a class teacher using PDO ---
+                $stmt_check = $conn->prepare('SELECT "class_teacher" FROM "teacher" WHERE "id" = ?');
+                $stmt_check->execute([$user_id]);
+                $teacher_details = $stmt_check->fetch(PDO::FETCH_ASSOC);
+                if ($teacher_details && $teacher_details['class_teacher'] == true) {
+                    $is_class_teacher = true;
                 }
-                $stmt_bmc_counts->close();
-            }
-            break;
+                break;
+
+            case 'superadmin':
+                $sql_bmc_counts = 'SELECT COUNT(*) FROM "notifications" WHERE "user_id" = ? AND "type" = \'principal_notice\' AND "is_read" = false';
+                $stmt_bmc_counts = $conn->prepare($sql_bmc_counts);
+                $stmt_bmc_counts->execute([$user_id]);
+                $unread_principal_notices = (int) $stmt_bmc_counts->fetchColumn();
+                break;
+        }
+    } catch (PDOException $e) {
+        error_log("Sidebar notification count failed: " . $e->getMessage());
     }
 }
-// --- END: FETCH UNREAD NOTIFICATION COUNTS ---
 ?>
 
 <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-
-    <a class="sidebar-brand d-flex align-items-center justify-content-center"
-        href="<?php echo BASE_WEB_PATH; ?>dashboard.php">
-        <div class="sidebar-brand-icon rotate-n-15">
-            <i class="fas fa-laugh-wink"></i>
-        </div>
+    <a class="sidebar-brand d-flex align-items-center justify-content-center" href="<?php echo BASE_WEB_PATH; ?>dashboard.php">
+        <div class="sidebar-brand-icon rotate-n-15"><i class="fas fa-laugh-wink"></i></div>
     </a>
-
     <hr class="sidebar-divider my-0">
-
     <li class="nav-item active">
         <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>dashboard.php">
             <i class="fas fa-fw fa-tachometer-alt"></i>
-            <span>Dashboard</span></a>
+            <span>Dashboard</span>
+        </a>
     </li>
-
     <hr class="sidebar-divider">
-
     <?php
-    // Use a switch statement to show menu items based on the user's role
     switch ($role) {
-
-        // ====== Super Admin Admin Panel ======
         case 'superadmin':
     ?>
             <div class="sidebar-heading font-weight-semibold">Admin Controls</div>
@@ -141,8 +121,7 @@ if (isset($conn) && $conn->ping() && $user_id) {
                 </a>
                 <div id="collapseSchool" class="collapse" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>includes/forms/school_enrollment.php">Enroll
-                            School</a>
+                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>includes/forms/school_enrollment.php">Enroll School</a>
                         <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/school/school_list.php">School List</a>
                     </div>
                 </div>
@@ -154,10 +133,8 @@ if (isset($conn) && $conn->ping() && $user_id) {
                 </a>
                 <div id="collapsePrincipal" class="collapse" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item"
-                            href="<?php echo BASE_WEB_PATH; ?>includes/forms/principal_enrollment.php">Enroll Principal</a>
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/principal/principal_list.php">Principal
-                            List</a>
+                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>includes/forms/principal_enrollment.php">Enroll Principal</a>
+                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/principal/principal_list.php">Principal List</a>
                     </div>
                 </div>
             </li>
@@ -194,13 +171,10 @@ if (isset($conn) && $conn->ping() && $user_id) {
                     </div>
                 </div>
             </li>
-        <?php
+    <?php
             break;
-
-
-        // ====== Principal Panel ======
         case 'principal':
-        ?>
+    ?>
             <div class="sidebar-heading font-weight-semibold">School Management</div>
             <li class="nav-item">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseTeacher">
@@ -209,14 +183,10 @@ if (isset($conn) && $conn->ping() && $user_id) {
                 </a>
                 <div id="collapseTeacher" class="collapse" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>includes/forms/teacher_enrollment.php">Enroll
-                            Teacher</a>
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/teacher_list.php">Teacher
-                            List</a>
-                            <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/principal/teacher_attendence.php">Teacher
-                            Attendance</a>
-                            <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_teacher_attendence.php">View Teacher
-                            Attendance</a>
+                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>includes/forms/teacher_enrollment.php">Enroll Teacher</a>
+                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/teacher_list.php">Teacher List</a>
+                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/principal/teacher_attendence.php">Teacher Attendance</a>
+                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_teacher_attendence.php">View Teacher Attendance</a>
                     </div>
                 </div>
             </li>
@@ -239,10 +209,8 @@ if (isset($conn) && $conn->ping() && $user_id) {
                 </a>
                 <div id="collapseStudent" class="collapse" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>includes/forms/student_enrollment.php">Enroll
-                            Student</a>
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/student/student_list.php">Student
-                            List</a>
+                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>includes/forms/student_enrollment.php">Enroll Student</a>
+                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/student/student_list.php">Student List</a>
                         <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/principal/generate_lc.php">Generate LC</a>
                     </div>
                 </div>
@@ -285,10 +253,8 @@ if (isset($conn) && $conn->ping() && $user_id) {
                 </a>
                 <div id="collapseAcademics" class="collapse" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/academics/manage_subjects.php">Manage
-                            Subjects</a>
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/academics/manage_timetable.php">Manage
-                            Timetable</a>
+                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/academics/manage_subjects.php">Manage Subjects</a>
+                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/academics/manage_timetable.php">Manage Timetable</a>
                         <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/principal/send_exam_timetable.php">Send Exam Timetable</a>
                     </div>
                 </div>
@@ -338,28 +304,10 @@ if (isset($conn) && $conn->ping() && $user_id) {
                     </div>
                 </div>
             </li>
-        <?php
+    <?php
             break;
-
-
-        // ====== Teacher Panel ======
         case 'teacher':
-            $is_class_teacher = false;
-            if ($user_id && isset($conn)) {
-                $stmt_check = $conn->prepare("SELECT class_teacher FROM teacher WHERE id = ?");
-                if ($stmt_check) {
-                    $stmt_check->bind_param("i", $user_id);
-                    $stmt_check->execute();
-                    $result_check = $stmt_check->get_result();
-                    if ($teacher_details = $result_check->fetch_assoc()) {
-                        if ($teacher_details['class_teacher'] == 1) {
-                            $is_class_teacher = true;
-                        }
-                    }
-                    $stmt_check->close();
-                }
-            }
-        ?>
+    ?>
             <div class="sidebar-heading font-weight-semibold">Classroom & Actions</div>
             <li class="nav-item">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/student/student_list.php">
@@ -478,13 +426,10 @@ if (isset($conn) && $conn->ping() && $user_id) {
                 </div>
             </li>
 
-        <?php
+    <?php
             break;
-
-
-        // ====== Student Panel ======
         case 'student':
-        ?>
+    ?>
             <div class="sidebar-heading font-weight-semibold">My Academics</div>
             <li class="nav-item">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/user/profile.php">
@@ -574,12 +519,10 @@ if (isset($conn) && $conn->ping() && $user_id) {
                     </div>
                 </div>
             </li>
-        <?php
+    <?php
             break;
-
-        // ====== Librarian Panel ======
         case 'librarian':
-        ?>
+    ?>
             <div class="sidebar-heading font-weight-semibold">Library Management</div>
             <li class="nav-item">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/user/profile.php">
@@ -632,37 +575,4 @@ if (isset($conn) && $conn->ping() && $user_id) {
             break;
     }
     ?>
-
-    <hr class="sidebar-divider d-none d-md-block">
-
-    <div class="text-center d-none d-md-inline">
-        <button class="rounded-circle border-0" id="sidebarToggle"></button>
-    </div>
-
 </ul>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    if (window.jQuery) {
-        // Function to handle badge removal on click
-        var removeBadge = function() {
-            var badge = $(this).find('.badge-counter');
-            if (badge.length > 0) {
-                // If it's a main link, fade out its own badge
-                badge.fadeOut('fast', function() {
-                    $(this).remove();
-                });
-            } else {
-                // If it's a dropdown toggle, find badges in the parent and related sub-menu
-                var parentNavItem = $(this).closest('.nav-item');
-                parentNavItem.find('.badge-counter').fadeOut('fast', function() {
-                    $(this).remove();
-                });
-            }
-        };
-
-        // Attach click event to all sidebar links and dropdown toggles
-        $('#accordionSidebar .nav-link').on('click', removeBadge);
-    }
-});
-</script>

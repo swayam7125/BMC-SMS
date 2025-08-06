@@ -1,18 +1,13 @@
 <?php
-// --- Set Timezone to prevent expiry issues ---
 date_default_timezone_set('Asia/Kolkata');
 
-// --- PHPMailer Integration ---
 use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
 
-// Use the correct path since your PHPMailer folder is inside 'includes'
 require_once __DIR__ . '/includes/PHPMailer/src/Exception.php';
 require_once __DIR__ . '/includes/PHPMailer/src/PHPMailer.php';
 require_once __DIR__ . '/includes/PHPMailer/src/SMTP.php';
 
-// --- Database Connection ---
 include_once "./includes/connect.php";
 
 header('Content-Type: application/json');
@@ -31,28 +26,27 @@ try {
         throw new Exception('Invalid email format provided.');
     }
 
-    $stmt = $conn->prepare("SELECT id FROM users WHERE email = ?");
-    $stmt->bind_param("s", $email);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    // --- FIXED: Converted to PDO syntax ---
+    $stmt = $conn->prepare('SELECT "id" FROM "users" WHERE "email" = ?');
+    $stmt->execute([$email]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if ($result->num_rows > 0) {
-        $user = $result->fetch_assoc();
+    if ($user) {
         $user_id = $user['id'];
-
         $otp = random_int(100000, 999999);
         $otp_hash = password_hash((string)$otp, PASSWORD_DEFAULT);
         $expiry = date("Y-m-d H:i:s", strtotime('+15 minutes'));
 
-        $conn->query("DELETE FROM password_resets WHERE email = '{$conn->real_escape_string($email)}'");
+        // Delete any old OTPs for this user
+        $delete_stmt = $conn->prepare('DELETE FROM "password_resets" WHERE "email" = ?');
+        $delete_stmt->execute([$email]);
 
-        $insert_stmt = $conn->prepare("INSERT INTO password_resets (user_id, email, otp_hash, expires_at) VALUES (?, ?, ?, ?)");
-        $insert_stmt->bind_param("isss", $user_id, $email, $otp_hash, $expiry);
-
-        if ($insert_stmt->execute()) {
+        // Insert the new OTP
+        $insert_stmt = $conn->prepare('INSERT INTO "password_resets" ("user_id", "email", "otp_hash", "expires_at") VALUES (?, ?, ?, ?)');
+        
+        if ($insert_stmt->execute([$user_id, $email, $otp_hash, $expiry])) {
             $mail = new PHPMailer(true);
-
-            // Server settings
+            // SMTP configuration... (remains the same)
             $mail->isSMTP();
             $mail->Host       = 'smtp.gmail.com';
             $mail->SMTPAuth   = true;
@@ -61,27 +55,12 @@ try {
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
             $mail->Port       = 465;
 
-            // Recipients
             $mail->setFrom('sms0407111726@gmail.com', 'BMC School System');
             $mail->addAddress($email);
 
-            // Content
-            $subject = "Your Password Reset Code";
-            $body = "
-                <div style='font-family: Arial, sans-serif; line-height: 1.6;'>
-                    <h2>Password Reset Request</h2>
-                    <p>Hello,</p>
-                    <p>Your One-Time Password (OTP) is:</p>
-                    <p style='text-align:center; font-size: 24px; font-weight: bold; letter-spacing: 5px; background-color: #f0f0f0; padding: 10px 20px; border-radius: 5px;'>
-                        $otp
-                    </p>
-                    <p>This code is valid for 15 minutes. If you did not request a password reset, please ignore this email.</p>
-                </div>
-            ";
-
             $mail->isHTML(true);
-            $mail->Subject = $subject;
-            $mail->Body    = $body;
+            $mail->Subject = "Your Password Reset Code";
+            $mail->Body    = "Your One-Time Password (OTP) is: <b>$otp</b>. It is valid for 15 minutes.";
 
             $mail->send();
             $response['status'] = 'success';
@@ -90,12 +69,16 @@ try {
             throw new Exception("Failed to store reset request in the database.");
         }
     } else {
+        // To prevent user enumeration, send a generic success message even if the email doesn't exist.
         $response['status'] = 'success';
         $response['message'] = 'If an account with that email exists, a reset code has been sent.';
     }
 } catch (Exception $e) {
     $response['status'] = 'error';
-    $response['message'] = 'Mailer Error: ' . $e->getMessage();
+    $response['message'] = 'An error occurred: ' . $e->getMessage();
 }
 
 echo json_encode($response);
+$conn = null; // Close connection
+?>
+ 
