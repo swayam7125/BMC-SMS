@@ -1,8 +1,13 @@
 <?php
+// ===============================================================
+// ========= PHP LOGIC FOR LOGIN PROCESSING STARTS HERE ==========
+// ===============================================================
+
 include_once "./includes/connect.php";
 include_once "encryption.php";
 
 function haversine_distance($lat1, $lon1, $lat2, $lon2) {
+    // This function is not used in the login logic, but we'll leave it
     $earth_radius = 6371;
     $dLat = deg2rad($lat2 - $lat1);
     $dLon = deg2rad($lon2 - $lon1);
@@ -24,7 +29,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email']) && isset($_PO
         $response = ['status' => 'error', 'message' => 'Invalid email or password.'];
     } else {
         try {
-            // --- CORRECTED: Using PDO to fetch user data ---
+            // Step 1: Verify user against the 'users' table
             $query = 'SELECT "id", "password", "role", "account_status" FROM "users" WHERE "email" = ?';
             $stmt = $conn->prepare($query);
             $stmt->execute([$email]);
@@ -34,25 +39,64 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email']) && isset($_PO
                 if ($user['account_status'] === 'suspended') {
                     $response = ['status' => 'error', 'message' => 'Your account has been suspended. Please contact the administrator.'];
                 } else {
-                    // User is valid, set cookies
-                    $encrypted_id = encrypt_id($user['id']);
-                    $encrypted_role = encrypt_id($user['role']);
-                    setcookie("encrypted_user_id", $encrypted_id, time() + 86400, "/");
-                    setcookie("encrypted_user_role", $encrypted_role, time() + 86400, "/");
+                    // Step 2: Fetch the role-specific details (name and image)
+                    $profileDetails = null;
+                    $profileQuery = '';
                     
-                    $response = ['status' => 'success', 'redirect' => 'index.php'];
+                    switch ($user['role']) {
+                        case 'principal':
+                            $profileQuery = 'SELECT principal_name as "name", principal_image as "image" FROM principal WHERE id = ?';
+                            break;
+                        case 'teacher':
+                            $profileQuery = 'SELECT teacher_name as "name", teacher_image as "image" FROM teacher WHERE id = ?';
+                            break;
+                        case 'student':
+                            $profileQuery = 'SELECT student_name as "name", student_image as "image" FROM student WHERE id = ?';
+                            break;
+                        case 'librarian':
+                             $profileQuery = 'SELECT librarian_name as "name", librarian_image as "image" FROM librarian WHERE id = ?';
+                            break;
+                        case 'superadmin':
+                            $profileDetails = ['name' => 'Super Admin', 'image' => null];
+                            break;
+                    }
+                    
+                    if (!empty($profileQuery)) {
+                        $stmtProfile = $conn->prepare($profileQuery);
+                        $stmtProfile->execute([$user['id']]);
+                        $profileDetails = $stmtProfile->fetch(PDO::FETCH_ASSOC);
+                    }
+
+                    if ($profileDetails) {
+                        $cookie_options = [
+                            'expires' => time() + 86400, 'path' => '/', 'secure' => true,
+                            'httponly' => true, 'samesite' => 'Lax'
+                        ];
+
+                        setcookie("encrypted_user_id", encrypt_id($user['id']), $cookie_options);
+                        setcookie("encrypted_user_role", encrypt_id($user['role']), $cookie_options);
+                        setcookie("encrypted_user_name", encrypt_id($profileDetails['name']), $cookie_options);
+                        setcookie("encrypted_profile_image", encrypt_id($profileDetails['image'] ?? ''), $cookie_options);
+
+                        $response = ['status' => 'success', 'redirect' => 'dashboard.php'];
+                    } else {
+                         $response = ['status' => 'error', 'message' => 'User profile not found. Please contact support.'];
+                    }
                 }
             } else {
                 $response = ['status' => 'error', 'message' => 'Invalid email or password.'];
             }
         } catch (PDOException $e) {
-            $response = ['status' => 'error', 'message' => 'Database error: ' . $e->getMessage()];
+            error_log("Login Error: " . $e->getMessage());
+            $response = ['status' => 'error', 'message' => 'A server error occurred. Please try again later.'];
         }
     }
     echo json_encode($response);
-    $conn = null; // Close the PDO connection
+    $conn = null;
     exit();
 }
+
+// --- PHP LOGIC ENDS HERE ---
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -67,7 +111,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email']) && isset($_PO
     <link rel="stylesheet" href="./assets/css/login.css">
 </head>
 <body>
-    <!-- The rest of the HTML for the login form remains the same -->
     <div class="container-fluid p-0">
         <div class="row g-0">
             <div class="col-lg-5 d-none d-lg-flex login-branding-panel">
@@ -103,7 +146,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email']) && isset($_PO
             </div>
         </div>
     </div>
-    <!-- Modal for Forgot Password -->
     <div class="modal fade" id="forgotPasswordModal" tabindex="-1" aria-labelledby="forgotPasswordModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
