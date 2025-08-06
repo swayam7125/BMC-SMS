@@ -7,18 +7,46 @@ if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
 
+// This page is for principals only
 if (!$role || $role !== 'principal') {
     header("Location: ../../login.php");
     exit;
 }
 
-// JOIN with users and school table to get account_status and school_name
+// --- START: ADDED CODE TO GET PRINCIPAL'S SCHOOL ID ---
+// Assuming you set 'encrypted_user_id' in a cookie upon login
+$user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+$principal_school_id = null;
+
+if ($user_id) {
+    $school_query = "SELECT school_id FROM principal WHERE id = ? LIMIT 1";
+    $stmt_school = mysqli_prepare($conn, $school_query);
+    mysqli_stmt_bind_param($stmt_school, "i", $user_id);
+    mysqli_stmt_execute($stmt_school);
+    $school_result = mysqli_stmt_get_result($stmt_school);
+    $user_data = mysqli_fetch_assoc($school_result);
+    $principal_school_id = $user_data['school_id'];
+}
+
+if (!$principal_school_id) {
+    die("Error: Could not determine the school for the principal. Please contact support.");
+}
+// --- END: ADDED CODE ---
+
+
+// --- START: MODIFIED QUERY ---
 $query = "SELECT l.id, l.librarian_name, l.email, l.phone, sc.school_name, u.account_status
           FROM librarian l
           LEFT JOIN school sc ON l.school_id = sc.id
           LEFT JOIN users u ON l.id = u.id
+          WHERE l.school_id = ? 
           ORDER BY l.id ASC";
-$result = mysqli_query($conn, $query);
+
+$stmt = mysqli_prepare($conn, $query);
+mysqli_stmt_bind_param($stmt, "i", $principal_school_id);
+mysqli_stmt_execute($stmt);
+$result = mysqli_stmt_get_result($stmt);
+// --- END: MODIFIED QUERY ---
 ?>
 
 <!DOCTYPE html>

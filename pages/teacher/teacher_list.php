@@ -12,14 +12,53 @@ if (!$role) {
     exit;
 }
 
-// JOIN with users table to get account_status
+// --- START: ADDED CODE TO GET PRINCIPAL'S SCHOOL ID ---
+$principal_school_id = null;
+if ($role === 'principal') {
+    // Assuming you set 'encrypted_user_id' in a cookie upon login
+    $user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+    
+    if ($user_id) {
+        $school_query = "SELECT school_id FROM principal WHERE id = ? LIMIT 1";
+        $stmt_school = mysqli_prepare($conn, $school_query);
+        mysqli_stmt_bind_param($stmt_school, "i", $user_id);
+        mysqli_stmt_execute($stmt_school);
+        $school_result = mysqli_stmt_get_result($stmt_school);
+        $user_data = mysqli_fetch_assoc($school_result);
+        $principal_school_id = $user_data['school_id'];
+    }
+
+    if (!$principal_school_id) {
+        die("Error: Could not determine the school for the principal. Please contact support.");
+    }
+}
+// --- END: ADDED CODE ---
+
+
+// --- START: MODIFIED QUERY ---
 $query = "SELECT t.id, t.teacher_name, t.email, t.phone, t.subject, t.std, t.batch,
                  sc.school_name, u.account_status
           FROM teacher t 
           LEFT JOIN school sc ON t.school_id = sc.id
-          LEFT JOIN users u ON t.id = u.id
-          ORDER BY t.id ASC";
-$result = mysqli_query($conn, $query);
+          LEFT JOIN users u ON t.id = u.id";
+
+// Apply the WHERE clause only if the user is a principal
+if ($role === 'principal' && $principal_school_id) {
+    $query .= " WHERE t.school_id = ?";
+}
+
+$query .= " ORDER BY t.id ASC";
+
+$stmt = mysqli_prepare($conn, $query);
+
+// Bind the parameter only if the placeholder exists in the query
+if ($role === 'principal' && $principal_school_id) {
+    mysqli_stmt_bind_param($stmt, "i", $principal_school_id);
+}
+
+mysqli_stmt_execute($stmt);
+$result = mysqli_stmt_get_result($stmt);
+// --- END: MODIFIED QUERY ---
 ?>
 
 <!DOCTYPE html>
@@ -29,7 +68,6 @@ $result = mysqli_query($conn, $query);
     <meta charset="utf-8">
     <title>Teacher Management - School Management System</title>
     
-    <!-- <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css"> -->
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
@@ -48,7 +86,7 @@ $result = mysqli_query($conn, $query);
                 <?php include_once '../../includes/header.php'; ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">Teacher Management</h1>
-                    <p class="mb-4">List of all teachers in the system.</p>
+                    <p class="mb-4">List of all teachers in <?php echo ($role === 'principal') ? 'your school' : 'the system'; ?>.</p>
                     <?php if (isset($_GET['success'])): ?>
                     <div class="alert alert-success alert-dismissible fade show" role="alert">
                         <?php echo htmlspecialchars($_GET['success']); ?><button type="button" class="close"
