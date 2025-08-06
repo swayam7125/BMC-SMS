@@ -1,11 +1,10 @@
 <?php
-// MODIFICATION: Removed session_start()
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
-include_once "../../includes/email_functions.php"; // Include email functions
+include_once "../../includes/email_functions.php";
 
 $role = decrypt_id($_COOKIE['encrypted_user_role'] ?? '');
-$userId = decrypt_id($_COOKIE['encrypted_user_id'] ?? ''); // This is the teacher's ID
+$userId = decrypt_id($_COOKIE['encrypted_user_id'] ?? '');
 
 if (!$role || $role !== 'teacher') {
     header("Location: ../../login.php");
@@ -18,115 +17,64 @@ if ($assignment_id === 0) {
     exit;
 }
 
-// Handle POST requests to accept or reject submissions
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $submission_id = $_POST['submission_id'];
-    $action = $_POST['action'];
+try {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $submission_id = $_POST['submission_id'];
+        $action = $_POST['action'];
 
-    if ($action === 'accept') {
-        $stmt = $conn->prepare("UPDATE assignment_submissions SET status = 'Accepted', evaluated_at = NOW(), rejection_reason = NULL WHERE id = ?");
-        $stmt->bind_param("i", $submission_id);
-    } elseif ($action === 'reject') {
-        $new_rejection_reason = $_POST['rejection_reason'];
+        if ($action === 'accept') {
+            $stmt = $conn->prepare('UPDATE "assignment_submissions" SET "status" = \'Accepted\', "evaluated_at" = CURRENT_TIMESTAMP, "rejection_reason" = NULL WHERE "id" = ?');
+            $stmt->execute([$submission_id]);
+        } elseif ($action === 'reject') {
+            $new_rejection_reason = $_POST['rejection_reason'];
 
-        // --- MODIFICATION: Get old reasons to create a history ---
-        // 1. Get the current reason history
-        $stmt_get_reason = $conn->prepare("SELECT rejection_reason FROM assignment_submissions WHERE id = ?");
-        $stmt_get_reason->bind_param("i", $submission_id);
-        $stmt_get_reason->execute();
-        $old_reasons = $stmt_get_reason->get_result()->fetch_assoc()['rejection_reason'] ?? '';
-        $stmt_get_reason->close();
+            $stmt_get_reason = $conn->prepare('SELECT "rejection_reason" FROM "assignment_submissions" WHERE "id" = ?');
+            $stmt_get_reason->execute([$submission_id]);
+            $old_reasons = $stmt_get_reason->fetchColumn() ?? '';
 
-        // 2. Build the new history string with a timestamp
-        $timestamp = date("d-m-Y h:i A");
-        // Sanitize new input and preserve line breaks
-        $formatted_new_reason = "<strong>Feedback on " . $timestamp . ":</strong><br>" . nl2br(htmlspecialchars($new_rejection_reason));
+            $timestamp = date("d-m-Y h:i A");
+            $formatted_new_reason = "<strong>Feedback on " . $timestamp . ":</strong><br>" . nl2br(htmlspecialchars($new_rejection_reason));
+            $updated_reasons = $formatted_new_reason . (!empty($old_reasons) ? "<hr style='margin: 10px 0; border-top: 1px solid #e3e6f0;'>" . $old_reasons : "");
 
-        $updated_reasons = $formatted_new_reason;
-        if (!empty($old_reasons)) {
-            // Prepend new reason to the top of the history
-            $updated_reasons .= "<hr style='margin: 10px 0; border-top: 1px solid #e3e6f0;'>" . $old_reasons;
+            $stmt = $conn->prepare('UPDATE "assignment_submissions" SET "status" = \'Rejected\', "rejection_reason" = ?, "evaluated_at" = CURRENT_TIMESTAMP, "rejection_count" = "rejection_count" + 1 WHERE "id" = ?');
+            $stmt->execute([$updated_reasons, $submission_id]);
         }
 
-        // 3. Update the submission with the new reason history
-        $stmt = $conn->prepare("UPDATE assignment_submissions SET status = 'Rejected', rejection_reason = ?, evaluated_at = NOW(), rejection_count = rejection_count + 1 WHERE id = ?");
-        $stmt->bind_param("si", $updated_reasons, $submission_id);
-    }
-
-    if (isset($stmt) && $stmt->execute()) {
-        // Email notification logic remains the same...
-        // ... (rest of the email code)
-    }
-    // The rest of the POST handling logic remains the same
-    if (isset($_POST['rejection_reason'])) {
-        $rejection_reason = $_POST['rejection_reason'];
-         // --- START: Email Notification to Student ---
-        // 1. Get all necessary info for the email
-        $query = "SELECT 
-                    s.student_name, s.email AS student_email,
-                    a.title AS assignment_title,
-                    t.teacher_name
-                  FROM assignment_submissions sub
-                  JOIN student s ON sub.student_id = s.id
-                  JOIN assignments a ON sub.assignment_id = a.id
-                  JOIN teacher t ON a.teacher_id = t.id
-                  WHERE sub.id = ?";
+        // Email notification logic
+        $query = 'SELECT s.student_name, s.email AS student_email, a.title AS assignment_title, t.teacher_name FROM "assignment_submissions" sub JOIN "student" s ON sub.student_id = s.id JOIN "assignments" a ON sub.assignment_id = a.id JOIN "teacher" t ON a.teacher_id = t.id WHERE sub.id = ?';
         $stmt_info = $conn->prepare($query);
-        $stmt_info->bind_param("i", $submission_id);
-        $stmt_info->execute();
-        $info = $stmt_info->get_result()->fetch_assoc();
+        $stmt_info->execute([$submission_id]);
+        $info = $stmt_info->fetch(PDO::FETCH_ASSOC);
 
         if ($info) {
             $status_text = ($action === 'accept') ? 'Accepted' : 'Rejected';
             $email_subject = "Your Assignment Submission has been " . $status_text;
-
-            $email_body = "<p>Dear " . htmlspecialchars($info['student_name']) . ",</p>
-                         <p>Your submission for the assignment '<strong>" . htmlspecialchars($info['assignment_title']) . "</strong>' has been evaluated by your teacher, " . htmlspecialchars($info['teacher_name']) . ".</p>
-                         <p><strong>Status: " . $status_text . "</strong></p>";
-
-            if ($action === 'reject' && !empty($rejection_reason)) {
-                $email_body .= "<p><strong>Teacher's Feedback:</strong><br>" . nl2br(htmlspecialchars($rejection_reason)) . "</p>
-                              <p>Please review the feedback and re-upload your work if necessary.</p>";
-            } else if ($action === 'accept') {
-                $email_body .= "<p>Great work!</p>";
+            $email_body = "<p>Dear " . htmlspecialchars($info['student_name']) . ",</p><p>Your submission for the assignment '<strong>" . htmlspecialchars($info['assignment_title']) . "</strong>' has been evaluated by your teacher, " . htmlspecialchars($info['teacher_name']) . ".</p><p><strong>Status: " . $status_text . "</strong></p>";
+            if ($action === 'reject' && !empty($_POST['rejection_reason'])) {
+                $email_body .= "<p><strong>Teacher's Feedback:</strong><br>" . nl2br(htmlspecialchars($_POST['rejection_reason'])) . "</p><p>Please review the feedback and re-upload your work if necessary.</p>";
             }
-
             send_email($info['student_email'], $email_subject, $email_body);
         }
-        $stmt_info->close();
-        // --- END: Email Notification to Student ---
+        
+        header("Location: view_submissions.php?id=" . $assignment_id);
+        exit;
     }
-    if (isset($stmt)) {
-        $stmt->close();
+
+    $stmt_assignment = $conn->prepare('SELECT "title", "standard", "subject" FROM "assignments" WHERE "id" = ? AND "teacher_id" = ?');
+    $stmt_assignment->execute([$assignment_id, $userId]);
+    $assignment = $stmt_assignment->fetch(PDO::FETCH_ASSOC);
+
+    if (!$assignment) {
+        die("Assignment not found or you do not have permission to view it.");
     }
-    header("Location: view_submissions.php?id=" . $assignment_id); // Refresh page
-    exit;
+
+    $stmt_submissions = $conn->prepare('SELECT ss.id, ss.status, ss.submitted_at, ss.rejection_reason, ss.file_path, ss.original_filename, s.student_name, s.rollno, ss.rejection_count FROM "assignment_submissions" ss JOIN "student" s ON ss.student_id = s.id WHERE ss.assignment_id = ? ORDER BY s.rollno ASC');
+    $stmt_submissions->execute([$assignment_id]);
+    $submissions = $stmt_submissions->fetchAll(PDO::FETCH_ASSOC);
+
+} catch (PDOException $e) {
+    die("Database Error: " . $e->getMessage());
 }
-
-// --- FETCH DATA FOR DISPLAY ---
-// Fetch assignment details
-$stmt_assignment = $conn->prepare("SELECT title, standard, subject FROM assignments WHERE id = ? AND teacher_id = ?");
-$stmt_assignment->bind_param("ii", $assignment_id, $userId);
-$stmt_assignment->execute();
-$assignment = $stmt_assignment->get_result()->fetch_assoc();
-$stmt_assignment->close();
-
-if (!$assignment) {
-    die("Assignment not found or you do not have permission to view it.");
-}
-
-// Fetch submissions for this assignment
-$stmt_submissions = $conn->prepare("
-    SELECT ss.id, ss.status, ss.submitted_at, ss.rejection_reason, ss.file_path, ss.original_filename, s.student_name, s.rollno, ss.rejection_count
-    FROM assignment_submissions ss
-    JOIN student s ON ss.student_id = s.id
-    WHERE ss.assignment_id = ?
-    ORDER BY s.rollno ASC
-");
-$stmt_submissions->bind_param("i", $assignment_id);
-$stmt_submissions->execute();
-$submissions = $stmt_submissions->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt_submissions->close();
 
 $pageTitle = 'View Submissions';
 ?>
@@ -283,3 +231,4 @@ $pageTitle = 'View Submissions';
     </script>
 </body>
 </html>
+<?php $conn = null; ?>

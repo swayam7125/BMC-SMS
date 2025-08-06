@@ -3,11 +3,9 @@ session_start();
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 
-// 1. --- AUTHENTICATION & AUTHORIZATION USING COOKIES ---
 $role = null;
 $user_id = null;
 
-// This block reads and decrypts the cookies to verify the user's role and ID.
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
@@ -15,85 +13,68 @@ if (isset($_COOKIE['encrypted_user_id'])) {
     $user_id = decrypt_id($_COOKIE['encrypted_user_id']);
 }
 
-// This line checks the role obtained from the cookie and redirects if it's not correct.
 if ($role !== 'librarian') {
     header("Location: ../../login.php");
     exit;
 }
 
-// Get the librarian's school_id for security checks using the ID from the cookie.
 $school_id = null;
-if ($user_id) {
-    $stmt_school = $conn->prepare("SELECT school_id FROM librarian WHERE id = ?");
-    $stmt_school->bind_param("i", $user_id);
-    $stmt_school->execute();
-    $result_school = $stmt_school->get_result();
-    if ($result_school->num_rows > 0) {
-        $school_id = $result_school->fetch_assoc()['school_id'];
-    }
-    $stmt_school->close();
-}
-
-// If school_id could not be determined, deny access.
-if (!$school_id) {
-    header("Location: ../../login.php?error=Could not verify user's school.");
-    exit;
-}
-
-// Check if a book ID is provided in the URL.
-if (!isset($_GET['id']) || empty($_GET['id'])) {
-    header("Location: book_list.php?error=No book ID specified.");
-    exit;
-}
-$book_id = intval($_GET['id']);
-
-
-// 2. --- HANDLE FORM SUBMISSION (POST Request) ---
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $title = $_POST['title'];
-    $author = $_POST['author'];
-    $isbn = $_POST['isbn'];
-    $quantity_total = intval($_POST['quantity_total']);
-    $quantity_available = intval($_POST['quantity_available']);
-    $is_digital = isset($_POST['is_digital']) ? 1 : 0;
-
-    if ($quantity_available > $quantity_total) {
-        $_SESSION['error_message'] = "Available quantity cannot be greater than the total quantity.";
-    } else {
-        // Add school_id to the WHERE clause for security.
-        $stmt_update = $conn->prepare("UPDATE books SET title = ?, author = ?, isbn = ?, quantity_total = ?, quantity_available = ?, is_digital = ? WHERE book_id = ? AND school_id = ?");
-        $stmt_update->bind_param("sssiisii", $title, $author, $isbn, $quantity_total, $quantity_available, $is_digital, $book_id, $school_id);
-
-        if ($stmt_update->execute()) {
-            $_SESSION['success_message'] = "Book updated successfully!";
-            header("Location: book_list.php");
-            exit;
-        } else {
-            $_SESSION['error_message'] = "Error updating book: " . $conn->error;
-        }
-        $stmt_update->close();
-    }
-}
-
-
-// 3. --- FETCH BOOK DATA FOR THE FORM (GET Request) ---
 $book = null;
-// Add school_id to the WHERE clause for security.
-$stmt_fetch = $conn->prepare("SELECT * FROM books WHERE book_id = ? AND school_id = ?");
-$stmt_fetch->bind_param("ii", $book_id, $school_id);
-$stmt_fetch->execute();
-$result = $stmt_fetch->get_result();
 
-// Redirect with a friendly error if book not found or not part of the librarian's school.
-if ($result->num_rows === 1) {
-    $book = $result->fetch_assoc();
-} else {
-    $_SESSION['error_message'] = "Error: Book not found or you do not have permission to edit it.";
-    header("Location: book_list.php");
-    exit;
+try {
+    // --- CORRECTED: Using PDO ---
+    if ($user_id) {
+        $stmt_school = $conn->prepare('SELECT "school_id" FROM "librarian" WHERE "id" = ?');
+        $stmt_school->execute([$user_id]);
+        $school_id = $stmt_school->fetchColumn();
+    }
+
+    if (!$school_id) {
+        header("Location: ../../login.php?error=Could not verify user's school.");
+        exit;
+    }
+
+    if (!isset($_GET['id']) || empty($_GET['id'])) {
+        header("Location: book_list.php?error=No book ID specified.");
+        exit;
+    }
+    $book_id = intval($_GET['id']);
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $title = $_POST['title'];
+        $author = $_POST['author'];
+        $isbn = $_POST['isbn'];
+        $quantity_total = intval($_POST['quantity_total']);
+        $quantity_available = intval($_POST['quantity_available']);
+        $is_digital = isset($_POST['is_digital']) ? 1 : 0;
+
+        if ($quantity_available > $quantity_total) {
+            $_SESSION['error_message'] = "Available quantity cannot be greater than the total quantity.";
+        } else {
+            $stmt_update = $conn->prepare('UPDATE "books" SET "title" = ?, "author" = ?, "isbn" = ?, "quantity_total" = ?, "quantity_available" = ?, "is_digital" = ? WHERE "book_id" = ? AND "school_id" = ?');
+            if ($stmt_update->execute([$title, $author, $isbn, $quantity_total, $quantity_available, $is_digital, $book_id, $school_id])) {
+                $_SESSION['success_message'] = "Book updated successfully!";
+                header("Location: book_list.php");
+                exit;
+            } else {
+                $_SESSION['error_message'] = "Error updating book.";
+            }
+        }
+    }
+
+    $stmt_fetch = $conn->prepare('SELECT * FROM "books" WHERE "book_id" = ? AND "school_id" = ?');
+    $stmt_fetch->execute([$book_id, $school_id]);
+    $book = $stmt_fetch->fetch(PDO::FETCH_ASSOC);
+
+    if (!$book) {
+        $_SESSION['error_message'] = "Error: Book not found or you do not have permission to edit it.";
+        header("Location: book_list.php");
+        exit;
+    }
+
+} catch (PDOException $e) {
+    $_SESSION['error_message'] = "Database Error: " . $e->getMessage();
 }
-$stmt_fetch->close();
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -170,3 +151,4 @@ $stmt_fetch->close();
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
 </html>
+<?php $conn = null; ?>

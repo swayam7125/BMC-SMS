@@ -16,77 +16,68 @@ $subjects = [];
 $standards = [];
 $timetable_data = [];
 
-// Get the school_id for the logged-in principal
-$stmt_school = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
-$stmt_school->bind_param("i", $userId);
-$stmt_school->execute();
-$school_id = $stmt_school->get_result()->fetch_assoc()['school_id'];
-$stmt_school->close();
+try {
+    // --- CORRECTED: Using PDO throughout ---
+    $stmt_school = $conn->prepare('SELECT "school_id" FROM "principal" WHERE "id" = ?');
+    $stmt_school->execute([$userId]);
+    $school_id = $stmt_school->fetchColumn();
 
-if ($school_id) {
-    // Fetch all teachers for the school to populate dropdowns
-    $teachers_stmt = $conn->prepare("SELECT id, teacher_name FROM teacher WHERE school_id = ? ORDER BY teacher_name");
-    $teachers_stmt->bind_param("i", $school_id);
-    $teachers_stmt->execute();
-    $teachers = $teachers_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    if ($school_id) {
+        $teachers_stmt = $conn->prepare('SELECT "id", "teacher_name" FROM "teacher" WHERE "school_id" = ? ORDER BY "teacher_name"');
+        $teachers_stmt->execute([$school_id]);
+        $teachers = $teachers_stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Fetch all unique standards in the school for the main selector
-    $standards_stmt = $conn->prepare("SELECT DISTINCT std FROM student WHERE school_id = ? ORDER BY CAST(std AS UNSIGNED)");
-    $standards_stmt->bind_param("i", $school_id);
-    $standards_stmt->execute();
-    $standards = $standards_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-}
+        $standards_stmt = $conn->prepare('SELECT DISTINCT "std" FROM "student" WHERE "school_id" = ? ORDER BY CAST("std" AS INTEGER)');
+        $standards_stmt->execute([$school_id]);
+        $standards = $standards_stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 
-// Get filter values from URL
-$selected_std = $_GET['standard'] ?? null;
-$total_periods = isset($_GET['periods']) ? (int)$_GET['periods'] : 8; // Default to 8 periods
+    $selected_std = $_GET['standard'] ?? null;
+    $total_periods = isset($_GET['periods']) ? (int)$_GET['periods'] : 8;
 
-// Handle form submission to save the timetable
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_timetable'])) {
-    $timetable_entries = $_POST['timetable'];
-    $standard_to_save = $_POST['standard'];
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_timetable'])) {
+        $timetable_entries = $_POST['timetable'];
+        $standard_to_save = $_POST['standard'];
 
-    $stmt = $conn->prepare("
-        INSERT INTO school_timetable (school_id, standard, day_of_week, period_number, subject_name, teacher_id, start_time, end_time)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ON DUPLICATE KEY UPDATE subject_name = VALUES(subject_name), teacher_id = VALUES(teacher_id), start_time = VALUES(start_time), end_time = VALUES(end_time)
-    ");
+        $conn->beginTransaction();
 
-    foreach ($timetable_entries as $day => $periods) {
-        foreach ($periods as $period_num => $details) {
-            if (!empty($details['subject']) && !empty($details['teacher'])) {
-                $stmt->bind_param("issisiss", $school_id, $standard_to_save, $day, $period_num, $details['subject'], $details['teacher'], $details['start_time'], $details['end_time']);
-                $stmt->execute();
+        // --- CORRECTED: PostgreSQL compatible upsert logic (DELETE then INSERT) ---
+        $delete_stmt = $conn->prepare('DELETE FROM "school_timetable" WHERE "school_id" = ? AND "standard" = ?');
+        $delete_stmt->execute([$school_id, $standard_to_save]);
+
+        $insert_stmt = $conn->prepare('INSERT INTO "school_timetable" (school_id, standard, day_of_week, period_number, subject_name, teacher_id, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+        
+        foreach ($timetable_entries as $day => $periods) {
+            foreach ($periods as $period_num => $details) {
+                if (!empty($details['subject']) && !empty($details['teacher'])) {
+                    $start_time = !empty($details['start_time']) ? $details['start_time'] : null;
+                    $end_time = !empty($details['end_time']) ? $details['end_time'] : null;
+                    $insert_stmt->execute([$school_id, $standard_to_save, $day, $period_num, $details['subject'], $details['teacher'], $start_time, $end_time]);
+                }
             }
         }
+        $conn->commit();
+        $successMessage = "Timetable for Standard $standard_to_save has been saved!";
+        $selected_std = $standard_to_save;
     }
-    $stmt->close();
-    $successMessage = "Timetable for Standard $standard_to_save has been saved!";
-    $selected_std = $standard_to_save;
-}
 
-// Fetch existing timetable data and relevant subjects IF a standard is selected
-if ($selected_std) {
-    $subjects_stmt = $conn->prepare("
-        SELECT s.subject_name 
-        FROM standard_subjects ss
-        JOIN subjects s ON ss.subject_id = s.subject_id
-        WHERE ss.standard = ?
-        ORDER BY s.subject_name ASC
-    ");
-    $subjects_stmt->bind_param("s", $selected_std);
-    $subjects_stmt->execute();
-    $subjects = $subjects_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-    $subjects_stmt->close();
+    if ($selected_std) {
+        $subjects_stmt = $conn->prepare('SELECT s."subject_name" FROM "standard_subjects" ss JOIN "subjects" s ON ss."subject_id" = s."subject_id" WHERE ss."standard" = ? ORDER BY s."subject_name" ASC');
+        $subjects_stmt->execute([$selected_std]);
+        $subjects = $subjects_stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $existing_stmt = $conn->prepare("SELECT * FROM school_timetable WHERE school_id = ? AND standard = ?");
-    $existing_stmt->bind_param("is", $school_id, $selected_std);
-    $existing_stmt->execute();
-    $result = $existing_stmt->get_result();
-    while ($row = $result->fetch_assoc()) {
-        $timetable_data[$row['day_of_week']][$row['period_number']] = $row;
+        $existing_stmt = $conn->prepare('SELECT * FROM "school_timetable" WHERE "school_id" = ? AND "standard" = ?');
+        $existing_stmt->execute([$school_id, $selected_std]);
+        $result = $existing_stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($result as $row) {
+            $timetable_data[$row['day_of_week']][$row['period_number']] = $row;
+        }
     }
-    $existing_stmt->close();
+} catch (PDOException $e) {
+    if (isset($conn) && $conn->inTransaction()) {
+        $conn->rollBack();
+    }
+    $errorMessage = "Database Error: " . $e->getMessage();
 }
 
 $days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -232,5 +223,5 @@ $days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturd
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
-
 </html>
+<?php $conn = null; ?>

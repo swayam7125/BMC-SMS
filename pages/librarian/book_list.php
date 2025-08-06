@@ -18,47 +18,37 @@ if ($role !== 'librarian') {
     exit;
 }
 
-if ($user_id) {
-    $stmt = $conn->prepare("SELECT school_id FROM librarian WHERE id = ?");
-    if ($stmt) {
-        $stmt->bind_param("i", $user_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if ($librarian_data = $result->fetch_assoc()) {
-            $school_id = $librarian_data['school_id'];
-        }
-        $stmt->close();
-    }
-}
-
-if (!$school_id) {
-    die("Could not determine the librarian's school. Access denied.");
-}
-
+$books = [];
 $search_query = isset($_GET['search']) ? trim($_GET['search']) : '';
 
-$books = [];
-$sql = "SELECT * FROM books WHERE school_id = ?";
-
-if (!empty($search_query)) {
-    // Search in title, author, and isbn
-    $sql .= " AND (title LIKE ? OR author LIKE ? OR isbn LIKE ?)";
-}
-$sql .= " ORDER BY title";
-
-$stmt_books = $conn->prepare($sql);
-if ($stmt_books) {
-    if (!empty($search_query)) {
-        $search_param = "%" . $search_query . "%";
-        $stmt_books->bind_param("isss", $school_id, $search_param, $search_param, $search_param);
-    } else {
-        $stmt_books->bind_param("i", $school_id);
+try {
+    // --- CORRECTED: Using PDO ---
+    if ($user_id) {
+        $stmt = $conn->prepare('SELECT "school_id" FROM "librarian" WHERE "id" = ?');
+        $stmt->execute([$user_id]);
+        $school_id = $stmt->fetchColumn();
     }
-    
-    $stmt_books->execute();
-    $result_books = $stmt_books->get_result();
-    $books = $result_books->fetch_all(MYSQLI_ASSOC);
-    $stmt_books->close();
+
+    if (!$school_id) {
+        die("Could not determine the librarian's school. Access denied.");
+    }
+
+    $sql = 'SELECT * FROM "books" WHERE "school_id" = ?';
+    $params = [$school_id];
+
+    if (!empty($search_query)) {
+        $sql .= ' AND ("title" ILIKE ? OR "author" ILIKE ? OR "isbn" ILIKE ?)';
+        $search_param = "%" . $search_query . "%";
+        array_push($params, $search_param, $search_param, $search_param);
+    }
+    $sql .= ' ORDER BY "title"';
+
+    $stmt_books = $conn->prepare($sql);
+    $stmt_books->execute($params);
+    $books = $stmt_books->fetchAll(PDO::FETCH_ASSOC);
+
+} catch (PDOException $e) {
+    die("Database Error: " . $e->getMessage());
 }
 ?>
 
@@ -164,3 +154,4 @@ if ($stmt_books) {
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
 </html>
+<?php $conn = null; ?>

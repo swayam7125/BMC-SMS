@@ -18,33 +18,31 @@ if ($role !== 'librarian') {
     exit;
 }
 
-if ($user_id) {
-    $stmt = $conn->prepare("SELECT school_id FROM librarian WHERE id = ?");
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    if ($data = $result->fetch_assoc()) {
-        $school_id = $data['school_id'];
-    }
-    $stmt->close();
-}
-
-if (!$school_id) {
-    die("Could not determine your school. Access denied.");
-}
-
-// Fetch pending book acquisition requests for the school from all roles
 $requests = [];
-$sql = "SELECT br.request_id, br.book_title, br.author, br.reason, br.requester_role, u.email as requester_email 
-        FROM book_requests br 
-        JOIN users u ON br.requester_id = u.id 
-        WHERE br.school_id = ? AND br.status = 'Pending'
-        ORDER BY br.created_at ASC";
-$stmt_req = $conn->prepare($sql);
-$stmt_req->bind_param("i", $school_id);
-$stmt_req->execute();
-$requests = $stmt_req->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt_req->close();
+try {
+    // --- CORRECTED: Using PDO ---
+    if ($user_id) {
+        $stmt = $conn->prepare('SELECT "school_id" FROM "librarian" WHERE "id" = ?');
+        $stmt->execute([$user_id]);
+        $school_id = $stmt->fetchColumn();
+    }
+
+    if (!$school_id) {
+        die("Could not determine your school. Access denied.");
+    }
+
+    $sql = 'SELECT br.request_id, br.book_title, br.author, br.reason, br.requester_role, u.email as requester_email 
+            FROM "book_requests" br 
+            JOIN "users" u ON br.requester_id = u.id 
+            WHERE br.school_id = ? AND br.status = \'Pending\'
+            ORDER BY br.created_at ASC';
+    $stmt_req = $conn->prepare($sql);
+    $stmt_req->execute([$school_id]);
+    $requests = $stmt_req->fetchAll(PDO::FETCH_ASSOC);
+
+} catch (PDOException $e) {
+    die("Database Error: " . $e->getMessage());
+}
 ?>
 
 <!DOCTYPE html>
@@ -118,3 +116,5 @@ $stmt_req->close();
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
 </html>
+
+<?php $conn = null; ?>

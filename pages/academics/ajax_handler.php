@@ -7,68 +7,52 @@ $response = ['success' => false, 'message' => 'Invalid action.'];
 if (isset($_POST['action'])) {
     $action = $_POST['action'];
 
-    switch ($action) {
-        // Case for adding a new subject to the 'subjects' table
-        case 'add_subject':
-            if (!empty($_POST['subject_name'])) {
-                $subject_name = trim($_POST['subject_name']);
-                try {
-                    // Use INSERT IGNORE to prevent errors if the subject already exists
-                    $query = "INSERT IGNORE INTO subjects (subject_name) VALUES (?)";
-                    $stmt = mysqli_prepare($conn, $query);
-                    mysqli_stmt_bind_param($stmt, "s", $subject_name);
-                    mysqli_stmt_execute($stmt);
+    try {
+        switch ($action) {
+            case 'add_subject':
+                if (!empty($_POST['subject_name'])) {
+                    $subject_name = trim($_POST['subject_name']);
+                    
+                    // --- CORRECTED: Using PDO with ON CONFLICT to handle existing subjects ---
+                    // This is more efficient than two separate queries.
+                    $query = 'INSERT INTO "subjects" ("subject_name") VALUES (?) ON CONFLICT ("subject_name") DO NOTHING';
+                    $stmt = $conn->prepare($query);
+                    $stmt->execute([$subject_name]);
 
-                    if (mysqli_stmt_affected_rows($stmt) > 0) {
-                        $new_id = mysqli_insert_id($conn);
+                    if ($stmt->rowCount() > 0) {
+                        $new_id = $conn->lastInsertId();
                         $response['success'] = true;
                         $response['message'] = 'Subject added successfully.';
                         $response['subject'] = ['subject_id' => $new_id, 'subject_name' => $subject_name];
                     } else {
-                        // If no rows were affected, it might already exist
-                        $check_query = "SELECT subject_id FROM subjects WHERE subject_name = ?";
-                        $stmt_check = mysqli_prepare($conn, $check_query);
-                        mysqli_stmt_bind_param($stmt_check, "s", $subject_name);
-                        mysqli_stmt_execute($stmt_check);
-                        $result = mysqli_stmt_get_result($stmt_check);
-                        if ($existing_subject = mysqli_fetch_assoc($result)) {
-                            $response['message'] = 'Subject already exists.';
-                        } else {
-                            $response['message'] = 'Failed to add subject.';
-                        }
+                        $response['message'] = 'Subject already exists.';
                     }
-                } catch (Exception $e) {
-                    $response['message'] = 'Database error: ' . $e->getMessage();
+                } else {
+                    $response['message'] = 'Subject name cannot be empty.';
                 }
-            } else {
-                $response['message'] = 'Subject name cannot be empty.';
-            }
-            break;
+                break;
 
-        // Case for fetching subjects already assigned to a specific standard
-        case 'get_subjects_for_standard':
-            if (!empty($_POST['standard'])) {
-                $standard = $_POST['standard'];
-                try {
-                    $query = "SELECT subject_id FROM standard_subjects WHERE standard = ?";
-                    $stmt = mysqli_prepare($conn, $query);
-                    mysqli_stmt_bind_param($stmt, "s", $standard);
-                    mysqli_stmt_execute($stmt);
-                    $result = mysqli_stmt_get_result($stmt);
-                    $subject_ids = mysqli_fetch_all($result, MYSQLI_ASSOC);
+            case 'get_subjects_for_standard':
+                if (!empty($_POST['standard'])) {
+                    $standard = $_POST['standard'];
+                    // --- CORRECTED: Using PDO ---
+                    $query = 'SELECT "subject_id" FROM "standard_subjects" WHERE "standard" = ?';
+                    $stmt = $conn->prepare($query);
+                    $stmt->execute([$standard]);
+                    $subject_ids = $stmt->fetchAll(PDO::FETCH_COLUMN, 0); // Fetch just the first column
 
                     $response['success'] = true;
-                    // Flatten the array to just a list of IDs for Select2
-                    $response['subject_ids'] = array_column($subject_ids, 'subject_id');
-                } catch (Exception $e) {
-                    $response['message'] = 'Database error: ' . $e->getMessage();
+                    $response['subject_ids'] = $subject_ids;
+                } else {
+                    $response['message'] = 'Standard not provided.';
                 }
-            } else {
-                $response['message'] = 'Standard not provided.';
-            }
-            break;
+                break;
+        }
+    } catch (PDOException $e) {
+        $response['message'] = 'Database error: ' . $e->getMessage();
     }
 }
 
 echo json_encode($response);
+$conn = null; // Close connection
 ?>

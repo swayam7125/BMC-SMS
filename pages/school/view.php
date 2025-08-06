@@ -1,5 +1,6 @@
 <?php
-include_once "../../includes/connect.php";
+// It's crucial that connect.php now establishes a PostgreSQL connection.
+include_once "../../includes/connect.php"; 
 include_once "../../encryption.php";
 
 $role = null;
@@ -17,22 +18,33 @@ if ($school_id <= 0) {
     exit;
 }
 
-// Fetch school data with assigned principal's details
-// Note: principal.id is now the same as users.id for a principal
+// --- PostgreSQL Query ---
+// The query is largely the same, but we'll use a numbered placeholder ($1) for the parameter.
 $query = "SELECT s.*, p.id as principal_user_id, p.principal_name, p.principal_image 
           FROM school s 
           LEFT JOIN principal p ON s.id = p.school_id 
-          WHERE s.id = ?";
-$stmt = mysqli_prepare($conn, $query);
-mysqli_stmt_bind_param($stmt, "i", $school_id);
-mysqli_stmt_execute($stmt);
-$result = mysqli_stmt_get_result($stmt);
+          WHERE s.id = $1";
 
-if (!$result || mysqli_num_rows($result) == 0) {
+// Prepare the statement for PostgreSQL
+$stmt_name = "get_school_details"; // A unique name for the prepared statement
+$prepare_result = pg_prepare($conn, $stmt_name, $query);
+
+if (!$prepare_result) {
+    // You might want to log the actual error: pg_last_error($conn)
+    header("Location: school_list.php?error=Failed to prepare statement");
+    exit;
+}
+
+// Execute the prepared statement with the school ID
+$result = pg_execute($conn, $stmt_name, array($school_id));
+
+if (!$result || pg_num_rows($result) == 0) {
     header("Location: school_list.php?error=School not found");
     exit;
 }
-$school = mysqli_fetch_assoc($result);
+
+// Fetch the single school record
+$school = pg_fetch_assoc($result);
 
 // --- Robust Photo/Logo Handling Logic ---
 // This function assumes the image_path stored in the DB is relative to your project's web root (e.g., 'pages/school/uploads/logo.png')
@@ -102,9 +114,7 @@ $default_principal_photo = getDefaultImagePath('principal', BASE_WEB_PATH);
     <meta charset="utf-8">
     <title>View School - <?php echo htmlspecialchars($school['school_name']); ?></title>
     
-    <!-- <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css"> -->
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
-    <!-- Corrected Font Awesome link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     

@@ -14,64 +14,58 @@ if (!$role) {
 $errors = [];
 $success_message = '';
 
-// Handle form submission for assigning subjects to a standard
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['assign_subjects'])) {
-    $standard = $_POST['standard'];
-    $subject_ids = isset($_POST['subject_ids']) ? $_POST['subject_ids'] : [];
+try {
+    // Handle form submission for assigning subjects
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['assign_subjects'])) {
+        $standard = $_POST['standard'];
+        $subject_ids = isset($_POST['subject_ids']) ? $_POST['subject_ids'] : [];
 
-    if (empty($standard)) {
-        $errors[] = "Please select a standard.";
-    }
-    if (empty($subject_ids)) {
-        $errors[] = "Please select at least one subject to assign.";
-    }
+        if (empty($standard)) $errors[] = "Please select a standard.";
+        if (empty($subject_ids)) $errors[] = "Please select at least one subject to assign.";
 
-    if (empty($errors)) {
-        try {
-            // First, clear existing assignments for this standard to handle deselection
-            $delete_query = "DELETE FROM standard_subjects WHERE standard = ?";
-            $stmt_delete = mysqli_prepare($conn, $delete_query);
-            mysqli_stmt_bind_param($stmt_delete, "s", $standard);
-            mysqli_stmt_execute($stmt_delete);
-            mysqli_stmt_close($stmt_delete);
+        if (empty($errors)) {
+            $conn->beginTransaction();
+            
+            // --- CORRECTED: Using PDO ---
+            $delete_stmt = $conn->prepare('DELETE FROM "standard_subjects" WHERE "standard" = ?');
+            $delete_stmt->execute([$standard]);
 
-            // Now, insert the new set of subjects
-            $insert_query = "INSERT INTO standard_subjects (standard, subject_id) VALUES (?, ?)";
-            $stmt_insert = mysqli_prepare($conn, $insert_query);
-
+            $insert_stmt = $conn->prepare('INSERT INTO "standard_subjects" ("standard", "subject_id") VALUES (?, ?)');
             foreach ($subject_ids as $subject_id) {
-                mysqli_stmt_bind_param($stmt_insert, "si", $standard, $subject_id);
-                mysqli_stmt_execute($stmt_insert);
+                $insert_stmt->execute([$standard, $subject_id]);
             }
-            mysqli_stmt_close($stmt_insert);
+            
+            $conn->commit();
             $success_message = "Subjects for standard '{$standard}' have been updated successfully!";
-        } catch (Exception $e) {
-            $errors[] = "Database error: " . $e->getMessage();
         }
     }
+
+    // --- CORRECTED: Fetch all subjects and assignments using PDO ---
+    $subjects_stmt = $conn->query('SELECT "subject_id", "subject_name" FROM "subjects" ORDER BY "subject_name"');
+    $all_subjects = $subjects_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // --- CORRECTED: Using string_agg for PostgreSQL and corrected ORDER BY ---
+    $assignments_query = "SELECT ss.standard, STRING_AGG(s.subject_name, ', ' ORDER BY s.subject_name) as assigned_subjects
+                          FROM standard_subjects ss
+                          JOIN subjects s ON ss.subject_id = s.subject_id
+                          GROUP BY ss.standard
+                          ORDER BY 
+                            CASE
+                                WHEN ss.standard = 'Nursery' THEN -3
+                                WHEN ss.standard = 'Junior' THEN -2
+                                WHEN ss.standard = 'Senior' THEN -1
+                                ELSE CAST(ss.standard AS INTEGER)
+                            END, 
+                            ss.standard";
+    $assignments_stmt = $conn->query($assignments_query);
+    $all_assignments = $assignments_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+} catch (PDOException $e) {
+    if (isset($conn) && $conn->inTransaction()) {
+        $conn->rollBack();
+    }
+    $errors[] = "Database error: " . $e->getMessage();
 }
-
-// Fetch all subjects for the multi-select dropdown
-$subjects_query = "SELECT subject_id, subject_name FROM subjects ORDER BY subject_name";
-$subjects_result = mysqli_query($conn, $subjects_query);
-$all_subjects = mysqli_fetch_all($subjects_result, MYSQLI_ASSOC);
-
-// Fetch all existing assignments to display in the table
-// UPDATE: Modified the ORDER BY clause to sort standards logically (Nursery, Junior, Senior, 1, 2, ... 12)
-$assignments_query = "SELECT ss.standard, GROUP_CONCAT(s.subject_name ORDER BY s.subject_name SEPARATOR ', ') as assigned_subjects
-                      FROM standard_subjects ss
-                      JOIN subjects s ON ss.subject_id = s.subject_id
-                      GROUP BY ss.standard
-                      ORDER BY 
-                        CASE
-                            WHEN ss.standard = 'Nursery' THEN -3
-                            WHEN ss.standard = 'Junior' THEN -2
-                            WHEN ss.standard = 'Senior' THEN -1
-                            ELSE CAST(ss.standard AS UNSIGNED)
-                        END, 
-                        ss.standard";
-$assignments_result = mysqli_query($conn, $assignments_query);
-$all_assignments = mysqli_fetch_all($assignments_result, MYSQLI_ASSOC);
 
 $standards = ['Nursery', 'Junior', 'Senior', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
 ?>
@@ -283,5 +277,5 @@ $standards = ['Nursery', 'Junior', 'Senior', '1', '2', '3', '4', '5', '6', '7', 
         });
     </script>
 </body>
-
 </html>
+<?php $conn = null; ?>

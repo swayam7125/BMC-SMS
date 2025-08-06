@@ -15,39 +15,29 @@ if (isset($_COOKIE['encrypted_user_id'])) {
     $userId = decrypt_id($_COOKIE['encrypted_user_id']);
 }
 
-// Security Check
 if ($role !== 'superadmin' || !$userId) {
     header("Location: ../../login.php");
     exit;
 }
 
-// --- Mark all 'principal_notice' notifications as read for the current Super admin ---
-$stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND type = 'principal_notice' AND is_read = 0");
-if ($stmt_mark_read) {
-    $stmt_mark_read->bind_param("i", $userId);
-    $stmt_mark_read->execute();
-    $stmt_mark_read->close();
-}
+try {
+    // --- CORRECTED: Using PDO ---
+    $stmt_mark_read = $conn->prepare('UPDATE "notifications" SET "is_read" = true WHERE "user_id" = ? AND "type" = \'principal_notice\' AND "is_read" = false');
+    $stmt_mark_read->execute([$userId]);
 
-// --- Fetch all notices from principals ---
-$notices = [];
-$sql = "SELECT 
-            pbn.title, 
-            pbn.content, 
-            pbn.file_path, 
-            pbn.original_filename, 
-            pbn.created_at,
-            p.principal_name,
-            s.school_name
-        FROM principal_to_bmc_notices pbn
-        JOIN principal p ON pbn.principal_id = p.id
-        JOIN school s ON pbn.school_id = s.id
-        ORDER BY pbn.created_at DESC";
-$result = $conn->query($sql);
-if ($result) {
-    while ($row = $result->fetch_assoc()) {
-        $notices[] = $row;
-    }
+    $sql = 'SELECT 
+                pbn.title, pbn.content, pbn.file_path, 
+                pbn.original_filename, pbn.created_at,
+                p.principal_name, s.school_name
+            FROM "principal_to_bmc_notices" pbn
+            JOIN "principal" p ON pbn.principal_id = p.id
+            JOIN "school" s ON pbn.school_id = s.id
+            ORDER BY pbn.created_at DESC';
+    $stmt_notices = $conn->query($sql);
+    $notices = $stmt_notices->fetchAll(PDO::FETCH_ASSOC);
+
+} catch (PDOException $e) {
+    die("Database Error: " . $e->getMessage());
 }
 
 $pageTitle = 'View Principal Notices';
@@ -140,3 +130,4 @@ $pageTitle = 'View Principal Notices';
     </script>
 </body>
 </html>
+<?php $conn = null; ?>

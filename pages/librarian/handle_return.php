@@ -1,66 +1,60 @@
 <?php
-// This script handles the returning of a book by the librarian.
 session_start();
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 
-// --- 1. AUTHENTICATION ---
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
-$librarian_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
-
-if ($role !== 'librarian' || !$librarian_user_id) {
+if ($role !== 'librarian') {
     header("Location: ../../login.php");
     exit;
 }
 
 $redirect_url = 'issue_return.php';
 
-// --- 2. INPUT VALIDATION ---
-if (!isset($_GET['record_id']) || !filter_var($_GET['record_id'], FILTER_VALIDATE_INT)) {
-    $_SESSION['error_message'] = "Invalid record ID specified.";
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header("Location: ../../dashboard.php");
+    exit;
+}
+
+$book_id = filter_var($_POST['book_id'], FILTER_VALIDATE_INT);
+$borrower_id = filter_var($_POST['borrower_id'], FILTER_VALIDATE_INT);
+$borrower_role = $_POST['borrower_role'];
+
+if (!$book_id || !$borrower_id || !in_array($borrower_role, ['student', 'teacher'])) {
+    $_SESSION['error_message'] = "Invalid data provided. Please fill out all fields.";
     header("Location: $redirect_url");
     exit;
 }
-$record_id = $_GET['record_id'];
 
-// --- 3. DATABASE TRANSACTION ---
-$conn->begin_transaction();
 try {
-    // A) Fetch the borrowing record and lock it for update
-    $stmt_record = $conn->prepare("SELECT * FROM borrowing_records WHERE record_id = ? AND is_returned = 0 FOR UPDATE");
-    $stmt_record->bind_param("i", $record_id);
-    $stmt_record->execute();
-    $record = $stmt_record->get_result()->fetch_assoc();
-    $stmt_record->close();
+    // --- CORRECTED: Using PDO Transaction ---
+    $conn->beginTransaction();
 
-    if (!$record) {
-        throw new Exception("Record not found or this book has already been returned.");
+    $stmt_book = $conn->prepare('SELECT "quantity_available" FROM "books" WHERE "book_id" = ? FOR UPDATE');
+    $stmt_book->execute([$book_id]);
+    $book = $stmt_book->fetch(PDO::FETCH_ASSOC);
+
+    if (!$book || $book['quantity_available'] < 1) {
+        throw new Exception("Issuing failed: This book is currently not available.");
     }
-    $book_id = $record['book_id'];
+    
+    $stmt_update_book = $conn->prepare('UPDATE "books" SET "quantity_available" = "quantity_available" - 1 WHERE "book_id" = ?');
+    $stmt_update_book->execute([$book_id]);
 
-    // B) Update the borrowing record to mark it as returned
-    $stmt_update_record = $conn->prepare("UPDATE borrowing_records SET is_returned = 1, return_date = CURDATE() WHERE record_id = ?");
-    $stmt_update_record->bind_param("i", $record_id);
-    $stmt_update_record->execute();
-    $stmt_update_record->close();
+    $due_date = date('Y-m-d', strtotime('+14 days'));
+    $stmt_insert_br = $conn->prepare('INSERT INTO "borrowing_records" (book_id, borrower_id, borrower_role, checkout_date, due_date) VALUES (?, ?, ?, CURRENT_DATE, ?)');
+    $stmt_insert_br->execute([$book_id, $borrower_id, $borrower_role, $due_date]);
 
-    // C) Increment the book's available quantity
-    $stmt_update_book = $conn->prepare("UPDATE books SET quantity_available = quantity_available + 1 WHERE book_id = ?");
-    $stmt_update_book->bind_param("i", $book_id);
-    $stmt_update_book->execute();
-    $stmt_update_book->close();
-
-    // D) Commit the transaction
     $conn->commit();
-    $_SESSION['success_message'] = "Book has been successfully marked as returned.";
+    $_SESSION['success_message'] = "Book issued successfully! Due date is " . date('d-m-Y', strtotime($due_date)) . ".";
 
 } catch (Exception $e) {
-    // If anything fails, roll back the entire transaction
-    $conn->rollback();
+    if ($conn->inTransaction()) {
+        $conn->rollBack();
+    }
     $_SESSION['error_message'] = "An error occurred: " . $e->getMessage();
 }
 
-// --- 4. REDIRECT BACK ---
 header("Location: $redirect_url");
 exit;
 ?>

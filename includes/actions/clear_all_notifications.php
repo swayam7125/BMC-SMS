@@ -14,26 +14,27 @@ if (isset($_COOKIE['encrypted_user_id'])) {
     $current_user_id = decrypt_id($_COOKIE['encrypted_user_id']);
 
     // Ensure the user ID is valid and the database connection is active
-    if ($current_user_id && isset($conn) && $conn->ping()) {
-        
-        // Use a prepared statement to mark all unread notifications as read for the current user
-        $stmt = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0");
-        $stmt->bind_param("i", $current_user_id);
-        
-        if ($stmt->execute()) {
-            $response = ['status' => 'success', 'message' => 'Notifications cleared successfully.'];
-        } else {
-            $response['message'] = 'Database query failed to execute.';
+    if ($current_user_id && isset($conn)) {
+        try {
+            // --- CORRECTED: Use a PDO prepared statement ---
+            $stmt = $conn->prepare('UPDATE "notifications" SET "is_read" = true WHERE "user_id" = ? AND "is_read" = false');
+            
+            if ($stmt->execute([$current_user_id])) {
+                $response = ['status' => 'success', 'message' => 'Notifications cleared successfully.'];
+            } else {
+                $response['message'] = 'Database query failed to execute.';
+            }
+        } catch (PDOException $e) {
+            $response['message'] = 'Database error: ' . $e->getMessage();
         }
-        
-        $stmt->close();
-        $conn->close();
-
     } else {
         $response['message'] = 'Invalid user session or database connection error.';
     }
 }
 
-// Send the final JSON response back to the JavaScript Fetch call
+// Send the final JSON response
 echo json_encode($response);
+
+// Close the PDO connection
+$conn = null;
 ?>
