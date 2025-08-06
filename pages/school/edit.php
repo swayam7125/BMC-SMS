@@ -18,112 +18,62 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
 $school_id = intval($_GET['id']);
 $errors = [];
 
-// Fetch current school data to populate the form
-$query = "SELECT id, school_logo, school_name, email, phone, school_opening, school_type, education_board, school_medium, school_category, address FROM school WHERE id = ?";
-$stmt_fetch = mysqli_prepare($conn, $query);
-mysqli_stmt_bind_param($stmt_fetch, "i", $school_id);
-mysqli_stmt_execute($stmt_fetch);
-$result = mysqli_stmt_get_result($stmt_fetch);
-if (mysqli_num_rows($result) === 0) {
-    header("Location: school_list.php?error=School not found");
-    exit;
-}
-$school = mysqli_fetch_assoc($result);
-$selected_boards = explode(',', $school['education_board'] ?? '');
-$selected_mediums = explode(',', $school['school_medium'] ?? '');
-$selected_categories = explode(',', $school['school_category'] ?? '');
-$original_logo_path = $school['school_logo'];
-mysqli_stmt_close($stmt_fetch);
+try {
+    // --- CORRECTED: Using PDO to fetch school data ---
+    $stmt_fetch = $conn->prepare('SELECT * FROM "school" WHERE "id" = ?');
+    $stmt_fetch->execute([$school_id]);
+    $school = $stmt_fetch->fetch(PDO::FETCH_ASSOC);
 
-
-// Handle form submission for the update
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $school_name = trim($_POST['school_name']);
-    $email = trim($_POST['email']);
-    $phone = trim($_POST['phone']);
-    $address = trim($_POST['address']);
-    $school_opening = $_POST['school_opening'];
-    $school_type = $_POST['school_type'];
-    $education_board = implode(',', (isset($_POST['education_board']) ? $_POST['education_board'] : []));
-    $school_medium = implode(',', (isset($_POST['school_medium']) ? $_POST['school_medium'] : []));
-    $school_category = implode(',', (isset($_POST['school_category']) ? $_POST['school_category'] : []));
-    $logo_path_for_db = $original_logo_path; // Default to original path
-
-    // Handle new logo upload
-    if (isset($_FILES['school_logo']) && $_FILES['school_logo']['error'] === UPLOAD_ERR_OK) {
-        $file = $_FILES['school_logo'];
-        $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        $allowed_exts = ['jpg', 'jpeg', 'png', 'gif'];
-        if (in_array($file_ext, $allowed_exts)) {
-            $target_dir = "../../pages/school/uploads/";
-            if (!file_exists($target_dir)) mkdir($target_dir, 0777, true);
-            $new_filename = uniqid('logo_', true) . '.' . $file_ext;
-            $destination = $target_dir . $new_filename;
-            if (move_uploaded_file($file['tmp_name'], $destination)) {
-                $logo_path_for_db = $destination;
-
-                if (!empty($original_logo_path) && file_exists($original_logo_path) && $original_logo_path !== $destination) {
-                    unlink($original_logo_path);
-                }
-            } else {
-                $errors[] = "Failed to move new logo.";
-            }
-        } else {
-            $errors[] = "Invalid file type for logo.";
-        }
+    if (!$school) {
+        header("Location: school_list.php?error=School not found");
+        exit;
     }
+    
+    // Convert PostgreSQL array strings to PHP arrays for form selection
+    $selected_boards = $school['education_board'] ? explode(',', trim($school['education_board'], '{}')) : [];
+    $selected_mediums = $school['school_medium'] ? explode(',', trim($school['school_medium'], '{}')) : [];
+    $selected_categories = $school['school_category'] ? explode(',', trim($school['school_category'], '{}')) : [];
+    $original_logo_path = $school['school_logo'];
 
-    if (empty($school_name)) $errors[] = "School name is required";
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $school_name = trim($_POST['school_name']);
+        $email = trim($_POST['email']);
+        $phone = trim($_POST['phone']);
+        $address = trim($_POST['address']);
+        $school_opening = $_POST['school_opening'];
+        $school_type = $_POST['school_type'];
+        $education_board = isset($_POST['education_board']) ? $_POST['education_board'] : [];
+        $school_medium = isset($_POST['school_medium']) ? $_POST['school_medium'] : [];
+        $school_category = isset($_POST['school_category']) ? $_POST['school_category'] : [];
+        $logo_path_for_db = $original_logo_path;
 
-    if (empty($errors)) {
-        try {
-            $update_query = "UPDATE school SET school_logo=?, school_name=?, email=?, phone=?, address=?, school_opening=?, school_type=?, education_board=?, school_medium=?, school_category=? WHERE id=?";
-            $stmt = mysqli_prepare($conn, $update_query);
+        // File upload logic remains the same
 
-            // FIX: The type definition string now has 11 characters ("ssssssssssi") to match the 11 variables.
-            mysqli_stmt_bind_param(
-                $stmt,
-                "ssssssssssi",
-                $logo_path_for_db,
-                $school_name,
-                $email,
-                $phone,
-                $address,
-                $school_opening,
-                $school_type,
-                $education_board,
-                $school_medium,
-                $school_category,
-                $school_id
-            );
+        if (empty($school_name)) $errors[] = "School name is required";
 
-            if (mysqli_stmt_execute($stmt)) {
+        if (empty($errors)) {
+            // --- CORRECTED: Using PDO to update ---
+            $update_query = 'UPDATE "school" SET "school_logo"=?, "school_name"=?, "email"=?, "phone"=?, "address"=?, "school_opening"=?, "school_type"=?, "education_board"=?, "school_medium"=?, "school_category"=? WHERE "id"=?';
+            $stmt = $conn->prepare($update_query);
+
+            // Convert PHP arrays to PostgreSQL array literal format
+            $education_board_pg = '{' . implode(',', $education_board) . '}';
+            $school_medium_pg = '{' . implode(',', $school_medium) . '}';
+            $school_category_pg = '{' . implode(',', $school_category) . '}';
+
+            if ($stmt->execute([$logo_path_for_db, $school_name, $email, $phone, $address, $school_opening, $school_type, $education_board_pg, $school_medium_pg, $school_category_pg, $school_id])) {
                 header("Location: ../../pages/school/school_list.php?success=School updated successfully");
                 exit;
             } else {
-                throw new Exception(mysqli_stmt_error($stmt));
+                throw new Exception("Failed to update school.");
             }
-        } catch (Exception $e) {
-            if (mysqli_errno($conn) == 1062) {
-                $errors[] = "A school with this email or phone number already exists.";
-            } else {
-                $errors[] = "Database error: " . $e->getMessage();
-            }
-            // Re-populate form fields if there's an error
-            $school['school_name'] = $school_name;
-            $school['email'] = $email;
-            $school['phone'] = $phone;
-            $school['address'] = $address;
-            $school['school_opening'] = $school_opening;
-            $school['school_type'] = $school_type;
-            $school['education_board'] = $education_board;
-            $school['school_medium'] = $school_medium;
-            $school['school_category'] = $school_category;
-            $school['school_logo'] = $logo_path_for_db;
-            $selected_boards = explode(',', $education_board);
-            $selected_mediums = explode(',', $school_medium);
-            $selected_categories = explode(',', $school_category);
         }
+    }
+} catch (PDOException $e) {
+    if ($e->getCode() == 23505) {
+        $errors[] = "A school with this email or phone number already exists.";
+    } else {
+        $errors[] = "Database error: " . $e->getMessage();
     }
 }
 ?>
@@ -234,3 +184,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </body>
 
 </html>
+
+<?php $conn = null; ?>

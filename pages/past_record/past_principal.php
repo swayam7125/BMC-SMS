@@ -7,39 +7,35 @@ if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
 
-// Redirect to login if not logged in
 if (!$role) {
-    header("Location: ../login.php");
+    header("Location: ../../login.php");
     exit;
 }
 
-// Fetch deleted principal data and join with the school table to get the school_name
-$query = "SELECT dp.*, s.school_name 
-          FROM deleted_principals dp
-          LEFT JOIN school s ON dp.school_id = s.id
-          ORDER BY dp.deleted_at DESC";
-$result = mysqli_query($conn, $query);
+$deleted_principals = [];
+try {
+    // --- CORRECTED: Using PDO to fetch data ---
+    $query = 'SELECT dp.*, s.school_name 
+              FROM "deleted_principals" dp
+              LEFT JOIN "school" s ON dp.school_id = s.id
+              ORDER BY dp.deleted_at DESC';
+    $stmt = $conn->query($query);
+    $deleted_principals = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    die("Database Error: " . $e->getMessage());
+}
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <title>Deleted Principal Records - School Management System</title>
-
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-
-    <!-- <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css"> -->
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
-    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-
 </head>
-
 <body id="page-top">
     <div id="wrapper">
         <?php include_once '../../includes/sidebar.php'; ?>
@@ -69,24 +65,22 @@ $result = mysqli_query($conn, $query);
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php
-                                        if ($result && mysqli_num_rows($result) > 0) {
-                                            while ($row = mysqli_fetch_assoc($result)) {
-                                                echo "<tr>";
-                                                echo "<td>" . htmlspecialchars($row['id']) . "</td>";
-                                                echo "<td>" . htmlspecialchars($row['principal_name'] ?? 'N/A') . "</td>";
-                                                echo "<td>" . htmlspecialchars($row['email'] ?? 'N/A') . "</td>";
-                                                echo "<td>" . htmlspecialchars($row['phone'] ?? 'N/A') . "</td>";
-                                                echo "<td>" . htmlspecialchars($row['school_name'] ?? 'N/A') . "</td>"; // Display School Name
-                                                echo "<td>" . htmlspecialchars($row['batch'] ?? 'N/A') . "</td>";
-                                                echo "<td>" . htmlspecialchars($row['deleted_by_role'] ?? 'N/A') . "</td>";
-                                                echo "<td>" . htmlspecialchars($row['deleted_at'] ?? 'N/A') . "</td>";
-                                                echo "</tr>";
-                                            }
-                                        } else {
-                                            echo "<tr><td colspan='8' class='text-center'>No deleted principals found</td></tr>";
-                                        }
-                                        ?>
+                                        <?php if (!empty($deleted_principals)): ?>
+                                            <?php foreach ($deleted_principals as $row): ?>
+                                                <tr>
+                                                    <td><?php echo htmlspecialchars($row['id']); ?></td>
+                                                    <td><?php echo htmlspecialchars($row['principal_name'] ?? 'N/A'); ?></td>
+                                                    <td><?php echo htmlspecialchars($row['email'] ?? 'N/A'); ?></td>
+                                                    <td><?php echo htmlspecialchars($row['phone'] ?? 'N/A'); ?></td>
+                                                    <td><?php echo htmlspecialchars($row['school_name'] ?? 'N/A'); ?></td>
+                                                    <td><?php echo htmlspecialchars($row['batch'] ?? 'N/A'); ?></td>
+                                                    <td><?php echo htmlspecialchars($row['deleted_by_role'] ?? 'N/A'); ?></td>
+                                                    <td><?php echo htmlspecialchars($row['deleted_at'] ?? 'N/A'); ?></td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        <?php else: ?>
+                                            <tr><td colspan="8" class="text-center">No deleted principals found</td></tr>
+                                        <?php endif; ?>
                                     </tbody>
                                 </table>
                             </div>
@@ -98,16 +92,18 @@ $result = mysqli_query($conn, $query);
         </div>
     </div>
     <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
-        <?php include_once "../../includes/logout_modal.php"?>
-
+    <?php include_once "../../includes/logout_modal.php"?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
-    <script src="../../assets/js/past_record.js"></script>
-
+    <script>
+        $(document).ready(function() {
+            $('#pastPrincipalTable').DataTable({ "order": [[ 7, "desc" ]] });
+        });
+    </script>
 </body>
-
 </html>
+<?php $conn = null; ?>

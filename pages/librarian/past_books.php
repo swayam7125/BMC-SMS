@@ -19,31 +19,25 @@ if ($role !== 'librarian') {
     exit;
 }
 
-if ($user_id) {
-    $stmt = $conn->prepare("SELECT school_id FROM librarian WHERE id = ?");
-    if ($stmt) {
-        $stmt->bind_param("i", $user_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if ($librarian_data = $result->fetch_assoc()) {
-            $school_id = $librarian_data['school_id'];
-        }
-        $stmt->close();
-    }
-}
-
-if (!$school_id) {
-    die("Could not determine the librarian's school. Access denied.");
-}
-
 $deleted_books = [];
-$stmt_books = $conn->prepare("SELECT * FROM deleted_books WHERE school_id = ? ORDER BY deleted_at DESC");
-if ($stmt_books) {
-    $stmt_books->bind_param("i", $school_id);
-    $stmt_books->execute();
-    $result_books = $stmt_books->get_result();
-    $deleted_books = $result_books->fetch_all(MYSQLI_ASSOC);
-    $stmt_books->close();
+try {
+    // --- CORRECTED: Using PDO ---
+    if ($user_id) {
+        $stmt = $conn->prepare('SELECT "school_id" FROM "librarian" WHERE "id" = ?');
+        $stmt->execute([$user_id]);
+        $school_id = $stmt->fetchColumn();
+    }
+
+    if (!$school_id) {
+        die("Could not determine the librarian's school. Access denied.");
+    }
+
+    $stmt_books = $conn->prepare('SELECT * FROM "deleted_books" WHERE "school_id" = ? ORDER BY "deleted_at" DESC');
+    $stmt_books->execute([$school_id]);
+    $deleted_books = $stmt_books->fetchAll(PDO::FETCH_ASSOC);
+
+} catch (PDOException $e) {
+    die("Database Error: " . $e->getMessage());
 }
 ?>
 
@@ -115,3 +109,5 @@ if ($stmt_books) {
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
 </html>
+
+<?php $conn = null; ?>

@@ -13,79 +13,67 @@ if (isset($_COOKIE['encrypted_user_id'])) {
     $userId = decrypt_id($_COOKIE['encrypted_user_id']);
 }
 
-// Ensure only Super Admin can access
 if ($role !== 'superadmin' || !$userId) {
-    header("Location: ../login.php");
+    header("Location: ../../login.php");
     exit;
 }
 
-// Handle form submission
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
-    $title = $_POST['title'];
-    $content = $_POST['content'];
-    $filePathForDB = null;
-    $originalFilename = null;
+try {
+    if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
+        $title = $_POST['title'];
+        $content = $_POST['content'];
+        $filePathForDB = null;
+        $originalFilename = null;
 
-    if (isset($_FILES['notice_file']) && $_FILES['notice_file']['error'] == 0) {
-        $originalFilename = basename($_FILES["notice_file"]["name"]);
-
-        $uploadDirServer = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/bmc/uploads/';
-        $uploadDirWeb = '/BMC-SMS/pages/bmc/uploads/';
-
-        if (!is_dir($uploadDirServer)) {
-            mkdir($uploadDirServer, 0777, true);
+        // File upload logic remains the same
+        if (isset($_FILES['notice_file']) && $_FILES['notice_file']['error'] == 0) {
+            $originalFilename = basename($_FILES["notice_file"]["name"]);
+            $uploadDirServer = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/bmc/uploads/';
+            $uploadDirWeb = '/BMC-SMS/pages/bmc/uploads/';
+            if (!is_dir($uploadDirServer)) mkdir($uploadDirServer, 0777, true);
+            $storageFilename = uniqid('notice_', true) . '_' . $originalFilename;
+            $serverFilePath = $uploadDirServer . $storageFilename;
+            if (move_uploaded_file($_FILES["notice_file"]["tmp_name"], $serverFilePath)) {
+                $filePathForDB = $uploadDirWeb . $storageFilename;
+            }
         }
 
-        $storageFilename = uniqid('notice_', true) . '_' . $originalFilename;
-        $serverFilePath = $uploadDirServer . $storageFilename;
+        $conn->beginTransaction();
 
-        if (move_uploaded_file($_FILES["notice_file"]["tmp_name"], $serverFilePath)) {
-            $filePathForDB = $uploadDirWeb . $storageFilename;
+        // --- CORRECTED: Using PDO ---
+        $stmt = $conn->prepare('INSERT INTO "notice" (user_id, title, content, file_path, original_filename) VALUES (?, ?, ?, ?, ?)');
+        $stmt->execute([$userId, $title, $content, $filePathForDB, $originalFilename]);
+
+        $message = "New notice from BMC: " . substr($title, 0, 50);
+        $link = "/pages/principal/view_notice.php";
+        $type = 'new_notice';
+
+        $stmt_principals = $conn->query('SELECT "id" FROM "users" WHERE "role" = \'principal\'');
+        $principals = $stmt_principals->fetchAll(PDO::FETCH_ASSOC);
+        
+        $stmt_notify = $conn->prepare('INSERT INTO "notifications" (user_id, message, link, type) VALUES (?, ?, ?, ?)');
+        
+        foreach ($principals as $principal) {
+            $stmt_notify->execute([$principal['id'], $message, $link, $type]);
         }
+        
+        $conn->commit();
+        header("Location: send_notice.php?success=1");
+        exit();
     }
 
-    $stmt = $conn->prepare("INSERT INTO notice (user_id, title, content, file_path, original_filename) VALUES (?, ?, ?, ?, ?)");
-    $stmt->bind_param("issss", $userId, $title, $content, $filePathForDB, $originalFilename);
-    $stmt->execute();
-    $stmt->close();
+    // --- CORRECTED: Fetch history with PDO ---
+    $stmt_history = $conn->prepare('SELECT "title", "created_at" FROM "notice" WHERE "user_id" = ? ORDER BY "created_at" DESC LIMIT 5');
+    $stmt_history->execute([$userId]);
+    $noticesHistory = $stmt_history->fetchAll(PDO::FETCH_ASSOC);
 
-    // --- START: Notification Logic ---
-    // Create notifications for all principals
-    $message = "New notice from BMC: " . substr($title, 0, 50);
-    $link = "/pages/principal/view_notice.php";
-    $type = 'new_notice';
-
-    // Get all user IDs for principals
-    $stmt_principals = $conn->prepare("SELECT id FROM users WHERE role = 'principal'");
-    $stmt_principals->execute();
-    $result_principals = $stmt_principals->get_result();
-    
-    $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");
-    
-    while ($principal = $result_principals->fetch_assoc()) {
-        $principal_id = $principal['id'];
-        $stmt_notify->bind_param("isss", $principal_id, $message, $link, $type);
-        $stmt_notify->execute();
+} catch (PDOException $e) {
+    if (isset($conn) && $conn->inTransaction()) {
+        $conn->rollBack();
     }
-    $stmt_principals->close();
-    $stmt_notify->close();
-    // --- END: Notification Logic ---
-
-
-    header("Location: send_notice.php?success=1");
-    exit();
+    die("Database Error: " . $e->getMessage());
 }
 
-// Fetch history of the last 5 notices sent by this user
-$noticesHistory = [];
-$stmt_history = $conn->prepare("SELECT title, created_at FROM notice WHERE user_id = ? ORDER BY created_at DESC LIMIT 5");
-$stmt_history->bind_param("i", $userId);
-$stmt_history->execute();
-$result_history = $stmt_history->get_result();
-while ($row_history = $result_history->fetch_assoc()) {
-    $noticesHistory[] = $row_history;
-}
-$stmt_history->close();
 $pageTitle = 'Send Notice';
 ?>
 <!DOCTYPE html>
@@ -185,6 +173,4 @@ $pageTitle = 'Send Notice';
 </body>
 
 </html>
-<?php
-$conn->close();
-?>
+<?php $conn = null; ?>

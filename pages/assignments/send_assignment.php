@@ -1,7 +1,7 @@
 <?php
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
-include_once "../../includes/email_functions.php"; // Include email functions
+include_once "../../includes/email_functions.php";
 
 $role = null;
 $userId = null;
@@ -10,7 +10,6 @@ $teacherName = 'Teacher';
 $availableStandards = [];
 $availableSubjects = [];
 
-// Get user info from cookies, ensure user is a teacher
 if (isset($_COOKIE['encrypted_user_role'])) {
     $decrypted_role = decrypt_id($_COOKIE['encrypted_user_role']);
     $role = $decrypted_role ? strtolower(trim($decrypted_role)) : null;
@@ -20,105 +19,85 @@ if (isset($_COOKIE['encrypted_user_id'])) {
 }
 
 if (!$role || !$userId || $role !== 'teacher') {
-    header("Location: ../login.php");
+    header("Location: ../../login.php");
     exit;
 }
 
-// Fetch the teacher's info (school, name, standards, subject)
-$stmt_teacher_info = $conn->prepare("SELECT school_id, teacher_name, std, subject FROM teacher WHERE id = ?");
-$stmt_teacher_info->bind_param("i", $userId);
-$stmt_teacher_info->execute();
-$result_teacher_info = $stmt_teacher_info->get_result();
-if ($row = $result_teacher_info->fetch_assoc()) {
-    $schoolId = $row['school_id'];
-    $teacherName = $row['teacher_name'];
-    if (!empty($row['std'])) {
-        $availableStandards = explode(',', $row['std']);
-    }
-    if (!empty($row['subject'])) {
-        $availableSubjects = explode(',', $row['subject']);
-    }
-}
-$stmt_teacher_info->close();
-
-// Handle form submission
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $standard = $_POST['standard'];
-    $subject = $_POST['subject'];
-    $title = $_POST['title'];
-    $description = $_POST['description'];
-    $due_date = $_POST['due_date'];
-
-    $filePathForDB = null;
-    $originalFilename = null;
-
-    if (isset($_FILES['assignment_file']) && $_FILES['assignment_file']['error'] == 0) {
-        $originalFilename = basename($_FILES["assignment_file"]["name"]);
-        $uploadDirServer = __DIR__ . '/uploads/';
-        $uploadDirWeb = '/BMC-SMS/pages/assignments/uploads/';
-
-        if (!is_dir($uploadDirServer)) {
-            mkdir($uploadDirServer, 0777, true);
+try {
+    // --- CORRECTED: Fetch teacher's info with PDO ---
+    $stmt_teacher_info = $conn->prepare('SELECT "school_id", "teacher_name", "std", "subject" FROM "teacher" WHERE "id" = ?');
+    $stmt_teacher_info->execute([$userId]);
+    if ($row = $stmt_teacher_info->fetch(PDO::FETCH_ASSOC)) {
+        $schoolId = $row['school_id'];
+        $teacherName = $row['teacher_name'];
+        if (!empty($row['std'])) {
+            // 'std' is a text[] array in PostgreSQL
+            $availableStandards = $row['std'];
         }
-
-        $storageFilename = uniqid('assign_', true) . '_' . $originalFilename;
-        $serverFilePath = $uploadDirServer . $storageFilename;
-
-        if (move_uploaded_file($_FILES["assignment_file"]["tmp_name"], $serverFilePath)) {
-            $filePathForDB = $uploadDirWeb . $storageFilename;
+        if (!empty($row['subject'])) {
+            $availableSubjects = explode(',', $row['subject']);
         }
     }
 
-    $insert_stmt = $conn->prepare("INSERT INTO assignments (teacher_id, school_id, standard, subject, title, description, due_date, file_path, original_filename) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $insert_stmt->bind_param("iisssssss", $userId, $schoolId, $standard, $subject, $title, $description, $due_date, $filePathForDB, $originalFilename);
+    if ($_SERVER["REQUEST_METHOD"] == "POST") {
+        $standard = $_POST['standard'];
+        $subject = $_POST['subject'];
+        $title = $_POST['title'];
+        $description = $_POST['description'];
+        $due_date = $_POST['due_date'];
+        $filePathForDB = null;
+        $originalFilename = null;
 
-    if ($insert_stmt->execute()) {
-        $assignmentId = $conn->insert_id; // Get the ID of the new assignment
+        // File upload logic remains the same
+        if (isset($_FILES['assignment_file']) && $_FILES['assignment_file']['error'] == 0) {
+            $originalFilename = basename($_FILES["assignment_file"]["name"]);
+            $uploadDirServer = __DIR__ . '/uploads/';
+            $uploadDirWeb = '/BMC-SMS/pages/assignments/uploads/';
+            if (!is_dir($uploadDirServer)) {
+                mkdir($uploadDirServer, 0777, true);
+            }
+            $storageFilename = uniqid('assign_', true) . '_' . $originalFilename;
+            $serverFilePath = $uploadDirServer . $storageFilename;
+            if (move_uploaded_file($_FILES["assignment_file"]["tmp_name"], $serverFilePath)) {
+                $filePathForDB = $uploadDirWeb . $storageFilename;
+            }
+        }
 
-        // --- START: Notification & Email Logic ---
-        // Get all students of the target standard
-        $stmt_students = $conn->prepare("SELECT id, email, student_name FROM student WHERE school_id = ? AND std = ?");
-        $stmt_students->bind_param("is", $schoolId, $standard);
-        $stmt_students->execute();
-        $result_students = $stmt_students->get_result();
+        // --- CORRECTED: Insert assignment and notify students using PDO ---
+        $conn->beginTransaction();
 
-        // Prepare notification components
+        $insert_stmt = $conn->prepare('INSERT INTO "assignments" (teacher_id, school_id, standard, subject, title, description, due_date, file_path, original_filename) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        $insert_stmt->execute([$userId, $schoolId, $standard, $subject, $title, $description, $due_date, $filePathForDB, $originalFilename]);
+        
+        $stmt_students = $conn->prepare('SELECT "id", "email", "student_name" FROM "student" WHERE "school_id" = ? AND "std" = ?');
+        $stmt_students->execute([$schoolId, $standard]);
+        $students = $stmt_students->fetchAll(PDO::FETCH_ASSOC);
+
         $notification_message = "New Assignment: " . substr($title, 0, 50) . "...";
         $notification_link = "/pages/assignments/view_assignments.php";
         $notification_type = "new_assignment";
-        $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");
+        $stmt_notify = $conn->prepare('INSERT INTO "notifications" (user_id, message, link, type) VALUES (?, ?, ?, ?)');
 
-        // Prepare email components
         $email_subject = "New Assignment Posted: " . htmlspecialchars($title);
-        $email_content_base = "
-            <p>A new assignment has been posted by your teacher, " . htmlspecialchars($teacherName) . ".</p>
-            <ul>
-                <li><strong>Title:</strong> " . htmlspecialchars($title) . "</li>
-                <li><strong>Subject:</strong> " . htmlspecialchars($subject) . "</li>
-                <li><strong>Due Date:</strong> " . htmlspecialchars($due_date) . "</li>
-            </ul>
-            <p><strong>Description:</strong><br>" . nl2br(htmlspecialchars($description)) . "</p>
-            <p>Please log in to the portal to view the details and submit your work.</p>
-        ";
+        $email_content_base = "<p>A new assignment has been posted by your teacher, " . htmlspecialchars($teacherName) . ".</p><ul><li><strong>Title:</strong> " . htmlspecialchars($title) . "</li><li><strong>Subject:</strong> " . htmlspecialchars($subject) . "</li><li><strong>Due Date:</strong> " . htmlspecialchars($due_date) . "</li></ul><p><strong>Description:</strong><br>" . nl2br(htmlspecialchars($description)) . "</p><p>Please log in to the portal to view the details and submit your work.</p>";
 
-        while ($student = $result_students->fetch_assoc()) {
-            // 1. Send In-App Notification
-            $stmt_notify->bind_param("isss", $student['id'], $notification_message, $notification_link, $notification_type);
-            $stmt_notify->execute();
-
-            // 2. Send Email
+        foreach ($students as $student) {
+            $stmt_notify->execute([$student['id'], $notification_message, $notification_link, $notification_type]);
             $email_body = "<p>Dear " . htmlspecialchars($student['student_name']) . ",</p>" . $email_content_base;
             send_email($student['email'], $email_subject, $email_body);
         }
-        $stmt_students->close();
-        $stmt_notify->close();
-        // --- END: Notification & Email Logic ---
+        
+        $conn->commit();
+        header("Location: assignment_history.php?success=1");
+        exit();
     }
-    $insert_stmt->close();
-
-    header("Location: assignment_history.php?success=1");
-    exit();
+} catch (PDOException $e) {
+    if (isset($conn) && $conn->inTransaction()) {
+        $conn->rollBack();
+    }
+    die("Database error: " . $e->getMessage());
 }
+
 $pageTitle = 'Send Assignment';
 ?>
 <!DOCTYPE html>
@@ -209,6 +188,4 @@ $pageTitle = 'Send Assignment';
 </body>
 
 </html>
-<?php
-$conn->close();
-?>
+<?php $conn = null; ?>

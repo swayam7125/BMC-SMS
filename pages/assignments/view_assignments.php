@@ -22,113 +22,81 @@ if (!$role || $role !== 'student') {
     exit;
 }
 
-// Mark this student's assignment notifications as read
-if ($userId) {
-    $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND type = 'new_assignment' AND is_read = 0");
-    if ($stmt_mark_read) {
-        $stmt_mark_read->bind_param("i", $userId);
-        $stmt_mark_read->execute();
-        $stmt_mark_read->close();
+try {
+    // --- CORRECTED: Using PDO throughout ---
+    if ($userId) {
+        $stmt_mark_read = $conn->prepare('UPDATE "notifications" SET "is_read" = true WHERE "user_id" = ? AND "type" = \'new_assignment\' AND "is_read" = false');
+        $stmt_mark_read->execute([$userId]);
     }
-}
 
-// Handle assignment submission
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_FILES['assignment_file']) && isset($_POST['assignment_id'])) {
-    $assignment_id = $_POST['assignment_id'];
-    $student_id = $userId;
+    if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_FILES['assignment_file']) && isset($_POST['assignment_id'])) {
+        $assignment_id = $_POST['assignment_id'];
+        $student_id = $userId;
 
-    if (isset($_FILES['assignment_file']) && $_FILES['assignment_file']['error'] == 0) {
-        $originalFilename = basename($_FILES["assignment_file"]["name"]);
-        $uploadDirServer = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/assignments/submit/';
-        $uploadDirWeb = '/BMC-SMS/pages/assignments/submit/';
-        if (!is_dir($uploadDirServer)) {
-            mkdir($uploadDirServer, 0777, true);
-        }
+        if (isset($_FILES['assignment_file']) && $_FILES['assignment_file']['error'] == 0) {
+            $originalFilename = basename($_FILES["assignment_file"]["name"]);
+            $uploadDirServer = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/assignments/submit/';
+            $uploadDirWeb = '/BMC-SMS/pages/assignments/submit/';
+            if (!is_dir($uploadDirServer)) mkdir($uploadDirServer, 0777, true);
+            
+            $storageFilename = uniqid('sub_', true) . '_' . $originalFilename;
+            $serverFilePath = $uploadDirServer . $storageFilename;
 
-        $storageFilename = uniqid('sub_', true) . '_' . $originalFilename;
-        $serverFilePath = $uploadDirServer . $storageFilename;
+            if (move_uploaded_file($_FILES["assignment_file"]["tmp_name"], $serverFilePath)) {
+                $filePathForDB = $uploadDirWeb . $storageFilename;
+                
+                $check_stmt = $conn->prepare('SELECT "id" FROM "assignment_submissions" WHERE "assignment_id" = ? AND "student_id" = ?');
+                $check_stmt->execute([$assignment_id, $student_id]);
+                $existing_submission = $check_stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (move_uploaded_file($_FILES["assignment_file"]["tmp_name"], $serverFilePath)) {
-            $filePathForDB = $uploadDirWeb . $storageFilename;
-            $check_stmt = $conn->prepare("SELECT id FROM assignment_submissions WHERE assignment_id = ? AND student_id = ?");
-            $check_stmt->bind_param("ii", $assignment_id, $student_id);
-            $check_stmt->execute();
-            $existing_submission = $check_stmt->get_result()->fetch_assoc();
-            $check_stmt->close();
-
-            if ($existing_submission) {
-                $update_stmt = $conn->prepare("UPDATE assignment_submissions SET file_path = ?, original_filename = ?, status = 'Re-submitted', submitted_at = NOW(), evaluated_at = NULL WHERE id = ?");
-                $update_stmt->bind_param("ssi", $filePathForDB, $originalFilename, $existing_submission['id']);
-                $update_stmt->execute();
-                $update_stmt->close();
-            } else {
-                $insert_stmt = $conn->prepare("INSERT INTO assignment_submissions (assignment_id, student_id, file_path, original_filename, status) VALUES (?, ?, ?, ?, 'Submitted')");
-                $insert_stmt->bind_param("iiss", $assignment_id, $student_id, $filePathForDB, $originalFilename);
-                $insert_stmt->execute();
-                $insert_stmt->close();
-            }
-
-            // --- ## START: CREATE NOTIFICATION FOR TEACHER ## ---
-            $stmt_teacher_id = $conn->prepare("SELECT teacher_id FROM assignments WHERE id = ?");
-            $stmt_teacher_id->bind_param("i", $assignment_id);
-            $stmt_teacher_id->execute();
-            $teacher_info = $stmt_teacher_id->get_result()->fetch_assoc();
-            $stmt_teacher_id->close();
-
-            if ($teacher_info) {
-                $teacher_id = $teacher_info['teacher_id'];
-                $stmt_student_name = $conn->prepare("SELECT student_name FROM student WHERE id = ?");
-                $stmt_student_name->bind_param("i", $student_id);
-                $stmt_student_name->execute();
-                $student_info = $stmt_student_name->get_result()->fetch_assoc();
-                $stmt_student_name->close();
-                $student_name = $student_info['student_name'] ?? 'A student';
-
-                $notification_message = htmlspecialchars($student_name) . " has submitted an assignment.";
-                $notification_link = "/BMC-SMS/pages/assignments/view_submissions.php?id=" . $assignment_id;
-                $notification_type = "assignment_submission";
-
-                $insert_notif_stmt = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");
-                if($insert_notif_stmt){
-                    $insert_notif_stmt->bind_param("isss", $teacher_id, $notification_message, $notification_link, $notification_type);
-                    $insert_notif_stmt->execute();
-                    $insert_notif_stmt->close();
+                if ($existing_submission) {
+                    $update_stmt = $conn->prepare('UPDATE "assignment_submissions" SET "file_path" = ?, "original_filename" = ?, "status" = \'Re-submitted\', "submitted_at" = CURRENT_TIMESTAMP, "evaluated_at" = NULL WHERE "id" = ?');
+                    $update_stmt->execute([$filePathForDB, $originalFilename, $existing_submission['id']]);
+                } else {
+                    $insert_stmt = $conn->prepare('INSERT INTO "assignment_submissions" (assignment_id, student_id, file_path, original_filename, status) VALUES (?, ?, ?, ?, \'Submitted\')');
+                    $insert_stmt->execute([$assignment_id, $student_id, $filePathForDB, $originalFilename]);
                 }
+
+                $stmt_teacher_id = $conn->prepare('SELECT "teacher_id" FROM "assignments" WHERE "id" = ?');
+                $stmt_teacher_id->execute([$assignment_id]);
+                $teacher_info = $stmt_teacher_id->fetch(PDO::FETCH_ASSOC);
+
+                if ($teacher_info) {
+                    $teacher_id = $teacher_info['teacher_id'];
+                    $stmt_student_name = $conn->prepare('SELECT "student_name" FROM "student" WHERE "id" = ?');
+                    $stmt_student_name->execute([$student_id]);
+                    $student_info = $stmt_student_name->fetch(PDO::FETCH_ASSOC);
+                    $student_name = $student_info['student_name'] ?? 'A student';
+
+                    $notification_message = htmlspecialchars($student_name) . " has submitted an assignment.";
+                    $notification_link = "/BMC-SMS/pages/assignments/view_submissions.php?id=" . $assignment_id;
+                    $notification_type = "assignment_submission";
+
+                    $insert_notif_stmt = $conn->prepare('INSERT INTO "notifications" (user_id, message, link, type) VALUES (?, ?, ?, ?)');
+                    $insert_notif_stmt->execute([$teacher_id, $notification_message, $notification_link, $notification_type]);
+                }
+                header("Location: view_assignments.php?submission=success");
+                exit();
             }
-            // --- ## END: CREATE NOTIFICATION FOR TEACHER ## ---
-
-            header("Location: view_assignments.php?submission=success");
-            exit();
         }
+        header("Location: view_assignments.php?submission=error");
+        exit();
     }
-    header("Location: view_assignments.php?submission=error");
-    exit();
+
+    $student_info_stmt = $conn->prepare('SELECT "school_id", "std" FROM "student" WHERE "id" = ?');
+    $student_info_stmt->execute([$userId]);
+    $student_info = $student_info_stmt->fetch(PDO::FETCH_ASSOC);
+    $schoolId = $student_info['school_id'] ?? 0;
+    $studentStd = $student_info['std'] ?? '';
+
+    $sql = 'SELECT a.id, a.title, a.subject, a.description, a.due_date, a.file_path, a.original_filename, t.teacher_name, ss.status as submission_status, ss.rejection_reason FROM "assignments" a JOIN "teacher" t ON a.teacher_id = t.id LEFT JOIN "assignment_submissions" ss ON a.id = ss.assignment_id AND ss.student_id = ? WHERE a.school_id = ? AND a.standard = ? ORDER BY a.due_date DESC';
+    $stmt = $conn->prepare($sql);
+    $stmt->execute([$userId, $schoolId, $studentStd]);
+    $assignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+} catch (PDOException $e) {
+    die("Database error: " . $e->getMessage());
 }
-
-// ... the rest of the file remains the same ...
-// Fetch data for display
-$student_info_stmt = $conn->prepare("SELECT school_id, std FROM student WHERE id = ?");
-$student_info_stmt->bind_param("i", $userId);
-$student_info_stmt->execute();
-$student_info = $student_info_stmt->get_result()->fetch_assoc();
-$schoolId = $student_info['school_id'] ?? 0;
-$studentStd = $student_info['std'] ?? '';
-$student_info_stmt->close();
-
-$sql = "
-    SELECT 
-        a.id, a.title, a.subject, a.description, a.due_date,
-        a.file_path, a.original_filename, t.teacher_name,
-        ss.status as submission_status, ss.rejection_reason
-    FROM assignments a
-    JOIN teacher t ON a.teacher_id = t.id
-    LEFT JOIN assignment_submissions ss ON a.id = ss.assignment_id AND ss.student_id = ?
-    WHERE a.school_id = ? AND a.standard = ? ORDER BY a.due_date DESC";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("iis", $userId, $schoolId, $studentStd);
-$stmt->execute();
-$assignments = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -263,3 +231,5 @@ $stmt->close();
     </script>
 </body>
 </html>
+
+<?php $conn = null; ?>

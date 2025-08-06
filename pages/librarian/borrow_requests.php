@@ -19,31 +19,42 @@ if ($role !== 'librarian') {
     exit;
 }
 
-if ($user_id) {
-    $stmt = $conn->prepare("SELECT school_id FROM librarian WHERE id = ?");
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $school_id = $stmt->get_result()->fetch_assoc()['school_id'];
-    $stmt->close();
-}
-
-if (!$school_id) {
-    die("Access denied.");
-}
-
 $requests = [];
-$sql = "SELECT br.request_id, b.title, u.email as borrower_email, br.borrower_role, br.request_date, br.status, br.action_date, br.requested_due_date, l_user.email as librarian_email
-        FROM borrow_requests br 
-        JOIN books b ON br.book_id = b.book_id 
-        JOIN users u ON br.borrower_id = u.id 
-        LEFT JOIN users l_user ON br.librarian_id = l_user.id
-        WHERE br.school_id = ? 
-        ORDER BY FIELD(br.status, 'Pending', 'Approved', 'Rejected', 'Collected'), br.request_date DESC";
-$stmt_req = $conn->prepare($sql);
-$stmt_req->bind_param("i", $school_id);
-$stmt_req->execute();
-$requests = $stmt_req->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt_req->close();
+try {
+    // --- CORRECTED: Using PDO ---
+    if ($user_id) {
+        $stmt = $conn->prepare('SELECT "school_id" FROM "librarian" WHERE "id" = ?');
+        $stmt->execute([$user_id]);
+        $school_id = $stmt->fetchColumn();
+    }
+
+    if (!$school_id) {
+        die("Access denied.");
+    }
+
+    // --- CORRECTED: Replaced FIELD() with CASE for PostgreSQL compatibility ---
+    $sql = "SELECT br.request_id, b.title, u.email as borrower_email, br.borrower_role, br.request_date, br.status, br.action_date, br.requested_due_date, l_user.email as librarian_email
+            FROM borrow_requests br 
+            JOIN books b ON br.book_id = b.book_id 
+            JOIN users u ON br.borrower_id = u.id 
+            LEFT JOIN users l_user ON br.librarian_id = l_user.id
+            WHERE br.school_id = ? 
+            ORDER BY 
+                CASE br.status 
+                    WHEN 'Pending' THEN 1 
+                    WHEN 'Approved' THEN 2 
+                    WHEN 'Rejected' THEN 3 
+                    WHEN 'Collected' THEN 4 
+                    ELSE 5 
+                END, 
+                br.request_date DESC";
+    $stmt_req = $conn->prepare($sql);
+    $stmt_req->execute([$school_id]);
+    $requests = $stmt_req->fetchAll(PDO::FETCH_ASSOC);
+
+} catch (PDOException $e) {
+    $_SESSION['error_message'] = "Database Error: " . $e->getMessage();
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -176,3 +187,4 @@ $stmt_req->close();
     </script>
 </body>
 </html>
+<?php $conn = null; ?>

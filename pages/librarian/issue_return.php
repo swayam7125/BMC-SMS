@@ -2,78 +2,51 @@
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 
-$role = null;
-$user_id = null;
-$school_id = null;
-$success_message = null;
-$error_message = null;
+session_start();
+$success_message = $_SESSION['success_message'] ?? null;
+$error_message = $_SESSION['error_message'] ?? null;
+unset($_SESSION['success_message'], $_SESSION['error_message']);
 
-// Check for success or error message cookies
-if (isset($_COOKIE['success_message'])) {
-    $success_message = $_COOKIE['success_message'];
-    // Clear the cookie by setting its expiration time to the past
-    setcookie('success_message', '', time() - 3600, "/");
-}
-if (isset($_COOKIE['error_message'])) {
-    $error_message = $_COOKIE['error_message'];
-    // Clear the cookie
-    setcookie('error_message', '', time() - 3600, "/");
-}
-
-
-if (isset($_COOKIE['encrypted_user_role'])) {
-    $role = decrypt_id($_COOKIE['encrypted_user_role']);
-}
-if (isset($_COOKIE['encrypted_user_id'])) {
-    $user_id = decrypt_id($_COOKIE['encrypted_user_id']);
-}
+$role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
+$user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
 
 if ($role !== 'librarian') {
     header("Location: ../../login.php");
     exit;
 }
 
-if ($user_id) {
-    $stmt = $conn->prepare("SELECT school_id FROM librarian WHERE id = ?");
-    if($stmt){
-        $stmt->bind_param("i", $user_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if ($librarian_data = $result->fetch_assoc()) {
-            $school_id = $librarian_data['school_id'];
-        }
-        $stmt->close();
+$school_id = null;
+$available_books = [];
+$issued_books = [];
+$returned_history = [];
+
+try {
+    if ($user_id) {
+        $stmt = $conn->prepare('SELECT "school_id" FROM "librarian" WHERE "id" = ?');
+        $stmt->execute([$user_id]);
+        $school_id = $stmt->fetchColumn();
     }
+
+    if (!$school_id) {
+        die("Could not determine the librarian's school. Access denied.");
+    }
+
+    // --- CORRECTED: All queries converted to PDO ---
+    $available_books_stmt = $conn->prepare('SELECT "book_id", "title", "author" FROM "books" WHERE "school_id" = ? AND "quantity_available" > 0 AND "is_digital" = false');
+    $available_books_stmt->execute([$school_id]);
+    $available_books = $available_books_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $issued_books_stmt = $conn->prepare('SELECT br.*, b.title, u.email as borrower_email FROM "borrowing_records" br JOIN "books" b ON br.book_id = b.book_id JOIN "users" u ON br.borrower_id = u.id WHERE b.school_id = ? AND br.is_returned = false ORDER BY br.due_date ASC');
+    $issued_books_stmt->execute([$school_id]);
+    $issued_books = $issued_books_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $returned_history_stmt = $conn->prepare('SELECT br.*, b.title, u.email as borrower_email FROM "borrowing_records" br JOIN "books" b ON br.book_id = b.book_id JOIN "users" u ON br.borrower_id = u.id WHERE b.school_id = ? AND br.is_returned = true ORDER BY br.return_date DESC');
+    $returned_history_stmt->execute([$school_id]);
+    $returned_history = $returned_history_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+} catch (PDOException $e) {
+    $error_message = "Database Error: " . $e->getMessage();
 }
-
-if (!$school_id) {
-    die("Could not determine the librarian's school. Access denied.");
-}
-
-// Get available physical books for issuing
-$available_books_query = "SELECT book_id, title, author FROM books WHERE school_id = ? AND quantity_available > 0 AND is_digital = 0";
-$stmt_avail = $conn->prepare($available_books_query);
-$stmt_avail->bind_param("i", $school_id);
-$stmt_avail->execute();
-$available_books = $stmt_avail->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt_avail->close();
-
-// Get currently issued (not returned) books
-$issued_books_query = "SELECT br.*, b.title, u.email as borrower_email FROM borrowing_records br JOIN books b ON br.book_id = b.book_id JOIN users u ON br.borrower_id = u.id WHERE b.school_id = ? AND br.is_returned = 0 ORDER BY br.due_date ASC";
-$stmt_issued = $conn->prepare($issued_books_query);
-$stmt_issued->bind_param("i", $school_id);
-$stmt_issued->execute();
-$issued_books = $stmt_issued->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt_issued->close();
-
-// Get history of returned books
-$returned_history_query = "SELECT br.*, b.title, u.email as borrower_email FROM borrowing_records br JOIN books b ON br.book_id = b.book_id JOIN users u ON br.borrower_id = u.id WHERE b.school_id = ? AND br.is_returned = 1 ORDER BY br.return_date DESC";
-$stmt_history = $conn->prepare($returned_history_query);
-$stmt_history->bind_param("i", $school_id);
-$stmt_history->execute();
-$returned_history = $stmt_history->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt_history->close();
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -251,3 +224,5 @@ $(document).ready(function() {
 </script>
 </body>
 </html>
+
+<?php $conn = null; ?>

@@ -1,5 +1,4 @@
 <?php
-
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
@@ -8,21 +7,24 @@ if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
 
-// Redirect to login if not logged in
 if (!$role) {
-    header("Location: ../login.php");
+    header("Location: ../../login.php");
     exit;
 }
 
-// Fetch school data with principal names
-// No changes needed as school data fetching is not directly impacted by user ID changes
-$query =  "SELECT s.id, s.school_name, s.email, s.phone, s.address, p.principal_name 
-           FROM school s 
-           LEFT JOIN principal p ON s.id = p.school_id
-           ORDER BY s.id ASC";
-$result = mysqli_query($conn, $query);
+$schools = [];
+try {
+    // --- CORRECTED: Using PDO to fetch school data ---
+    $query =  'SELECT s.id, s.school_name, s.email, s.phone, s.address, p.principal_name 
+               FROM "school" s 
+               LEFT JOIN "principal" p ON s.id = p.school_id
+               ORDER BY s.id ASC';
+    $stmt = $conn->query($query);
+    $schools = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    die("Database Error: " . $e->getMessage());
+}
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 
@@ -180,16 +182,14 @@ $result = mysqli_query($conn, $query);
 
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
-
     <script src="../../assets/js/sb-admin-2.min.js"></script>
-
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
-
     <script src="../../assets/js/custom_school_scripts.js"></script>
 
 </body>
 
 </html>
+
+<?php $conn = null; ?>

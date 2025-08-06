@@ -1,12 +1,8 @@
 <?php
 // This script handles the librarian's approval or rejection of a book borrowing request.
-
+session_start();
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
-
-session_start(); // Using session for flash messages (success/error feedback)
-
-// --- 1. AUTHENTICATION AND INITIALIZATION ---
 
 $role = null;
 $librarian_user_id = null;
@@ -25,10 +21,9 @@ if ($role !== 'librarian' || !$librarian_user_id) {
 
 $redirect_url = 'borrow_requests.php';
 
-// --- 2. HANDLE REJECTION (POST REQUEST FROM MODAL) ---
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['action']) && $_POST['action'] === 'reject') {
+try {
+    // --- CORRECTED: Using PDO for all database operations ---
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'reject') {
         $request_id = filter_var($_POST['request_id'], FILTER_VALIDATE_INT);
         $rejection_reason = trim($_POST['rejection_reason']);
 
@@ -38,91 +33,72 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        // Update the borrow request status to Rejected with a reason
-        $stmt_reject = $conn->prepare("UPDATE borrow_requests SET status = 'Rejected', librarian_id = ?, action_date = NOW(), rejection_reason = ? WHERE request_id = ? AND status = 'Pending'");
-        $stmt_reject->bind_param("isi", $librarian_user_id, $rejection_reason, $request_id);
-        
-        if ($stmt_reject->execute() && $stmt_reject->affected_rows > 0) {
+        $stmt_info = $conn->prepare('SELECT br.borrower_id, br.borrower_role, b.title FROM "borrow_requests" br JOIN "books" b ON br.book_id = b.book_id WHERE br.request_id = ?');
+        $stmt_info->execute([$request_id]);
+        $info = $stmt_info->fetch(PDO::FETCH_ASSOC);
+
+        $stmt_reject = $conn->prepare("UPDATE \"borrow_requests\" SET status = 'Rejected', librarian_id = ?, action_date = CURRENT_TIMESTAMP, rejection_reason = ? WHERE request_id = ? AND status = 'Pending'");
+        if ($stmt_reject->execute([$librarian_user_id, $rejection_reason, $request_id]) && $stmt_reject->rowCount() > 0) {
+            if ($info) {
+                $message = "Your request for '" . htmlspecialchars($info['title']) . "' was rejected. Reason: " . htmlspecialchars($rejection_reason);
+                $link = ($info['borrower_role'] === 'student') ? '/pages/student/my_library_record.php' : '/pages/teacher/my_library_record.php';
+                $type = "borrow_status";
+                $stmt_notify = $conn->prepare('INSERT INTO "notifications" (user_id, message, link, type) VALUES (?, ?, ?, ?)');
+                $stmt_notify->execute([$info['borrower_id'], $message, $link, $type]);
+            }
             $_SESSION['success_message'] = "Request has been successfully rejected.";
         } else {
             $_SESSION['error_message'] = "Failed to reject request. It might have been already processed.";
         }
-        $stmt_reject->close();
-        header("Location: $redirect_url");
-        exit;
-    }
-}
+    } elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'approve') {
+        $request_id = filter_var($_GET['id'], FILTER_VALIDATE_INT);
+        if (!$request_id) {
+            $_SESSION['error_message'] = "Invalid request ID.";
+            header("Location: $redirect_url");
+            exit;
+        }
 
-
-// --- 3. HANDLE APPROVAL (GET REQUEST FROM LINK) ---
-
-if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    if (!isset($_GET['id']) || !isset($_GET['action']) || $_GET['action'] !== 'approve') {
-        $_SESSION['error_message'] = "Invalid action specified.";
-        header("Location: $redirect_url");
-        exit;
-    }
-
-    $request_id = filter_var($_GET['id'], FILTER_VALIDATE_INT);
-    if (!$request_id) {
-        $_SESSION['error_message'] = "Invalid request ID.";
-        header("Location: $redirect_url");
-        exit;
-    }
-
-    $conn->begin_transaction();
-    try {
-        // Lock the row to prevent race conditions
-        $stmt_req = $conn->prepare("SELECT * FROM borrow_requests WHERE request_id = ? FOR UPDATE");
-        $stmt_req->bind_param("i", $request_id);
-        $stmt_req->execute();
-        $request = $stmt_req->get_result()->fetch_assoc();
-        $stmt_req->close();
+        $conn->beginTransaction();
+        
+        $stmt_req = $conn->prepare('SELECT * FROM "borrow_requests" WHERE "request_id" = ? FOR UPDATE');
+        $stmt_req->execute([$request_id]);
+        $request = $stmt_req->fetch(PDO::FETCH_ASSOC);
 
         if (!$request) throw new Exception("This request does not exist.");
         if ($request['status'] !== 'Pending') throw new Exception("This request has already been processed.");
 
-        // Check book availability
-        $stmt_book = $conn->prepare("SELECT quantity_available FROM books WHERE book_id = ? FOR UPDATE");
-        $stmt_book->bind_param("i", $request['book_id']);
-        $stmt_book->execute();
-        $book = $stmt_book->get_result()->fetch_assoc();
-        $stmt_book->close();
+        $stmt_book = $conn->prepare('SELECT "title", "quantity_available" FROM "books" WHERE "book_id" = ? FOR UPDATE');
+        $stmt_book->execute([$request['book_id']]);
+        $book = $stmt_book->fetch(PDO::FETCH_ASSOC);
 
         if (!$book || $book['quantity_available'] < 1) throw new Exception("Approval failed: This book is no longer available.");
 
-        // Decrement book quantity
-        $stmt_update_book = $conn->prepare("UPDATE books SET quantity_available = quantity_available - 1 WHERE book_id = ?");
-        $stmt_update_book->bind_param("i", $request['book_id']);
-        $stmt_update_book->execute();
-        $stmt_update_book->close();
+        $stmt_update_book = $conn->prepare('UPDATE "books" SET "quantity_available" = "quantity_available" - 1 WHERE "book_id" = ?');
+        $stmt_update_book->execute([$request['book_id']]);
 
-        // Update borrow request status to 'Approved'
         $due_date = date('Y-m-d', strtotime('+14 days'));
-        $stmt_update_req = $conn->prepare("UPDATE borrow_requests SET status = 'Approved', librarian_id = ?, action_date = NOW(), due_date = ? WHERE request_id = ?");
-        $stmt_update_req->bind_param("isi", $librarian_user_id, $due_date, $request_id);
-        $stmt_update_req->execute();
-        $stmt_update_req->close();
+        $stmt_update_req = $conn->prepare("UPDATE \"borrow_requests\" SET status = 'Approved', librarian_id = ?, action_date = CURRENT_TIMESTAMP, due_date = ? WHERE request_id = ?");
+        $stmt_update_req->execute([$librarian_user_id, $due_date, $request_id]);
 
-        // Insert into main borrowing records
-        $stmt_insert_br = $conn->prepare("INSERT INTO borrowing_records (book_id, borrower_id, borrower_role, checkout_date, due_date) VALUES (?, ?, ?, CURDATE(), ?)");
-        $stmt_insert_br->bind_param("iiss", $request['book_id'], $request['borrower_id'], $request['borrower_role'], $due_date);
-        $stmt_insert_br->execute();
-        $stmt_insert_br->close();
+        $stmt_insert_br = $conn->prepare('INSERT INTO "borrowing_records" (book_id, borrower_id, borrower_role, checkout_date, due_date) VALUES (?, ?, ?, CURRENT_DATE, ?)');
+        $stmt_insert_br->execute([$request['book_id'], $request['borrower_id'], $request['borrower_role'], $due_date]);
         
+        $message = "Your request for '" . htmlspecialchars($book['title']) . "' has been approved. Please collect it from the library.";
+        $link = ($request['borrower_role'] === 'student') ? '/pages/student/my_library_record.php' : '/pages/teacher/my_library_record.php';
+        $type = "borrow_status";
+        $stmt_notify = $conn->prepare('INSERT INTO "notifications" (user_id, message, link, type) VALUES (?, ?, ?, ?)');
+        $stmt_notify->execute([$request['borrower_id'], $message, $link, $type]);
+
         $conn->commit();
         $_SESSION['success_message'] = "Request approved successfully. The book has been issued.";
-
-    } catch (Exception $e) {
-        $conn->rollback();
-        $_SESSION['error_message'] = $e->getMessage();
     }
-    
-    header("Location: $redirect_url");
-    exit;
+} catch (Exception $e) {
+    if ($conn->inTransaction()) {
+        $conn->rollBack();
+    }
+    $_SESSION['error_message'] = $e->getMessage();
 }
 
-// Fallback redirect if accessed incorrectly
 header("Location: $redirect_url");
 exit;
 ?>

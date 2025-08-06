@@ -13,43 +13,37 @@ if (!$role) {
 }
 
 $librarian_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
-
 if ($librarian_id <= 0) {
     header("Location: librarian_list.php?error=Invalid librarian ID");
     exit;
 }
 
-$query_librarian = "SELECT l.*, s.school_name
-                    FROM librarian l
-                    LEFT JOIN school s ON l.school_id = s.id
-                    WHERE l.id = ?";
-$stmt_librarian = mysqli_prepare($conn, $query_librarian);
-mysqli_stmt_bind_param($stmt_librarian, "i", $librarian_id);
-mysqli_stmt_execute($stmt_librarian);
-$result_librarian = mysqli_stmt_get_result($stmt_librarian);
+$librarian = null;
+try {
+    // --- CORRECTED: Using PDO ---
+    $query_librarian = 'SELECT l.*, s.school_name
+                        FROM "librarian" l
+                        LEFT JOIN "school" s ON l.school_id = s.id
+                        WHERE l.id = ?';
+    $stmt_librarian = $conn->prepare($query_librarian);
+    $stmt_librarian->execute([$librarian_id]);
+    $librarian = $stmt_librarian->fetch(PDO::FETCH_ASSOC);
 
-if (!$result_librarian || mysqli_num_rows($result_librarian) == 0) {
-    header("Location: librarian_list.php?error=Librarian not found");
-    exit;
+    if (!$librarian) {
+        header("Location: librarian_list.php?error=Librarian not found");
+        exit;
+    }
+
+    $photo_path = $librarian['librarian_image'];
+    $default_photo = '/BMC-SMS/assets/img/default-user.jpg';
+    $server_photo_path = !empty($photo_path) ? rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $photo_path : '';
+    if (empty($photo_path) || !file_exists($server_photo_path)) {
+        $photo_path = $default_photo;
+    }
+
+} catch (PDOException $e) {
+    die("Database Error: " . $e->getMessage());
 }
-$librarian = mysqli_fetch_assoc($result_librarian);
-mysqli_stmt_close($stmt_librarian);
-
-// --- START: ADDED MISSING PHOTO LOGIC ---
-$photo_path = $librarian['librarian_image'];
-$default_photo = '/BMC-SMS/assets/img/default-user.jpg';
-
-// Build a server path for the file_exists check
-$server_photo_path = '';
-if (!empty($photo_path)) {
-    $server_photo_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $photo_path;
-}
-
-if (empty($photo_path) || !file_exists($server_photo_path)) {
-    $photo_path = $default_photo;
-}
-// --- END: ADDED MISSING PHOTO LOGIC ---
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -122,3 +116,4 @@ if (empty($photo_path) || !file_exists($server_photo_path)) {
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
 </html>
+<?php $conn = null; ?>

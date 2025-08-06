@@ -1,16 +1,10 @@
 <?php
-// --- START: CORRECTED CORE FILE INCLUDES ---
-// Using absolute paths is more reliable than relative paths like ../../
 include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/connect.php';
 include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/encryption.php';
 
-// For debugging - It's good practice to have this on new pages
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-// --- END: CORRECTED CORE FILE INCLUDES ---
 
-
-// Check if the user is a Super Admin admin
 if (!isset($_COOKIE['encrypted_user_role']) || decrypt_id($_COOKIE['encrypted_user_role']) !== 'superadmin') {
     header("Location: /BMC-SMS/login.php");
     exit();
@@ -20,48 +14,43 @@ if (!isset($_COOKIE['encrypted_user_role']) || decrypt_id($_COOKIE['encrypted_us
 $selected_school_id = $_GET['school_id'] ?? '';
 $selected_month = $_GET['month'] ?? date('m');
 $selected_year = $_GET['year'] ?? date('Y');
+$attendance_records = [];
+$schools = [];
 
-// Fetch all schools for the filter dropdown
-$schools_query = "SELECT id, school_name FROM school ORDER BY school_name ASC";
-$schools_result = mysqli_query($conn, $schools_query);
-$schools = mysqli_fetch_all($schools_result, MYSQLI_ASSOC);
+try {
+    // --- CORRECTED: Using PDO throughout ---
+    $schools_stmt = $conn->query('SELECT "id", "school_name" FROM "school" ORDER BY "school_name" ASC');
+    $schools = $schools_stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// --- DATA FETCHING LOGIC ---
-$query = "
-    SELECT 
-        pa.attendance_date, 
-        pa.status, 
-        pa.login_time, 
-        pa.login_latitude, 
-        pa.login_longitude,
-        p.principal_name,
-        s.school_name
-    FROM principal_attendance pa
-    JOIN principal p ON pa.principal_id = p.id
-    JOIN school s ON pa.school_id = s.id
-    WHERE MONTH(pa.attendance_date) = ? AND YEAR(pa.attendance_date) = ?
-";
+    // --- CORRECTED: Data fetching with PDO and EXTRACT for PostgreSQL ---
+    $query = '
+        SELECT 
+            pa.attendance_date, pa.status, pa.login_time, 
+            pa.login_latitude, pa.login_longitude,
+            p.principal_name, s.school_name
+        FROM "principal_attendance" pa
+        JOIN "principal" p ON pa.principal_id = p.id
+        JOIN "school" s ON pa.school_id = s.id
+        WHERE EXTRACT(MONTH FROM pa.attendance_date) = ? AND EXTRACT(YEAR FROM pa.attendance_date) = ?
+    ';
+    $params = [$selected_month, $selected_year];
 
-$params = [$selected_month, $selected_year];
-$param_types = "ii";
+    if (!empty($selected_school_id)) {
+        $query .= ' AND pa.school_id = ?';
+        $params[] = $selected_school_id;
+    }
+    $query .= ' ORDER BY pa.attendance_date DESC, s.school_name ASC';
 
-if (!empty($selected_school_id)) {
-    $query .= " AND pa.school_id = ?";
-    $params[] = $selected_school_id;
-    $param_types .= "i";
+    $stmt = $conn->prepare($query);
+    $stmt->execute($params);
+    $attendance_records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+} catch (PDOException $e) {
+    die("Database Error: " . $e->getMessage());
 }
-
-$query .= " ORDER BY pa.attendance_date DESC, s.school_name ASC";
-
-$stmt = mysqli_prepare($conn, $query);
-mysqli_stmt_bind_param($stmt, $param_types, ...$params);
-mysqli_stmt_execute($stmt);
-$result = mysqli_stmt_get_result($stmt);
-$attendance_records = mysqli_fetch_all($result, MYSQLI_ASSOC);
 
 $page_title = "Principal Attendance Records";
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 
@@ -241,3 +230,4 @@ $page_title = "Principal Attendance Records";
 </body>
 
 </html>
+<?php $conn = null; ?>

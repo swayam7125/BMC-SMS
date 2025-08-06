@@ -16,7 +16,6 @@ try {
     // Set the PDO error mode to exception
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    // You can uncomment the line below to test if the connection is successful
     // echo "Connected to Supabase Successfully!";
 
 } catch (PDOException $e) {

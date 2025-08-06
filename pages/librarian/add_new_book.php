@@ -18,52 +18,50 @@ if ($role !== 'librarian') {
     exit;
 }
 
-if ($user_id) {
-    $stmt = $conn->prepare("SELECT school_id FROM librarian WHERE id = ?");
-    if ($stmt) {
-        $stmt->bind_param("i", $user_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if ($librarian_data = $result->fetch_assoc()) {
-            $school_id = $librarian_data['school_id'];
-        }
-        $stmt->close();
+try {
+    // --- CORRECTED: Using PDO to get school_id ---
+    if ($user_id) {
+        $stmt = $conn->prepare('SELECT "school_id" FROM "librarian" WHERE "id" = ?');
+        $stmt->execute([$user_id]);
+        $school_id = $stmt->fetchColumn();
     }
-}
 
-if (!$school_id) {
-    die("Could not determine the librarian's school. Action denied.");
-}
+    if (!$school_id) {
+        die("Could not determine the librarian's school. Action denied.");
+    }
 
-$errors = [];
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Simplified form processing logic
-    $title = trim($_POST['title']);
-    $author = trim($_POST['author']);
-    $isbn = trim($_POST['isbn']);
-    $publisher = trim($_POST['publisher']);
-    $quantity = (int)$_POST['quantity_total'];
-    $is_digital = (int)$_POST['is_digital'];
+    $errors = [];
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $title = trim($_POST['title']);
+        $author = trim($_POST['author']);
+        $isbn = trim($_POST['isbn']);
+        $publisher = trim($_POST['publisher']);
+        $quantity = (int)$_POST['quantity_total'];
+        $is_digital = (int)$_POST['is_digital'];
+        $file_path_for_db = null;
 
-    // ... file upload logic and validation here ...
+        // File upload logic remains the same...
+        if ($is_digital && isset($_FILES['file_path']) && $_FILES['file_path']['error'] === UPLOAD_ERR_OK) {
+            // Handle file upload here
+        }
 
-    if (empty($title)) $errors[] = "Title is required.";
-    if (empty($author)) $errors[] = "Author is required.";
-    if ($quantity <= 0) $errors[] = "Quantity must be a positive number.";
+        if (empty($title)) $errors[] = "Title is required.";
+        if (empty($author)) $errors[] = "Author is required.";
+        if ($quantity <= 0) $errors[] = "Quantity must be a positive number.";
 
-    if (empty($errors)) {
-        $stmt_insert = $conn->prepare("INSERT INTO books (school_id, title, author, isbn, publisher, quantity_total, quantity_available, is_digital) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-        if ($stmt_insert) {
-            $stmt_insert->bind_param("issssiis", $school_id, $title, $author, $isbn, $publisher, $quantity, $quantity, $is_digital);
-            if ($stmt_insert->execute()) {
+        if (empty($errors)) {
+            // --- CORRECTED: Using PDO to insert the new book ---
+            $stmt_insert = $conn->prepare('INSERT INTO "books" (school_id, title, author, isbn, publisher, quantity_total, quantity_available, is_digital, file_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            if ($stmt_insert->execute([$school_id, $title, $author, $isbn, $publisher, $quantity, $quantity, $is_digital, $file_path_for_db])) {
                 header("Location: book_list.php?success=Book added successfully");
                 exit();
             } else {
-                $errors[] = "Database error: " . $stmt_insert->error;
+                $errors[] = "Database error: Failed to add book.";
             }
-            $stmt_insert->close();
         }
     }
+} catch (PDOException $e) {
+    $errors[] = "Database Error: " . $e->getMessage();
 }
 ?>
 
@@ -145,3 +143,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </script>
 </body>
 </html>
+
+<?php $conn = null; ?>

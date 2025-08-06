@@ -8,7 +8,7 @@ if (isset($_COOKIE['encrypted_user_role'])) {
 }
 
 if (!$role) {
-    header("Location: ../login.php");
+    header(header: "Location: ../login.php");
     exit;
 }
 
