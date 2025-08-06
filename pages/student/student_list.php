@@ -12,13 +12,54 @@ if (!$role) {
     exit;
 }
 
-// JOIN with users table to get account_status
+// --- START: ADDED CODE TO GET PRINCIPAL'S SCHOOL ID ---
+$principal_school_id = null;
+if ($role === 'principal') {
+    // Assuming you set 'encrypted_user_id' in a cookie upon login
+    $user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+    
+    if ($user_id) {
+        $school_query = "SELECT school_id FROM principal WHERE id = ? LIMIT 1";
+        $stmt_school = mysqli_prepare($conn, $school_query);
+        mysqli_stmt_bind_param($stmt_school, "i", $user_id);
+        mysqli_stmt_execute($stmt_school);
+        $school_result = mysqli_stmt_get_result($stmt_school);
+        $user_data = mysqli_fetch_assoc($school_result);
+        $principal_school_id = $user_data['school_id'];
+    }
+
+    if (!$principal_school_id) {
+        die("Error: Could not determine the school for the principal. Please contact support.");
+    }
+}
+// --- END: ADDED CODE ---
+
+
+// --- START: MODIFIED QUERY ---
+// JOIN with users table to get account_status and FILTER by school_id for principals
 $query = "SELECT s.id, s.student_name, s.rollno, s.std, s.email, sc.school_name, u.account_status
         FROM student s 
         LEFT JOIN school sc ON s.school_id = sc.id
-        LEFT JOIN users u ON s.id = u.id
-        ORDER BY s.id ASC";
-$result = mysqli_query($conn, $query);
+        LEFT JOIN users u ON s.id = u.id";
+
+// Apply the WHERE clause only if the user is a principal
+if ($role === 'principal' && $principal_school_id) {
+    $query .= " WHERE s.school_id = ?";
+}
+
+$query .= " ORDER BY s.id ASC";
+
+$stmt = mysqli_prepare($conn, $query);
+
+// Bind the parameter only if the placeholder exists in the query
+if ($role === 'principal' && $principal_school_id) {
+    mysqli_stmt_bind_param($stmt, "i", $principal_school_id);
+}
+
+mysqli_stmt_execute($stmt);
+$result = mysqli_stmt_get_result($stmt);
+// --- END: MODIFIED QUERY ---
+
 ?>
 
 <!DOCTYPE html>
@@ -48,7 +89,7 @@ $result = mysqli_query($conn, $query);
                 <?php include_once '../../includes/header.php'; ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">Student Management</h1>
-                    <p class="mb-4">List of all students in the system.</p>
+                    <p class="mb-4">List of all students in <?php echo ($role === 'principal') ? 'your school' : 'the system'; ?>.</p>
                     <?php if (isset($_GET['success'])): ?>
                     <div class="alert alert-success alert-dismissible fade show" role="alert">
                         <?php echo htmlspecialchars($_GET['success']); ?><button type="button" class="close"
