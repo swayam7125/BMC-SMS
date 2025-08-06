@@ -15,8 +15,8 @@ if ($role !== 'teacher' || !$teacher_id) {
 }
 
 try {
-    // PDO Change: Converted mysqli query to PDO
-    $query = "SELECT class_teacher_std FROM teacher WHERE id = ? AND class_teacher = B'1'"; // PostgreSQL boolean
+    // FIX: Changed B'1' to TRUE for PostgreSQL boolean check.
+    $query = "SELECT class_teacher_std FROM teacher WHERE id = ? AND class_teacher = TRUE";
     $stmt = $conn->prepare($query);
     $stmt->execute([$teacher_id]);
 
@@ -37,15 +37,14 @@ $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <title>View Marks Report - School Management System</title>
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../../assets/css/sidebar.css">
-    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link rel="stylesheet" href="../../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../../assets/css/scrollbar_hidden.css">
 </head>
 
 <body id="page-top" data-class-std="<?php echo htmlspecialchars($class_teacher_std); ?>">

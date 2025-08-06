@@ -2,6 +2,11 @@
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
 
+// FIX #2: Define the base path constant, consistent with your other files.
+if (!defined('BASE_WEB_PATH')) {
+    define('BASE_WEB_PATH', '/BMC-SMS/');
+}
+
 $role = null;
 $userId = null;
 $schoolId = null;
@@ -26,7 +31,8 @@ try {
     $schoolId = $school_data['school_id'] ?? null;
 
     if ($schoolId) {
-        $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND type = 'exam_timetable' AND is_read = 0");
+        // FIX #1: Changed 1 and 0 to TRUE and FALSE for PostgreSQL compatibility.
+        $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = TRUE WHERE user_id = ? AND type = 'exam_timetable' AND is_read = FALSE");
         $stmt_mark_read->execute([$userId]);
 
         $stmt_fetch = $conn->prepare("SELECT title, description, file_path, original_filename, created_at FROM exam_timetables WHERE school_id = ? ORDER BY created_at DESC");
@@ -35,7 +41,7 @@ try {
     }
 } catch (PDOException $e) {
     error_log("DB Error in view_exam_timetable.php: " . $e->getMessage());
-    die("A database error occurred.");
+    die("A database error occurred. Please check the server logs for details.");
 }
 
 $pageTitle = 'Exam Timetables';
@@ -64,7 +70,7 @@ $pageTitle = 'Exam Timetables';
                         <div class="card shadow mb-4">
                             <div class="card-body text-center">No exam timetables have been published yet.</div>
                         </div>
-                        <?php else: foreach ($timetables as $tt): ?>
+                    <?php else: foreach ($timetables as $tt): ?>
                             <div class="card shadow mb-4">
                                 <div class="card-header py-3">
                                     <h6 class="m-0 font-weight-bold text-primary"><?php echo htmlspecialchars($tt['title']); ?></h6>
@@ -72,7 +78,8 @@ $pageTitle = 'Exam Timetables';
                                 <div class="card-body">
                                     <?php if (!empty($tt['description'])): ?><p><?php echo nl2br(htmlspecialchars($tt['description'])); ?></p><?php endif; ?>
                                     <p class="small text-muted">Published on: <?php echo date('d F, Y', strtotime($tt['created_at'])); ?></p>
-                                    <a href="<?php echo htmlspecialchars(BASE_URL . ltrim($tt['file_path'], '/')); ?>" class="btn btn-primary" download="<?php echo htmlspecialchars($tt['original_filename']); ?>">
+                                    
+                                    <a href="<?php echo htmlspecialchars(BASE_WEB_PATH . ltrim($tt['file_path'], '/')); ?>" class="btn btn-primary" download="<?php echo htmlspecialchars($tt['original_filename']); ?>">
                                         <i class="fas fa-download fa-sm"></i> Download Timetable
                                     </a>
                                 </div>
