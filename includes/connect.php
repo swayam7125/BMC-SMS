@@ -21,6 +21,8 @@ try {
 } catch (PDOException $e) {
     // If the connection fails, stop the script and display a generic error.
     // Logging the actual error ($e->getMessage()) is better for production.
+    // To debug, uncomment the next line:
+    // die("Connection failed: " . $e->getMessage());
     die("Connection failed. Please try again later.");
 }
 
