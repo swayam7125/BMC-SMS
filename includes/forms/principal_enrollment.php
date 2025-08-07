@@ -2,6 +2,10 @@
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
+if (!defined('BASE_URL')) {
+    define('BASE_URL', '/BMC-SMS/');
+}
+
 $role = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
@@ -15,13 +19,29 @@ $errors = [];
 $batch = $_POST['batch'] ?? '';
 $school_id_posted = $_POST['school_id'] ?? '';
 
+// Fetch available schools based on batch selection
+$schools = [];
+if (!empty($batch)) {
+    try {
+        $stmt_schools = $conn->prepare('
+            SELECT s."id", s."school_name" 
+            FROM "school" s 
+            WHERE NOT EXISTS (SELECT 1 FROM "principal" p WHERE p."school_id" = s."id" AND p."batch" = ?) 
+            ORDER BY s."school_name"
+        ');
+        $stmt_schools->execute([$batch]);
+        $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        $errors[] = "Error fetching schools: " . $e->getMessage();
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) {
-    // Form data retrieval remains the same
     $school_id = $_POST['school_id'];
     $principal_name = trim($_POST['principal_name']);
     $email = trim($_POST['email']);
     $phone = trim($_POST['phone']);
-    $dob = $_POST['dob'];
+    $dob = !empty($_POST['dob']) ? $_POST['dob'] : null;
     $gender = $_POST['gender'];
     $blood_group = $_POST['blood_group'];
     $address = trim($_POST['address']);
@@ -31,7 +51,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
     $timings = $_POST['timings'] ?? [];
     $image_path_for_db = null;
 
-    // File upload logic remains the same
+    // --- START: COMPLETE FILE UPLOAD LOGIC ---
+    if (isset($_FILES['principal_image']) && $_FILES['principal_image']['error'] === UPLOAD_ERR_OK) {
+        $file_info = $_FILES['principal_image'];
+        $file_name = $file_info['name'];
+        $file_tmp_path = $file_info['tmp_name'];
+        $file_size = $file_info['size'];
+        
+        $allowed_mime_types = ['image/jpeg', 'image/png', 'image/gif'];
+        $file_mime_type = mime_content_type($file_tmp_path);
+        if (!in_array($file_mime_type, $allowed_mime_types)) {
+            $errors[] = "Invalid photo type. Only JPG, PNG, and GIF are allowed.";
+        }
+
+        if ($file_size > 5 * 1024 * 1024) { // 5MB limit
+            $errors[] = "Photo is too large. Maximum size is 5MB.";
+        }
+
+        if (empty($errors)) {
+            $upload_dir_physical = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . BASE_URL . 'uploads/principal_photos/';
+            
+            if (!is_dir($upload_dir_physical)) {
+                mkdir($upload_dir_physical, 0777, true);
+            }
+
+            $file_extension = pathinfo($file_name, PATHINFO_EXTENSION);
+            $new_file_name = 'principal_' . uniqid('', true) . '.' . $file_extension;
+            $destination_physical_path = $upload_dir_physical . $new_file_name;
+
+            if (move_uploaded_file($file_tmp_path, $destination_physical_path)) {
+                // If successful, set the web-accessible path to be stored in the DB
+                $image_path_for_db = BASE_URL . 'uploads/principal_photos/' . $new_file_name;
+            } else {
+                $errors[] = "Failed to move the uploaded photo.";
+            }
+        }
+    }
+    // --- END: COMPLETE FILE UPLOAD LOGIC ---
 
     if (empty($school_id)) $errors[] = "A school must be selected.";
     if (empty($principal_name)) $errors[] = "Principal name is required.";
@@ -40,12 +96,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
     if (empty($password)) $errors[] = "Password is required.";
 
     if (empty($errors)) {
+        $stmt_check_email = $conn->prepare('SELECT id FROM "users" WHERE "email" = ?');
+        $stmt_check_email->execute([$email]);
+        if ($stmt_check_email->fetch()) {
+            $errors[] = "This email address is already registered. Please use a different one.";
+        }
+    }
+
+    if (empty($errors)) {
         try {
             $conn->beginTransaction();
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
             $user_role = 'principal';
 
-            // --- CORRECTED: Using PDO ---
             $stmt_user = $conn->prepare('INSERT INTO "users" ("role", "email", "password") VALUES (?, ?, ?)');
             $stmt_user->execute([$user_role, $email, $hashed_password]);
             $new_user_id = $conn->lastInsertId();
@@ -74,18 +137,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
         }
     }
 }
-
-// --- CORRECTED: Fetch available schools using PDO ---
-$schools = [];
-if (!empty($batch)) {
-    $stmt_schools = $conn->prepare('SELECT s."id", s."school_name" FROM "school" s WHERE NOT EXISTS (SELECT 1 FROM "principal" p WHERE p."school_id" = s."id" AND p."batch" = ?) ORDER BY s."school_name"');
-    $stmt_schools->execute([$batch]);
-    $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <title>Enroll Principal - School Management System</title>
@@ -97,13 +151,12 @@ if (!empty($batch)) {
     <link rel="icon" type="image/x-icon" href="../../assets/img/favicon.ico">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
 </head>
-
 <body id="page-top">
     <div id="wrapper">
         <?php include '../sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '.././header.php'; ?>
+                <?php include_once '../header.php'; ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Enroll New Principal</h1>
@@ -149,13 +202,17 @@ if (!empty($batch)) {
                                     <div class="form-group col-md-6">
                                         <label for="school_id">School *</label>
                                         <select class="form-control" id="school_id" name="school_id" required>
-                                            <option value="">-- Select School --</option>
-                                            <?php if (!empty($school_result)) {
-                                                while ($row = mysqli_fetch_assoc($school_result)) {
+                                            <option value="">-- Select a Batch First --</option>
+                                            <?php
+                                            if (!empty($schools)) {
+                                                foreach ($schools as $row) {
                                                     $selected = ($school_id_posted == $row['id']) ? 'selected' : '';
-                                                    echo "<option value='{$row['id']}' $selected>" . htmlspecialchars($row['school_name']) . "</option>";
+                                                    echo "<option value='" . htmlspecialchars($row['id']) . "' $selected>" . htmlspecialchars($row['school_name']) . "</option>";
                                                 }
-                                            } ?>
+                                            } elseif (!empty($batch)) {
+                                                echo "<option value='' disabled>No schools available for this batch</option>";
+                                            }
+                                            ?>
                                         </select>
                                     </div>
                                 </div>
@@ -167,7 +224,6 @@ if (!empty($batch)) {
                                     foreach ($days as $day):
                                         $posted_day = $_POST['timings'][$day] ?? [];
                                         $is_closed = isset($posted_day['is_closed']);
-                                        // Use 24-hour format for default values to match input type="time"
                                         $opens_at = $posted_day['opens_at'] ?? '10:00';
                                         $closes_at = $posted_day['closes_at'] ?? '20:00';
                                     ?>
@@ -240,44 +296,40 @@ if (!empty($batch)) {
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
-
-
     <script>
-        $(document).ready(function() {
-            // Image Preview
-            $('#principal_image').on('change', function(event) {
+        document.addEventListener('DOMContentLoaded', function() {
+            function toggleTimeInputs() {
+                document.querySelectorAll('.closed-checkbox').forEach(function(checkbox) {
+                    const row = checkbox.closest('.timing-row');
+                    const timeInputs = row.querySelectorAll('input[type="time"]');
+                    timeInputs.forEach(function(input) {
+                        input.disabled = checkbox.checked;
+                    });
+                });
+            }
+
+            document.querySelectorAll('.closed-checkbox').forEach(function(checkbox) {
+                checkbox.addEventListener('change', toggleTimeInputs);
+            });
+
+            document.querySelector('button[type="reset"]').addEventListener('click', function() {
+                document.getElementById('principalForm').reset();
+                document.getElementById('imagePreview').src = '../../assets/img/default-user.jpg';
+                setTimeout(toggleTimeInputs, 50);
+            });
+
+            document.getElementById('principal_image').addEventListener('change', function(event) {
                 if (event.target.files && event.target.files[0]) {
                     const reader = new FileReader();
                     reader.onload = function(e) {
-                        $('#imagePreview').attr('src', e.target.result);
+                        document.getElementById('imagePreview').src = e.target.result;
                     }
                     reader.readAsDataURL(event.target.files[0]);
                 }
             });
 
-            // Timings schedule logic: Disable time inputs when "Closed" is checked
-            $('.closed-checkbox').on('change', function() {
-                const row = $(this).closest('.timing-row');
-                const timeInputs = row.find('input[type="time"]');
-                if ($(this).is(':checked')) {
-                    timeInputs.prop('disabled', true);
-                } else {
-                    timeInputs.prop('disabled', false);
-                }
-            });
-
-            // Reset form
-            $('button[type="reset"]').on('click', function() {
-                $('#principalForm')[0].reset();
-                $('#imagePreview').attr('src', '../../assets/img/default-user.jpg');
-                // Re-evaluate the disabled state of time inputs after reset
-                $('.closed-checkbox').trigger('change');
-            });
-
-            // Trigger the change on page load to set the initial state
-            $('.closed-checkbox').trigger('change');
+            toggleTimeInputs();
         });
     </script>
 </body>
-
 </html>

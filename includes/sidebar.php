@@ -195,8 +195,8 @@ if (isset($conn) && $user_id) {
                 </a>
                 <div id="collapsePastData" class="collapse" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="/BMC-SMS/pages/past_record/past_school.php">Past school List</a>
-                        <a class="collapse-item" href="/BMC-SMS/pages/past_record/past_principal.php">Past principal List</a>
+                        <a class="collapse-item" href="/BMC-SMS/pages/past_record/past_school.php">Past School List</a>
+                        <a class="collapse-item" href="/BMC-SMS/pages/past_record/past_principal.php">Past Principal List</a>
                     </div>
                 </div>
             </li>
