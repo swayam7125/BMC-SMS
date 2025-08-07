@@ -1,7 +1,11 @@
 <?php
-// This file now expects $conn to be a PDO object.
-include_once "../../includes/connect.php"; 
+include_once "../../includes/connect.php";
 include_once "../../encryption.php";
+
+// Define the base web path for your project
+if (!defined('BASE_WEB_PATH')) {
+    define('BASE_WEB_PATH', '/BMC-SMS/');
+}
 
 $role = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
@@ -18,103 +22,64 @@ if ($school_id <= 0) {
     exit;
 }
 
-// --- PDO Database Query ---
 try {
-    // 1. The SQL query now uses a named placeholder (:id) for clarity and security.
     $query = "SELECT s.*, p.id as principal_user_id, p.principal_name, p.principal_image 
               FROM school s 
               LEFT JOIN principal p ON s.id = p.school_id 
               WHERE s.id = :id";
-
-    // 2. Prepare the statement using the PDO connection object.
     $stmt = $conn->prepare($query);
-
-    // 3. Execute the statement, binding the school_id to the :id placeholder.
     $stmt->execute(['id' => $school_id]);
-
-    // 4. Fetch the single school record as an associative array.
     $school = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    // 5. Check if a school was found. If fetch() returns false, no record exists.
     if (!$school) {
         header("Location: school_list.php?error=School not found");
         exit;
     }
-
 } catch (PDOException $e) {
-    // If any database error occurs, the try block will stop and this will run.
     die("Database query failed: " . $e->getMessage());
 }
 
-// --- Robust Photo/Logo Handling Logic ---
-function getWebAccessibleImagePath($db_image_path, $base_web_path, $default_sub_folder = '')
-{
-    if (empty($db_image_path)) {
+// --- START: ROBUST IMAGE PATH HANDLING ---
+function getWebAccessibleImagePath($db_path) {
+    if (empty($db_path)) {
         return null;
     }
-    // Attempt to make it a full web-accessible path
-    $full_web_path = $base_web_path . ltrim($db_image_path, '/');
-    // Check if the file actually exists on the filesystem from the DOCUMENT_ROOT
-    $filesystem_path = $_SERVER['DOCUMENT_ROOT'] . $full_web_path;
-    if (file_exists($filesystem_path) && is_file($filesystem_path)) {
-        return $full_web_path;
+    // Construct the full physical path on the server from the web path
+    $physical_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $db_path;
+    
+    // Check if the file actually exists at that physical path
+    if (file_exists($physical_path) && is_file($physical_path)) {
+        // Return the original web path if the file exists
+        return htmlspecialchars($db_path);
     }
-    // Fallback: If DB path is just a filename, try common upload locations
-    $possible_locations = [
-        "pages/{$default_sub_folder}/uploads/",
-        "uploads/{$default_sub_folder}s/",
-        "uploads/",
-    ];
-    foreach ($possible_locations as $location) {
-        $test_path = $base_web_path . $location . basename($db_image_path);
-        $test_filesystem_path = $_SERVER['DOCUMENT_ROOT'] . $test_path;
-        if (file_exists($test_filesystem_path) && is_file($test_filesystem_path)) {
-            return $test_path;
-        }
-    }
-    return null; // No photo found
+    
+    return null; // Return null if file not found
 }
 
-function getDefaultImagePath($type = 'school', $base_web_path)
-{
-    if ($type === 'school') {
-        return $base_web_path . "assets/img/default-school.png";
-    } else { // 'principal' or 'user'
-        return $base_web_path . "assets/img/default-user.jpg";
-    }
+function getDefaultImagePath($type = 'school') {
+    return BASE_WEB_PATH . 'assets/img/' . ($type === 'school' ? 'default-school.png' : 'default-user.jpg');
 }
 
-// Ensure BASE_WEB_PATH is defined
-if (!defined('BASE_WEB_PATH')) {
-    define('BASE_WEB_PATH', '/BMC-SMS/'); // Adjust as per your actual project setup
-}
+$school_logo_web_path = getWebAccessibleImagePath($school['school_logo']);
+$default_school_logo = getDefaultImagePath('school');
 
-// Get paths for school logo
-$school_logo_web_path = getWebAccessibleImagePath($school['school_logo'], BASE_WEB_PATH, 'school');
-$default_school_logo = getDefaultImagePath('school', BASE_WEB_PATH);
-
-// Get paths for principal photo
-$principal_photo_web_path = getWebAccessibleImagePath($school['principal_image'], BASE_WEB_PATH, 'principal');
-$default_principal_photo = getDefaultImagePath('principal', BASE_WEB_PATH);
+$principal_photo_web_path = getWebAccessibleImagePath($school['principal_image']);
+$default_principal_photo = getDefaultImagePath('principal');
+// --- END: ROBUST IMAGE PATH HANDLING ---
 
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <title>View School - <?php echo htmlspecialchars($school['school_name']); ?></title>
-    
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-    
     <link rel="stylesheet" href="../../assets/css/school_view.css">
-    
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
-
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -138,11 +103,10 @@ $default_principal_photo = getDefaultImagePath('principal', BASE_WEB_PATH);
                                 </div>
                                 <div class="card-body text-center">
                                     <div class="photo-container">
-                                        <?php if ($school_logo_web_path): ?>
-                                            <img src="<?php echo htmlspecialchars($school_logo_web_path); ?>" alt="School Logo" class="view-image view-logo" onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($default_school_logo); ?>';">
-                                        <?php else: ?>
-                                            <img src="<?php echo htmlspecialchars($default_school_logo); ?>" alt="Default School Logo" class="view-image view-logo" style="opacity: 0.8;">
-                                        <?php endif; ?>
+                                        <img src="<?php echo $school_logo_web_path ?? $default_school_logo; ?>" 
+                                             alt="School Logo" 
+                                             class="view-image view-logo" 
+                                             onerror="this.onerror=null; this.src='<?php echo $default_school_logo; ?>';">
                                     </div>
                                     <div class="text-center">
                                         <small class="text-muted"><?php echo $school_logo_web_path ? 'School Logo' : 'Default Logo'; ?></small>
@@ -197,15 +161,15 @@ $default_principal_photo = getDefaultImagePath('principal', BASE_WEB_PATH);
                                     </div>
                                     <div class="row info-row">
                                         <div class="col-sm-5 font-weight-bold">Education Board(s):</div>
-                                        <div class="col-sm-7"><?php echo htmlspecialchars(str_replace(',', ', ', $school['education_board'])); ?></div>
+                                        <div class="col-sm-7"><?php echo htmlspecialchars(str_replace(',', ', ', trim($school['education_board'], '{}'))); ?></div>
                                     </div>
                                     <div class="row info-row">
                                         <div class="col-sm-5 font-weight-bold">Medium(s):</div>
-                                        <div class="col-sm-7"><?php echo htmlspecialchars(str_replace(',', ', ', $school['school_medium'])); ?></div>
+                                        <div class="col-sm-7"><?php echo htmlspecialchars(str_replace(',', ', ', trim($school['school_medium'], '{}'))); ?></div>
                                     </div>
                                     <div class="row info-row">
                                         <div class="col-sm-5 font-weight-bold">Categories:</div>
-                                        <div class="col-sm-7"><?php echo htmlspecialchars(str_replace(',', ', ', $school['school_category'])); ?></div>
+                                        <div class="col-sm-7"><?php echo htmlspecialchars(str_replace(',', ', ', trim($school['school_category'], '{}'))); ?></div>
                                     </div>
                                 </div>
                             </div>
@@ -219,11 +183,10 @@ $default_principal_photo = getDefaultImagePath('principal', BASE_WEB_PATH);
                                 <div class="card-body text-center d-flex flex-column justify-content-center">
                                     <?php if (!empty($school['principal_user_id'])): ?>
                                         <div class="photo-container">
-                                            <?php if ($principal_photo_web_path): ?>
-                                                <img src="<?php echo htmlspecialchars($principal_photo_web_path); ?>" alt="<?php echo htmlspecialchars($school['principal_name']); ?>" class="view-image view-photo" onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($default_principal_photo); ?>';">
-                                            <?php else: ?>
-                                                <img src="<?php echo htmlspecialchars($default_principal_photo); ?>" alt="Default Principal Photo" class="view-image view-photo" style="opacity: 0.8;">
-                                            <?php endif; ?>
+                                            <img src="<?php echo $principal_photo_web_path ?? $default_principal_photo; ?>" 
+                                                 alt="Principal Photo" 
+                                                 class="view-image view-photo" 
+                                                 onerror="this.onerror=null; this.src='<?php echo $default_principal_photo; ?>';">
                                         </div>
                                         <h5 class="font-weight-bold text-gray-800 mt-2">
                                             <a href="../principal/view.php?id=<?php echo $school['principal_user_id']; ?>">
@@ -256,5 +219,4 @@ $default_principal_photo = getDefaultImagePath('principal', BASE_WEB_PATH);
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
-
 </html>

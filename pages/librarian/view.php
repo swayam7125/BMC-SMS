@@ -19,8 +19,10 @@ if ($librarian_id <= 0) {
 }
 
 $librarian = null;
+$timings = [];
+
 try {
-    // --- CORRECTED: Using PDO ---
+    // Fetch main librarian details
     $query_librarian = 'SELECT l.*, s.school_name
                         FROM "librarian" l
                         LEFT JOIN "school" s ON l.school_id = s.id
@@ -33,7 +35,16 @@ try {
         header("Location: librarian_list.php?error=Librarian not found");
         exit;
     }
+    
+    // Fetch librarian timings and key by day_of_week for easy access
+    $stmt_timings = $conn->prepare('SELECT * FROM "librarian_timings" WHERE "librarian_id" = ?');
+    $stmt_timings->execute([$librarian_id]);
+    $timings_result = $stmt_timings->fetchAll(PDO::FETCH_ASSOC);
+    foreach($timings_result as $row){
+        $timings[$row['day_of_week']] = $row;
+    }
 
+    // Photo path logic
     $photo_path = $librarian['librarian_image'];
     $default_photo = '/BMC-SMS/assets/img/default-user.jpg';
     $server_photo_path = !empty($photo_path) ? rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $photo_path : '';
@@ -70,6 +81,9 @@ try {
                             <a href="edit.php?id=<?php echo $librarian['id']; ?>" class="btn btn-primary btn-sm"><i class="fas fa-edit fa-sm"></i> Edit Librarian</a>
                         </div>
                     </div>
+                     <?php if (isset($_GET['success'])): ?>
+                        <div class="alert alert-success">Librarian details updated successfully!</div>
+                    <?php endif; ?>
                     <div class="row">
                         <div class="col-lg-4 mb-4">
                             <div class="card shadow h-100">
@@ -93,7 +107,7 @@ try {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-lg-12 mb-4">
+                        <div class="col-lg-6 mb-4">
                             <div class="card shadow h-100">
                                 <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-info"><i class="fas fa-briefcase"></i> Professional Details</h6></div>
                                 <div class="card-body">
@@ -103,14 +117,39 @@ try {
                                 </div>
                             </div>
                         </div>
+                        <div class="col-lg-6 mb-4">
+                            <div class="card shadow h-100">
+                                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-warning"><i class="fas fa-clock"></i> Weekly Timings</h6></div>
+                                <div class="card-body">
+                                    <?php
+                                    $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                                    foreach ($days as $day):
+                                        $timing = $timings[$day] ?? null;
+                                    ?>
+                                        <div class="row align-items-center">
+                                            <div class="col-sm-4 info-label"><?php echo $day; ?>:</div>
+                                            <div class="col-sm-8 info-value">
+                                                <?php if ($timing && $timing['is_closed']): ?>
+                                                    <span class="badge badge-secondary">Closed</span>
+                                                <?php elseif ($timing && !empty($timing['opens_at']) && !empty($timing['closes_at'])): ?>
+                                                    <?php echo date('g:i A', strtotime($timing['opens_at'])) . ' - ' . date('g:i A', strtotime($timing['closes_at'])); ?>
+                                                <?php else: ?>
+                                                    N/A
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+                                        <?php if ($day !== 'Sunday') echo '<hr class="my-2">'; ?>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
-        <?php include_once "../../includes/logout_modal.php"?>
-
+    <?php include_once "../../includes/logout_modal.php"?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>

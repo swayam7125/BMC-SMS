@@ -2,6 +2,11 @@
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
+// Define the base web path for your project
+if (!defined('BASE_WEB_PATH')) {
+    define('BASE_WEB_PATH', '/BMC-SMS/');
+}
+
 $role = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
@@ -19,7 +24,6 @@ $school_id = intval($_GET['id']);
 $errors = [];
 
 try {
-    // --- CORRECTED: Using PDO to fetch school data ---
     $stmt_fetch = $conn->prepare('SELECT * FROM "school" WHERE "id" = ?');
     $stmt_fetch->execute([$school_id]);
     $school = $stmt_fetch->fetch(PDO::FETCH_ASSOC);
@@ -28,8 +32,7 @@ try {
         header("Location: school_list.php?error=School not found");
         exit;
     }
-    
-    // Convert PostgreSQL array strings to PHP arrays for form selection
+
     $selected_boards = $school['education_board'] ? explode(',', trim($school['education_board'], '{}')) : [];
     $selected_mediums = $school['school_medium'] ? explode(',', trim($school['school_medium'], '{}')) : [];
     $selected_categories = $school['school_category'] ? explode(',', trim($school['school_category'], '{}')) : [];
@@ -47,16 +50,47 @@ try {
         $school_category = isset($_POST['school_category']) ? $_POST['school_category'] : [];
         $logo_path_for_db = $original_logo_path;
 
-        // File upload logic remains the same
+        // --- START: COMPLETE FILE UPLOAD LOGIC ---
+        if (isset($_FILES['school_logo']) && $_FILES['school_logo']['error'] === UPLOAD_ERR_OK) {
+            $file_info = $_FILES['school_logo'];
+            $file_name = $file_info['name'];
+            $file_tmp_path = $file_info['tmp_name'];
+            $file_size = $file_info['size'];
+            
+            $allowed_mime_types = ['image/jpeg', 'image/png', 'image/gif'];
+            $file_mime_type = mime_content_type($file_tmp_path);
+            if (!in_array($file_mime_type, $allowed_mime_types)) {
+                $errors[] = "Invalid file type. Only JPG, PNG, and GIF are allowed.";
+            }
 
-        if (empty($school_name)) $errors[] = "School name is required";
+            if ($file_size > 5 * 1024 * 1024) {
+                $errors[] = "File is too large. Maximum size is 5MB.";
+            }
+
+            if (empty($errors)) {
+                $upload_dir_physical = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . BASE_WEB_PATH . 'uploads/school_logos/';
+                
+                if (!is_dir($upload_dir_physical)) {
+                    mkdir($upload_dir_physical, 0777, true);
+                }
+
+                $file_extension = pathinfo($file_name, PATHINFO_EXTENSION);
+                $new_file_name = 'school_' . $school_id . '_' . time() . '.' . $file_extension;
+                $destination_physical_path = $upload_dir_physical . $new_file_name;
+
+                if (move_uploaded_file($file_tmp_path, $destination_physical_path)) {
+                    $logo_path_for_db = BASE_WEB_PATH . 'uploads/school_logos/' . $new_file_name;
+                } else {
+                    $errors[] = "Failed to move the uploaded file.";
+                }
+            }
+        }
+        // --- END: COMPLETE FILE UPLOAD LOGIC ---
 
         if (empty($errors)) {
-            // --- CORRECTED: Using PDO to update ---
             $update_query = 'UPDATE "school" SET "school_logo"=?, "school_name"=?, "email"=?, "phone"=?, "address"=?, "school_opening"=?, "school_type"=?, "education_board"=?, "school_medium"=?, "school_category"=? WHERE "id"=?';
             $stmt = $conn->prepare($update_query);
 
-            // Convert PHP arrays to PostgreSQL array literal format
             $education_board_pg = '{' . implode(',', $education_board) . '}';
             $school_medium_pg = '{' . implode(',', $school_medium) . '}';
             $school_category_pg = '{' . implode(',', $school_category) . '}';
@@ -65,7 +99,7 @@ try {
                 header("Location: ../../pages/school/school_list.php?success=School updated successfully");
                 exit;
             } else {
-                throw new Exception("Failed to update school.");
+                $errors[] = "Failed to update school.";
             }
         }
     }
@@ -76,25 +110,24 @@ try {
         $errors[] = "Database error: " . $e->getMessage();
     }
 }
+
+// Set display path for existing logo
+$logo_display_path = (!empty($school['school_logo']) && file_exists(rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $school['school_logo']))
+    ? htmlspecialchars($school['school_logo'])
+    : '../../assets/img/default-school.png';
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <title>Edit School - School Management System</title>
-    
-    <!-- <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css"> -->
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-
 </head>
-
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -120,8 +153,11 @@ try {
                                 <div class="row">
                                     <div class="col-md-3 text-center">
                                         <label>School Logo</label><br>
-                                        <img src="<?php echo !empty($school['school_logo']) && file_exists($school['school_logo']) ? htmlspecialchars($school['school_logo']) : '../../assets/img/default-school.png'; ?>" alt="School Logo" id="logoPreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: contain;">
-                                        <div class="form-group"><label for="school_logo" class="small btn btn-sm btn-info"><i class="fas fa-upload fa-sm"></i> Change Logo</label><input type="file" class="d-none" id="school_logo" name="school_logo"></div>
+                                        <img src="<?php echo $logo_display_path; ?>" alt="School Logo" id="logoPreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: contain;">
+                                        <div class="form-group">
+                                            <label for="school_logo" class="small btn btn-sm btn-info"><i class="fas fa-upload fa-sm"></i> Change Logo</label>
+                                            <input type="file" class="d-none" id="school_logo" name="school_logo" onchange="document.getElementById('logoPreview').src = window.URL.createObjectURL(this.files[0])">
+                                        </div>
                                     </div>
                                     <div class="col-md-9">
                                         <div class="form-row">
@@ -142,10 +178,8 @@ try {
                                         </select></div>
                                 </div>
                                 <div class="form-row">
-                                    <div class="form-group col-md-6"><label for="education_board">Education Board *</label><select class="form-control multi-select" name="education_board[]" multiple="multiple" required><?php $boards = ['CBSE', 'State', 'IGCSE'];
-                                                                                                                                                                                                                            foreach ($boards as $board): ?><option value="<?php echo $board; ?>" <?php if (in_array($board, $selected_boards)) echo 'selected'; ?>><?php echo $board; ?></option><?php endforeach; ?></select></div>
-                                    <div class="form-group col-md-6"><label for="school_medium">School Medium *</label><select class="form-control multi-select" name="school_medium[]" multiple="multiple" required><?php $mediums = ['English', 'Hindi', 'Regional Language'];
-                                                                                                                                                                                                                        foreach ($mediums as $medium): ?><option value="<?php echo $medium; ?>" <?php if (in_array($medium, $selected_mediums)) echo 'selected'; ?>><?php echo $medium; ?></option><?php endforeach; ?></select></div>
+                                    <div class="form-group col-md-6"><label for="education_board">Education Board *</label><select class="form-control multi-select" name="education_board[]" multiple="multiple" required><?php $boards = ['CBSE', 'State', 'IGCSE']; foreach ($boards as $board): ?><option value="<?php echo $board; ?>" <?php if (in_array($board, $selected_boards)) echo 'selected'; ?>><?php echo $board; ?></option><?php endforeach; ?></select></div>
+                                    <div class="form-group col-md-6"><label for="school_medium">School Medium *</label><select class="form-control multi-select" name="school_medium[]" multiple="multiple" required><?php $mediums = ['English', 'Hindi', 'Regional Language']; foreach ($mediums as $medium): ?><option value="<?php echo $medium; ?>" <?php if (in_array($medium, $selected_mediums)) echo 'selected'; ?>><?php echo $medium; ?></option><?php endforeach; ?></select></div>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group col-md-12"> <label for="school_category">School Category *</label>
@@ -168,21 +202,17 @@ try {
                     </div>
                 </div>
             </div>
-
-            <?php
-            include '../../includes/footer.php';
-            ?>
+            <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
-    </div>
-        <?php include_once "../../includes/logout_modal.php"?>
-
+    <?php include_once "../../includes/logout_modal.php"?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script src="../../assets/js/custom_school_scripts.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('.multi-select').select2();
+        });
+    </script>
 </body>
-
 </html>
-
-<?php $conn = null; ?>

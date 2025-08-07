@@ -1,175 +1,118 @@
 <?php
-// includes/messaging_api.php
-
-include_once '../encryption.php';
-include_once 'connect.php';
-
 header('Content-Type: application/json');
 
-$current_user_id = null;
-$current_user_role = null;
+// Use __DIR__ for reliable pathing. This is the most important fix.
+// It ensures that files are found correctly from the '/includes/' directory.
+include_once __DIR__ . "/../encryption.php";
+include_once __DIR__ . "/connect.php";
 
-if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'])) {
-    $current_user_id = decrypt_id($_COOKIE['encrypted_user_id']);
-    $current_user_role = decrypt_id($_COOKIE['encrypted_user_role']);
+$response = ['status' => 'error', 'message' => 'An unknown error occurred.'];
+
+// Check if the database connection was successful
+if (!isset($conn) || $conn === null) {
+    error_log("Database connection failed in messaging_api.php.");
+    $response['message'] = 'Server configuration error: Could not connect to the database.';
+    echo json_encode($response);
+    exit;
 }
+
+$current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+$current_user_role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
+$action = $_POST['action'] ?? '';
 
 if (!$current_user_id || !$current_user_role) {
-    echo json_encode(['status' => 'error', 'message' => 'User not logged in.']);
-    exit();
+    $response['message'] = 'Authentication failed.';
+    echo json_encode($response);
+    exit;
 }
-
-$action = $_POST['action'] ?? null;
 
 try {
     switch ($action) {
-        case 'get_unread_count':
-            // --- CORRECTED: Using PDO ---
-            $stmt = $conn->prepare('SELECT COUNT("id") FROM "messages" WHERE "receiver_id" = ? AND "is_read" = false');
-            $stmt->execute([$current_user_id]);
-            $unread_count = $stmt->fetchColumn();
-            echo json_encode(['status' => 'success', 'unread_count' => $unread_count]);
-            break;
-
-        case 'mark_all_messages_as_read':
-            // --- CORRECTED: Using PDO ---
-            $stmt = $conn->prepare('UPDATE "messages" SET "is_read" = true WHERE "receiver_id" = ? AND "is_read" = false');
-            $stmt->execute([$current_user_id]);
-            echo json_encode(['status' => 'success']);
-            break;
-
         case 'get_contacts':
             $contacts = [];
-            $base_path = '/BMC-SMS/';
-            $default_image = $base_path . 'assets/images/undraw_profile.svg';
-
-            if ($current_user_role == 'teacher') {
-                $stmt = $conn->prepare('SELECT "std", "school_id" FROM "teacher" WHERE "id" = ?');
-                $stmt->execute([$current_user_id]);
-                $teacher_data = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($current_user_role === 'teacher') {
+                $stmt_teacher = $conn->prepare("SELECT school_id, std FROM teacher WHERE id = ?");
+                $stmt_teacher->execute([$current_user_id]);
+                $teacher_data = $stmt_teacher->fetch(PDO::FETCH_ASSOC);
 
                 if ($teacher_data && !empty($teacher_data['std'])) {
                     $school_id = $teacher_data['school_id'];
-                    // The 'std' column is a text array like {'8','9','10'}
-                    $teacher_stds = $teacher_data['std']; 
-                    
-                    // Create placeholders for the IN clause
-                    $placeholders = implode(',', array_fill(0, count($teacher_stds), '?'));
-                    $sql = 'SELECT "id", "student_name" AS "name", "student_image" AS "image_path" FROM "student" WHERE "school_id" = ? AND "std" IN (' . $placeholders . ')';
-                    
-                    $stmt_students = $conn->prepare($sql);
-                    $params = array_merge([$school_id], $teacher_stds);
-                    $stmt_students->execute($params);
-                    $contacts_data = $stmt_students->fetchAll(PDO::FETCH_ASSOC);
+                    // Correctly parse PostgreSQL array string like '{10,11}' into a PHP array
+                    $stds_string = trim($teacher_data['std'], '{}'); 
+                    $stds = explode(',', $stds_string); 
 
-                    foreach ($contacts_data as $row) {
-                        $db_path = $row['image_path'];
-                        $clean_path = str_replace(['../../', '../'], '', $db_path);
-                        $row['image_path'] = $db_path ? $base_path . $clean_path : $default_image;
-                        $contacts[] = $row;
+                    if (!empty($stds)) {
+                        $placeholders = implode(',', array_fill(0, count($stds), '?'));
+                        $query = "
+                            SELECT u.id, s.student_name AS name, s.student_image AS image_path
+                            FROM users u
+                            JOIN student s ON u.id = s.id
+                            WHERE u.role = 'student' AND s.school_id = ? AND s.std IN ($placeholders)
+                            ORDER BY s.student_name ASC
+                        ";
+                        $stmt_students = $conn->prepare($query);
+                        $params = array_merge([$school_id], $stds);
+                        $stmt_students->execute($params);
+                        $contacts = $stmt_students->fetchAll(PDO::FETCH_ASSOC);
                     }
                 }
-            } elseif ($current_user_role == 'student') {
-                $stmt = $conn->prepare('SELECT "std", "school_id" FROM "student" WHERE "id" = ?');
-                $stmt->execute([$current_user_id]);
-                $student_data = $stmt->fetch(PDO::FETCH_ASSOC);
+            } elseif ($current_user_role === 'student') {
+                $stmt_student = $conn->prepare('SELECT "std", "school_id" FROM "student" WHERE "id" = ?');
+                $stmt_student->execute([$current_user_id]);
+                $student_data = $stmt_student->fetch(PDO::FETCH_ASSOC);
 
                 if ($student_data) {
                     $student_std = $student_data['std'];
                     $school_id = $student_data['school_id'];
                     
-                    // --- CORRECTED: Replaced FIND_IN_SET with PostgreSQL array syntax ---
+                    // Use ANY() for PostgreSQL array matching
                     $sql = 'SELECT "id", "teacher_name" AS "name", "teacher_image" AS "image_path" FROM "teacher" WHERE "school_id" = ? AND ? = ANY("std")';
-                    
                     $stmt_teachers = $conn->prepare($sql);
                     $stmt_teachers->execute([$school_id, $student_std]);
-                    $contacts_data = $stmt_teachers->fetchAll(PDO::FETCH_ASSOC);
-                    
-                    foreach ($contacts_data as $row) {
-                        $db_path = $row['image_path'];
-                        $clean_path = str_replace(['../../', '../'], '', $db_path);
-                        $row['image_path'] = $db_path ? $base_path . $clean_path : $default_image;
-                        $contacts[] = $row;
-                    }
+                    $contacts = $stmt_teachers->fetchAll(PDO::FETCH_ASSOC);
                 }
             }
-            echo json_encode(['status' => 'success', 'contacts' => $contacts]);
-            break;
-
-        case 'send_message':
-            $receiver_id = $_POST['receiver_id'] ?? null;
-            $message_text = $_POST['message_text'] ?? null;
-
-            if (!$receiver_id || !$message_text) {
-                echo json_encode(['status' => 'error', 'message' => 'Missing required fields.']);
-                exit();
-            }
-            // --- CORRECTED: Using PDO ---
-            $stmt = $conn->prepare('INSERT INTO "messages" ("sender_id", "receiver_id", "message_text") VALUES (?, ?, ?)');
-            if ($stmt->execute([$current_user_id, $receiver_id, $message_text])) {
-                echo json_encode(['status' => 'success']);
-            } else {
-                echo json_encode(['status' => 'error', 'message' => 'Failed to send message.']);
-            }
+            $response = ['status' => 'success', 'contacts' => $contacts];
             break;
 
         case 'get_messages':
-            $other_user_id = $_POST['other_user_id'] ?? null;
-            $last_message_id = isset($_POST['last_message_id']) ? (int)$_POST['last_message_id'] : 0;
-
-            if (!$other_user_id) {
-                echo json_encode(['status' => 'error', 'message' => 'Missing user ID.']);
-                exit();
+            $other_user_id = $_POST['other_user_id'] ?? 0;
+            if (empty($other_user_id)) {
+                $response['message'] = "Contact ID is missing.";
+                break;
             }
             
-            $base_path = '/BMC-SMS/';
-            $default_image = $base_path . 'assets/images/undraw_profile.svg';
+            $stmt_mark_read = $conn->prepare("UPDATE messages SET is_read = true WHERE sender_id = ? AND receiver_id = ?");
+            $stmt_mark_read->execute([$other_user_id, $current_user_id]);
 
-            $params = [$current_user_id, $other_user_id, $other_user_id, $current_user_id];
-            $sql_condition = "";
-            if ($last_message_id > 0) {
-                $sql_condition = ' AND m."id" > ?';
-                $params[] = $last_message_id;
-            }
-
-            // --- CORRECTED: Using PDO ---
-            $sql = '
-                SELECT 
-                    m."id", m."sender_id", m."receiver_id", m."message_text", m."timestamp",
-                    COALESCE(s."student_image", t."teacher_image") AS "sender_image_path"
-                FROM "messages" m
-                LEFT JOIN "student" s ON m."sender_id" = s."id"
-                LEFT JOIN "teacher" t ON m."sender_id" = t."id"
-                WHERE ((m."sender_id" = ? AND m."receiver_id" = ?) OR (m."sender_id" = ? AND m."receiver_id" = ?))
-                ' . $sql_condition . '
-                ORDER BY m."timestamp" ASC
-            ';
-
-            $stmt = $conn->prepare($sql);
-            $stmt->execute($params);
-            $messages_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            $messages = [];
-            foreach ($messages_data as $row) {
-                $db_path = $row['sender_image_path'];
-                $clean_path = str_replace(['../../', '../'], '', $db_path);
-                $row['sender_image'] = $db_path ? $base_path . $clean_path : $default_image;
-                $messages[] = $row;
-            }
-
-            $stmt_update = $conn->prepare('UPDATE "messages" SET "is_read" = true WHERE "receiver_id" = ? AND "sender_id" = ? AND "is_read" = false');
-            $stmt_update->execute([$current_user_id, $other_user_id]);
-
-            echo json_encode(['status' => 'success', 'messages' => $messages]);
+            $stmt = $conn->prepare("SELECT * FROM messages WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?) ORDER BY timestamp ASC");
+            $stmt->execute([$current_user_id, $other_user_id, $other_user_id, $current_user_id]);
+            $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $response = ['status' => 'success', 'messages' => $messages];
             break;
 
+        case 'send_message':
+            $receiver_id = $_POST['receiver_id'] ?? 0;
+            $message_text = trim($_POST['message_text'] ?? '');
+            if (empty($receiver_id) || empty($message_text)) {
+                $response['message'] = "Receiver or message text is missing.";
+                break;
+            }
+            $stmt = $conn->prepare("INSERT INTO messages (sender_id, receiver_id, message_text) VALUES (?, ?, ?)");
+            $stmt->execute([$current_user_id, $receiver_id, $message_text]);
+            $response = ['status' => 'success', 'message' => 'Message sent.'];
+            break;
+            
         default:
-            echo json_encode(['status' => 'error', 'message' => 'Invalid action.']);
+            $response['message'] = 'Invalid action specified.';
             break;
     }
 } catch (PDOException $e) {
-    echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $e->getMessage()]);
+    error_log("Messaging API Error: " . $e->getMessage());
+    $response['message'] = 'A database error occurred.';
 }
 
-$conn = null; // Close the connection
+echo json_encode($response);
+$conn = null;
 ?>

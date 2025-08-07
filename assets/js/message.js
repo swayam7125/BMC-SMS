@@ -1,201 +1,138 @@
-// assets/js/messaging.js
+    $(document).ready(function() {
+        let activeContactId = null;
+        const api_url = window.base_url + 'includes/messaging_api.php';
+        const default_avatar = window.base_url + 'assets/img/default-user.jpg';
+        let messageInterval = null;
 
-document.addEventListener('DOMContentLoaded', function() {
-    const contactsList = document.getElementById('contacts-list');
-    const messageArea = document.getElementById('message-area');
-    const chatWithName = document.getElementById('chat-with-name');
-    const messageInput = document.getElementById('message-text');
-    const sendButton = document.getElementById('send-button');
+        function loadContacts() {
+            $.ajax({
+                url: api_url,
+                type: 'POST',
+                dataType: 'json',
+                data: { action: 'get_contacts' },
+                success: function(response) {
+                    const contactsList = $('#contacts-list');
+                    contactsList.empty();
 
-    let otherUserId = null;
-    let otherUserName = '';
-    const currentUserId = parseInt(window.currentUserId, 10);
-    let messageInterval = null;
-    let lastMessageId = 0;
-
-    function loadContacts() {
-        let formData = new FormData();
-        formData.append('action', 'get_contacts');
-
-        fetch('../../includes/messaging_api.php', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                contactsList.innerHTML = '';
-                let defaultImage = '/BMC-SMS/assets/images/undraw_profile.svg';
-
-                data.contacts.forEach(contact => {
-                    const li = document.createElement('a');
-                    li.href = '#';
-                    li.classList.add('list-group-item', 'list-group-item-action', 'contact-item');
-                    li.dataset.userId = contact.id;
-
-                    const img = document.createElement('img');
-                    img.src = contact.image_path ? contact.image_path : defaultImage;
-                    img.classList.add('contact-image');
-                    img.alt = contact.name;
-                    
-                    const span = document.createElement('span');
-                    span.textContent = contact.name;
-
-                    li.appendChild(img);
-                    li.appendChild(span);
-                    
-                    li.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        selectContact(li);
-                    });
-                    contactsList.appendChild(li);
-                });
-            } else {
-                contactsList.innerHTML = '<li class="list-group-item">Error loading contacts.</li>';
-                console.error('Error loading contacts:', data.message);
-            }
-        });
-    }
-
-    function selectContact(li) {
-        document.querySelectorAll('.contact-item').forEach(item => {
-            item.classList.remove('active');
-        });
-        li.classList.add('active');
-
-        otherUserId = li.dataset.userId;
-        otherUserName = li.querySelector('span').textContent;
-        chatWithName.textContent = `Chat with ${otherUserName}`;
-        messageInput.disabled = false;
-        sendButton.disabled = false;
-        lastMessageId = 0; 
-        loadMessages(); 
-
-        if (messageInterval) {
-            clearInterval(messageInterval);
-        }
-        messageInterval = setInterval(loadMessages, 3000); 
-    }
-
-    function loadMessages() {
-        if (!otherUserId) return;
-
-        let formData = new FormData();
-        formData.append('action', 'get_messages');
-        formData.append('other_user_id', otherUserId);
-        formData.append('last_message_id', lastMessageId);
-
-        fetch('../../includes/messaging_api.php', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success' && data.messages.length > 0) {
-                if (lastMessageId === 0) {
-                    messageArea.innerHTML = ''; 
+                    if (response.status === 'success' && response.contacts.length > 0) {
+                        response.contacts.forEach(contact => {
+                            const contactImage = contact.image_path ? window.base_url + contact.image_path.replace(/^\//, '') : default_avatar;
+                            const contactElement = `
+                                <li class="list-group-item list-group-item-action contact-item" data-contact-id="${contact.id}" data-contact-name="${escapeHtml(contact.name)}">
+                                    <div class="d-flex align-items-center">
+                                        <img src="${contactImage}" class="rounded-circle mr-3" width="50" height="50" alt="${escapeHtml(contact.name)}" onerror="this.src='${default_avatar}'">
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-1">${escapeHtml(contact.name)}</h6>
+                                        </div>
+                                    </div>
+                                </li>`;
+                            contactsList.append(contactElement);
+                        });
+                    } else {
+                        contactsList.html('<li class="list-group-item text-center text-muted">No contacts found.</li>');
+                    }
+                },
+                error: function(xhr) {
+                    console.error("Error loading contacts:", xhr.responseText);
+                    $('#contacts-list').html('<li class="list-group-item text-center text-danger">Failed to load contacts.</li>');
                 }
-                appendMessages(data.messages);
-                lastMessageId = data.messages[data.messages.length - 1].id;
-                messageArea.scrollTop = messageArea.scrollHeight;
-            } else if (data.status !== 'success') {
-                console.error('Error loading messages:', data.message);
-            }
-        });
-    }
-
-    function appendMessages(messages) {
-        let previousSenderId = (messageArea.lastElementChild) ? messageArea.lastElementChild.dataset.senderId : null;
-
-        messages.forEach(msg => {
-            // =================================================================
-            // === DEBUGGING CODE: This will print information to the console ===
-            // =================================================================
-            console.log(`--- Checking Message ---`);
-            console.log(`Message Sender ID: ${msg.sender_id} (Type: ${typeof msg.sender_id})`);
-            console.log(`Current User ID: ${currentUserId} (Type: ${typeof currentUserId})`);
-            
-            const messageContainer = document.createElement('div');
-            messageContainer.dataset.senderId = msg.sender_id;
-
-            if (msg.sender_id == previousSenderId) {
-                messageContainer.classList.add('message-container-grouped');
-            } else {
-                messageContainer.classList.add('message-container');
-            }
-            
-            if (parseInt(msg.sender_id) == currentUserId) {
-                console.log('✅ RESULT: MATCH. This is a SENT message.');
-                messageContainer.classList.add('sent');
-                messageContainer.style.marginLeft = 'auto'; 
-                messageContainer.style.marginRight = '0';
-            } else {
-                console.log('❌ RESULT: NO MATCH. This is a RECEIVED message.');
-                messageContainer.classList.add('received');
-                messageContainer.style.marginRight = 'auto';
-                messageContainer.style.marginLeft = '0';
-            }
-
-            const img = document.createElement('img');
-            img.src = msg.sender_image;
-            img.classList.add('message-image');
-            img.alt = '';
-            
-            const messageBubble = document.createElement('div');
-            messageBubble.classList.add('message-bubble');
-
-            const messageText = document.createElement('p');
-            messageText.classList.add('message-text');
-            messageText.textContent = msg.message_text;
-
-            const messageTimestamp = document.createElement('span');
-            messageTimestamp.classList.add('message-timestamp');
-            messageTimestamp.textContent = new Date(msg.timestamp).toLocaleString();
-
-            messageBubble.appendChild(messageText);
-            messageBubble.appendChild(messageTimestamp);
-
-            messageContainer.appendChild(img);
-            messageContainer.appendChild(messageBubble);
-
-            messageArea.appendChild(messageContainer);
-            previousSenderId = msg.sender_id;
-        });
-    }
-
-    function sendMessage() {
-        const messageText = messageInput.value.trim();
-        if (messageText === '' || !otherUserId) {
-            return;
+            });
         }
 
-        let formData = new FormData();
-        formData.append('action', 'send_message');
-        formData.append('receiver_id', otherUserId);
-        formData.append('message_text', messageText);
+        function loadMessages(contactId) {
+            if (!contactId) return;
+            activeContactId = contactId;
+            const messageArea = $('#message-area');
+            
+            $.ajax({
+                url: api_url,
+                type: 'POST',
+                dataType: 'json',
+                data: { action: 'get_messages', other_user_id: contactId },
+                success: function(response) {
+                    messageArea.empty();
+                    if (response.status === 'success' && response.messages.length > 0) {
+                        response.messages.forEach(msg => {
+                            // FIX: Compare as numbers to avoid type mismatch issues (e.g., "6" vs 6)
+                            const isSender = parseInt(msg.sender_id) === parseInt(window.currentUserId);
+                            const messageClass = isSender ? 'message-sent' : 'message-received';
+                            const messageHtml = `
+                                <div class="message-bubble ${messageClass}">
+                                    <p class="mb-0">${escapeHtml(msg.message_text)}</p>
+                                    <span class="message-time">${formatTimestamp(msg.timestamp)}</span>
+                                </div>`;
+                            messageArea.append(messageHtml);
+                        });
+                        messageArea.scrollTop(messageArea[0].scrollHeight);
+                    } else {
+                        messageArea.html('<div class="text-center text-muted p-4">Start the conversation!</div>');
+                    }
+                }
+            });
+        }
+        
+        function sendMessage() {
+            const messageText = $('#message-text').val().trim();
+            if (messageText === '' || !activeContactId) return;
 
-        fetch('../../includes/messaging_api.php', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                messageInput.value = '';
-                loadMessages(); 
-            } else {
-                console.error('Error sending message:', data.message);
-                alert('Could not send message. Please try again.');
+            $('#send-button').prop('disabled', true);
+
+            $.ajax({
+                url: api_url,
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    action: 'send_message',
+                    receiver_id: activeContactId,
+                    message_text: messageText
+                },
+                success: function(response) {
+                    if (response.status === 'success') {
+                        $('#message-text').val('');
+                        loadMessages(activeContactId);
+                    } else {
+                        alert('Error sending message: ' + response.message);
+                    }
+                },
+                complete: function() {
+                    $('#send-button').prop('disabled', false);
+                    $('#message-text').focus();
+                }
+            });
+        }
+
+        $('#contacts-list').on('click', '.contact-item', function() {
+            const contactId = $(this).data('contact-id');
+            const contactName = $(this).data('contact-name');
+            
+            $('.contact-item').removeClass('active');
+            $(this).addClass('active');
+            
+            $('#chat-with-name').text('Chat with ' + contactName);
+            $('#message-text, #send-button').prop('disabled', false);
+            $('#message-text').focus();
+
+            if (messageInterval) clearInterval(messageInterval);
+            loadMessages(contactId);
+            messageInterval = setInterval(() => loadMessages(contactId), 5000);
+        });
+
+        $('#send-button').on('click', sendMessage);
+        $('#message-text').on('keypress', function(e) {
+            if (e.which === 13) {
+                e.preventDefault();
+                sendMessage();
             }
         });
-    }
+        
+        loadContacts();
 
-    sendButton.addEventListener('click', sendMessage);
-    messageInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            sendMessage();
+        function formatTimestamp(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        }
+
+        function escapeHtml(text) {
+            return $('<div/>').text(text).html();
         }
     });
-
-    loadContacts();
-});
