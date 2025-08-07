@@ -13,75 +13,109 @@ if (isset($_COOKIE['encrypted_user_id'])) {
     $user_id = decrypt_id($_COOKIE['encrypted_user_id']);
 }
 
-if ($role !== 'librarian') {
+if ($role !== 'principal') {
     header("Location: ../../login.php");
     exit;
 }
 
-$school_id = null;
-$book = null;
+$librarian_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+if ($librarian_id <= 0) {
+    header("Location: librarian_list.php?error=Invalid ID.");
+    exit;
+}
+
+$librarian = null;
+$timings = [];
 
 try {
-    // --- CORRECTED: Using PDO ---
-    if ($user_id) {
-        $stmt_school = $conn->prepare('SELECT "school_id" FROM "librarian" WHERE "id" = ?');
-        $stmt_school->execute([$user_id]);
-        $school_id = $stmt_school->fetchColumn();
-    }
-
-    if (!$school_id) {
-        header("Location: ../../login.php?error=Could not verify user's school.");
-        exit;
-    }
-
-    if (!isset($_GET['id']) || empty($_GET['id'])) {
-        header("Location: book_list.php?error=No book ID specified.");
-        exit;
-    }
-    $book_id = intval($_GET['id']);
-
+    // --- FORM SUBMISSION LOGIC ---
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $title = $_POST['title'];
-        $author = $_POST['author'];
-        $isbn = $_POST['isbn'];
-        $quantity_total = intval($_POST['quantity_total']);
-        $quantity_available = intval($_POST['quantity_available']);
-        $is_digital = isset($_POST['is_digital']) ? 1 : 0;
+        // Retrieve and sanitize form data
+        $librarian_name = trim($_POST['librarian_name']);
+        $email = trim($_POST['email']);
+        $phone = trim($_POST['phone']);
+        $dob = $_POST['dob'];
+        $gender = $_POST['gender'];
+        $blood_group = $_POST['blood_group'];
+        $address = trim($_POST['address']);
+        $qualification = trim($_POST['qualification']);
+        $salary = trim($_POST['salary']);
+        $posted_timings = $_POST['timings'] ?? [];
 
-        if ($quantity_available > $quantity_total) {
-            $_SESSION['error_message'] = "Available quantity cannot be greater than the total quantity.";
-        } else {
-            $stmt_update = $conn->prepare('UPDATE "books" SET "title" = ?, "author" = ?, "isbn" = ?, "quantity_total" = ?, "quantity_available" = ?, "is_digital" = ? WHERE "book_id" = ? AND "school_id" = ?');
-            if ($stmt_update->execute([$title, $author, $isbn, $quantity_total, $quantity_available, $is_digital, $book_id, $school_id])) {
-                $_SESSION['success_message'] = "Book updated successfully!";
-                header("Location: book_list.php");
-                exit;
-            } else {
-                $_SESSION['error_message'] = "Error updating book.";
-            }
+        $conn->beginTransaction();
+        
+        // 1. Update the 'librarian' table
+        $stmt_update_lib = $conn->prepare(
+            'UPDATE "librarian" SET 
+             "librarian_name" = ?, "email" = ?, "phone" = ?, "dob" = ?, "gender" = ?, 
+             "blood_group" = ?, "address" = ?, "qualification" = ?, "salary" = ?
+             WHERE "id" = ?'
+        );
+        $stmt_update_lib->execute([
+            $librarian_name, $email, $phone, $dob, $gender,
+            $blood_group, $address, $qualification, $salary,
+            $librarian_id
+        ]);
+        
+        // 2. Update the 'users' table if email has changed
+        $stmt_check_user = $conn->prepare('SELECT "email" FROM "users" WHERE "id" = ?');
+        $stmt_check_user->execute([$librarian_id]);
+        $current_email = $stmt_check_user->fetchColumn();
+        if ($current_email !== $email) {
+            $stmt_update_user = $conn->prepare('UPDATE "users" SET "email" = ? WHERE "id" = ?');
+            $stmt_update_user->execute([$email, $librarian_id]);
         }
+
+        // 3. Update timings using ON CONFLICT for an UPSERT operation
+        $stmt_timing = $conn->prepare(
+            'INSERT INTO "librarian_timings" (librarian_id, day_of_week, opens_at, closes_at, is_closed) 
+             VALUES (?, ?, ?, ?, ?)
+             ON CONFLICT (librarian_id, day_of_week) DO UPDATE SET
+             opens_at = EXCLUDED.opens_at,
+             closes_at = EXCLUDED.closes_at,
+             is_closed = EXCLUDED.is_closed'
+        );
+        foreach ($posted_timings as $day => $details) {
+            $is_closed = isset($details['is_closed']);
+            $opens_at = ($is_closed || empty($details['opens_at'])) ? null : $details['opens_at'];
+            $closes_at = ($is_closed || empty($details['closes_at'])) ? null : $details['closes_at'];
+            $stmt_timing->execute([$librarian_id, $day, $opens_at, $closes_at, $is_closed]);
+        }
+
+        $conn->commit();
+        header("Location: view.php?id=$librarian_id&success=1");
+        exit;
     }
 
-    $stmt_fetch = $conn->prepare('SELECT * FROM "books" WHERE "book_id" = ? AND "school_id" = ?');
-    $stmt_fetch->execute([$book_id, $school_id]);
-    $book = $stmt_fetch->fetch(PDO::FETCH_ASSOC);
+    // --- DATA FETCHING FOR FORM DISPLAY ---
+    $stmt_fetch_lib = $conn->prepare('SELECT * FROM "librarian" WHERE "id" = ?');
+    $stmt_fetch_lib->execute([$librarian_id]);
+    $librarian = $stmt_fetch_lib->fetch(PDO::FETCH_ASSOC);
 
-    if (!$book) {
-        $_SESSION['error_message'] = "Error: Book not found or you do not have permission to edit it.";
-        header("Location: book_list.php");
+    if (!$librarian) {
+        header("Location: librarian_list.php?error=Librarian not found.");
         exit;
+    }
+    
+    $stmt_fetch_timings = $conn->prepare('SELECT * FROM "librarian_timings" WHERE "librarian_id" = ?');
+    $stmt_fetch_timings->execute([$librarian_id]);
+    $timings_result = $stmt_fetch_timings->fetchAll(PDO::FETCH_ASSOC);
+    foreach($timings_result as $row){
+        $timings[$row['day_of_week']] = $row;
     }
 
 } catch (PDOException $e) {
-    $_SESSION['error_message'] = "Database Error: " . $e->getMessage();
+    if ($conn->inTransaction()) {
+        $conn->rollBack();
+    }
+    die("Database Error: " . $e->getMessage());
 }
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Book</title>
+    <title>Edit Librarian - <?php echo htmlspecialchars($librarian['librarian_name']); ?></title>
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
@@ -93,50 +127,78 @@ try {
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
                 <div class="container-fluid">
-                    <h1 class="h3 mb-4 text-gray-800">Edit Book</h1>
-
-                    <?php if (isset($_SESSION['error_message'])): ?>
-                        <div class="alert alert-danger"><?php echo $_SESSION['error_message']; unset($_SESSION['error_message']); ?></div>
-                    <?php endif; ?>
-
+                    <h1 class="h3 mb-4 text-gray-800">Edit Librarian Details</h1>
                     <div class="card shadow mb-4">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">Update Book Details</h6>
-                        </div>
                         <div class="card-body">
-                            <form action="edit.php?id=<?php echo $book_id; ?>" method="POST">
-                                <div class="form-group">
-                                    <label for="title">Title</label>
-                                    <input type="text" class="form-control" id="title" name="title" value="<?php echo htmlspecialchars($book['title']); ?>" required>
+                            <form action="edit.php?id=<?php echo $librarian_id; ?>" method="POST">
+                                <h6 class="font-weight-bold text-primary">Basic Information</h6>
+                                <div class="form-row">
+                                    <div class="form-group col-md-6"><label for="librarian_name">Librarian Name *</label><input type="text" class="form-control" id="librarian_name" name="librarian_name" value="<?php echo htmlspecialchars($librarian['librarian_name']); ?>" required></div>
+                                    <div class="form-group col-md-6"><label for="email">Email *</label><input type="email" class="form-control" id="email" name="email" value="<?php echo htmlspecialchars($librarian['email']); ?>" required></div>
+                                </div>
+                                <hr>
+                                <h6 class="font-weight-bold text-primary">Personal & Professional Details</h6>
+                                 <div class="form-row">
+                                    <div class="form-group col-md-4"><label for="phone">Phone *</label><input type="tel" class="form-control" id="phone" name="phone" value="<?php echo htmlspecialchars($librarian['phone']); ?>" maxlength="10" required></div>
+                                    <div class="form-group col-md-4"><label for="dob">Date of Birth</label><input type="date" class="form-control" id="dob" name="dob" value="<?php echo htmlspecialchars($librarian['dob']); ?>"></div>
+                                    <div class="form-group col-md-4"><label for="gender">Gender *</label><select class="form-control" id="gender" name="gender" required>
+                                            <option value="Male" <?php echo ($librarian['gender'] == 'Male') ? 'selected' : ''; ?>>Male</option>
+                                            <option value="Female" <?php echo ($librarian['gender'] == 'Female') ? 'selected' : ''; ?>>Female</option>
+                                            <option value="Others" <?php echo ($librarian['gender'] == 'Others') ? 'selected' : ''; ?>>Others</option>
+                                        </select></div>
+                                </div>
+                                <div class="form-row">
+                                     <div class="form-group col-md-4"><label for="blood_group">Blood Group</label><select class="form-control" id="blood_group" name="blood_group">
+                                            <?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+                                            foreach ($bg_options as $bg) {
+                                                $selected = ($librarian['blood_group'] == $bg) ? 'selected' : '';
+                                                echo "<option value='{$bg}' {$selected}>" . $bg . "</option>";
+                                            } ?>
+                                        </select></div>
+                                    <div class="form-group col-md-4"><label for="qualification">Qualification</label><input type="text" class="form-control" id="qualification" name="qualification" value="<?php echo htmlspecialchars($librarian['qualification']); ?>"></div>
+                                    <div class="form-group col-md-4"><label for="salary">Salary</label><input type="number" class="form-control" id="salary" name="salary" value="<?php echo htmlspecialchars($librarian['salary']); ?>" step="0.01" min="0"></div>
                                 </div>
                                 <div class="form-group">
-                                    <label for="author">Author</label>
-                                    <input type="text" class="form-control" id="author" name="author" value="<?php echo htmlspecialchars($book['author']); ?>" required>
+                                    <label for="address">Address</label>
+                                    <textarea class="form-control" id="address" name="address" rows="2"><?php echo htmlspecialchars($librarian['address']); ?></textarea>
                                 </div>
-                                <div class="form-group">
-                                    <label for="isbn">ISBN</label>
-                                    <input type="text" class="form-control" id="isbn" name="isbn" value="<?php echo htmlspecialchars($book['isbn']); ?>">
-                                </div>
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label for="quantity_total">Total Quantity</label>
-                                            <input type="number" class="form-control" id="quantity_total" name="quantity_total" value="<?php echo htmlspecialchars($book['quantity_total']); ?>" required>
+                                <hr>
+                                <h6 class="font-weight-bold text-primary mb-3">Update Weekly Timings</h6>
+                                <div id="timings-schedule">
+                                    <?php
+                                    $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                                    foreach ($days as $day):
+                                        $timing = $timings[$day] ?? [];
+                                        $is_closed = !empty($timing['is_closed']);
+                                        $opens_at = $timing['opens_at'] ?? '09:00';
+                                        $closes_at = $timing['closes_at'] ?? '17:00';
+                                    ?>
+                                        <div class="form-row align-items-center mb-2 timing-row">
+                                            <div class="col-md-2"><label class="mb-0"><?php echo $day; ?></label></div>
+                                            <div class="col-md-2">
+                                                <div class="custom-control custom-checkbox">
+                                                    <input type="checkbox" class="custom-control-input closed-checkbox" id="closed_<?php echo $day; ?>" name="timings[<?php echo $day; ?>][is_closed]" <?php if ($is_closed) echo 'checked'; ?>>
+                                                    <label class="custom-control-label" for="closed_<?php echo $day; ?>">Closed</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="input-group">
+                                                    <div class="input-group-prepend"><span class="input-group-text small">Opens at</span></div>
+                                                    <input type="time" class="form-control" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="input-group">
+                                                    <div class="input-group-prepend"><span class="input-group-text small">Closes at</span></div>
+                                                    <input type="time" class="form-control" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label for="quantity_available">Available Quantity</label>
-                                            <input type="number" class="form-control" id="quantity_available" name="quantity_available" value="<?php echo htmlspecialchars($book['quantity_available']); ?>" required>
-                                        </div>
-                                    </div>
+                                    <?php endforeach; ?>
                                 </div>
-                                <div class="form-group form-check">
-                                    <input type="checkbox" class="form-check-input" id="is_digital" name="is_digital" <?php if ($book['is_digital']) echo 'checked'; ?>>
-                                    <label class="form-check-label" for="is_digital">This is a digital book (eBook)</label>
-                                </div>
-                                <button type="submit" class="btn btn-primary">Update Book</button>
-                                <a href="book_list.php" class="btn btn-secondary">Cancel</a>
+                                <hr>
+                                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update Details</button>
+                                <a href="view.php?id=<?php echo $librarian_id; ?>" class="btn btn-secondary">Cancel</a>
                             </form>
                         </div>
                     </div>
@@ -149,6 +211,16 @@ try {
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('.closed-checkbox').on('change', function() {
+                const row = $(this).closest('.timing-row');
+                const timeInputs = row.find('input[type="time"]');
+                timeInputs.prop('disabled', $(this).is(':checked'));
+            });
+            $('.closed-checkbox').trigger('change');
+        });
+    </script>
 </body>
 </html>
 <?php $conn = null; ?>

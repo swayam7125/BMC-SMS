@@ -47,13 +47,23 @@ try {
     die("A database error occurred.");
 }
 
+// --- START: CORRECTED PHOTO PATH LOGIC ---
 $photo_path = $teacher['teacher_image'];
 $default_photo = "../../assets/img/default-user.jpg";
-if (!empty($photo_path) && !file_exists(__DIR__ . '/' . $photo_path)) {
-    $photo_path = $default_photo;
-} elseif (empty($photo_path)) {
+
+if (!empty($photo_path)) {
+    // Build the correct, absolute filesystem path to check if the file exists
+    $filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $photo_path;
+
+    // If the file doesn't exist at that path, fall back to the default photo
+    if (!file_exists($filesystem_path) || !is_file($filesystem_path)) {
+        $photo_path = $default_photo;
+    }
+} else {
+    // If no photo path is set in the database, use the default photo
     $photo_path = $default_photo;
 }
+// --- END: CORRECTED PHOTO PATH LOGIC ---
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -88,35 +98,39 @@ if (!empty($photo_path) && !file_exists(__DIR__ . '/' . $photo_path)) {
                         <div class="col-lg-4 mb-4">
                             <div class="card shadow h-100">
                                 <div class="card-header py-3">
-                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-camera"></i> Teacher Photo</h6>
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-user-circle"></i> Teacher Profile</h6>
                                 </div>
-                                <div class="card-body text-center"><img src="<?php echo htmlspecialchars($photo_path); ?>" alt="<?php echo htmlspecialchars($teacher['teacher_name']); ?>" class="view-photo"></div>
+                                <div class="card-body text-center">
+                                    <img src="<?php echo htmlspecialchars($photo_path); ?>" alt="<?php echo htmlspecialchars($teacher['teacher_name']); ?>" class="view-photo mb-3">
+                                    <h4 class="font-weight-bold text-gray-800"><?php echo htmlspecialchars($teacher['teacher_name']); ?></h4>
+                                    <p class="text-muted"><?php echo htmlspecialchars($teacher['subject']); ?> Specialist</p>
+                                </div>
                             </div>
                         </div>
                         <div class="col-lg-8 mb-4">
                             <div class="card shadow h-100">
                                 <div class="card-header py-3">
-                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-user-tie"></i> Basic Information</h6>
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-info-circle"></i> Basic Information</h6>
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-sm-4 info-label">Name:</div>
+                                        <div class="col-sm-4 info-label">Full Name:</div>
                                         <div class="col-sm-8 info-value"><?php echo htmlspecialchars($teacher['teacher_name'] ?? 'N/A'); ?></div>
                                     </div>
                                     <hr>
                                     <div class="row">
-                                        <div class="col-sm-4 info-label">Email:</div>
+                                        <div class="col-sm-4 info-label">Email Address:</div>
                                         <div class="col-sm-8 info-value"><?php echo htmlspecialchars($teacher['email']); ?></div>
                                     </div>
                                     <hr>
                                     <div class="row">
-                                        <div class="col-sm-4 info-label">Phone:</div>
+                                        <div class="col-sm-4 info-label">Phone Number:</div>
                                         <div class="col-sm-8 info-value"><?php echo htmlspecialchars($teacher['phone']); ?></div>
                                     </div>
                                     <hr>
                                     <div class="row">
-                                        <div class="col-sm-4 info-label">DOB:</div>
-                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars(date("d M Y", strtotime($teacher['dob']))); ?></div>
+                                        <div class="col-sm-4 info-label">Date of Birth:</div>
+                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars(date("d F Y", strtotime($teacher['dob']))); ?></div>
                                     </div>
                                     <hr>
                                     <div class="row">
@@ -159,7 +173,7 @@ if (!empty($photo_path) && !file_exists(__DIR__ . '/' . $photo_path)) {
                                     <hr>
                                     <div class="row">
                                         <div class="col-sm-5 info-label">Teaching Standards:</div>
-                                        <div class="col-sm-7 info-value"><?php echo htmlspecialchars($teacher['std']); ?></div>
+                                        <div class="col-sm-7 info-value"><?php echo htmlspecialchars(str_replace(['{', '}'], '', $teacher['std'])); ?></div>
                                     </div>
                                     <hr>
                                     <div class="row">

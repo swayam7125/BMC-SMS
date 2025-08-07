@@ -2,6 +2,7 @@
 $role = null;
 $user_id = null;
 
+// Read and decrypt user role and ID from cookies
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
@@ -9,108 +10,118 @@ if (isset($_COOKIE['encrypted_user_id'])) {
     $user_id = decrypt_id($_COOKIE['encrypted_user_id']);
 }
 
+// Define BASE_WEB_PATH if not already defined
 if (!defined('BASE_WEB_PATH')) {
     define('BASE_WEB_PATH', '/BMC-SMS/');
 }
 
-// Initialize all notification count variables
+// --- START: FETCH UNREAD NOTIFICATION COUNTS (PDO VERSION) ---
+// Initialize all counter variables
 $unread_assignments = 0; $unread_results = 0; $unread_student_notices = 0; $unread_notes = 0;
 $unread_bmc_notices = 0; $unread_leave_requests = 0; $unread_principal_notices = 0;
 $unread_teacher_notices = 0; $unread_submissions = 0; $unread_leave_status = 0;
-$unread_exam_timetables = 0; $unread_borrow_requests = 0; $unread_acquisition_requests = 0; $unread_library_status = 0;
-$is_class_teacher = false;
+$unread_exam_timetables = 0; $unread_borrow_requests = 0; $unread_acquisition_requests = 0;
+$unread_library_status = 0; $unread_principal_to_librarian_notices = 0;
+$is_class_teacher = false; // Initialize teacher-specific flag
 
-// Check for a valid PDO connection and user ID before running queries
+// Fetch counts based on the user's role if a valid user ID and connection exist
 if (isset($conn) && $user_id) {
     try {
         switch ($role) {
             case 'student':
+                // Using COUNT with FILTER is more efficient in PostgreSQL
                 $sql_counts = "SELECT
-                    SUM(CASE WHEN type = 'new_assignment' THEN 1 ELSE 0 END) AS assignments,
-                    SUM(CASE WHEN type = 'marks_uploaded' THEN 1 ELSE 0 END) AS results,
-                    SUM(CASE WHEN type = 'school_notice' THEN 1 ELSE 0 END) AS notices,
-                    SUM(CASE WHEN type = 'new_notes' THEN 1 ELSE 0 END) AS notes,
-                    SUM(CASE WHEN type = 'exam_timetable' THEN 1 ELSE 0 END) AS exam_timetables,
-                    SUM(CASE WHEN type = 'borrow_status' THEN 1 ELSE 0 END) AS library_status
-                    FROM notifications WHERE user_id = ? AND is_read = false";
+                                COUNT(*) FILTER (WHERE type = 'new_assignment') AS assignments,
+                                COUNT(*) FILTER (WHERE type = 'marks_uploaded') AS results,
+                                COUNT(*) FILTER (WHERE type = 'school_notice') AS notices,
+                                COUNT(*) FILTER (WHERE type = 'new_notes') AS notes,
+                                COUNT(*) FILTER (WHERE type = 'exam_timetable') AS exam_timetables,
+                                COUNT(*) FILTER (WHERE type = 'borrow_status') AS library_status
+                           FROM notifications WHERE user_id = ? AND is_read = false";
                 $stmt_counts = $conn->prepare($sql_counts);
                 $stmt_counts->execute([$user_id]);
                 $result = $stmt_counts->fetch(PDO::FETCH_ASSOC);
                 if ($result) {
-                    $unread_assignments = (int)($result['assignments'] ?? 0);
-                    $unread_results = (int)($result['results'] ?? 0);
-                    $unread_student_notices = (int)($result['notices'] ?? 0);
-                    $unread_notes = (int)($result['notes'] ?? 0);
-                    $unread_exam_timetables = (int)($result['exam_timetables'] ?? 0);
-                    $unread_library_status = (int)($result['library_status'] ?? 0);
+                    $unread_assignments = (int) ($result['assignments'] ?? 0);
+                    $unread_results = (int) ($result['results'] ?? 0);
+                    $unread_student_notices = (int) ($result['notices'] ?? 0);
+                    $unread_notes = (int) ($result['notes'] ?? 0);
+                    $unread_exam_timetables = (int) ($result['exam_timetables'] ?? 0);
+                    $unread_library_status = (int) ($result['library_status'] ?? 0);
                 }
                 break;
 
             case 'principal':
-                $sql_principal_counts = "SELECT
-                                        SUM(CASE WHEN type = 'new_notice' THEN 1 ELSE 0 END) AS bmc_notices,
-                                        SUM(CASE WHEN type = 'leave_request' THEN 1 ELSE 0 END) AS leave_requests
-                                     FROM notifications WHERE user_id = ? AND is_read = false";
-                $stmt_principal_counts = $conn->prepare($sql_principal_counts);
-                $stmt_principal_counts->execute([$user_id]);
-                $result_principal = $stmt_principal_counts->fetch(PDO::FETCH_ASSOC);
-                if ($result_principal) {
-                    $unread_bmc_notices = (int) ($result_principal['bmc_notices'] ?? 0);
-                    $unread_leave_requests = (int) ($result_principal['leave_requests'] ?? 0);
+                $sql_counts = "SELECT
+                                COUNT(*) FILTER (WHERE type = 'new_notice') AS bmc_notices,
+                                COUNT(*) FILTER (WHERE type = 'leave_request') AS leave_requests
+                           FROM notifications WHERE user_id = ? AND is_read = false";
+                $stmt_counts = $conn->prepare($sql_counts);
+                $stmt_counts->execute([$user_id]);
+                $result = $stmt_counts->fetch(PDO::FETCH_ASSOC);
+                if ($result) {
+                    $unread_bmc_notices = (int) ($result['bmc_notices'] ?? 0);
+                    $unread_leave_requests = (int) ($result['leave_requests'] ?? 0);
                 }
                 break;
 
             case 'teacher':
-                $sql_teacher_counts = "SELECT
-                                      SUM(CASE WHEN type = 'school_notice' THEN 1 ELSE 0 END) AS teacher_notices,
-                                      SUM(CASE WHEN type = 'assignment_submission' THEN 1 ELSE 0 END) AS submissions,
-                                      SUM(CASE WHEN type = 'leave_status' THEN 1 ELSE 0 END) AS leave_status,
-                                      SUM(CASE WHEN type = 'exam_timetable' THEN 1 ELSE 0 END) AS exam_timetables,
-                                      SUM(CASE WHEN type = 'borrow_status' THEN 1 ELSE 0 END) AS library_status
-                                   FROM notifications WHERE user_id = ? AND is_read = false";
-                $stmt_teacher_counts = $conn->prepare($sql_teacher_counts);
-                $stmt_teacher_counts->execute([$user_id]);
-                $result_teacher = $stmt_teacher_counts->fetch(PDO::FETCH_ASSOC);
-                if ($result_teacher) {
-                    $unread_teacher_notices = (int) ($result_teacher['teacher_notices'] ?? 0);
-                    $unread_submissions = (int) ($result_teacher['submissions'] ?? 0);
-                    $unread_leave_status = (int) ($result_teacher['leave_status'] ?? 0);
-                    $unread_exam_timetables = (int) ($result_teacher['exam_timetables'] ?? 0);
-                    $unread_library_status = (int) ($result_teacher['library_status'] ?? 0);
-                }
-                
-                // This is the correct way to check if the user is a class teacher using PDO
-                $stmt_check = $conn->prepare('SELECT "class_teacher" FROM "teacher" WHERE "id" = ?');
+                // Check if the teacher is a class teacher (using PDO)
+                $stmt_check = $conn->prepare("SELECT class_teacher FROM teacher WHERE id = ?");
                 $stmt_check->execute([$user_id]);
-                $is_class_teacher = (bool) $stmt_check->fetchColumn(); // fetchColumn() gets a single value
+                $teacher_details = $stmt_check->fetch(PDO::FETCH_ASSOC);
+                if ($teacher_details && $teacher_details['class_teacher'] === true) {
+                    $is_class_teacher = true;
+                }
+
+                $sql_counts = "SELECT
+                                  SUM(CASE WHEN type = 'school_notice' THEN 1 ELSE 0 END) AS teacher_notices,
+                                  SUM(CASE WHEN type = 'assignment_submission' THEN 1 ELSE 0 END) AS submissions,
+                                  SUM(CASE WHEN type = 'leave_status' THEN 1 ELSE 0 END) AS leave_status,
+                                  SUM(CASE WHEN type = 'exam_timetable' THEN 1 ELSE 0 END) AS exam_timetables,
+                                  SUM(CASE WHEN type = 'borrow_status' THEN 1 ELSE 0 END) AS library_status
+                               FROM notifications WHERE user_id = ? AND is_read = false";
+                $stmt_counts = $conn->prepare($sql_counts);
+                $stmt_counts->execute([$user_id]);
+                $result = $stmt_counts->fetch(PDO::FETCH_ASSOC);
+                if ($result) {
+                    $unread_teacher_notices = (int) ($result['teacher_notices'] ?? 0);
+                    $unread_submissions = (int) ($result['submissions'] ?? 0);
+                    $unread_leave_status = (int) ($result['leave_status'] ?? 0);
+                    $unread_exam_timetables = (int) ($result['exam_timetables'] ?? 0);
+                    $unread_library_status = (int) ($result['library_status'] ?? 0);
+                }
                 break;
 
             case 'librarian':
-                $sql_librarian_counts = "SELECT
-                                        SUM(CASE WHEN type = 'borrow_request' THEN 1 ELSE 0 END) AS borrow_reqs,
-                                        SUM(CASE WHEN type = 'acquisition_request' THEN 1 ELSE 0 END) AS acq_reqs
-                                     FROM notifications WHERE user_id = ? AND is_read = false";
-                $stmt_librarian_counts = $conn->prepare($sql_librarian_counts);
-                $stmt_librarian_counts->execute([$user_id]);
-                $result_librarian = $stmt_librarian_counts->fetch(PDO::FETCH_ASSOC);
-                if ($result_librarian) {
-                    $unread_borrow_requests = (int) ($result_librarian['borrow_reqs'] ?? 0);
-                    $unread_acquisition_requests = (int) ($result_librarian['acq_reqs'] ?? 0);
+                $sql_counts = "SELECT
+                                    SUM(CASE WHEN type = 'borrow_request' THEN 1 ELSE 0 END) AS borrow_reqs,
+                                    SUM(CASE WHEN type = 'acquisition_request' THEN 1 ELSE 0 END) AS acq_reqs,
+                                    SUM(CASE WHEN type = 'principal_to_librarian_notice' THEN 1 ELSE 0 END) AS p_to_l_notices
+                                 FROM notifications WHERE user_id = ? AND is_read = false";
+                $stmt_counts = $conn->prepare($sql_counts);
+                $stmt_counts->execute([$user_id]);
+                $result = $stmt_counts->fetch(PDO::FETCH_ASSOC);
+                if ($result) {
+                    $unread_borrow_requests = (int) ($result['borrow_reqs'] ?? 0);
+                    $unread_acquisition_requests = (int) ($result['acq_reqs'] ?? 0);
+                    $unread_principal_to_librarian_notices = (int) ($result['p_to_l_notices'] ?? 0);
                 }
                 break;
 
             case 'superadmin':
-                $sql_bmc_counts = 'SELECT COUNT(*) FROM "notifications" WHERE "user_id" = ? AND "type" = \'principal_notice\' AND "is_read" = false';
-                $stmt_bmc_counts = $conn->prepare($sql_bmc_counts);
-                $stmt_bmc_counts->execute([$user_id]);
-                $unread_principal_notices = (int) $stmt_bmc_counts->fetchColumn();
+                $sql_counts = "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND type = 'principal_notice' AND is_read = false";
+                $stmt_counts = $conn->prepare($sql_counts);
+                $stmt_counts->execute([$user_id]);
+                $unread_principal_notices = (int) $stmt_counts->fetchColumn();
                 break;
         }
     } catch (PDOException $e) {
-        // Log error instead of breaking the page
-        error_log("Sidebar notification count failed: " . $e->getMessage());
+        error_log("Sidebar notification count error: " . $e->getMessage());
+        // Fail gracefully, counters will remain 0 and the page will still load
     }
 }
+// --- END: FETCH UNREAD NOTIFICATION COUNTS ---
 ?>
 
 <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
@@ -275,6 +286,7 @@ if (isset($conn) && $user_id) {
                     <div class="bg-white py-2 collapse-inner rounded">
                         <a class="collapse-item" href="/BMC-SMS/pages/principal/send_notice.php">Send School Notice</a>
                         <a class="collapse-item" href="/BMC-SMS/pages/principal/send_notice_to_bmc.php">Send Notice to BMC</a>
+                        <a class="collapse-item" href="/BMC-SMS/pages/principal/send_notice_to_librarian.php">Send Notice to Librarian</a>
                         <a class="collapse-item" href="/BMC-SMS/pages/principal/view_notice.php" data-notification-type="new_notice">View BMC Notices
                             <?php if ($unread_bmc_notices > 0): ?>
                                 <span class="badge badge-danger badge-counter">
@@ -303,8 +315,8 @@ if (isset($conn) && $user_id) {
             </li>
             <li class="nav-item">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/principal/school_settings.php">
-                    <i class="fas fa-fw fa-cogs"></i>
-                    <span>School Settings</span>
+                    <i class="fas fa-fw fa-children"></i>
+                    <span>Passing Criteria</span>
                 </a>
             </li>
             <li class="nav-item">
@@ -558,7 +570,7 @@ if (isset($conn) && $user_id) {
                 <a class="nav-link" href="/BMC-SMS/pages/student/view_exam_timetable.php" data-notification-type="exam_timetable">
                     <i class="fas fa-fw fa-calendar-alt"></i>
                     <span>View Exam Timetable</span>
-                    <?php if ($unread_exam_timetables >0): ?>
+                    <?php if ($unread_exam_timetables > 0): ?>
                         <span class="badge badge-danger badge-counter">
                             <?php echo ($unread_exam_timetables > 9) ? '9+' : $unread_exam_timetables; ?>
                         </span>
@@ -619,6 +631,15 @@ if (isset($conn) && $user_id) {
                         <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/add_new_book.php">Add New Book</a>
                     </div>
                 </div>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/view_principal_notices.php" data-notification-type="principal_to_librarian_notice">
+                    <i class="fas fa-fw fa-envelope-open-text"></i>
+                    <span>Principal Notices</span>
+                    <?php if ($unread_principal_to_librarian_notices > 0): ?>
+                        <span class="badge badge-danger badge-counter"><?php echo ($unread_principal_to_librarian_notices > 9) ? '9+' : $unread_principal_to_librarian_notices; ?></span>
+                    <?php endif; ?>
+                </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/issue_return.php">

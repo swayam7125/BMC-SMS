@@ -37,8 +37,7 @@ try {
         $schoolId = $row_school['school_id'];
         $principalName = $row_school['principal_name'];
 
-        // --- THIS IS THE CORRECTED QUERY ---
-        $sql_std = "SELECT std FROM student WHERE school_id = ? GROUP BY std ORDER BY CAST(std AS INTEGER)";
+        $sql_std = "SELECT std FROM student WHERE school_id = ? GROUP BY std ORDER BY CAST(substring(std from '^\\d+') AS INTEGER)";
         $stmt_std = $conn->prepare($sql_std);
         $stmt_std->execute([$schoolId]);
         while ($std_row = $stmt_std->fetch(PDO::FETCH_ASSOC)) {
@@ -54,13 +53,14 @@ try {
         }
     }
 } catch (PDOException $e) {
-    // Handle database errors during initial data fetch
     die("Error fetching initial data: " . $e->getMessage());
 }
 
 
 // --- FORM PROCESSING ---
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
+
+    set_time_limit(0); // Allow the script to run as long as needed to send all emails
 
     if (empty($_POST['send_to_group'])) {
         die("Error: Please select a recipient group from the 'Send To' dropdown.");
@@ -73,7 +73,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
     $teacher_ids_to_notify = [];
     $standards_to_notify = [];
 
-    // --- FILE UPLOAD (No changes needed here) ---
+    // --- FILE UPLOAD ---
     $filePathForDB = null;
     $originalFilename = null;
     if (isset($_FILES['notice_file']) && $_FILES['notice_file']['error'] == 0) {
@@ -90,15 +90,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
         }
     }
 
-    // --- DATABASE INSERTION (Using PDO Transaction) ---
+    // --- DATABASE INSERTION ---
     try {
         $conn->beginTransaction();
 
-        // For PostgreSQL, to get the last inserted ID, we use RETURNING id
         $sql_content = "INSERT INTO school_notices_content (user_id, school_id, title, content, file_path, original_filename) VALUES (?, ?, ?, ?, ?, ?) RETURNING id";
         $stmt_content = $conn->prepare($sql_content);
         $stmt_content->execute([$userId, $schoolId, $title, $content, $filePathForDB, $originalFilename]);
-        $noticeId = $stmt_content->fetchColumn(); // Fetch the returned ID
+        $noticeId = $stmt_content->fetchColumn();
 
         $sql_recipient = "INSERT INTO school_notice_recipients (notice_id, recipient_type, recipient_identifier) VALUES (?, ?, ?)";
         $stmt_recipient = $conn->prepare($sql_recipient);
@@ -277,7 +276,10 @@ $pageTitle = 'Send School Notice';
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
         $(document).ready(function() {
-            $('.multi-select').select2();
+            $('.multi-select').select2({
+                width: '100%'
+            });
+            
             $('#send_to_group').on('change', function() {
                 var selected = $(this).val();
                 $('#teacher_group').hide();
