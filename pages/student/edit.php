@@ -216,7 +216,7 @@ try {
                                                     <option value="female" <?php echo (strtolower($student['gender'] ?? '') == 'female') ? 'selected' : ''; ?>>Female</option>
                                                     <option value="others" <?php echo (strtolower($student['gender'] ?? '') == 'others') ? 'selected' : ''; ?>>Others</option>
                                                 </select></div>
-                                            <div class="col-md-6 form-group"><label for="blood_group">Blood Group</label><select class="form-control" id="blood_group" name="blood_group"><?php $bg_options = ['a+', 'a-', 'b+', 'b-', 'ab+', 'ab-', 'o+', 'o-'];
+                                            <div class="col-md-6 form-group"><label for="blood_group">Blood Group</label><select class="form-control" id="blood_group" name="blood_group"><?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
                                                                                                                                                                                             foreach ($bg_options as $bg) {
                                                                                                                                                                                                 $selected = (strtolower($student['blood_group'] ?? '') == $bg) ? 'selected' : '';
                                                                                                                                                                                                 echo "<option value='{$bg}' {$selected}>" . strtoupper($bg) . "</option>";

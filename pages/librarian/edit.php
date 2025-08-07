@@ -76,10 +76,11 @@ try {
              is_closed = EXCLUDED.is_closed'
         );
         foreach ($posted_timings as $day => $details) {
-            $is_closed = isset($details['is_closed']);
-            $opens_at = ($is_closed || empty($details['opens_at'])) ? null : $details['opens_at'];
-            $closes_at = ($is_closed || empty($details['closes_at'])) ? null : $details['closes_at'];
-            $stmt_timing->execute([$librarian_id, $day, $opens_at, $closes_at, $is_closed]);
+            // FIX: Convert PHP boolean to an integer (0 or 1) for PostgreSQL's boolean type.
+            $is_closed_db = isset($details['is_closed']) ? 1 : 0;
+            $opens_at = ($is_closed_db || empty($details['opens_at'])) ? null : $details['opens_at'];
+            $closes_at = ($is_closed_db || empty($details['closes_at'])) ? null : $details['closes_at'];
+            $stmt_timing->execute([$librarian_id, $day, $opens_at, $closes_at, $is_closed_db]);
         }
 
         $conn->commit();
@@ -117,6 +118,7 @@ try {
     <meta charset="UTF-8">
     <title>Edit Librarian - <?php echo htmlspecialchars($librarian['librarian_name']); ?></title>
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
@@ -169,7 +171,8 @@ try {
                                     $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
                                     foreach ($days as $day):
                                         $timing = $timings[$day] ?? [];
-                                        $is_closed = !empty($timing['is_closed']);
+                                        // The 'is_closed' value from the database is a boolean.
+                                        $is_closed_checked = !empty($timing['is_closed']);
                                         $opens_at = $timing['opens_at'] ?? '09:00';
                                         $closes_at = $timing['closes_at'] ?? '17:00';
                                     ?>
@@ -177,20 +180,20 @@ try {
                                             <div class="col-md-2"><label class="mb-0"><?php echo $day; ?></label></div>
                                             <div class="col-md-2">
                                                 <div class="custom-control custom-checkbox">
-                                                    <input type="checkbox" class="custom-control-input closed-checkbox" id="closed_<?php echo $day; ?>" name="timings[<?php echo $day; ?>][is_closed]" <?php if ($is_closed) echo 'checked'; ?>>
+                                                    <input type="checkbox" class="custom-control-input closed-checkbox" id="closed_<?php echo $day; ?>" name="timings[<?php echo $day; ?>][is_closed]" <?php if ($is_closed_checked) echo 'checked'; ?>>
                                                     <label class="custom-control-label" for="closed_<?php echo $day; ?>">Closed</label>
                                                 </div>
                                             </div>
                                             <div class="col-md-3">
                                                 <div class="input-group">
                                                     <div class="input-group-prepend"><span class="input-group-text small">Opens at</span></div>
-                                                    <input type="time" class="form-control" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                    <input type="time" class="form-control" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" <?php if ($is_closed_checked) echo 'disabled'; ?>>
                                                 </div>
                                             </div>
                                             <div class="col-md-3">
                                                 <div class="input-group">
                                                     <div class="input-group-prepend"><span class="input-group-text small">Closes at</span></div>
-                                                    <input type="time" class="form-control" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                    <input type="time" class="form-control" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" <?php if ($is_closed_checked) echo 'disabled'; ?>>
                                                 </div>
                                             </div>
                                         </div>

@@ -30,7 +30,17 @@ try {
     die("A critical database error occurred while fetching user details.");
 }
 
-$filter_date = $_GET['date'] ?? date('Y-m-d');
+// --- START of date validation logic ---
+// Get the current date to use as a maximum for the date input
+$current_date = date('Y-m-d');
+$filter_date = $_GET['date'] ?? $current_date;
+
+// Server-side check to prevent future dates, even if the URL is manipulated
+if ($filter_date > $current_date) {
+    $filter_date = $current_date;
+}
+// --- END of date validation logic ---
+
 $records = [];
 
 try {
@@ -64,8 +74,8 @@ try {
     <meta charset="utf-8">
     <title>View Librarian Attendance - School Management System</title>
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
-    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
@@ -95,7 +105,8 @@ try {
                                 <form method="GET" action="" class="form-inline">
                                     <div class="form-group">
                                         <label for="date" class="mr-2">Date:</label>
-                                        <input type="date" id="date" name="date" class="form-control" value="<?php echo htmlspecialchars($filter_date); ?>">
+                                        <!-- Added max attribute to disable future dates -->
+                                        <input type="date" id="date" name="date" class="form-control" value="<?php echo htmlspecialchars($filter_date); ?>" max="<?php echo $current_date; ?>">
                                     </div>
                                     <button type="submit" class="btn btn-primary ml-2"><i class="fas fa-search fa-sm"></i> View</button>
                                 </form>
@@ -110,6 +121,8 @@ try {
                                         <tr>
                                             <th>Librarian Name</th>
                                             <th>Status</th>
+                                            <!-- ADDED: New 'Action' header -->
+                                            <th>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -127,11 +140,18 @@ try {
                                                         echo "<span class='badge {$badge_class} p-2'>" . htmlspecialchars($status) . "</span>";
                                                     ?>
                                                 </td>
+                                                <!-- ADDED: New 'Action' column with an 'Edit' button -->
+                                                <td>
+                                                    <a href="librarian_attendance.php?attendance_date=<?php echo htmlspecialchars($filter_date); ?>&edit_librarian_id=<?php echo $record['librarian_id']; ?>" class="btn btn-sm btn-warning">
+                                                        <i class="fas fa-edit"></i> Edit
+                                                    </a>
+                                                </td>
                                             </tr>
                                             <?php endforeach; ?>
                                         <?php else: ?>
                                             <tr>
-                                                <td colspan="2" class="text-center">No librarians found for this school or date.</td>
+                                                <!-- UPDATED: colspan to 3 to account for the new column -->
+                                                <td colspan="3" class="text-center">No librarians found for this school or date.</td>
                                             </tr>
                                         <?php endif; ?>
                                     </tbody>
