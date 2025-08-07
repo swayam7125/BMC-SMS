@@ -109,10 +109,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                   DO UPDATE SET opens_at = EXCLUDED.opens_at, closes_at = EXCLUDED.closes_at, is_closed = EXCLUDED.is_closed";
             $stmt_timing_upsert = $conn->prepare($sql_upsert_timing);
             foreach ($posted_timings as $day => $details) {
-                $is_closed = isset($details['is_closed']) ? 1 : 0;
-                $opens_at = ($is_closed || empty($details['opens_at'])) ? null : $details['opens_at'];
-                $closes_at = ($is_closed || empty($details['closes_at'])) ? null : $details['closes_at'];
-                $stmt_timing_upsert->execute([$librarian_id, $day, $opens_at, $closes_at, $is_closed]);
+            // FIX: Convert PHP boolean to an integer (0 or 1) for PostgreSQL's boolean type.
+                $is_closed_db = isset($details['is_closed']) ? 1 : 0 ? 1 : 0;
+                $opens_at = ($is_closed_db || empty($details['opens_at'])) ? null : $details['opens_at'];
+                $closes_at = ($is_closed_db || empty($details['closes_at'])) ? null : $details['closes_at'];
+                $stmt_timing_upsert->execute([$librarian_id, $day, $opens_at, $closes_at, $is_closed_db]);
             }
 
             $conn->commit();
@@ -207,7 +208,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                             <div class="col-md-2"><label class="mb-0"><?php echo $day; ?></label></div>
                                             <div class="col-md-2">
                                                 <div class="custom-control custom-checkbox">
-                                                    <input type="checkbox" class="custom-control-input closed-checkbox" id="closed_<?php echo $day; ?>" name="timings[<?php echo $day; ?>][is_closed]" <?php if ($is_closed) echo 'checked'; ?>>
+                                                    <input type="checkbox" class="custom-control-input closed-checkbox" id="closed_<?php echo $day; ?>" name="timings[<?php echo $day; ?>][is_closed]" <?php if ($is_closed_checked) echo 'checked'; ?>>
                                                     <label class="custom-control-label" for="closed_<?php echo $day; ?>">Closed</label>
                                                 </div>
                                             </div>
