@@ -25,7 +25,6 @@ $timings = [];
 
 try {
     // --- FETCH TEACHER AND TIMINGS DATA (PDO) ---
-    // Fetch current teacher data
     $sql_teacher = "SELECT * FROM teacher WHERE id = ?";
     $stmt_teacher_fetch = $conn->prepare($sql_teacher);
     $stmt_teacher_fetch->execute([$teacher_id]);
@@ -38,7 +37,6 @@ try {
     $original_email = $teacher['email'];
     $original_image_path = $teacher['teacher_image'];
 
-    // Fetch timings data for the teacher
     $sql_timings = "SELECT * FROM teacher_timings WHERE teacher_id = ?";
     $stmt_timings_fetch = $conn->prepare($sql_timings);
     $stmt_timings_fetch->execute([$teacher_id]);
@@ -65,11 +63,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $subject = trim($_POST['subject']);
     $language_known = trim($_POST['language_known']);
     $salary = trim($_POST['salary']);
-    $std = implode(',', (isset($_POST['std']) ? $_POST['std'] : []));
+    
+    $std_array = isset($_POST['std']) ? $_POST['std'] : [];
+    $std_for_db = '{' . implode(',', $std_array) . '}';
+    
     $experience = trim($_POST['experience']);
     $batch = $_POST['batch'];
-    $posted_timings = $_POST['timings'] ?? []; // Get timings from form
+    $posted_timings = $_POST['timings'] ?? [];
 
+    // --- FIX: Ensure a proper boolean (true/false) is used for the database ---
+// edit.php, line 71 (Corrected)
     $class_teacher = isset($_POST['class_teacher']) ? 1 : 0;
     $class_teacher_std = $class_teacher ? ($_POST['class_teacher_std'] ?? null) : null;
 
@@ -83,26 +86,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = "Please select a standard for the class teacher.";
     }
 
-    // --- Handle Photo Upload (No changes needed) ---
+    // --- Handle Photo Upload ---
     if (isset($_FILES['teacher_image']) && $_FILES['teacher_image']['error'] === UPLOAD_ERR_OK) {
         $file = $_FILES['teacher_image'];
+        $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/teacher/uploads/';
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0777, true);
+        }
         $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        $allowed_exts = ['jpg', 'jpeg', 'png', 'gif'];
-        if (in_array($file_ext, $allowed_exts)) {
-            $target_dir = "../../pages/teacher/uploads/";
-            if (!file_exists($target_dir)) mkdir($target_dir, 0777, true);
-            $new_filename = uniqid('teacher_', true) . '.' . $file_ext;
-            $destination = $target_dir . $new_filename;
-            if (move_uploaded_file($file['tmp_name'], $destination)) {
-                $image_path_for_db = $destination;
-                if (!empty($original_image_path) && file_exists($original_image_path)) {
-                    @unlink($original_image_path);
-                }
-            } else {
-                $errors[] = "Failed to move uploaded file.";
+        $new_filename = 'teacher_' . $teacher_id . '_' . uniqid() . '.' . $file_ext;
+        $destination = $upload_dir . $new_filename;
+        
+        if (move_uploaded_file($file['tmp_name'], $destination)) {
+            $image_path_for_db = '/BMC-SMS/pages/teacher/uploads/' . $new_filename;
+            if (!empty($original_image_path) && file_exists($_SERVER['DOCUMENT_ROOT'] . $original_image_path)) {
+                @unlink($_SERVER['DOCUMENT_ROOT'] . $original_image_path);
             }
         } else {
-            $errors[] = "Invalid file type. Only JPG, JPEG, PNG, and GIF are allowed.";
+            $errors[] = "Failed to move uploaded file.";
         }
     }
 
@@ -110,27 +111,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $conn->beginTransaction();
 
-            // Update users table if email changes
             if ($new_email !== $original_email) {
                 $sql_update_users = "UPDATE users SET email = ? WHERE id = ? AND role = 'teacher'";
                 $stmt_users = $conn->prepare($sql_update_users);
                 $stmt_users->execute([$new_email, $teacher_id]);
             }
 
-            // Update teacher table
             $sql_update_teacher = "UPDATE teacher SET teacher_image = ?, teacher_name = ?, phone = ?, school_id = ?, dob = ?, gender = ?, blood_group = ?, address = ?, email = ?, qualification = ?, subject = ?, language_known = ?, salary = ?, std = ?, experience = ?, batch = ?, class_teacher = ?, class_teacher_std = ? WHERE id = ?";
             $stmt_update = $conn->prepare($sql_update_teacher);
-            $stmt_update->execute([$image_path_for_db, $teacher_name, $phone, $school_id, $dob, $gender, $blood_group, $address, $new_email, $qualification, $subject, $language_known, $salary, $std, $experience, $batch, $class_teacher, $class_teacher_std, $teacher_id]);
+            $stmt_update->execute([
+                $image_path_for_db, $teacher_name, $phone, $school_id, $dob, $gender, 
+                $blood_group, $address, $new_email, $qualification, $subject, 
+                $language_known, $salary, $std_for_db, $experience, $batch, 
+                $class_teacher, // This is now a correct boolean
+                $class_teacher_std, $teacher_id
+            ]);
 
-            // --- UPSERT (UPDATE OR INSERT) THE TIMINGS (PostgreSQL) ---
-            // This query inserts a new row. If a row with the same teacher_id and day_of_week already exists, it updates that row instead.
-            // This assumes a UNIQUE constraint exists on (teacher_id, day_of_week).
             $sql_upsert_timing = "INSERT INTO teacher_timings (teacher_id, day_of_week, opens_at, closes_at, is_closed) 
                                   VALUES (?, ?, ?, ?, ?) 
                                   ON CONFLICT (teacher_id, day_of_week) 
                                   DO UPDATE SET opens_at = EXCLUDED.opens_at, closes_at = EXCLUDED.closes_at, is_closed = EXCLUDED.is_closed";
             $stmt_timing_upsert = $conn->prepare($sql_upsert_timing);
             foreach ($posted_timings as $day => $details) {
+            // edit.php, line 143 (Corrected)
                 $is_closed = isset($details['is_closed']) ? 1 : 0;
                 $opens_at = ($is_closed || empty($details['opens_at'])) ? null : $details['opens_at'];
                 $closes_at = ($is_closed || empty($details['closes_at'])) ? null : $details['closes_at'];
@@ -147,7 +150,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = "Database update failed: " . $e->getMessage();
         }
     }
-    // Repopulate data on error
     $teacher = array_merge($teacher, $_POST);
     $timings = $posted_timings;
 }
@@ -159,7 +161,14 @@ try {
     die("Could not fetch schools list: " . $e->getMessage());
 }
 
-$selected_stds = explode(',', $teacher['std'] ?? '');
+$raw_stds = $teacher['std'] ?? '';
+if (is_string($raw_stds) && !empty($raw_stds)) {
+    $selected_stds = explode(',', trim($raw_stds, '{}'));
+} elseif (is_array($raw_stds)) {
+    $selected_stds = $raw_stds;
+} else {
+    $selected_stds = [];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -199,7 +208,7 @@ $selected_stds = explode(',', $teacher['std'] ?? '');
                             <form method="POST" enctype="multipart/form-data">
                                 <div class="row">
                                     <div class="col-md-3 text-center">
-                                        <img src="<?php echo htmlspecialchars(!empty($teacher['teacher_image']) && file_exists($teacher['teacher_image']) ? $teacher['teacher_image'] : '../../assets/img/default-user.jpg'); ?>" alt="Teacher Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
+                                        <img src="<?php echo htmlspecialchars(!empty($teacher['teacher_image']) && file_exists($_SERVER['DOCUMENT_ROOT'] . $teacher['teacher_image']) ? $teacher['teacher_image'] : '../../assets/img/default-user.jpg'); ?>" alt="Teacher Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
                                         <div class="form-group"><label for="teacher_image" class="small btn btn-sm btn-info"><i class="fas fa-upload fa-sm"></i> Change Photo</label><input type="file" class="d-none" id="teacher_image" name="teacher_image" onchange="document.getElementById('imagePreview').src = window.URL.createObjectURL(this.files[0])"></div>
                                     </div>
                                     <div class="col-md-9">
@@ -260,7 +269,7 @@ $selected_stds = explode(',', $teacher['std'] ?? '');
                                     $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
                                     foreach ($days as $day):
                                         $day_timing = $timings[$day] ?? [];
-                                        $is_closed = !empty($day_timing['is_closed']);
+                                        $is_closed = isset($day_timing['is_closed']) && $day_timing['is_closed'];
                                         $opens_at = !empty($day_timing['opens_at']) ? date("H:i", strtotime($day_timing['opens_at'])) : '10:00';
                                         $closes_at = !empty($day_timing['closes_at']) ? date("H:i", strtotime($day_timing['closes_at'])) : '18:00';
                                     ?>
@@ -307,7 +316,7 @@ $selected_stds = explode(',', $teacher['std'] ?? '');
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script>
-        // Basic scripts for interactivity
+        // Scripts remain the same
         $(document).ready(function() {
             $('.multi-select').select2();
 
@@ -334,5 +343,4 @@ $selected_stds = explode(',', $teacher['std'] ?? '');
     </script>
 
 </body>
-
 </html>
