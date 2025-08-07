@@ -1,7 +1,5 @@
 <?php
 // pages/teacher/message.php
-
-// Make sure to include your existing connect and encryption files.
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
@@ -15,34 +13,27 @@ if (isset($_COOKIE['encrypted_user_id'])) {
     $current_user_id = decrypt_id($_COOKIE['encrypted_user_id']);
 }
 
-// Redirect if not authenticated or not a teacher
-if ($current_user_role !== 'teacher') {
+// Security check for role
+if ($current_user_role !== 'teacher' && $current_user_role !== 'student') {
     header("Location: ../../login.php");
     exit();
 }
 
-// Set dynamic page titles
-$page_title = "Message Students";
-$contacts_title = "Students";
+// Set dynamic page titles based on role
+$page_title = ($current_user_role === 'teacher') ? "Message Students" : "Message Teachers";
+$contacts_title = ($current_user_role === 'teacher') ? "Students" : "Teachers";
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title><?php echo htmlspecialchars($page_title); ?> - Dashboard</title>
-
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
     <link href="/BMC-SMS/assets/css/sb-admin-2.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/BMC-SMS/assets/css/notification_window.css">
-    <link rel="stylesheet" href="/BMC-SMS/assets/css/sidebar.css">
-    <link rel="stylesheet" href="/BMC-SMS/assets/css/scrollbar_hidden.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-
-    <link rel="stylesheet" href="../../assets/css/message.css?v=1.1">
-
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/message.css?v=1.3">
+    <link rel="stylesheet" href="../../assets/css/custom.css">
 </head>
 <body id="page-top">
     <div id="wrapper">
@@ -51,10 +42,7 @@ $contacts_title = "Students";
             <div id="content">
                 <?php include '../../includes/header.php'; ?>
                 <div class="container-fluid">
-                    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                        <h1 class="h3 mb-0 text-gray-800"><?php echo htmlspecialchars($page_title); ?></h1>
-                    </div>
-
+                    <h1 class="h3 mb-4 text-gray-800"><?php echo htmlspecialchars($page_title); ?></h1>
                     <div class="row">
                         <div class="col-lg-4 mb-4">
                             <div class="card shadow">
@@ -62,13 +50,14 @@ $contacts_title = "Students";
                                     <h6 class="m-0 font-weight-bold text-primary"><?php echo htmlspecialchars($contacts_title); ?></h6>
                                 </div>
                                 <div class="card-body p-0">
-                                    <ul class="list-group list-group-flush" id="contacts-list">
-                                        <div class="text-center p-4"><div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div></div>
-                                    </ul>
+                                    <div id="contacts-list-container" style="max-height: 60vh; overflow-y: auto;">
+                                        <ul class="list-group list-group-flush" id="contacts-list">
+                                            <div class="text-center p-4"><div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div></div>
+                                        </ul>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-
                         <div class="col-lg-8 mb-4">
                             <div class="card shadow">
                                 <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary" id="chat-with-name">Select a contact to start chatting</h6></div>
@@ -94,18 +83,16 @@ $contacts_title = "Students";
             <?php include_once '../../includes/footer.php'; ?>
         </div>
     </div>
-    
     <?php include_once "../../includes/logout_modal.php"; ?>
-
     <script src="/BMC-SMS/assets/vendor/jquery/jquery.min.js"></script>
     <script src="/BMC-SMS/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="/BMC-SMS/assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="/BMC-SMS/assets/js/sb-admin-2.min.js"></script>
-    <script src="/BMC-SMS/assets/js/notification_window.js"></script>
-
     <script>
+        // Pass PHP variables to JavaScript for reliable pathing
         window.currentUserId = '<?php echo $current_user_id; ?>';
+        window.currentUserRole = '<?php echo $current_user_role; ?>';
+        window.base_url = '/BMC-SMS/';
     </script>
-    <script src="../../assets/js/message.js"></script>
+    <script src="/BMC-SMS/assets/js/message.js"></script>
 </body>
 </html>

@@ -19,19 +19,24 @@ if ($role !== 'principal') {
 $admin_school_id = null;
 $admin_school_name = null;
 if ($userId) {
-    // --- CORRECTED: Using PDO ---
-    $stmt = $conn->prepare('SELECT s."id", s."school_name" FROM "principal" p JOIN "school" s ON p."school_id" = s."id" WHERE p."id" = ?');
-    $stmt->execute([$userId]);
-    $admin_data = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($admin_data) {
-        $admin_school_id = $admin_data['id'];
-        $admin_school_name = $admin_data['school_name'];
+    try {
+        $stmt = $conn->prepare('SELECT s."id", s."school_name" FROM "principal" p JOIN "school" s ON p."school_id" = s."id" WHERE p."id" = ?');
+        $stmt->execute([$userId]);
+        $admin_data = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($admin_data) {
+            $admin_school_id = $admin_data['id'];
+            $admin_school_name = $admin_data['school_name'];
+        }
+    } catch (PDOException $e) {
+        error_log("Failed to fetch principal's school info: " . $e->getMessage());
+        die("Could not retrieve school information.");
     }
 }
 
 $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // --- FORM DATA RETRIEVAL ---
     $librarian_name = trim($_POST['librarian_name']);
     $email = trim($_POST['email']);
     $password = $_POST['password'];
@@ -42,32 +47,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $address = trim($_POST['address']);
     $qualification = trim($_POST['qualification']);
     $salary = trim($_POST['salary']);
+    $timings = $_POST['timings'] ?? []; // <-- Added timings data
     $school_id = $admin_school_id;
     $image_path_for_db = null;
 
+    // --- FILE UPLOAD LOGIC ---
     if (isset($_FILES['librarian_image']) && $_FILES['librarian_image']['error'] === UPLOAD_ERR_OK) {
-        // File upload logic remains the same
+        $file = $_FILES['librarian_image'];
+        $uploadDir = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/librarian/uploads/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
+        $fileName = 'librarian_' . uniqid() . '_' . basename($file['name']);
+        $targetPath = $uploadDir . $fileName;
+        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+            $image_path_for_db = '/BMC-SMS/pages/librarian/uploads/' . $fileName;
+        } else {
+            $errors[] = "Failed to upload image.";
+        }
     }
 
+    // --- VALIDATION ---
     if (empty($librarian_name)) $errors[] = "Librarian name is required.";
     if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "A valid email is required.";
     if (empty($password)) $errors[] = "Password is required.";
     if (empty($phone)) $errors[] = "Phone number is required.";
     if (empty($school_id)) $errors[] = "School association is missing.";
 
+    // --- DATABASE INSERTION ---
     if (empty($errors)) {
         try {
             $conn->beginTransaction();
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
             $user_role = 'librarian';
 
-            // --- CORRECTED: Using PDO ---
+            // 1. Create user record
             $stmt_user = $conn->prepare('INSERT INTO "users" ("role", "email", "password") VALUES (?, ?, ?)');
             $stmt_user->execute([$user_role, $email, $hashed_password]);
             $new_user_id = $conn->lastInsertId();
 
+            // 2. Create librarian record
             $stmt_librarian = $conn->prepare('INSERT INTO "librarian" (id, librarian_image, librarian_name, school_id, email, password, phone, dob, gender, blood_group, address, qualification, salary) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
             $stmt_librarian->execute([$new_user_id, $image_path_for_db, $librarian_name, $school_id, $email, $hashed_password, $phone, $dob, $gender, $blood_group, $address, $qualification, $salary]);
+
+            // 3. Insert librarian timings (NEWLY ADDED)
+            // Note: Assumes a 'librarian_timings' table exists similar to 'principal_timings'
+            $stmt_timing = $conn->prepare('INSERT INTO "librarian_timings" (librarian_id, day_of_week, opens_at, closes_at, is_closed) VALUES (?, ?, ?, ?, ?)');
+            foreach ($timings as $day => $details) {
+                $is_closed = isset($details['is_closed']);
+                $opens_at = ($is_closed || empty($details['opens_at'])) ? null : $details['opens_at'];
+                $closes_at = ($is_closed || empty($details['closes_at'])) ? null : $details['closes_at'];
+                $stmt_timing->execute([$new_user_id, $day, $opens_at, $closes_at, $is_closed]);
+            }
 
             $conn->commit();
             header("Location: ../../pages/librarian/librarian_list.php?success=Librarian enrolled successfully");
@@ -123,7 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         <img src="../../assets/img/default-user.jpg" alt="Librarian Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
                                         <div class="form-group">
                                             <label for="librarian_image" class="small btn btn-sm btn-info"><i class="fas fa-upload fa-sm"></i> Upload Photo</label>
-                                            <input type="file" class="d-none" id="librarian_image" name="librarian_image">
+                                            <input type="file" class="d-none" id="librarian_image" name="librarian_image" accept="image/*">
                                         </div>
                                     </div>
                                     <div class="col-md-9">
@@ -135,6 +166,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                             <div class="form-group col-md-6"><label for="password">Password *</label><input type="password" class="form-control" id="password" name="password" required></div>
                                         </div>
                                     </div>
+                                </div>
+                                
+                                <hr>
+                                <h6 class="font-weight-bold text-primary mb-3">Weekly Timings</h6>
+                                <div id="timings-schedule">
+                                    <?php
+                                    $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                                    foreach ($days as $day):
+                                        $posted_day = $_POST['timings'][$day] ?? [];
+                                        $is_closed = isset($posted_day['is_closed']);
+                                        $opens_at = $posted_day['opens_at'] ?? '09:00';
+                                        $closes_at = $posted_day['closes_at'] ?? '17:00';
+                                    ?>
+                                        <div class="form-row align-items-center mb-2 timing-row" data-day="<?php echo $day; ?>">
+                                            <div class="col-md-2"><label class="mb-0"><?php echo $day; ?></label></div>
+                                            <div class="col-md-2">
+                                                <div class="custom-control custom-checkbox">
+                                                    <input type="checkbox" class="custom-control-input closed-checkbox" id="closed_<?php echo $day; ?>" name="timings[<?php echo $day; ?>][is_closed]" <?php if ($is_closed) echo 'checked'; ?>>
+                                                    <label class="custom-control-label" for="closed_<?php echo $day; ?>">Closed</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="input-group">
+                                                    <div class="input-group-prepend"><span class="input-group-text small">Opens at</span></div>
+                                                    <input type="time" class="form-control opens-at" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="input-group">
+                                                    <div class="input-group-prepend"><span class="input-group-text small">Closes at</span></div>
+                                                    <input type="time" class="form-control closes-at" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
                                 </div>
                                 <hr>
                                 <h6 class="text-primary">Professional Information</h6>
@@ -179,18 +245,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php include_once '../../includes/footer.php'; ?>
         </div>
     </div>
-        <?php include_once "../logout_modal.php"?>
+        <?php include_once "../../includes/logout_modal.php"?>
 
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script>
         $(document).ready(function() {
+            // Image Preview
             $('#librarian_image').on('change', function(event) {
-                if (event.target.files[0]) {
-                    $('#imagePreview').attr('src', URL.createObjectURL(event.target.files[0]));
+                if (event.target.files && event.target.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        $('#imagePreview').attr('src', e.target.result);
+                    }
+                    reader.readAsDataURL(event.target.files[0]);
                 }
             });
+
+            // Timings schedule logic
+            $('.closed-checkbox').on('change', function() {
+                const row = $(this).closest('.timing-row');
+                const timeInputs = row.find('input[type="time"]');
+                timeInputs.prop('disabled', $(this).is(':checked'));
+            });
+
+            // Trigger on page load to set initial state
+            $('.closed-checkbox').trigger('change');
         });
     </script>
 </body>
