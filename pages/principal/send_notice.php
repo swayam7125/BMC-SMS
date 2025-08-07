@@ -33,14 +33,12 @@ try {
     $stmt_school = $conn->prepare($sql_school);
     $stmt_school->execute([$userId]);
 
-    // Use fetch instead of get_result and fetch_assoc
     if ($row_school = $stmt_school->fetch(PDO::FETCH_ASSOC)) {
         $schoolId = $row_school['school_id'];
         $principalName = $row_school['principal_name'];
 
-        // Fetch standards
-        // Note: CAST(std AS UNSIGNED) is MySQL-specific. In PostgreSQL, we use INTEGER.
-        $sql_std = "SELECT DISTINCT std FROM student WHERE school_id = ? ORDER BY CAST(std AS INTEGER)";
+        // --- THIS IS THE CORRECTED QUERY ---
+        $sql_std = "SELECT std FROM student WHERE school_id = ? GROUP BY std ORDER BY CAST(std AS INTEGER)";
         $stmt_std = $conn->prepare($sql_std);
         $stmt_std->execute([$schoolId]);
         while ($std_row = $stmt_std->fetch(PDO::FETCH_ASSOC)) {
@@ -94,60 +92,40 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
 
     // --- DATABASE INSERTION (Using PDO Transaction) ---
     try {
-        // Start transaction
         $conn->beginTransaction();
 
-        $sql_content = "INSERT INTO school_notices_content (user_id, school_id, title, content, file_path, original_filename) VALUES (?, ?, ?, ?, ?, ?)";
+        // For PostgreSQL, to get the last inserted ID, we use RETURNING id
+        $sql_content = "INSERT INTO school_notices_content (user_id, school_id, title, content, file_path, original_filename) VALUES (?, ?, ?, ?, ?, ?) RETURNING id";
         $stmt_content = $conn->prepare($sql_content);
         $stmt_content->execute([$userId, $schoolId, $title, $content, $filePathForDB, $originalFilename]);
-
-        // Use lastInsertId() to get the ID of the new notice
-        $noticeId = $conn->lastInsertId();
+        $noticeId = $stmt_content->fetchColumn(); // Fetch the returned ID
 
         $sql_recipient = "INSERT INTO school_notice_recipients (notice_id, recipient_type, recipient_identifier) VALUES (?, ?, ?)";
         $stmt_recipient = $conn->prepare($sql_recipient);
 
         if ($send_to_group == 'both') {
-            // All Teachers
             foreach ($availableTeachers as $teacher) {
                 $stmt_recipient->execute([$noticeId, 'teacher', $teacher['id']]);
                 $teacher_ids_to_notify[] = $teacher['id'];
             }
-            // All Standards
             foreach ($availableStandards as $standard) {
                 $stmt_recipient->execute([$noticeId, 'standard', $standard]);
                 $standards_to_notify[] = $standard;
             }
         } elseif ($send_to_group == 'teacher' && !empty($_POST['teacher_ids'])) {
-            if (in_array('all', $_POST['teacher_ids'])) {
-                foreach ($availableTeachers as $teacher) {
-                    $stmt_recipient->execute([$noticeId, 'teacher', $teacher['id']]);
-                    $teacher_ids_to_notify[] = $teacher['id'];
-                }
-            } else {
-                foreach ($_POST['teacher_ids'] as $teacher_id) {
-                    $stmt_recipient->execute([$noticeId, 'teacher', $teacher_id]);
-                    $teacher_ids_to_notify[] = $teacher_id;
-                }
+            $teacher_ids_to_notify = in_array('all', $_POST['teacher_ids']) ? array_column($availableTeachers, 'id') : $_POST['teacher_ids'];
+            foreach ($teacher_ids_to_notify as $teacher_id) {
+                $stmt_recipient->execute([$noticeId, 'teacher', $teacher_id]);
             }
         } elseif ($send_to_group == 'student' && !empty($_POST['standard_ids'])) {
-            if (in_array('all', $_POST['standard_ids'])) {
-                foreach ($availableStandards as $standard) {
-                    $stmt_recipient->execute([$noticeId, 'standard', $standard]);
-                    $standards_to_notify[] = $standard;
-                }
-            } else {
-                foreach ($_POST['standard_ids'] as $standard_id) {
-                    $stmt_recipient->execute([$noticeId, 'standard', $standard_id]);
-                    $standards_to_notify[] = $standard_id;
-                }
+            $standards_to_notify = in_array('all', $_POST['standard_ids']) ? $availableStandards : $_POST['standard_ids'];
+            foreach ($standards_to_notify as $standard_id) {
+                $stmt_recipient->execute([$noticeId, 'standard', $standard_id]);
             }
         }
 
-        // Commit the transaction if all inserts were successful
         $conn->commit();
     } catch (Exception $e) {
-        // Roll back the transaction on error
         if ($conn->inTransaction()) {
             $conn->rollBack();
         }
@@ -166,39 +144,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
             . "<p><strong>Content:</strong><br>" . nl2br(htmlspecialchars($content)) . "</p>"
             . "<p>Please log in to the portal for more details.</p>";
 
-        // 1. Notify and Email Teachers
         if (!empty($teacher_ids_to_notify)) {
-            $unique_teacher_ids = array_unique($teacher_ids_to_notify);
-            $placeholders = implode(',', array_fill(0, count($unique_teacher_ids), '?'));
+            $placeholders = implode(',', array_fill(0, count($teacher_ids_to_notify), '?'));
             $sql_teachers = "SELECT id, email, teacher_name FROM teacher WHERE id IN ($placeholders)";
             $stmt_teachers = $conn->prepare($sql_teachers);
-            $stmt_teachers->execute($unique_teacher_ids);
+            $stmt_teachers->execute($teacher_ids_to_notify);
             $notification_link = "/pages/teacher/view_notice.php";
             while ($teacher = $stmt_teachers->fetch(PDO::FETCH_ASSOC)) {
                 $stmt_notify->execute([$teacher['id'], $notification_message, $notification_link, $notification_type]);
-                $email_body = "<p>Dear " . htmlspecialchars($teacher['teacher_name']) . ",</p>" . $email_content_base;
-                send_email($teacher['email'], $email_subject, $email_body);
+                send_email($teacher['email'], $email_subject, "<p>Dear " . htmlspecialchars($teacher['teacher_name']) . ",</p>" . $email_content_base);
             }
         }
 
-        // 2. Notify and Email Students
         if (!empty($standards_to_notify)) {
-            $unique_standards = array_unique($standards_to_notify);
-            $placeholders = implode(',', array_fill(0, count($unique_standards), '?'));
+            $placeholders = implode(',', array_fill(0, count($standards_to_notify), '?'));
             $sql_students = "SELECT id, email, student_name FROM student WHERE school_id = ? AND std IN ($placeholders)";
             $stmt_students = $conn->prepare($sql_students);
-            $params = array_merge([$schoolId], $unique_standards);
+            $params = array_merge([$schoolId], $standards_to_notify);
             $stmt_students->execute($params);
             $notification_link = "/pages/student/view_notice.php";
             while ($student = $stmt_students->fetch(PDO::FETCH_ASSOC)) {
                 $stmt_notify->execute([$student['id'], $notification_message, $notification_link, $notification_type]);
-                $email_body = "<p>Dear " . htmlspecialchars($student['student_name']) . ",</p>" . $email_content_base;
-                send_email($student['email'], $email_subject, $email_body);
+                send_email($student['email'], $email_subject, "<p>Dear " . htmlspecialchars($student['student_name']) . ",</p>" . $email_content_base);
             }
         }
     } catch (PDOException $e) {
-        // Log or handle notification errors, but don't stop the script
-        // The main notice was already sent successfully.
         error_log("Notification/Email Error: " . $e->getMessage());
     }
 
@@ -210,7 +180,6 @@ $pageTitle = 'Send School Notice';
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
@@ -317,8 +286,6 @@ $pageTitle = 'Send School Notice';
                     $('#teacher_group').show();
                 } else if (selected === 'student') {
                     $('#student_group').show();
-                } else if (selected === 'both') {
-                    // No need to show dropdowns as it's for all
                 }
             });
         });

@@ -10,12 +10,22 @@ if ($role !== 'teacher' || !$userId) {
     exit();
 }
 
-$query = "SELECT attendance_date, status FROM teacher_attendance WHERE teacher_id = ? ORDER BY attendance_date DESC";
-$stmt = $conn->prepare($query);
-$stmt->bind_param("i", $userId);
-$stmt->execute();
-$records = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+$records = []; // Initialize to an empty array
+try {
+    // This query is fine for PDO, using '?' as the placeholder
+    $query = "SELECT attendance_date, status FROM teacher_attendance WHERE teacher_id = ? ORDER BY attendance_date DESC";
+
+    // --- CORRECTED PDO LOGIC ---
+    $stmt = $conn->prepare($query);
+    // Pass parameters directly into the execute() method
+    $stmt->execute([$userId]);
+    // Fetch all results using the correct PDO method
+    $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+} catch (PDOException $e) {
+    // Log the error or show a friendly message
+    die("Error fetching attendance records: " . $e->getMessage());
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -58,9 +68,11 @@ $stmt->close();
                                             <tr>
                                                 <td><?php echo date('d M, Y', strtotime($record['attendance_date'])); ?></td>
                                                 <td>
-                                                    <?php if ($record['status'] == 'Present') echo '<span class="badge badge-success">Present</span>'; ?>
-                                                    <?php if ($record['status'] == 'Absent') echo '<span class="badge badge-danger">Absent</span>'; ?>
-                                                    <?php if ($record['status'] == 'Leave') echo '<span class="badge badge-warning">Leave</span>'; ?>
+                                                    <?php 
+                                                        if ($record['status'] == 'Present') echo '<span class="badge badge-success">Present</span>';
+                                                        elseif ($record['status'] == 'Absent') echo '<span class="badge badge-danger">Absent</span>';
+                                                        elseif ($record['status'] == 'Leave') echo '<span class="badge badge-warning">Leave</span>';
+                                                    ?>
                                                 </td>
                                             </tr>
                                             <?php endforeach; ?>

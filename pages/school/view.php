@@ -1,5 +1,5 @@
 <?php
-// It's crucial that connect.php now establishes a PostgreSQL connection.
+// This file now expects $conn to be a PDO object.
 include_once "../../includes/connect.php"; 
 include_once "../../encryption.php";
 
@@ -18,59 +18,53 @@ if ($school_id <= 0) {
     exit;
 }
 
-// --- PostgreSQL Query ---
-// The query is largely the same, but we'll use a numbered placeholder ($1) for the parameter.
-$query = "SELECT s.*, p.id as principal_user_id, p.principal_name, p.principal_image 
-          FROM school s 
-          LEFT JOIN principal p ON s.id = p.school_id 
-          WHERE s.id = $1";
+// --- PDO Database Query ---
+try {
+    // 1. The SQL query now uses a named placeholder (:id) for clarity and security.
+    $query = "SELECT s.*, p.id as principal_user_id, p.principal_name, p.principal_image 
+              FROM school s 
+              LEFT JOIN principal p ON s.id = p.school_id 
+              WHERE s.id = :id";
 
-// Prepare the statement for PostgreSQL
-$stmt_name = "get_school_details"; // A unique name for the prepared statement
-$prepare_result = pg_prepare($conn, $stmt_name, $query);
+    // 2. Prepare the statement using the PDO connection object.
+    $stmt = $conn->prepare($query);
 
-if (!$prepare_result) {
-    // You might want to log the actual error: pg_last_error($conn)
-    header("Location: school_list.php?error=Failed to prepare statement");
-    exit;
+    // 3. Execute the statement, binding the school_id to the :id placeholder.
+    $stmt->execute(['id' => $school_id]);
+
+    // 4. Fetch the single school record as an associative array.
+    $school = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    // 5. Check if a school was found. If fetch() returns false, no record exists.
+    if (!$school) {
+        header("Location: school_list.php?error=School not found");
+        exit;
+    }
+
+} catch (PDOException $e) {
+    // If any database error occurs, the try block will stop and this will run.
+    die("Database query failed: " . $e->getMessage());
 }
-
-// Execute the prepared statement with the school ID
-$result = pg_execute($conn, $stmt_name, array($school_id));
-
-if (!$result || pg_num_rows($result) == 0) {
-    header("Location: school_list.php?error=School not found");
-    exit;
-}
-
-// Fetch the single school record
-$school = pg_fetch_assoc($result);
 
 // --- Robust Photo/Logo Handling Logic ---
-// This function assumes the image_path stored in the DB is relative to your project's web root (e.g., 'pages/school/uploads/logo.png')
 function getWebAccessibleImagePath($db_image_path, $base_web_path, $default_sub_folder = '')
 {
     if (empty($db_image_path)) {
         return null;
     }
-
     // Attempt to make it a full web-accessible path
     $full_web_path = $base_web_path . ltrim($db_image_path, '/');
-
     // Check if the file actually exists on the filesystem from the DOCUMENT_ROOT
     $filesystem_path = $_SERVER['DOCUMENT_ROOT'] . $full_web_path;
-
     if (file_exists($filesystem_path) && is_file($filesystem_path)) {
         return $full_web_path;
     }
-
     // Fallback: If DB path is just a filename, try common upload locations
     $possible_locations = [
         "pages/{$default_sub_folder}/uploads/",
         "uploads/{$default_sub_folder}s/",
         "uploads/",
     ];
-
     foreach ($possible_locations as $location) {
         $test_path = $base_web_path . $location . basename($db_image_path);
         $test_filesystem_path = $_SERVER['DOCUMENT_ROOT'] . $test_path;
@@ -78,7 +72,6 @@ function getWebAccessibleImagePath($db_image_path, $base_web_path, $default_sub_
             return $test_path;
         }
     }
-
     return null; // No photo found
 }
 
@@ -91,16 +84,14 @@ function getDefaultImagePath($type = 'school', $base_web_path)
     }
 }
 
-// Ensure BASE_WEB_PATH is defined (it should be in header.php, but define for this script's standalone test)
+// Ensure BASE_WEB_PATH is defined
 if (!defined('BASE_WEB_PATH')) {
     define('BASE_WEB_PATH', '/BMC-SMS/'); // Adjust as per your actual project setup
 }
 
-
 // Get paths for school logo
 $school_logo_web_path = getWebAccessibleImagePath($school['school_logo'], BASE_WEB_PATH, 'school');
 $default_school_logo = getDefaultImagePath('school', BASE_WEB_PATH);
-
 
 // Get paths for principal photo
 $principal_photo_web_path = getWebAccessibleImagePath($school['principal_image'], BASE_WEB_PATH, 'principal');
@@ -226,8 +217,7 @@ $default_principal_photo = getDefaultImagePath('principal', BASE_WEB_PATH);
                                     <h6 class="m-0 font-weight-bold text-success"><i class="fas fa-user-tie"></i> Principal Information</h6>
                                 </div>
                                 <div class="card-body text-center d-flex flex-column justify-content-center">
-                                    <?php if (!empty($school['principal_user_id'])): // Use principal_user_id from the query result 
-                                    ?>
+                                    <?php if (!empty($school['principal_user_id'])): ?>
                                         <div class="photo-container">
                                             <?php if ($principal_photo_web_path): ?>
                                                 <img src="<?php echo htmlspecialchars($principal_photo_web_path); ?>" alt="<?php echo htmlspecialchars($school['principal_name']); ?>" class="view-image view-photo" onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($default_principal_photo); ?>';">
@@ -259,8 +249,8 @@ $default_principal_photo = getDefaultImagePath('principal', BASE_WEB_PATH);
             ?>
         </div>
     </div>
-    </div>
-        <?php include_once "../../includes/logout_modal.php"?>
+    
+    <?php include_once "../../includes/logout_modal.php"?>
 
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>

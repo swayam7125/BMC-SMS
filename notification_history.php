@@ -1,55 +1,69 @@
 <?php
-include_once "./includes/connect.php";
-include_once "encryption.php";
+// Corrected absolute paths for reliability
+include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/connect.php';
+include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/encryption.php';
 
-function haversine_distance($lat1, $lon1, $lat2, $lon2) {
-    $earth_radius = 6371;
-    $dLat = deg2rad($lat2 - $lat1);
-    $dLon = deg2rad($lon2 - $lon1);
-    $a = sin($dLat / 2) * sin($dLat / 2) + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLon / 2) * sin($dLon / 2);
-    $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-    return $earth_radius * $c * 1000;
+// For debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+// Redirect to login if not logged in
+if (!isset($_COOKIE['encrypted_user_id'])) {
+    header("Location: /BMC-SMS/login.php");
+    exit;
 }
 
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email']) && isset($_POST['password'])) {
-    header('Content-Type: application/json');
-    $response = [];
+$userId = decrypt_id($_COOKIE['encrypted_user_id']);
 
-    $email = trim($_POST['email']);
-    $password = trim($_POST['password']);
-    $user_lat = !empty($_POST['latitude']) ? $_POST['latitude'] : null;
-    $user_lon = !empty($_POST['longitude']) ? $_POST['longitude'] : null;
+// --- START: Notification Fetching and Filtering Logic ---
+$all_notifications = [];
+$notification_types = [];
+$params = [$userId];
 
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $response = ['status' => 'error', 'message' => 'Invalid email or password.'];
-    } else {
-        // --- FIXED: Converted to PDO ---
-        $query = 'SELECT "id", "password", "role", "account_status" FROM "users" WHERE "email" = ?';
-        $stmt = $conn->prepare($query);
-        $stmt->execute([$email]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+// Base query for all READ notifications for the user
+// PostgreSQL uses 'true' for boolean, not 1
+$sql = "SELECT id, message, link, type, created_at FROM notifications WHERE user_id = ? AND is_read = true";
 
-        if ($user && password_verify($password, $user['password'])) {
-            if ($user['account_status'] === 'suspended') {
-                $response = ['status' => 'error', 'message' => 'Your account has been suspended. Please contact the administrator.'];
-            } else {
-                // User is valid, set cookies and redirect
-                $encrypted_id = encrypt_id($user['id']);
-                $encrypted_role = encrypt_id($user['role']);
-                setcookie("encrypted_user_id", $encrypted_id, time() + 86400, "/");
-                setcookie("encrypted_user_role", $encrypted_role, time() + 86400, "/");
-                
-                // Additional logic for principal attendance can remain here if needed
-                
-                $response = ['status' => 'success', 'redirect' => 'index.php'];
-            }
-        } else {
-            $response = ['status' => 'error', 'message' => 'Invalid email or password.'];
-        }
-    }
-    echo json_encode($response);
-    exit();
+// Get filter values from GET request
+$filter_type = isset($_GET['filter_type']) ? $_GET['filter_type'] : '';
+$start_date = isset($_GET['start_date']) ? $_GET['start_date'] : '';
+$end_date = isset($_GET['end_date']) ? $_GET['end_date'] : '';
+
+// Append filters to the SQL query
+if (!empty($filter_type)) {
+    $sql .= " AND type = ?";
+    $params[] = $filter_type;
 }
+if (!empty($start_date)) {
+    // Casting to DATE is good practice for date-only comparisons in PostgreSQL
+    $sql .= " AND created_at::DATE >= ?";
+    $params[] = $start_date;
+}
+if (!empty($end_date)) {
+    $sql .= " AND created_at::DATE <= ?";
+    $params[] = $end_date;
+}
+
+$sql .= " ORDER BY created_at DESC";
+
+try {
+    // Fetch filtered notifications using PDO
+    $stmt = $conn->prepare($sql);
+    $stmt->execute($params);
+    $all_notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Fetch distinct notification types for the filter dropdown
+    $stmt_types = $conn->prepare("SELECT DISTINCT type FROM notifications WHERE user_id = ? AND is_read = true ORDER BY type ASC");
+    $stmt_types->execute([$userId]);
+    // Fetch only the first column of each row into a simple array
+    $notification_types = $stmt_types->fetchAll(PDO::FETCH_COLUMN, 0);
+
+} catch (PDOException $e) {
+    // Log error and show a user-friendly message
+    error_log("Notification History Error: " . $e->getMessage());
+    die("A database error occurred. Please try again later.");
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -161,6 +175,27 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email']) && isset($_PO
                                 <?php else: ?>
                                     <?php foreach ($all_notifications as $notification): ?>
                                         <?php 
+                                            if (!function_exists('getNotificationIcon')) {
+                                                // This function might be in header.php, so define it if not present
+                                                function getNotificationIcon($type) {
+                                                    switch ($type) {
+                                                        case 'borrow_status': return 'fas fa-book-reader text-white';
+                                                        case 'borrow_request': return 'fas fa-hand-holding-hand text-white';
+                                                        case 'leave_request': return 'fas fa-calendar-plus text-white';
+                                                        case 'new_notice': return 'fas fa-file-alt text-white';
+                                                        case 'principal_notice': return 'fas fa-user-tie text-white';
+                                                        case 'principal_to_librarian_notice': return 'fas fa-user-graduate text-white';
+                                                        case 'leave_status': return 'fas fa-check-circle text-white';
+                                                        case 'school_notice': return 'fas fa-chalkboard-teacher text-white';
+                                                        case 'new_assignment': return 'fas fa-file-signature text-white';
+                                                        case 'marks_uploaded': return 'fas fa-award text-white';
+                                                        case 'exam_timetable': return 'fas fa-calendar-alt text-white';
+                                                        case 'new_notes': return 'fas fa-sticky-note text-white';
+                                                        case 'result_published': return 'fas fa-poll-h text-white';
+                                                        default: return 'fas fa-bell text-white';
+                                                    }
+                                                }
+                                            }
                                             if (!defined('BASE_WEB_PATH')) {
                                                 define('BASE_WEB_PATH', '/BMC-SMS/');
                                             }
@@ -200,7 +235,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email']) && isset($_PO
         <i class="fas fa-angle-up"></i>
     </a>
     
-       <?php include_once "../../includes/logout_modal.php"?>
+       <?php include_once $_SERVER['DOCUMENT_ROOT'] . "/BMC-SMS/includes/logout_modal.php"?>
 
 
     <script src="/BMC-SMS/assets/vendor/jquery/jquery.min.js"></script>
@@ -211,5 +246,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email']) && isset($_PO
 
 </html>
 <?php
+// In PDO, connections are closed by setting the connection variable to null
 $conn = null;
 ?>

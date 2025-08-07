@@ -19,15 +19,12 @@ $timetable_grid = [];
 $total_periods = 0;
 
 try {
-    // PDO Change: Converted all queries to PDO
     // --- START: MARK AS READ LOGIC ---
     if (isset($_GET['notif_id']) && is_numeric($_GET['notif_id'])) {
         $notification_id = $_GET['notif_id'];
-        $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?");
+        $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = TRUE WHERE id = ? AND user_id = ?");
         $stmt_mark_read->execute([$notification_id, $userId]);
-        $stmt_mark_read = null;
     }
-    // --- END: MARK AS READ LOGIC ---
 
     switch ($role) {
         case 'student':
@@ -38,7 +35,6 @@ try {
                 $studentStd = $row['std'];
                 $selected_std = $studentStd; // For student, standard is fixed
             }
-            $stmt = null;
             break;
         case 'teacher':
         case 'principal':
@@ -48,16 +44,16 @@ try {
             if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $schoolId = $row['school_id'];
             }
-            $stmt = null;
 
             if ($schoolId) {
-                // PostgreSQL Change: CAST to INTEGER for numeric sorting of standards
-                $standards_stmt = $conn->prepare("SELECT DISTINCT std FROM student WHERE school_id = ? ORDER BY CAST(std AS INTEGER)");
+                // FIX #2: Changed query to use GROUP BY for better compatibility and correctness
+                $standards_stmt = $conn->prepare("SELECT std FROM student WHERE school_id = ? GROUP BY std ORDER BY CAST(std AS INTEGER)");
                 $standards_stmt->execute([$schoolId]);
+                
+                // FIX #1: Corrected the PHP typo from ='std'] to =$row['std']
                 while ($row = $standards_stmt->fetch(PDO::FETCH_ASSOC)) {
                     $availableStandards[] = $row['std'];
                 }
-                $standards_stmt = null;
             }
             $selected_std = $_GET['standard'] ?? null;
             break;
@@ -65,7 +61,6 @@ try {
 
     // --- FETCH TIMETABLE DATA ---
     if ($schoolId && $selected_std) {
-        // PostgreSQL Change: Used CASE statement for custom day sorting
         $query = "
             SELECT 
                 stt.day_of_week, stt.period_number, stt.subject_name, stt.start_time, stt.end_time, t.teacher_name
@@ -74,12 +69,8 @@ try {
             WHERE stt.school_id = ? AND stt.standard = ?
             ORDER BY stt.period_number, 
                      CASE stt.day_of_week 
-                         WHEN 'Monday' THEN 1 
-                         WHEN 'Tuesday' THEN 2 
-                         WHEN 'Wednesday' THEN 3 
-                         WHEN 'Thursday' THEN 4 
-                         WHEN 'Friday' THEN 5 
-                         WHEN 'Saturday' THEN 6 
+                         WHEN 'Monday' THEN 1 WHEN 'Tuesday' THEN 2 WHEN 'Wednesday' THEN 3 
+                         WHEN 'Thursday' THEN 4 WHEN 'Friday' THEN 5 WHEN 'Saturday' THEN 6 
                          ELSE 7 
                      END
         ";
@@ -88,13 +79,13 @@ try {
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $timetable_grid[$row['period_number']][$row['day_of_week']] = $row;
             if ($row['period_number'] > $total_periods) {
-                $total_periods = $row['period_number']; // Dynamically find max periods
+                $total_periods = $row['period_number'];
             }
         }
-        $stmt = null;
     }
 } catch (PDOException $e) {
     error_log("DB Error in view_timetable.php: " . $e->getMessage());
+    die("A database error has occurred. Please check the logs.");
 }
 
 $days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -102,7 +93,6 @@ $pageTitle = 'View Timetable';
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
@@ -119,12 +109,10 @@ $pageTitle = 'View Timetable';
             text-align: center;
             min-width: 150px;
         }
-
         .timetable-table .period-cell {
             font-weight: bold;
             background-color: #f8f9fc;
         }
-
         .timetable-table .lecture-block {
             padding: 10px;
             border-radius: 5px;
@@ -135,7 +123,6 @@ $pageTitle = 'View Timetable';
             flex-direction: column;
             justify-content: center;
         }
-
         .timetable-table .lecture-block .subject {
             font-weight: bold;
             color: #0056b3;

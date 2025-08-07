@@ -107,8 +107,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email']) && isset($_PO
 
     echo json_encode($response);
     $conn = null;
+    $conn = null;
     exit();
 }
+
+// --- PHP LOGIC ENDS HERE ---
 ?>
 <!DOCTYPE html>
 <html lang="en">
