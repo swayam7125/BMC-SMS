@@ -6,9 +6,10 @@ error_reporting(E_ALL);
 // Set timezone to ensure 'time_ago' function is accurate
 date_default_timezone_set('Asia/Kolkata');
 
-// Include necessary files
-include_once "encryption.php";
-include_once "./includes/connect.php";
+// NOTE: These paths assume fetch_notifications.php is in the root directory.
+// Adjust the paths if this file is located elsewhere.
+include_once __DIR__ . "/encryption.php";
+include_once __DIR__ . "/includes/connect.php";
 
 header('Content-Type: application/json');
 
@@ -22,50 +23,58 @@ if (!$userId) {
     exit;
 }
 
+$notifications = [];
+
 try {
-    // --- FIXED: Converted to PDO syntax ---
-    $stmt = $conn->prepare('SELECT "message", "link", "is_read", "created_at", "type" FROM "notifications" WHERE "user_id" = ? ORDER BY "created_at" DESC');
+    // Prepare the SQL query to fetch notifications for the logged-in user
+    $stmt = $conn->prepare("SELECT message, link, is_read, created_at, type FROM notifications WHERE user_id = ? ORDER BY created_at DESC");
     $stmt->execute([$userId]);
     $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // --- Categorize Notifications ---
-    $categorized = [
-        'Assignments' => [],
-        'Leave Status' => [],
-        'Notices' => [],
-        'Timetables' => [],
-        'Other' => []
+} catch (PDOException $e) {
+    error_log("Fetch Notifications Error: " . $e->getMessage());
+    echo json_encode(['error' => 'A database error occurred.']);
+    // Close the connection before exiting
+    $conn = null;
+    exit;
+}
+
+// Close the connection
+$conn = null;
+
+
+// --- Categorize Notifications ---
+$categorized = [
+    'Assignments' => [],
+    'Leave Status' => [],
+    'Notices' => [],
+    'Timetables' => [],
+    'Other' => []
+];
+
+foreach ($notifications as $notification) {
+    $type = $notification['type'];
+    // Sanitize and format the notification data
+    $formatted_notification = [
+        'message' => htmlspecialchars($notification['message']),
+        'link' => htmlspecialchars($notification['link'] ?? '#'),
+        'is_read' => (bool)$notification['is_read'],
+        'time_ago' => time_ago($notification['created_at']),
+        'raw_date' => $notification['created_at']
     ];
 
-    foreach ($notifications as $notification) {
-        $type = $notification['type'];
-        // Sanitize and format the notification data
-        $formatted_notification = [
-            'message' => htmlspecialchars($notification['message']),
-            'link' => htmlspecialchars($notification['link'] ?? '#'),
-            'is_read' => (bool)$notification['is_read'],
-            'time_ago' => time_ago($notification['created_at']),
-            'raw_date' => $notification['created_at']
-        ];
-
-        // Categorization logic based on the 'type' column
-        if (strpos($type, 'assignment') !== false) {
-            $categorized['Assignments'][] = $formatted_notification;
-        } elseif (strpos($type, 'leave') !== false) {
-            $categorized['Leave Status'][] = $formatted_notification;
-        } elseif (strpos($type, 'notice') !== false) {
-            $categorized['Notices'][] = $formatted_notification;
-        } elseif (strpos($type, 'timetable') !== false) {
-            $categorized['Timetables'][] = $formatted_notification;
-        } else {
-            $categorized['Other'][] = $formatted_notification;
-        }
+    // Categorization logic based on the 'type' column
+    if (strpos($type, 'assignment') !== false) {
+        $categorized['Assignments'][] = $formatted_notification;
+    } elseif (strpos($type, 'leave') !== false) {
+        $categorized['Leave Status'][] = $formatted_notification;
+    } elseif (strpos($type, 'notice') !== false) {
+        $categorized['Notices'][] = $formatted_notification;
+    } elseif (strpos($type, 'timetable') !== false) {
+        $categorized['Timetables'][] = $formatted_notification;
+    } else {
+        $categorized['Other'][] = $formatted_notification;
     }
-
-    echo json_encode($categorized);
-
-} catch (PDOException $e) {
-    echo json_encode(['error' => 'Database query failed: ' . $e->getMessage()]);
 }
 
 // Function to calculate "time ago" from a timestamp
@@ -93,6 +102,4 @@ function time_ago($timestamp)
     return 'a moment ago';
 }
 
-// Close the connection
-$conn = null;
-?>
+echo json_encode($categorized);

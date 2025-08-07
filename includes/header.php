@@ -1,27 +1,31 @@
 <?php
-// Corrected absolute paths for both files for reliability
+// Corrected absolute paths for reliability
 include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/connect.php';
 include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/encryption.php';
 
-// For debugging - KEEP THIS DURING DEVELOPMENT
+// For debugging
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// --- CORRECTED: Using PDO to mark notification as read ---
+// --- START: CODE TO MARK INDIVIDUAL NOTIFICATION AS READ (PDO VERSION) ---
 if (isset($_GET['notif_id'])) {
     $notification_id_to_mark = filter_var($_GET['notif_id'], FILTER_VALIDATE_INT);
     $current_user_id_for_notif = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
 
     if ($notification_id_to_mark && $current_user_id_for_notif && isset($conn)) {
         try {
-            $stmt_mark_read = $conn->prepare('UPDATE "notifications" SET "is_read" = true WHERE "id" = ? AND "user_id" = ?');
+            // PostgreSQL uses 'true' for boolean values
+            $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = true WHERE id = ? AND user_id = ?");
             $stmt_mark_read->execute([$notification_id_to_mark, $current_user_id_for_notif]);
         } catch (PDOException $e) {
             error_log("Failed to mark notification as read: " . $e->getMessage());
         }
     }
 }
+// --- END: CODE ---
 
+
+// Define BASE_WEB_PATH if it hasn't been defined already.
 if (!defined('BASE_WEB_PATH')) {
     define('BASE_WEB_PATH', '/BMC-SMS/');
 }
@@ -31,52 +35,77 @@ $userName = 'Guest';
 $user_role = 'User';
 $userProfileImage = BASE_WEB_PATH . 'assets/images/undraw_profile.svg';
 $isLoggedIn = false;
-$notifications = [];
-$unread_count = 0;
-$current_user_id = null;
 
-if (isset($_COOKIE['encrypted_user_id'])) {
-    $current_user_id = decrypt_id($_COOKIE['encrypted_user_id']);
-    $isLoggedIn = true;
-}
+// Determine user details if logged in
 if (isset($_COOKIE['encrypted_user_role'])) {
+    $isLoggedIn = true;
     $user_role = decrypt_id($_COOKIE['encrypted_user_role']);
+
     if ($user_role === 'superadmin') {
         $userName = 'Super Admin';
     } else {
-        if (isset($_COOKIE['encrypted_user_name'])) $userName = decrypt_id($_COOKIE['encrypted_user_name']);
+        if (isset($_COOKIE['encrypted_user_name'])) {
+            $userName = decrypt_id($_COOKIE['encrypted_user_name']);
+        }
         if (isset($_COOKIE['encrypted_profile_image'])) {
             $decrypted_image_relative_path = decrypt_id($_COOKIE['encrypted_profile_image']);
-            $userProfileImage = BASE_WEB_PATH . ltrim($decrypted_image_relative_path, '/');
+            $image_path_for_web = BASE_WEB_PATH . ltrim($decrypted_image_relative_path, '/');
+            $filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $image_path_for_web;
+            if (!empty($decrypted_image_relative_path) && file_exists($filesystem_path) && is_file($filesystem_path)) {
+                $userProfileImage = $image_path_for_web;
+            }
         }
     }
 }
 
-if ($isLoggedIn && $current_user_id && isset($conn)) {
-    try {
-        // --- CORRECTED: Using PDO to fetch notifications ---
-        $stmt_notifications = $conn->prepare('SELECT "id", "message", "link", "type", "created_at" FROM "notifications" WHERE "user_id" = ? AND "is_read" = false ORDER BY "created_at" DESC LIMIT 5');
-        $stmt_notifications->execute([$current_user_id]);
-        $notifications = $stmt_notifications->fetchAll(PDO::FETCH_ASSOC);
 
-        $stmt_count = $conn->prepare('SELECT COUNT(*) FROM "notifications" WHERE "user_id" = ? AND "is_read" = false');
-        $stmt_count->execute([$current_user_id]);
-        $unread_count = $stmt_count->fetchColumn();
-    } catch (PDOException $e) {
-        error_log("Notification fetch error: " . $e->getMessage());
+// --- START: Dynamic Notification Logic (PDO VERSION) ---
+$notifications = [];
+$unread_count = 0;
+$current_user_id = null;
+
+if ($isLoggedIn && isset($_COOKIE['encrypted_user_id'])) {
+    $current_user_id = decrypt_id($_COOKIE['encrypted_user_id']);
+    
+    if ($current_user_id && isset($conn)) {
+        try {
+            // Fetch latest 5 unread notifications
+            $stmt_notifications = $conn->prepare("SELECT id, message, link, type, created_at FROM notifications WHERE user_id = ? AND is_read = false ORDER BY created_at DESC LIMIT 5");
+            $stmt_notifications->execute([$current_user_id]);
+            $notifications = $stmt_notifications->fetchAll(PDO::FETCH_ASSOC);
+
+            // Fetch the total count of unread notifications
+            $stmt_count = $conn->prepare("SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = false");
+            $stmt_count->execute([$current_user_id]);
+            $unread_count = (int) $stmt_count->fetchColumn();
+
+        } catch (PDOException $e) {
+            error_log("Header notification fetch error: " . $e->getMessage());
+            // Fail gracefully, don't break the entire header
+            $notifications = [];
+            $unread_count = 0;
+        }
     }
 }
 
+// Function to determine notification icon based on type
 function getNotificationIcon($type) {
-    $icons = [
-        'borrow_status' => 'fas fa-book-reader text-white', 'borrow_request' => 'fas fa-hand-holding-hand text-white',
-        'leave_request' => 'fas fa-calendar-plus text-white', 'new_notice' => 'fas fa-file-alt text-white',
-        'principal_notice' => 'fas fa-user-tie text-white', 'leave_status' => 'fas fa-check-circle text-white',
-        'school_notice' => 'fas fa-chalkboard-teacher text-white', 'new_assignment' => 'fas fa-file-signature text-white',
-        'marks_uploaded' => 'fas fa-award text-white', 'exam_timetable' => 'fas fa-calendar-alt text-white',
-        'new_notes' => 'fas fa-sticky-note text-white', 'result_published' => 'fas fa-poll-h text-white'
-    ];
-    return $icons[$type] ?? 'fas fa-bell text-white';
+    switch ($type) {
+        case 'borrow_status': return 'fas fa-book-reader text-white';
+        case 'borrow_request': return 'fas fa-hand-holding-hand text-white';
+        case 'leave_request': return 'fas fa-calendar-plus text-white';
+        case 'new_notice': return 'fas fa-file-alt text-white';
+        case 'principal_notice': return 'fas fa-user-tie text-white';
+        case 'principal_to_librarian_notice': return 'fas fa-user-graduate text-white';
+        case 'leave_status': return 'fas fa-check-circle text-white';
+        case 'school_notice': return 'fas fa-chalkboard-teacher text-white';
+        case 'new_assignment': return 'fas fa-file-signature text-white';
+        case 'marks_uploaded': return 'fas fa-award text-white';
+        case 'exam_timetable': return 'fas fa-calendar-alt text-white';
+        case 'new_notes': return 'fas fa-sticky-note text-white';
+        case 'result_published': return 'fas fa-poll-h text-white';
+        default: return 'fas fa-bell text-white';
+    }
 }
 ?>
 <style>
