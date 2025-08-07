@@ -185,7 +185,7 @@ try {
     }
 
     function confirmDelete(id) {
-        var deleteUrl = `../../pages/librarian/delete.php?id=${id}`;
+        var deleteUrl = `../../pages/librarian/librarian_delete.php?id=${id}`;
         $('#confirmDeleteBtn').attr('href', deleteUrl);
         $('#deleteModal').modal('show');
     }
