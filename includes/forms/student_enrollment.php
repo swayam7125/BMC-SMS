@@ -200,7 +200,7 @@ $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group col-md-6"><label for="blood_group">Blood Group *</label><select class="form-control" id="blood_group" name="blood_group" required>
-                                            <option value="">-- Select Blood Group --</option><?php $bg_options = ['a+', 'a-', 'b+', 'b-', 'ab+', 'ab-', 'o+', 'o-'];
+                                            <option value="">-- Select Blood Group --</option><?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
                                                                                                 foreach ($bg_options as $bg) {
                                                                                                     $selected = (isset($_POST['blood_group']) && $_POST['blood_group'] == $bg) ? 'selected' : '';
                                                                                                     echo "<option value='{$bg}' {$selected}>" . strtoupper($bg) . "</option>";

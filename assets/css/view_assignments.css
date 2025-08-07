@@ -19,3 +19,11 @@
 .assignment-card.submitted .text-primary {
   color: #858796 !important;
 }
+
+.rejection-reason {
+  background-color: #fff3cd;
+  border-left: 4px solid #f6c23e;
+  padding: 10px;
+  margin-top: 10px;
+  border-radius: 0 4px 4px 0;
+}

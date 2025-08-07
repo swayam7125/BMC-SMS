@@ -2,6 +2,17 @@
 $role = null;
 $user_id = null;
 
+// Helper function to check if the current page is in a list of pages
+function is_active_page($pages)
+{
+    $current_page = basename($_SERVER['SCRIPT_NAME']);
+    // Ensure $pages is an array before using in_array
+    return is_array($pages) && in_array($current_page, $pages);
+}
+
+// Get the current page's file name for individual link checks
+$current_page = basename($_SERVER['SCRIPT_NAME']);
+
 // Read and decrypt user role and ID from cookies
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
@@ -17,11 +28,21 @@ if (!defined('BASE_WEB_PATH')) {
 
 // --- START: FETCH UNREAD NOTIFICATION COUNTS (PDO VERSION) ---
 // Initialize all counter variables
-$unread_assignments = 0; $unread_results = 0; $unread_student_notices = 0; $unread_notes = 0;
-$unread_bmc_notices = 0; $unread_leave_requests = 0; $unread_principal_notices = 0;
-$unread_teacher_notices = 0; $unread_submissions = 0; $unread_leave_status = 0;
-$unread_exam_timetables = 0; $unread_borrow_requests = 0; $unread_acquisition_requests = 0;
-$unread_library_status = 0; $unread_principal_to_librarian_notices = 0;
+$unread_assignments = 0;
+$unread_results = 0;
+$unread_student_notices = 0;
+$unread_notes = 0;
+$unread_bmc_notices = 0;
+$unread_leave_requests = 0;
+$unread_principal_notices = 0;
+$unread_teacher_notices = 0;
+$unread_submissions = 0;
+$unread_leave_status = 0;
+$unread_exam_timetables = 0;
+$unread_borrow_requests = 0;
+$unread_acquisition_requests = 0;
+$unread_library_status = 0;
+$unread_principal_to_librarian_notices = 0;
 $is_class_teacher = false; // Initialize teacher-specific flag
 
 // Fetch counts based on the user's role if a valid user ID and connection exist
@@ -135,7 +156,7 @@ if (isset($conn) && $user_id) {
 
     <hr class="sidebar-divider my-0">
 
-    <li class="nav-item active">
+    <li class="nav-item <?php echo ($current_page == 'dashboard.php') ? 'active' : ''; ?>">
         <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>dashboard.php">
             <i class="fas fa-fw fa-tachometer-alt"></i>
             <span>Dashboard</span></a>
@@ -149,48 +170,48 @@ if (isset($conn) && $user_id) {
 
         // ====== Super Admin Admin Panel ======
         case 'superadmin':
+            $school_pages = ['school_enrollment.php', 'school_list.php'];
+            $principal_pages = ['principal_enrollment.php', 'principal_list.php'];
+            $past_data_pages = ['past_school.php', 'past_principal.php'];
     ?>
             <div class="sidebar-heading font-weight-semibold">Admin Controls</div>
             <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseSchool">
+                <a class="nav-link <?php echo (is_active_page($school_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseSchool">
                     <i class="fas fa-fw fa-school"></i>
                     <span>School Management</span>
                 </a>
-                <div id="collapseSchool" class="collapse" data-parent="#accordionSidebar">
+                <div id="collapseSchool" class="collapse <?php echo (is_active_page($school_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>includes/forms/school_enrollment.php">Enroll
-                            School</a>
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/school/school_list.php">School List</a>
+                        <a class="collapse-item <?php echo ($current_page == 'school_enrollment.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>includes/forms/school_enrollment.php">Enroll School</a>
+                        <a class="collapse-item <?php echo ($current_page == 'school_list.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/school/school_list.php">School List</a>
                     </div>
                 </div>
             </li>
             <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePrincipal">
+                <a class="nav-link <?php echo (is_active_page($principal_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapsePrincipal">
                     <i class="fas fa-fw fa-user-tie"></i>
                     <span>Principal Management</span>
                 </a>
-                <div id="collapsePrincipal" class="collapse" data-parent="#accordionSidebar">
+                <div id="collapsePrincipal" class="collapse <?php echo (is_active_page($principal_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item"
-                            href="<?php echo BASE_WEB_PATH; ?>includes/forms/principal_enrollment.php">Enroll Principal</a>
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/principal/principal_list.php">Principal
-                            List</a>
+                        <a class="collapse-item <?php echo ($current_page == 'principal_enrollment.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>includes/forms/principal_enrollment.php">Enroll Principal</a>
+                        <a class="collapse-item <?php echo ($current_page == 'principal_list.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/principal/principal_list.php">Principal List</a>
                     </div>
                 </div>
             </li>
-            <li class="nav-item">
+            <li class="nav-item <?php echo ($current_page == 'principal_attendance.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/bmc/principal_attendance.php">
                     <i class="fas fa-fw fa-user-clock"></i>
                     <span>Principal Attendance</span>
                 </a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item <?php echo ($current_page == 'send_notice.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/bmc/send_notice.php">
                     <i class="fas fa-fw fa-paper-plane"></i>
                     <span>Send Notice to Principals</span>
                 </a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item <?php echo ($current_page == 'view_principal_notices.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/bmc/view_principal_notices.php" data-notification-type="principal_notice">
                     <i class="fas fa-fw fa-envelope-open-text"></i>
                     <span>View Principal Notices</span>
@@ -200,14 +221,14 @@ if (isset($conn) && $user_id) {
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePastData">
+                <a class="nav-link <?php echo (is_active_page($past_data_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapsePastData">
                     <i class="fas fa-fw fa-history"></i>
                     <span>View Past Data</span>
                 </a>
-                <div id="collapsePastData" class="collapse" data-parent="#accordionSidebar">
+                <div id="collapsePastData" class="collapse <?php echo (is_active_page($past_data_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="/BMC-SMS/pages/past_record/past_school.php">Past school List</a>
-                        <a class="collapse-item" href="/BMC-SMS/pages/past_record/past_principal.php">Past principal List</a>
+                        <a class="collapse-item <?php echo ($current_page == 'past_school.php') ? 'active' : ''; ?>" href="/BMC-SMS/pages/past_record/past_school.php">Past school List</a>
+                        <a class="collapse-item <?php echo ($current_page == 'past_principal.php') ? 'active' : ''; ?>" href="/BMC-SMS/pages/past_record/past_principal.php">Past principal List</a>
                     </div>
                 </div>
             </li>
@@ -217,63 +238,64 @@ if (isset($conn) && $user_id) {
 
         // ====== Principal Panel ======
         case 'principal':
+            $teacher_pages = ['teacher_enrollment.php', 'teacher_list.php', 'teacher_attendence.php', 'view_teacher_attendence.php'];
+            $librarian_pages = ['librarian_enrollment.php', 'librarian_list.php', 'librarian_attendance.php', 'view_librarian_attendance.php'];
+            $student_pages = ['student_enrollment.php', 'student_list.php', 'generate_lc.php'];
+            $notice_pages = ['send_notice.php', 'send_notice_to_bmc.php', 'send_notice_to_librarian.php', 'view_notice.php'];
+            $academics_pages = ['manage_subjects.php', 'manage_timetable.php', 'send_exam_timetable.php'];
+            $leave_pages = ['principal_leave_requests.php', 'principal_leave_history.php'];
+            $past_data_pages_principal = ['past_teacher.php', 'past_librarian.php', 'past_student.php'];
         ?>
             <div class="sidebar-heading font-weight-semibold">School Management</div>
             <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseTeacher">
+                <a class="nav-link <?php echo (is_active_page($teacher_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseTeacher">
                     <i class="fas fa-fw fa-person-chalkboard"></i>
                     <span>Manage Teachers</span>
                 </a>
-                <div id="collapseTeacher" class="collapse" data-parent="#accordionSidebar">
+                <div id="collapseTeacher" class="collapse <?php echo (is_active_page($teacher_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>includes/forms/teacher_enrollment.php">Enroll
-                            Teacher</a>
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/teacher_list.php">Teacher
-                            List</a>
-                            <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/principal/teacher_attendence.php">Teacher
-                            Attendance</a>
-                            <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_teacher_attendence.php">View Teacher
-                            Attendance</a>
+                        <a class="collapse-item <?php echo ($current_page == 'teacher_enrollment.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>includes/forms/teacher_enrollment.php">Enroll Teacher</a>
+                        <a class="collapse-item <?php echo ($current_page == 'teacher_list.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/teacher_list.php">Teacher List</a>
+                        <a class="collapse-item <?php echo ($current_page == 'teacher_attendence.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/principal/teacher_attendence.php">Teacher Attendance</a>
+                        <a class="collapse-item <?php echo ($current_page == 'view_teacher_attendence.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_teacher_attendence.php">View Teacher Attendance</a>
                     </div>
                 </div>
             </li>
-             <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseLibrarian">
+            <li class="nav-item">
+                <a class="nav-link <?php echo (is_active_page($librarian_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseLibrarian">
                     <i class="fas fa-fw fa-book-reader"></i>
                     <span>Manage Librarians</span>
                 </a>
-                <div id="collapseLibrarian" class="collapse" data-parent="#accordionSidebar">
+                <div id="collapseLibrarian" class="collapse <?php echo (is_active_page($librarian_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>includes/forms/librarian_enrollment.php">Enroll Librarian</a>
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/librarian_list.php">Librarian List</a>
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/principal/librarian_attendance.php">Librarian Attendance</a>
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_librarian_attendance.php">View Librarian Attendance</a>
+                        <a class="collapse-item <?php echo ($current_page == 'librarian_enrollment.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>includes/forms/librarian_enrollment.php">Enroll Librarian</a>
+                        <a class="collapse-item <?php echo ($current_page == 'librarian_list.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/librarian_list.php">Librarian List</a>
+                        <a class="collapse-item <?php echo ($current_page == 'librarian_attendance.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/principal/librarian_attendance.php">Librarian Attendance</a>
+                        <a class="collapse-item <?php echo ($current_page == 'view_librarian_attendance.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_librarian_attendance.php">View Librarian Attendance</a>
                     </div>
                 </div>
             </li>
             <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseStudent">
+                <a class="nav-link <?php echo (is_active_page($student_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseStudent">
                     <i class="fas fa-fw fa-children"></i>
                     <span>Manage Students</span>
                 </a>
-                <div id="collapseStudent" class="collapse" data-parent="#accordionSidebar">
+                <div id="collapseStudent" class="collapse <?php echo (is_active_page($student_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>includes/forms/student_enrollment.php">Enroll
-                            Student</a>
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/student/student_list.php">Student
-                            List</a>
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/principal/generate_lc.php">Generate LC</a>
+                        <a class="collapse-item <?php echo ($current_page == 'student_enrollment.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>includes/forms/student_enrollment.php">Enroll Student</a>
+                        <a class="collapse-item <?php echo ($current_page == 'student_list.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/student/student_list.php">Student List</a>
+                        <a class="collapse-item <?php echo ($current_page == 'generate_lc.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/principal/generate_lc.php">Generate LC</a>
                     </div>
                 </div>
             </li>
-            <li class="nav-item">
+            <li class="nav-item <?php echo ($current_page == 'view_my_attendance.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_my_attendance.php">
                     <i class="fas fa-fw fa-user-check"></i>
                     <span>My Attendance</span>
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseNotices">
+                <a class="nav-link <?php echo (is_active_page($notice_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseNotices">
                     <i class="fas fa-fw fa-bullhorn"></i>
                     <span>Notices</span>
                     <?php if ($unread_bmc_notices > 0): ?>
@@ -282,12 +304,12 @@ if (isset($conn) && $user_id) {
                         </span>
                     <?php endif; ?>
                 </a>
-                <div id="collapseNotices" class="collapse" data-parent="#accordionSidebar">
+                <div id="collapseNotices" class="collapse <?php echo (is_active_page($notice_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="/BMC-SMS/pages/principal/send_notice.php">Send School Notice</a>
-                        <a class="collapse-item" href="/BMC-SMS/pages/principal/send_notice_to_bmc.php">Send Notice to BMC</a>
-                        <a class="collapse-item" href="/BMC-SMS/pages/principal/send_notice_to_librarian.php">Send Notice to Librarian</a>
-                        <a class="collapse-item" href="/BMC-SMS/pages/principal/view_notice.php" data-notification-type="new_notice">View BMC Notices
+                        <a class="collapse-item <?php echo ($current_page == 'send_notice.php') ? 'active' : ''; ?>" href="/BMC-SMS/pages/principal/send_notice.php">Send School Notice</a>
+                        <a class="collapse-item <?php echo ($current_page == 'send_notice_to_bmc.php') ? 'active' : ''; ?>" href="/BMC-SMS/pages/principal/send_notice_to_bmc.php">Send Notice to BMC</a>
+                        <a class="collapse-item <?php echo ($current_page == 'send_notice_to_librarian.php') ? 'active' : ''; ?>" href="/BMC-SMS/pages/principal/send_notice_to_librarian.php">Send Notice to Librarian</a>
+                        <a class="collapse-item <?php echo ($current_page == 'view_notice.php') ? 'active' : ''; ?>" href="/BMC-SMS/pages/principal/view_notice.php" data-notification-type="new_notice">View BMC Notices
                             <?php if ($unread_bmc_notices > 0): ?>
                                 <span class="badge badge-danger badge-counter">
                                     <?php echo ($unread_bmc_notices > 9) ? '9+' : $unread_bmc_notices; ?>
@@ -299,28 +321,26 @@ if (isset($conn) && $user_id) {
             </li>
 
             <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseAcademics">
+                <a class="nav-link <?php echo (is_active_page($academics_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseAcademics">
                     <i class="fas fa-fw fa-book"></i>
                     <span>Academics</span>
                 </a>
-                <div id="collapseAcademics" class="collapse" data-parent="#accordionSidebar">
+                <div id="collapseAcademics" class="collapse <?php echo (is_active_page($academics_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/academics/manage_subjects.php">Manage
-                            Subjects</a>
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/academics/manage_timetable.php">Manage
-                            Timetable</a>
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/principal/send_exam_timetable.php">Send Exam Timetable</a>
+                        <a class="collapse-item <?php echo ($current_page == 'manage_subjects.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/academics/manage_subjects.php">Manage Subjects</a>
+                        <a class="collapse-item <?php echo ($current_page == 'manage_timetable.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/academics/manage_timetable.php">Manage Timetable</a>
+                        <a class="collapse-item <?php echo ($current_page == 'send_exam_timetable.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/principal/send_exam_timetable.php">Send Exam Timetable</a>
                     </div>
                 </div>
             </li>
-            <li class="nav-item">
+            <li class="nav-item <?php echo ($current_page == 'school_settings.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/principal/school_settings.php">
                     <i class="fas fa-fw fa-children"></i>
                     <span>Passing Criteria</span>
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseLeaveManagement">
+                <a class="nav-link <?php echo (is_active_page($leave_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseLeaveManagement">
                     <i class="fas fa-fw fa-calendar-alt"></i>
                     <span>Teacher Leave</span>
                     <?php if ($unread_leave_requests > 0): ?>
@@ -329,9 +349,9 @@ if (isset($conn) && $user_id) {
                         </span>
                     <?php endif; ?>
                 </a>
-                <div id="collapseLeaveManagement" class="collapse" data-parent="#accordionSidebar">
+                <div id="collapseLeaveManagement" class="collapse <?php echo (is_active_page($leave_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/principal/principal_leave_requests.php" data-notification-type="leave_request">
+                        <a class="collapse-item <?php echo ($current_page == 'principal_leave_requests.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/principal/principal_leave_requests.php" data-notification-type="leave_request">
                             Pending Requests
                             <?php if ($unread_leave_requests > 0): ?>
                                 <span class="badge badge-danger badge-counter">
@@ -339,22 +359,21 @@ if (isset($conn) && $user_id) {
                                 </span>
                             <?php endif; ?>
                         </a>
-                        <a class="collapse-item"
-                            href="<?php echo BASE_WEB_PATH; ?>pages/principal/principal_leave_history.php">Application
-                            History</a>
+                        <a class="collapse-item <?php echo ($current_page == 'principal_leave_history.php') ? 'active' : ''; ?>"
+                            href="<?php echo BASE_WEB_PATH; ?>pages/principal/principal_leave_history.php">Application History</a>
                     </div>
                 </div>
             </li>
             <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePastDataPrincipal">
+                <a class="nav-link <?php echo (is_active_page($past_data_pages_principal)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapsePastDataPrincipal">
                     <i class="fas fa-fw fa-history"></i>
                     <span>View Past Data</span>
                 </a>
-                <div id="collapsePastDataPrincipal" class="collapse" data-parent="#accordionSidebar">
+                <div id="collapsePastDataPrincipal" class="collapse <?php echo (is_active_page($past_data_pages_principal)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="/BMC-SMS/pages/past_record/past_teacher.php">Past Teacher List</a>
-                        <a class="collapse-item" href="/BMC-SMS/pages/past_record/past_librarian.php">Past Librarian List</a>
-                        <a class="collapse-item" href="/BMC-SMS/pages/past_record/past_student.php">Past Student List</a>
+                        <a class="collapse-item <?php echo ($current_page == 'past_teacher.php') ? 'active' : ''; ?>" href="/BMC-SMS/pages/past_record/past_teacher.php">Past Teacher List</a>
+                        <a class="collapse-item <?php echo ($current_page == 'past_librarian.php') ? 'active' : ''; ?>" href="/BMC-SMS/pages/past_record/past_librarian.php">Past Librarian List</a>
+                        <a class="collapse-item <?php echo ($current_page == 'past_student.php') ? 'active' : ''; ?>" href="/BMC-SMS/pages/past_record/past_student.php">Past Student List</a>
                     </div>
                 </div>
             </li>
@@ -364,15 +383,19 @@ if (isset($conn) && $user_id) {
 
         // ====== Teacher Panel ======
         case 'teacher':
+            $marks_pages = ['marks_entry.php', 'view_marks.php'];
+            $assignment_pages = ['send_assignment.php', 'assignment_history.php'];
+            $attendance_pages = ['add_lecture_attendance.php', 'view_lecture_attendance.php'];
+            $library_pages_teacher = ['browse_books.php', 'my_library_record.php', 'request_new_book.php'];
         ?>
             <div class="sidebar-heading font-weight-semibold">Classroom & Actions</div>
-            <li class="nav-item">
+            <li class="nav-item <?php echo ($current_page == 'student_list.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/student/student_list.php">
                     <i class="fas fa-fw fa-children"></i>
                     <span>My Students</span>
                 </a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item <?php echo ($current_page == 'view_my_attendance.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/view_my_attendance.php">
                     <i class="fas fa-fw fa-user-check"></i>
                     <span>My Attendance</span>
@@ -381,15 +404,15 @@ if (isset($conn) && $user_id) {
 
             <?php if ($is_class_teacher): ?>
                 <li class="nav-item">
-                    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseMarks">
+                    <a class="nav-link <?php echo (is_active_page($marks_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseMarks">
                         <i class="fas fa-fw fa-marker"></i>
                         <span>Manage Marks</span>
                     </a>
-                    <div id="collapseMarks" class="collapse" data-parent="#accordionSidebar">
+                    <div id="collapseMarks" class="collapse <?php echo (is_active_page($marks_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                         <div class="bg-white py-2 collapse-inner rounded">
-                            <a class="collapse-item"
+                            <a class="collapse-item <?php echo ($current_page == 'marks_entry.php') ? 'active' : ''; ?>"
                                 href="<?php echo BASE_WEB_PATH; ?>pages/teacher/marks_entry/marks_entry.php">Enter Marks</a>
-                            <a class="collapse-item"
+                            <a class="collapse-item <?php echo ($current_page == 'view_marks.php') ? 'active' : ''; ?>"
                                 href="<?php echo BASE_WEB_PATH; ?>pages/teacher/marks_entry/view_marks.php">View Marks</a>
                         </div>
                     </div>
@@ -397,7 +420,7 @@ if (isset($conn) && $user_id) {
             <?php endif; ?>
 
             <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseAssignments">
+                <a class="nav-link <?php echo (is_active_page($assignment_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseAssignments">
                     <i class="fas fa-fw fa-book-open"></i>
                     <span>Manage Assignment</span>
                     <?php if ($unread_submissions > 0): ?>
@@ -406,15 +429,15 @@ if (isset($conn) && $user_id) {
                         </span>
                     <?php endif; ?>
                 </a>
-                <div id="collapseAssignments" class="collapse" data-parent="#accordionSidebar">
+                <div id="collapseAssignments" class="collapse <?php echo (is_active_page($assignment_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="/BMC-SMS/pages/assignments/send_assignment.php">Send Assignment</a>
-                        <a class="collapse-item" href="/BMC-SMS/pages/assignments/assignment_history.php" data-notification-type="assignment_submission">Assignment History</a>
+                        <a class="collapse-item <?php echo ($current_page == 'send_assignment.php') ? 'active' : ''; ?>" href="/BMC-SMS/pages/assignments/send_assignment.php">Send Assignment</a>
+                        <a class="collapse-item <?php echo ($current_page == 'assignment_history.php') ? 'active' : ''; ?>" href="/BMC-SMS/pages/assignments/assignment_history.php" data-notification-type="assignment_submission">Assignment History</a>
                     </div>
                 </div>
             </li>
 
-            <li class="nav-item">
+            <li class="nav-item <?php echo ($current_page == 'teacher_leave_management.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/teacher_leave_management.php" data-notification-type="leave_status">
                     <i class="fas fa-fw fa-calendar-alt"></i>
                     <span>Manage Leave</span>
@@ -425,27 +448,27 @@ if (isset($conn) && $user_id) {
                     <?php endif; ?>
                 </a>
             </li>
-            
+
             <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseAttendance">
+                <a class="nav-link <?php echo (is_active_page($attendance_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseAttendance">
                     <i class="fas fa-fw fa-clipboard-user"></i>
                     <span>Manage Attendance</span>
                 </a>
-                <div id="collapseAttendance" class="collapse" data-parent="#accordionSidebar">
+                <div id="collapseAttendance" class="collapse <?php echo (is_active_page($attendance_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="/BMC-SMS/pages/teacher/add_lecture_attendance.php">Lecture Attendance</a>
-                        <a class="collapse-item" href="/BMC-SMS/pages/teacher/view_lecture_attendance.php">View Attendance</a>
+                        <a class="collapse-item <?php echo ($current_page == 'add_lecture_attendance.php') ? 'active' : ''; ?>" href="/BMC-SMS/pages/teacher/add_lecture_attendance.php">Lecture Attendance</a>
+                        <a class="collapse-item <?php echo ($current_page == 'view_lecture_attendance.php') ? 'active' : ''; ?>" href="/BMC-SMS/pages/teacher/view_lecture_attendance.php">View Attendance</a>
                     </div>
                 </div>
             </li>
 
-            <li class="nav-item">
+            <li class="nav-item <?php echo ($current_page == 'view_timetable.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/student/view_timetable.php">
                     <i class="fas fa-fw fa-calendar-week"></i>
                     <span>View Lecture Timetable</span>
                 </a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item <?php echo ($current_page == 'view_exam_timetable.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/teacher/view_exam_timetable.php" data-notification-type="exam_timetable">
                     <i class="fas fa-fw fa-calendar-alt"></i>
                     <span>View Exam Timetable</span>
@@ -456,43 +479,43 @@ if (isset($conn) && $user_id) {
                     <?php endif; ?>
                 </a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item <?php echo ($current_page == 'send_notes.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/teacher/send_notes.php">
                     <i class="fas fa-fw fa-paper-plane"></i>
                     <span>Send Notes</span></a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item <?php echo ($current_page == 'view_notice.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/teacher/view_notice.php" data-notification-type="school_notice">
                     <i class="fas fa-fw fa-bell"></i>
                     <span>View School Notices</span>
-                     <?php if ($unread_teacher_notices > 0): ?>
+                    <?php if ($unread_teacher_notices > 0): ?>
                         <span class="badge badge-danger badge-counter">
-                            <?php echo ($unread_teacher_notices > 9) ? '9+' : $unread_teacher_notices; ?>
+                            <?php echo ($unread_teacher_notices > 5) ? '5+' : $unread_teacher_notices; ?>
                         </span>
                     <?php endif; ?>
                 </a>
             </li>
-            
+
             <hr class="sidebar-divider">
             <div class="sidebar-heading font-weight-semibold">Library</div>
             <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseLibraryTeacher">
+                <a class="nav-link <?php echo (is_active_page($library_pages_teacher)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseLibraryTeacher">
                     <i class="fas fa-fw fa-book-reader"></i>
                     <span>Library Services</span>
                     <?php if ($unread_library_status > 0): ?>
                         <span class="badge badge-danger badge-counter"><?php echo $unread_library_status; ?></span>
                     <?php endif; ?>
                 </a>
-                <div id="collapseLibraryTeacher" class="collapse" data-parent="#accordionSidebar">
+                <div id="collapseLibraryTeacher" class="collapse <?php echo (is_active_page($library_pages_teacher)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/browse_books.php">Browse & Request Books</a>
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/my_library_record.php" data-notification-type="borrow_status">
+                        <a class="collapse-item <?php echo ($current_page == 'browse_books.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/browse_books.php">Browse & Request Books</a>
+                        <a class="collapse-item <?php echo ($current_page == 'my_library_record.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/my_library_record.php" data-notification-type="borrow_status">
                             My Borrowing Record
                             <?php if ($unread_library_status > 0): ?>
                                 <span class="badge badge-danger badge-counter"><?php echo $unread_library_status; ?></span>
                             <?php endif; ?>
                         </a>
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/user/request_new_book.php">Request New Book</a>
+                        <a class="collapse-item <?php echo ($current_page == 'request_new_book.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/user/request_new_book.php">Request New Book</a>
                     </div>
                 </div>
             </li>
@@ -503,15 +526,16 @@ if (isset($conn) && $user_id) {
 
         // ====== Student Panel ======
         case 'student':
+            $library_pages_student = ['browse_books.php', 'my_library_record.php', 'request_new_book.php'];
         ?>
             <div class="sidebar-heading font-weight-semibold">My Academics</div>
-            <li class="nav-item">
+            <li class="nav-item <?php echo ($current_page == 'profile.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/user/profile.php">
                     <i class="fas fa-fw fa-id-card"></i>
                     <span>My Profile</span>
                 </a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item <?php echo ($current_page == 'view_assignments.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/assignments/view_assignments.php" data-notification-type="new_assignment">
                     <i class="fas fa-fw fa-clipboard-list"></i>
                     <span>View Assignments</span>
@@ -522,13 +546,13 @@ if (isset($conn) && $user_id) {
                     <?php endif; ?>
                 </a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item <?php echo ($current_page == 'view_lecture_attendance.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/student/view_lecture_attendance.php">
                     <i class="fas fa-fw fa-book-open-reader"></i>
                     <span>View Attendance</span>
                 </a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item <?php echo ($current_page == 'view_my_marks.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/student/view_my_marks.php" data-notification-type="marks_uploaded">
                     <i class="fas fa-fw fa-file-lines"></i>
                     <span>View Results</span>
@@ -539,7 +563,7 @@ if (isset($conn) && $user_id) {
                     <?php endif; ?>
                 </a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item <?php echo ($current_page == 'view_notice.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/student/view_notice.php" data-notification-type="school_notice">
                     <i class="fas fa-fw fa-bell"></i>
                     <span>View School Notices</span>
@@ -550,7 +574,7 @@ if (isset($conn) && $user_id) {
                     <?php endif; ?>
                 </a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item <?php echo ($current_page == 'view_notes.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/student/view_notes.php" data-notification-type="new_notes">
                     <i class="fas fa-fw fa-eye"></i>
                     <span>View Notes</span>
@@ -560,13 +584,13 @@ if (isset($conn) && $user_id) {
                         </span>
                     <?php endif; ?></a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item <?php echo ($current_page == 'view_timetable.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/student/view_timetable.php">
                     <i class="fas fa-fw fa-table-list"></i>
                     <span>View Lecture Timetable</span>
                 </a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item <?php echo ($current_page == 'view_exam_timetable.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/student/view_exam_timetable.php" data-notification-type="exam_timetable">
                     <i class="fas fa-fw fa-calendar-alt"></i>
                     <span>View Exam Timetable</span>
@@ -581,23 +605,23 @@ if (isset($conn) && $user_id) {
             <hr class="sidebar-divider">
             <div class="sidebar-heading font-weight-semibold">Library</div>
             <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseLibraryStudent">
+                <a class="nav-link <?php echo (is_active_page($library_pages_student)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseLibraryStudent">
                     <i class="fas fa-fw fa-book-reader"></i>
                     <span>Library Services</span>
-                     <?php if ($unread_library_status > 0): ?>
+                    <?php if ($unread_library_status > 0): ?>
                         <span class="badge badge-danger badge-counter"><?php echo $unread_library_status; ?></span>
                     <?php endif; ?>
                 </a>
-                <div id="collapseLibraryStudent" class="collapse" data-parent="#accordionSidebar">
+                <div id="collapseLibraryStudent" class="collapse <?php echo (is_active_page($library_pages_student)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/student/browse_books.php">Browse & Request Books</a>
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/student/my_library_record.php" data-notification-type="borrow_status">
+                        <a class="collapse-item <?php echo ($current_page == 'browse_books.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/student/browse_books.php">Browse & Request Books</a>
+                        <a class="collapse-item <?php echo ($current_page == 'my_library_record.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/student/my_library_record.php" data-notification-type="borrow_status">
                             My Borrowing Record
                             <?php if ($unread_library_status > 0): ?>
                                 <span class="badge badge-danger badge-counter"><?php echo $unread_library_status; ?></span>
                             <?php endif; ?>
                         </a>
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/user/request_new_book.php">Request New Book</a>
+                        <a class="collapse-item <?php echo ($current_page == 'request_new_book.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/user/request_new_book.php">Request New Book</a>
                     </div>
                 </div>
             </li>
@@ -606,33 +630,35 @@ if (isset($conn) && $user_id) {
 
         // ====== Librarian Panel ======
         case 'librarian':
+            $books_pages = ['book_list.php', 'add_new_book.php'];
+            $past_data_librarian = ['past_books.php'];
         ?>
             <div class="sidebar-heading font-weight-semibold">Library Management</div>
-            <li class="nav-item">
+            <li class="nav-item <?php echo ($current_page == 'profile.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/user/profile.php">
                     <i class="fas fa-fw fa-id-card"></i>
                     <span>My Profile</span>
                 </a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item <?php echo ($current_page == 'view_my_attendance.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/view_my_attendance.php">
                     <i class="fas fa-fw fa-user-check"></i>
                     <span>My Attendance</span>
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseBooks">
+                <a class="nav-link <?php echo (is_active_page($books_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseBooks">
                     <i class="fas fa-fw fa-book-journal-whills"></i>
                     <span>Manage Books</span>
                 </a>
-                <div id="collapseBooks" class="collapse" data-parent="#accordionSidebar">
+                <div id="collapseBooks" class="collapse <?php echo (is_active_page($books_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/book_list.php">Book List</a>
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/add_new_book.php">Add New Book</a>
+                        <a class="collapse-item <?php echo ($current_page == 'book_list.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/book_list.php">Book List</a>
+                        <a class="collapse-item <?php echo ($current_page == 'add_new_book.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/add_new_book.php">Add New Book</a>
                     </div>
                 </div>
             </li>
-            <li class="nav-item">
+            <li class="nav-item <?php echo ($current_page == 'view_principal_notices.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/view_principal_notices.php" data-notification-type="principal_to_librarian_notice">
                     <i class="fas fa-fw fa-envelope-open-text"></i>
                     <span>Principal Notices</span>
@@ -641,13 +667,13 @@ if (isset($conn) && $user_id) {
                     <?php endif; ?>
                 </a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item <?php echo ($current_page == 'issue_return.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/issue_return.php">
                     <i class="fas fa-fw fa-right-left"></i>
                     <span>Issue & Return</span>
                 </a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item <?php echo ($current_page == 'borrow_requests.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/borrow_requests.php" data-notification-type="borrow_request">
                     <i class="fas fa-fw fa-hand-holding-hand"></i>
                     <span>Borrow Requests</span>
@@ -656,23 +682,23 @@ if (isset($conn) && $user_id) {
                     <?php endif; ?>
                 </a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item <?php echo ($current_page == 'book_requests.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/book_requests.php" data-notification-type="acquisition_request">
                     <i class="fas fa-fw fa-inbox"></i>
                     <span>Acquisition Requests</span>
-                     <?php if ($unread_acquisition_requests > 0): ?>
+                    <?php if ($unread_acquisition_requests > 0): ?>
                         <span class="badge badge-danger badge-counter"><?php echo ($unread_acquisition_requests > 9) ? '9+' : $unread_acquisition_requests; ?></span>
                     <?php endif; ?>
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePastDataLibrarian">
+                <a class="nav-link <?php echo (is_active_page($past_data_librarian)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapsePastDataLibrarian">
                     <i class="fas fa-fw fa-history"></i>
                     <span>View Past Data</span>
                 </a>
-                <div id="collapsePastDataLibrarian" class="collapse" data-parent="#accordionSidebar">
+                <div id="collapsePastDataLibrarian" class="collapse <?php echo (is_active_page($past_data_librarian)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/past_books.php">Past Book Records</a>
+                        <a class="collapse-item <?php echo ($current_page == 'past_books.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/past_books.php">Past Book Records</a>
                     </div>
                 </div>
             </li>
@@ -689,36 +715,5 @@ if (isset($conn) && $user_id) {
 
 </ul>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    if (window.jQuery) {
-        // Function to handle badge removal on click
-        $('#accordionSidebar .nav-link').on('click', function() {
-            var link = $(this);
-            var badge = link.find('.badge-counter');
-            var notificationType = link.data('notification-type'); // Get the type from data attribute
-
-            // If the link has a badge and a defined notification type
-            if (badge.length > 0 && notificationType) {
-                // 1. Visually remove the badge immediately for good user experience
-                badge.fadeOut('fast', function() {
-                    $(this).remove();
-                });
-
-                // 2. Send a request to the backend to mark these notifications as read
-                $.post('<?php echo BASE_WEB_PATH; ?>includes/actions/mark_notifications_read.php', 
-                    { type: notificationType }, 
-                    function(response) {
-                        if (response.status !== 'success') {
-                            console.error('Failed to mark notifications as read:', response.message);
-                        }
-                    },
-                    'json' // Expect a JSON response
-                ).fail(function() {
-                    console.error('AJAX request failed.');
-                });
-            }
-        });
-    }
-});
-</script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="../../assets/js/sidebar.js"></script>
