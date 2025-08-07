@@ -1,66 +1,57 @@
 <?php
-date_default_timezone_set('Asia/Kolkata');
-
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-
-require_once __DIR__ . '/includes/PHPMailer/src/Exception.php';
-require_once __DIR__ . '/includes/PHPMailer/src/PHPMailer.php';
-require_once __DIR__ . '/includes/PHPMailer/src/SMTP.php';
+// reset_password.php
 
 include_once "./includes/connect.php";
 
 header('Content-Type: application/json');
-$response = ['status' => 'error', 'message' => 'An unexpected error occurred.'];
+$response = [];
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $email = trim($_POST['email']);
-    $otp = trim($_POST['otp']);
-    $new_password = trim($_POST['new_password']);
-    $confirm_password = trim($_POST['confirm_password']);
+    $email = $_POST['email'] ?? '';
+    $otp = $_POST['otp'] ?? '';
+    $new_password = $_POST['new_password'] ?? '';
+    $confirm_password = $_POST['confirm_password'] ?? '';
 
-    if (empty($email) || empty($otp) || empty($new_password) || empty($confirm_password)) {
-        $response['message'] = 'Please fill in all required fields.';
-    } elseif ($new_password !== $confirm_password) {
-        $response['message'] = 'The new passwords do not match.';
-    } elseif (strlen($new_password) < 8) {
-        $response['message'] = 'Password must be at least 8 characters long.';
-    } else {
-        // --- FIXED: Converted to PDO syntax and NOW() to CURRENT_TIMESTAMP ---
-        try {
-            $stmt = $conn->prepare('SELECT * FROM "password_resets" WHERE "email" = ? AND "expires_at" > CURRENT_TIMESTAMP');
-            $stmt->execute([$email]);
-            $reset_data = $stmt->fetch(PDO::FETCH_ASSOC);
+    // Validation
+    if (empty($email) || empty($otp) || empty($new_password)) {
+        echo json_encode(['status' => 'error', 'message' => 'Please fill in all fields.']);
+        exit();
+    }
+    if (strlen($new_password) < 8) {
+        echo json_encode(['status' => 'error', 'message' => 'Password must be at least 8 characters long.']);
+        exit();
+    }
+    if ($new_password !== $confirm_password) {
+        echo json_encode(['status' => 'error', 'message' => 'Passwords do not match.']);
+        exit();
+    }
 
-            if ($reset_data && password_verify($otp, $reset_data['otp_hash'])) {
+    try {
+        $stmt = $conn->prepare("SELECT otp_hash, otp_expires_at FROM users WHERE email = ?");
+        $stmt->execute([$email]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($user && !empty($user['otp_hash']) && password_verify($otp, $user['otp_hash'])) {
+            if (strtotime($user['otp_expires_at']) > time()) {
                 $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
 
-                $update_stmt = $conn->prepare('UPDATE "users" SET "password" = ? WHERE "id" = ?');
-                if ($update_stmt->execute([$hashed_password, $reset_data['user_id']])) {
-                    
-                    // Password updated, now delete the reset request.
-                    $delete_stmt = $conn->prepare('DELETE FROM "password_resets" WHERE "email" = ?');
-                    $delete_stmt->execute([$email]);
+                $update_stmt = $conn->prepare("UPDATE users SET password = ?, otp_hash = NULL, otp_expires_at = NULL WHERE email = ?");
+                $update_stmt->execute([$hashed_password, $email]);
 
-                    $response['status'] = 'success';
-                    $response['message'] = 'Your password has been reset successfully! You can now log in.';
-                    
-                    // Optional: Send confirmation email (code remains the same)
-
-                } else {
-                    $response['message'] = 'Failed to update your password. Please try again.';
-                }
+                $response = ['status' => 'success', 'message' => 'Password has been reset successfully. You can now log in.'];
             } else {
-                $response['message'] = 'Invalid or expired OTP. Please check and try again.';
+                $response = ['status' => 'error', 'message' => 'The OTP has expired. Please request a new one.'];
             }
-        } catch (PDOException $e) {
-            $response['message'] = 'Database error: ' . $e->getMessage();
+        } else {
+            $response = ['status' => 'error', 'message' => 'Invalid OTP. Please try again.'];
         }
+    } catch (PDOException $e) {
+        error_log($e->getMessage());
+        $response = ['status' => 'error', 'message' => 'A database error occurred.'];
     }
 } else {
-    $response['message'] = 'Invalid request method.';
+    $response = ['status' => 'error', 'message' => 'Invalid request.'];
 }
 
 echo json_encode($response);
-$conn = null; // Close connection
-?>
+$conn = null;
