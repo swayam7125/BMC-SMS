@@ -38,13 +38,13 @@ try {
             $uploadDirServer = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/assignments/submit/';
             $uploadDirWeb = '/BMC-SMS/pages/assignments/submit/';
             if (!is_dir($uploadDirServer)) mkdir($uploadDirServer, 0777, true);
-            
+
             $storageFilename = uniqid('sub_', true) . '_' . $originalFilename;
             $serverFilePath = $uploadDirServer . $storageFilename;
 
             if (move_uploaded_file($_FILES["assignment_file"]["tmp_name"], $serverFilePath)) {
                 $filePathForDB = $uploadDirWeb . $storageFilename;
-                
+
                 $check_stmt = $conn->prepare('SELECT "id" FROM "assignment_submissions" WHERE "assignment_id" = ? AND "student_id" = ?');
                 $check_stmt->execute([$assignment_id, $student_id]);
                 $existing_submission = $check_stmt->fetch(PDO::FETCH_ASSOC);
@@ -93,13 +93,13 @@ try {
     $stmt = $conn->prepare($sql);
     $stmt->execute([$userId, $schoolId, $studentStd]);
     $assignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
 } catch (PDOException $e) {
     die("Database error: " . $e->getMessage());
 }
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>My Assignments</title>
@@ -108,12 +108,13 @@ try {
 
     <!-- <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css"> -->
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-    <style>
-    .rejection-reason { background-color: #fff3cd; border-left: 4px solid #f6c23e; padding: 10px; margin-top: 10px; border-radius: 0 4px 4px 0; }
-    </style>
+    <link rel="stylesheet" href="../../assets/css/view_assignments.css">
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -123,57 +124,59 @@ try {
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">My Assignments</h1>
                     <?php if (isset($_GET['submission']) && $_GET['submission'] == 'success'): ?>
-                    <div class="alert alert-success">Assignment submitted successfully!</div>
+                        <div class="alert alert-success">Assignment submitted successfully!</div>
                     <?php endif; ?>
                     <?php if (isset($_GET['submission']) && $_GET['submission'] == 'error'): ?>
-                    <div class="alert alert-danger">Error submitting assignment. Please try again.</div>
+                        <div class="alert alert-danger">Error submitting assignment. Please try again.</div>
                     <?php endif; ?>
 
                     <div id="assignment-list">
                         <?php if (!empty($assignments)): ?>
-                        <?php foreach ($assignments as $assignment):
+                            <?php foreach ($assignments as $assignment):
                                 $status = $assignment['submission_status'] ?? 'Pending';
-                                ?>
-                        <div class="card shadow mb-4">
-                            <div class="card-body">
-                                <div class="d-flex w-100 justify-content-between">
-                                    <h5 class="mb-1 text-primary"><?php echo htmlspecialchars($assignment['title']); ?></h5>
-                                    <?php
+                            ?>
+                                <div class="card shadow mb-4">
+                                    <div class="card-body">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <h5 class="mb-1 text-primary"><?php echo htmlspecialchars($assignment['title']); ?></h5>
+                                            <?php
                                             $status_text = str_replace('-', ' ', $status);
                                             $badge_class = 'badge-warning'; // Pending
                                             if ($status == 'Accepted') $badge_class = 'badge-success';
                                             if ($status == 'Rejected') $badge_class = 'badge-danger';
                                             if ($status == 'Submitted' || $status == 'Re-submitted') $badge_class = 'badge-info';
-                                    ?>
-                                    <span class="badge <?php echo $badge_class; ?> p-2 align-self-start"><?php echo $status_text; ?></span>
-                                </div>
-                                <p class="mb-1"><?php echo nl2br(htmlspecialchars($assignment['description'])); ?></p>
-                                <small class="text-muted">Due: <?php echo date("F j, Y", strtotime($assignment['due_date'])); ?></small>
-                                
-                                <?php if ($status === 'Rejected' && !empty($assignment['rejection_reason'])): ?>
-                                <div class="rejection-reason mt-3">
-                                    <h6 class="font-weight-bold text-warning">Feedback History:</h6>
-                                    <?php echo $assignment['rejection_reason']; ?>
-                                </div>
-                                <?php endif; ?>
+                                            ?>
+                                            <span class="badge <?php echo $badge_class; ?> p-2 align-self-start"><?php echo $status_text; ?></span>
+                                        </div>
+                                        <p class="mb-1"><?php echo nl2br(htmlspecialchars($assignment['description'])); ?></p>
+                                        <small class="text-muted">Due: <?php echo date("F j, Y", strtotime($assignment['due_date'])); ?></small>
 
-                                <div class="float-right mt-2">
-                                    <?php if ($assignment['file_path']): ?>
-                                    <a href="<?php echo htmlspecialchars($assignment['file_path']); ?>" class="btn btn-sm btn-outline-secondary" download>
-                                        <i class="fas fa-download"></i> Download Attachment
-                                    </a>
-                                    <?php endif; ?>
-                                    <?php if ($status === 'Pending' || $status === 'Rejected'): ?>
-                                    <button class="btn btn-sm btn-primary" data-toggle="modal" data-target="#uploadModal" data-assignment-id="<?php echo $assignment['id']; ?>" data-assignment-title="<?php echo htmlspecialchars($assignment['title']); ?>">
-                                        <?php echo ($status === 'Rejected') ? '<i class="fas fa-upload"></i> Re-upload' : 'Submit'; ?>
-                                    </button>
-                                    <?php endif; ?>
+                                        <?php if ($status === 'Rejected' && !empty($assignment['rejection_reason'])): ?>
+                                            <div class="rejection-reason mt-3">
+                                                <h6 class="font-weight-bold text-warning">Feedback History:</h6>
+                                                <?php echo $assignment['rejection_reason']; ?>
+                                            </div>
+                                        <?php endif; ?>
+
+                                        <div class="float-right mt-2">
+                                            <?php if ($assignment['file_path']): ?>
+                                                <a href="<?php echo htmlspecialchars($assignment['file_path']); ?>" class="btn btn-sm btn-outline-secondary" download>
+                                                    <i class="fas fa-download"></i> Download Attachment
+                                                </a>
+                                            <?php endif; ?>
+                                            <?php if ($status === 'Pending' || $status === 'Rejected'): ?>
+                                                <button class="btn btn-sm btn-primary" data-toggle="modal" data-target="#uploadModal" data-assignment-id="<?php echo $assignment['id']; ?>" data-assignment-title="<?php echo htmlspecialchars($assignment['title']); ?>">
+                                                    <?php echo ($status === 'Rejected') ? '<i class="fas fa-upload"></i> Re-upload' : 'Submit'; ?>
+                                                </button>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-                        <?php endforeach; ?>
+                            <?php endforeach; ?>
                         <?php else: ?>
-                        <div class="text-center"><p>No assignments found.</p></div>
+                            <div class="text-center">
+                                <p>No assignments found.</p>
+                            </div>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -208,28 +211,29 @@ try {
             </div>
         </div>
     </div>
-        <?php include_once "../../includes/logout_modal.php"?>
+    <?php include_once "../../includes/logout_modal.php" ?>
 
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script>
-    $(document).ready(function() {
-        $('#uploadModal').on('show.bs.modal', function(event) {
-            var button = $(event.relatedTarget);
-            var assignmentId = button.data('assignment-id');
-            var assignmentTitle = button.data('assignment-title');
-            var modal = $(this);
-            modal.find('#modalAssignmentTitle').text(assignmentTitle);
-            modal.find('#modalAssignmentId').val(assignmentId);
+        $(document).ready(function() {
+            $('#uploadModal').on('show.bs.modal', function(event) {
+                var button = $(event.relatedTarget);
+                var assignmentId = button.data('assignment-id');
+                var assignmentTitle = button.data('assignment-title');
+                var modal = $(this);
+                modal.find('#modalAssignmentTitle').text(assignmentTitle);
+                modal.find('#modalAssignmentId').val(assignmentId);
+            });
+            $('.custom-file-input').on('change', function() {
+                var fileName = $(this).val().split('\\').pop();
+                $(this).siblings('.custom-file-label').addClass("selected").html(fileName);
+            });
         });
-        $('.custom-file-input').on('change', function() {
-            var fileName = $(this).val().split('\\').pop();
-            $(this).siblings('.custom-file-label').addClass("selected").html(fileName);
-        });
-    });
     </script>
 </body>
+
 </html>
 
 <?php $conn = null; ?>
