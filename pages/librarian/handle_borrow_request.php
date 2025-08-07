@@ -1,6 +1,4 @@
 <?php
-// This script handles the librarian's approval or rejection of a book borrowing request.
-session_start();
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 
@@ -22,14 +20,13 @@ if ($role !== 'librarian' || !$librarian_user_id) {
 $redirect_url = 'borrow_requests.php';
 
 try {
-    // --- CORRECTED: Using PDO for all database operations ---
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'reject') {
         $request_id = filter_var($_POST['request_id'], FILTER_VALIDATE_INT);
         $rejection_reason = trim($_POST['rejection_reason']);
 
         if (!$request_id || empty($rejection_reason)) {
-            $_SESSION['error_message'] = "Invalid data. Rejection reason is required.";
-            header("Location: $redirect_url");
+            $error_message = "Invalid data. Rejection reason is required.";
+            header("Location: $redirect_url?error=" . urlencode($error_message));
             exit;
         }
 
@@ -46,15 +43,19 @@ try {
                 $stmt_notify = $conn->prepare('INSERT INTO "notifications" (user_id, message, link, type) VALUES (?, ?, ?, ?)');
                 $stmt_notify->execute([$info['borrower_id'], $message, $link, $type]);
             }
-            $_SESSION['success_message'] = "Request has been successfully rejected.";
+            $success_message = "Request has been successfully rejected.";
+            header("Location: $redirect_url?success=" . urlencode($success_message));
+            exit;
         } else {
-            $_SESSION['error_message'] = "Failed to reject request. It might have been already processed.";
+            $error_message = "Failed to reject request. It might have been already processed.";
+            header("Location: $redirect_url?error=" . urlencode($error_message));
+            exit;
         }
     } elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'approve') {
         $request_id = filter_var($_GET['id'], FILTER_VALIDATE_INT);
         if (!$request_id) {
-            $_SESSION['error_message'] = "Invalid request ID.";
-            header("Location: $redirect_url");
+            $error_message = "Invalid request ID.";
+            header("Location: $redirect_url?error=" . urlencode($error_message));
             exit;
         }
 
@@ -76,7 +77,9 @@ try {
         $stmt_update_book = $conn->prepare('UPDATE "books" SET "quantity_available" = "quantity_available" - 1 WHERE "book_id" = ?');
         $stmt_update_book->execute([$request['book_id']]);
 
-        $due_date = date('Y-m-d', strtotime('+14 days'));
+        // === FIX: Use the 'requested_due_date' from the original request ===
+        $due_date = $request['requested_due_date'];
+        
         $stmt_update_req = $conn->prepare("UPDATE \"borrow_requests\" SET status = 'Approved', librarian_id = ?, action_date = CURRENT_TIMESTAMP, due_date = ? WHERE request_id = ?");
         $stmt_update_req->execute([$librarian_user_id, $due_date, $request_id]);
 
@@ -90,13 +93,17 @@ try {
         $stmt_notify->execute([$request['borrower_id'], $message, $link, $type]);
 
         $conn->commit();
-        $_SESSION['success_message'] = "Request approved successfully. The book has been issued.";
+        $success_message = "Request approved successfully. The book has been issued.";
+        header("Location: $redirect_url?success=" . urlencode($success_message));
+        exit;
     }
 } catch (Exception $e) {
     if ($conn->inTransaction()) {
         $conn->rollBack();
     }
-    $_SESSION['error_message'] = $e->getMessage();
+    $error_message = $e->getMessage();
+    header("Location: $redirect_url?error=" . urlencode($error_message));
+    exit;
 }
 
 header("Location: $redirect_url");

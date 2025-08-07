@@ -698,7 +698,7 @@ if (isset($conn) && $user_id) {
                 </a>
                 <div id="collapsePastDataLibrarian" class="collapse <?php echo (is_active_page($past_data_librarian)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item <?php echo ($current_page == 'past_books.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/past_books.php">Past Book Records</a>
+                        <a class="collapse-item <?php echo ($current_page == 'past_books.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/past_record/past_books.php">Past Book Records</a>
                     </div>
                 </div>
             </li>

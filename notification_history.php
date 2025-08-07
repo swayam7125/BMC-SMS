@@ -20,7 +20,7 @@ $all_notifications = [];
 $notification_types = [];
 $params = [$userId];
 
-// --- FIXED: Query now fetches ALL notifications, not just read ones. ---
+// This query correctly fetches ALL notifications for the user, both read and unread.
 $sql = "SELECT id, message, link, type, created_at, is_read FROM notifications WHERE user_id = ?";
 
 // Get filter values from GET request
@@ -50,7 +50,7 @@ try {
     $stmt->execute($params);
     $all_notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Fetch distinct notification types for the filter dropdown (from all notifications)
+    // Fetch distinct notification types for the filter dropdown
     $stmt_types = $conn->prepare("SELECT DISTINCT type FROM notifications WHERE user_id = ? ORDER BY type ASC");
     $stmt_types->execute([$userId]);
     $notification_types = $stmt_types->fetchAll(PDO::FETCH_COLUMN, 0);
@@ -60,7 +60,7 @@ try {
     die("A database error occurred. Please try again later.");
 }
 
-// Function to get notification icon (might be in header)
+// Re-use the function from header.php if it's not already defined
 if (!function_exists('getNotificationIcon')) {
     function getNotificationIcon($type) {
         switch ($type) {

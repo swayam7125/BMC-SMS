@@ -1,5 +1,4 @@
 <?php
-session_start();
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 
@@ -21,13 +20,12 @@ $borrower_id = filter_var($_POST['borrower_id'], FILTER_VALIDATE_INT);
 $borrower_role = $_POST['borrower_role'];
 
 if (!$book_id || !$borrower_id || !in_array($borrower_role, ['student', 'teacher'])) {
-    $_SESSION['error_message'] = "Invalid data provided. Please fill out all fields.";
-    header("Location: $redirect_url");
+    $error_message = "Invalid data provided. Please fill out all fields.";
+    header("Location: $redirect_url?error=" . urlencode($error_message));
     exit;
 }
 
 try {
-    // --- CORRECTED: Using PDO Transaction ---
     $conn->beginTransaction();
 
     $stmt_book = $conn->prepare('SELECT "quantity_available" FROM "books" WHERE "book_id" = ? FOR UPDATE');
@@ -46,15 +44,16 @@ try {
     $stmt_insert_br->execute([$book_id, $borrower_id, $borrower_role, $due_date]);
 
     $conn->commit();
-    $_SESSION['success_message'] = "Book issued successfully! Due date is " . date('d-m-Y', strtotime($due_date)) . ".";
+    $success_message = "Book issued successfully! Due date is " . date('d-m-Y', strtotime($due_date)) . ".";
+    header("Location: $redirect_url?success=" . urlencode($success_message));
+    exit;
 
 } catch (Exception $e) {
     if ($conn->inTransaction()) {
         $conn->rollBack();
     }
-    $_SESSION['error_message'] = "An error occurred: " . $e->getMessage();
+    $error_message = "An error occurred: " . $e->getMessage();
+    header("Location: $redirect_url?error=" . urlencode($error_message));
+    exit;
 }
-
-header("Location: $redirect_url");
-exit;
 ?>

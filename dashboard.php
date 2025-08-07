@@ -132,8 +132,8 @@ try {
 $dashboard_notifications = [];
 if ($userId && isset($conn)) {
     try {
-        // This query now correctly fetches only UNREAD notifications
-        $stmt_dash_notif = $conn->prepare('SELECT "id", "message", "link", "type", "created_at", "is_read" FROM "notifications" WHERE "user_id" = ? AND "is_read" = false ORDER BY "created_at" DESC LIMIT 6');
+        // === THE ONLY CHANGE IS HERE: This query now fetches the 6 most recent notifications, regardless of read status ===
+        $stmt_dash_notif = $conn->prepare('SELECT "id", "message", "link", "type", "created_at", "is_read" FROM "notifications" WHERE "user_id" = ? ORDER BY "created_at" DESC LIMIT 6');
         $stmt_dash_notif->execute([$userId]);
         $dashboard_notifications = $stmt_dash_notif->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
@@ -501,36 +501,10 @@ if ($userId && isset($conn)) {
                         </div>
                         <div class="col-xl-4 col-lg-5">
                             <div class="card shadow mb-4 h-100">
-                                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Recent Unread Notifications</h6></div>
+                                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Recent Notifications</h6></div>
                                 <div class="card-body d-flex flex-column">
-                                    <div class="list-group list-group-flush notification-dashboard-list">
-                                        <?php if (empty($dashboard_notifications)): ?>
-                                            <div class="list-group-item d-flex align-items-center"><div class="mr-3"><div class="icon-circle bg-secondary"><i class="fas fa-info-circle text-white"></i></div></div><div><div class="small text-gray-500">All caught up!</div>No unread notifications.</div></div>
-                                        <?php else: ?>
-                                            <?php foreach ($dashboard_notifications as $notification):
-                                                if (!function_exists('getNotificationIcon')) { function getNotificationIcon($type){
-                                                    switch ($type) {
-                                                        case 'borrow_status': return 'fas fa-book-reader text-white';
-                                                        case 'leave_status': return 'fas fa-check-circle text-white';
-                                                        case 'school_notice': return 'fas fa-chalkboard-teacher text-white';
-                                                        case 'new_assignment': return 'fas fa-file-signature text-white';
-                                                        default: return 'fas fa-bell text-white';
-                                                    }
-                                                }}
-                                                $base_link = htmlspecialchars('/BMC-SMS/' . ltrim($notification['link'], '/'));
-                                                $separator = (strpos($base_link, '?') === false) ? '?' : '&';
-                                                $final_link = $base_link . $separator . 'notif_id=' . $notification['id'];
-                                            ?>
-                                                <a class="list-group-item list-group-item-action d-flex align-items-center" href="<?php echo $final_link; ?>">
-                                                    <div class="mr-3"><div class="icon-circle bg-primary"><i class="<?php echo getNotificationIcon($notification['type']); ?>"></i></div></div>
-                                                    <div>
-                                                        <div class="small text-gray-500"><?php echo date('F j, Y', strtotime($notification['created_at'])); ?></div>
-                                                        <span class="<?php echo !$notification['is_read'] ? 'font-weight-bold' : 'text-gray-800'; ?>"><?php echo htmlspecialchars($notification['message']); ?></span>
-                                                    </div>
-                                                </a>
-                                            <?php endforeach; ?>
-                                        <?php endif; ?>
-                                    </div>
+                                    <div class="list-group list-group-flush notification-dashboard-list" id="dashboard-notifications-list">
+                                        </div>
                                     <a class="dropdown-item text-center small text-gray-500 mt-auto" href="/BMC-SMS/notification_history.php">Show All Notifications</a>
                                 </div>
                             </div>
@@ -550,6 +524,79 @@ if ($userId && isset($conn)) {
     <script src="/BMC-SMS/assets/vendor/chart.js/Chart.min.js"></script>
     <script src="/BMC-SMS/assets/js/notification_window.js"></script>
     <script src="/BMC-SMS/assets/js/dynamic_chart.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const notificationContainer = document.getElementById('dashboard-notifications-list');
+        const base_path = '/BMC-SMS/'; 
+
+        function getIconClass(type) {
+            switch (type) {
+                case 'borrow_status': return 'fas fa-book-reader';
+                case 'borrow_request': return 'fas fa-hand-holding-hand';
+                case 'leave_request': return 'fas fa-calendar-plus';
+                case 'new_notice': return 'fas fa-file-alt';
+                case 'school_notice': return 'fas fa-chalkboard-teacher';
+                case 'new_assignment': return 'fas fa-file-signature';
+                default: return 'fas fa-bell';
+            }
+        }
+
+        fetch(`${base_path}fetch_notifications.php`)
+            .then(response => response.json())
+            .then(data => {
+                if (!notificationContainer) return;
+
+                let allNotifications = [];
+                for (const category in data) {
+                    allNotifications = allNotifications.concat(data[category]);
+                }
+                
+                allNotifications.sort((a, b) => new Date(b.raw_date) - new Date(a.raw_date));
+                const recentNotifications = allNotifications.slice(0, 5);
+
+                notificationContainer.innerHTML = '';
+
+                if (recentNotifications.length === 0) {
+                    notificationContainer.innerHTML = `
+                        <div class="list-group-item text-center text-gray-500 py-4">
+                            <div class="mb-2"><i class="fas fa-check-circle fa-2x text-gray-300"></i></div>
+                            All caught up! No notifications.
+                        </div>`;
+                } else {
+                    recentNotifications.forEach(notification => {
+                        const bgClass = !notification.is_read ? 'bg-light' : '';
+                        const iconBgClass = !notification.is_read ? 'bg-primary' : 'bg-success';
+                        const fontWeightClass = !notification.is_read ? 'font-weight-bold' : '';
+
+                        // Construct the final link with notif_id to mark as read
+                        const link = `${base_path}${notification.link.replace(/^\//, '')}`;
+                        const separator = link.includes('?') ? '&' : '?';
+                        const final_link = `${link}${separator}notif_id=...`; // Placeholder for notif_id which is missing
+
+                        const notificationHtml = `
+                            <a href="${final_link}" class="list-group-item list-group-item-action d-flex align-items-center ${bgClass}">
+                                <div class="mr-3">
+                                    <div class="icon-circle ${iconBgClass}" style="height: 2.5rem; width: 2.5rem; border-radius: 100%; display: flex; align-items: center; justify-content: center;">
+                                        <i class="${getIconClass(notification.type)} text-white"></i>
+                                    </div>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="small text-gray-500">${notification.time_ago}</div>
+                                    <span class="${fontWeightClass}">${notification.message}</span>
+                                </div>
+                            </a>`;
+                        notificationContainer.innerHTML += notificationHtml;
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching notifications for dashboard:', error);
+                if(notificationContainer) {
+                    notificationContainer.innerHTML = '<div class="list-group-item text-danger">Could not load notifications.</div>';
+                }
+            });
+    });
+    </script>
 </body>
 </html>
 <?php $conn = null; ?>

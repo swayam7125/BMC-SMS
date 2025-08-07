@@ -88,23 +88,26 @@ if ($isLoggedIn && isset($_COOKIE['encrypted_user_id'])) {
     }
 }
 
-// Function to determine notification icon based on type
-function getNotificationIcon($type) {
-    switch ($type) {
-        case 'borrow_status': return 'fas fa-book-reader text-white';
-        case 'borrow_request': return 'fas fa-hand-holding-hand text-white';
-        case 'leave_request': return 'fas fa-calendar-plus text-white';
-        case 'new_notice': return 'fas fa-file-alt text-white';
-        case 'principal_notice': return 'fas fa-user-tie text-white';
-        case 'principal_to_librarian_notice': return 'fas fa-user-graduate text-white';
-        case 'leave_status': return 'fas fa-check-circle text-white';
-        case 'school_notice': return 'fas fa-chalkboard-teacher text-white';
-        case 'new_assignment': return 'fas fa-file-signature text-white';
-        case 'marks_uploaded': return 'fas fa-award text-white';
-        case 'exam_timetable': return 'fas fa-calendar-alt text-white';
-        case 'new_notes': return 'fas fa-sticky-note text-white';
-        case 'result_published': return 'fas fa-poll-h text-white';
-        default: return 'fas fa-bell text-white';
+// --- FIX: Wrap the function in a check to prevent redeclaration ---
+if (!function_exists('getNotificationIcon')) {
+    // Function to determine notification icon based on type
+    function getNotificationIcon($type) {
+        switch ($type) {
+            case 'borrow_status': return 'fas fa-book-reader text-white';
+            case 'borrow_request': return 'fas fa-hand-holding-hand text-white';
+            case 'leave_request': return 'fas fa-calendar-plus text-white';
+            case 'new_notice': return 'fas fa-file-alt text-white';
+            case 'principal_notice': return 'fas fa-user-tie text-white';
+            case 'principal_to_librarian_notice': return 'fas fa-user-graduate text-white';
+            case 'leave_status': return 'fas fa-check-circle text-white';
+            case 'school_notice': return 'fas fa-chalkboard-teacher text-white';
+            case 'new_assignment': return 'fas fa-file-signature text-white';
+            case 'marks_uploaded': return 'fas fa-award text-white';
+            case 'exam_timetable': return 'fas fa-calendar-alt text-white';
+            case 'new_notes': return 'fas fa-sticky-note text-white';
+            case 'result_published': return 'fas fa-poll-h text-white';
+            default: return 'fas fa-bell text-white';
+        }
     }
 }
 ?>
