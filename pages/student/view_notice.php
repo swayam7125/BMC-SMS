@@ -5,6 +5,7 @@ include_once "../../includes/connect.php";
 $role = null;
 $userId = null;
 $notices = [];
+$error_message = null; // Variable to hold potential error messages
 
 if (isset($_COOKIE['encrypted_user_role'])) {
     $decrypted_role = decrypt_id($_COOKIE['encrypted_user_role']);
@@ -14,32 +15,25 @@ if (isset($_COOKIE['encrypted_user_id'])) {
     $userId = decrypt_id($_COOKIE['encrypted_user_id']);
 }
 
-// Redirect if user is not properly logged in
 if (!$role || !$userId) {
     header("Location: ../login.php");
     exit;
 }
 
 try {
-    // PDO Change: Converted all queries to PDO
-    // --- START: MARK ALL SCHOOL NOTICE NOTIFICATIONS AS READ ON PAGE VIEW ---
+    // --- START: NOTIFICATION LOGIC ---
     if (($role === 'student' || $role === 'teacher') && $userId) {
         $stmt_mark_all_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND type = 'school_notice' AND is_read = 0");
         $stmt_mark_all_read->execute([$userId]);
-        $stmt_mark_all_read = null;
     }
-    // --- END: MARK ALL SCHOOL NOTICE NOTIFICATIONS AS READ ---
-
-    // --- START: MARK INDIVIDUAL NOTIFICATION AS READ (From notification dropdown) ---
     if (isset($_GET['notif_id']) && is_numeric($_GET['notif_id'])) {
         $notification_id = $_GET['notif_id'];
         $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?");
         $stmt_mark_read->execute([$notification_id, $userId]);
-        $stmt_mark_read = null;
     }
-    // --- END: MARK INDIVIDUAL NOTIFICATION AS READ ---
+    // --- END: NOTIFICATION LOGIC ---
 
-    // Fetch user-specific data
+    // --- START: FETCH USER-SPECIFIC DATA ---
     $schoolId = null;
     $studentStd = null;
     if ($role == 'student') {
@@ -48,45 +42,61 @@ try {
         if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $schoolId = $row['school_id'];
             $studentStd = $row['std'];
+            if (!$schoolId || !$studentStd) {
+                 $error_message = "Your profile is incomplete (missing School or Standard assignment). Please contact an administrator.";
+            }
+        } else {
+            $error_message = "Could not find your student profile.";
         }
-        $stmt = null;
     } elseif ($role == 'teacher') {
         $stmt = $conn->prepare("SELECT school_id FROM teacher WHERE id = ?");
         $stmt->execute([$userId]);
         if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $schoolId = $row['school_id'];
+            if (!$schoolId) {
+                $error_message = "Your profile is incomplete (missing School assignment). Please contact an administrator.";
+            }
+        } else {
+            $error_message = "Could not find your teacher profile.";
         }
-        $stmt = null;
     }
+    // --- END: FETCH USER-SPECIFIC DATA ---
 
-    // Fetch notices
-    if ($schoolId) {
+    // --- START: FETCH NOTICES IF NO ERRORS AND SCHOOLID IS VALID ---
+    if (!$error_message && $schoolId) {
         $sql = "SELECT DISTINCT c.title, c.content, c.file_path, c.original_filename, c.created_at
                 FROM school_notices_content c
                 JOIN school_notice_recipients r ON c.id = r.notice_id
                 WHERE c.school_id = ?";
-
+        
         $params = [$schoolId];
+        $can_fetch = false;
 
         if ($role == 'teacher') {
             $sql .= " AND r.recipient_type = 'teacher'";
+            $can_fetch = true;
         } elseif ($role == 'student' && $studentStd) {
             $sql .= " AND r.recipient_type = 'standard' AND r.recipient_identifier = ?";
             $params[] = $studentStd;
-        } else {
-            // No valid role/data to fetch notices, prevent query execution
-            $sql .= " AND 1=0";
+            $can_fetch = true;
         }
 
-        $sql .= " ORDER BY c.created_at DESC";
-
-        $stmt = $conn->prepare($sql);
-        $stmt->execute($params);
-        $notices = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $stmt = null;
+        if ($can_fetch) {
+            $sql .= " ORDER BY c.created_at DESC";
+            $stmt = $conn->prepare($sql);
+            $stmt->execute($params);
+            $notices = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+    } elseif (!$error_message) {
+        // This condition is met if a valid user (like a principal) has no logic to see notices here.
+        // You can set a message or leave notices empty.
+        $error_message = "No notice viewing rules configured for your role.";
     }
+    // --- END: FETCH NOTICES ---
+
 } catch (PDOException $e) {
     error_log("DB Error in view_notice.php: " . $e->getMessage());
+    $error_message = "A database error occurred. Please try again later.";
 }
 
 $pageTitle = 'View School Notices';
@@ -97,15 +107,12 @@ $pageTitle = 'View School Notices';
 <head>
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
-
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400i,600,700" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-
 </head>
 
 <body id="page-top">
@@ -121,8 +128,12 @@ $pageTitle = 'View School Notices';
                             <h6 class="m-0 font-weight-bold text-primary">Notice Feed</h6>
                         </div>
                         <div class="card-body">
-                            <?php if (empty($notices)): ?>
-                                <div class="text-center">No notices have been sent to you yet.</div>
+                            <?php if ($error_message): ?>
+                                <div class="text-center text-danger font-weight-bold">
+                                    <?php echo htmlspecialchars($error_message); ?>
+                                </div>
+                            <?php elseif (empty($notices)): ?>
+                                <div class="text-center">No school notices have been sent to you yet.</div>
                             <?php else: ?>
                                 <?php foreach ($notices as $notice): ?>
                                     <div class="card mb-3">
@@ -150,10 +161,8 @@ $pageTitle = 'View School Notices';
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php" ?>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
-
 </html>

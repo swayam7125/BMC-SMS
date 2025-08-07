@@ -1,4 +1,4 @@
-<?php 
+<?php
 // pages/student/message.php
 
 // Make sure to include your existing connect and encryption files.
@@ -31,16 +31,16 @@ $contacts_title = "Teachers";
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit-no">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title><?php echo htmlspecialchars($page_title); ?> - Dashboard</title>
 
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
     <link href="/BMC-SMS/assets/css/sb-admin-2.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    
     <link rel="stylesheet" href="/BMC-SMS/assets/css/notification_window.css">
     <link rel="stylesheet" href="/BMC-SMS/assets/css/sidebar.css">
     <link rel="stylesheet" href="/BMC-SMS/assets/css/scrollbar_hidden.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-
     <link rel="stylesheet" href="../../assets/css/message.css?v=1.1">
 </head>
 <body id="page-top">
@@ -99,12 +99,18 @@ $contacts_title = "Teachers";
     <script src="/BMC-SMS/assets/vendor/jquery/jquery.min.js"></script>
     <script src="/BMC-SMS/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="/BMC-SMS/assets/vendor/jquery-easing/jquery.easing.min.js"></script>
+    
     <script src="/BMC-SMS/assets/js/sb-admin-2.min.js"></script>
     <script src="/BMC-SMS/assets/js/notification_window.js"></script>
 
     <script>
+        // Defines the root path of your project. Make sure '/BMC-SMS/' matches your folder name.
+        window.base_url = '/BMC-SMS/'; 
+        
+        // Passes the current user's ID to the JavaScript file.
         window.currentUserId = '<?php echo $current_user_id; ?>';
     </script>
+    
     <script src="../../assets/js/message.js"></script>
 </body>
 </html>
