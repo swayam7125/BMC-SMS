@@ -97,7 +97,6 @@ try {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <!-- === START: CORRECTED PHP LOOP === -->
                                         <?php if (!empty($librarians)): ?>
                                             <?php foreach ($librarians as $row): ?>
                                             <tr>
@@ -115,7 +114,7 @@ try {
                                                 <td>
                                                     <a href="view.php?id=<?php echo $row['id']; ?>" class="btn btn-info btn-sm" title="View"><i class="fas fa-eye"></i></a>
                                                     <a href="edit.php?id=<?php echo $row['id']; ?>" class="btn btn-primary btn-sm" title="Edit"><i class="fas fa-edit"></i></a>
-                                                    <?php
+                                                    <?php if ($role === 'principal'):
                                                         $return_url = urlencode('/BMC-SMS/pages/librarian/librarian_list.php');
                                                         if ($row['account_status'] === 'active'): 
                                                             $suspendUrl = "../../includes/actions/update_user_status.php?id={$row['id']}&status=suspended&return={$return_url}";
@@ -125,15 +124,15 @@ try {
                                                         $reactivateUrl = "../../includes/actions/update_user_status.php?id={$row['id']}&status=active&return={$return_url}";
                                                     ?>
                                                     <a href="#" onclick="confirmAction('<?php echo $reactivateUrl; ?>', 'reactivate this librarian')" class="btn btn-success btn-sm" title="Reactivate"><i class="fas fa-check-circle"></i></a>
-                                                    <?php endif; ?>
+                                                    <?php endif; 
+                                                    endif; ?>
                                                     <button class="btn btn-danger btn-sm" onclick="confirmDelete(<?php echo $row['id']; ?>)" title="Delete"><i class="fas fa-trash"></i></button>
                                                 </td>
                                             </tr>
-                                            <?php endforeach; ?>
-                                        <?php else: ?>
+                                            <?php endforeach;
+                                        else: ?>
                                             <tr><td colspan="6" class="text-center">No librarians found</td></tr>
                                         <?php endif; ?>
-                                        <!-- === END: CORRECTED PHP LOOP === -->
                                     </tbody>
                                 </table>
                             </div>
@@ -145,12 +144,27 @@ try {
         </div>
     </div>
 
-    <!-- Modals and Scripts remain the same -->
     <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog">
-        <!-- ... modal content ... -->
+         <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete</h5><button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                </div>
+                <div class="modal-body">Are you sure you want to delete this record? This action cannot be undone.</div>
+                <div class="modal-footer"><button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button><a class="btn btn-danger" id="confirmDeleteBtn" href="#">Delete</a></div>
+            </div>
+        </div>
     </div>
     <div class="modal fade" id="actionModal" tabindex="-1" role="dialog">
-        <!-- ... modal content ... -->
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Action</h5><button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                </div>
+                <div class="modal-body" id="actionModalBody">Are you sure you want to proceed?</div>
+                <div class="modal-footer"><button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button><a class="btn btn-primary" id="confirmActionBtn" href="#">Confirm</a></div>
+            </div>
+        </div>
     </div>
     <?php include_once "../../includes/logout_modal.php"?>
 
@@ -171,7 +185,7 @@ try {
     }
 
     function confirmDelete(id) {
-        var deleteUrl = `delete.php?id=${id}`;
+        var deleteUrl = `../../pages/librarian/librarian_delete.php?id=${id}`;
         $('#confirmDeleteBtn').attr('href', deleteUrl);
         $('#deleteModal').modal('show');
     }

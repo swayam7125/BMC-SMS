@@ -6,27 +6,37 @@ if (!defined('BASE_URL')) {
     define('BASE_URL', '/BMC-SMS/');
 }
 
-function getWebAccessibleImagePath($db_image_path, $base_web_path, $default_sub_folder = '')
+// --- FIX: Replaced the complex and buggy function with a simple, reliable one. ---
+/**
+ * Converts a relative path from the database into a full, web-accessible URL.
+ * It also verifies that the file physically exists on the server.
+ *
+ * @param string|null $relative_path The path stored in the DB (e.g., "uploads/principal_photos/file.png").
+ * @param string $base_url The base URL of the application (e.g., "/BMC-SMS/").
+ * @return string|null The full, web-accessible path if the file exists, otherwise null.
+ */
+function getWebAccessibleImagePath($relative_path, $base_url)
 {
-    if (empty($db_image_path)) return null;
-    $full_web_path = $base_web_path . ltrim($db_image_path, '/');
-    $filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $full_web_path;
-    if (@file_exists($filesystem_path) && @is_file($filesystem_path)) return $full_web_path;
-    $possible_locations = ["pages/{$default_sub_folder}/uploads/", "uploads/{$default_sub_folder}s/", "uploads/"];
-    foreach ($possible_locations as $location) {
-        $test_path = $base_web_path . $location . basename($db_image_path);
-        $test_filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $test_path;
-        if (@file_exists($test_filesystem_path) && @is_file($test_filesystem_path)) return $test_path;
+    if (empty($relative_path)) {
+        return null;
     }
+    // Build the full web path for the <img> src attribute.
+    $full_web_path = $base_url . ltrim($relative_path, '/');
+    
+    // Build the corresponding physical path on the server to check if the file exists.
+    $physical_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $full_web_path;
+    
+    // If the file exists, return the web path. Otherwise, return null.
+    if (file_exists($physical_path) && is_file($physical_path)) {
+        return htmlspecialchars($full_web_path);
+    }
+    
     return null;
 }
 
 function getDefaultImagePath($base_web_path)
 {
-    $default_path = $base_web_path . 'assets/img/default-user.jpg';
-    $filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $default_path;
-    if (file_exists($filesystem_path)) return $default_path;
-    return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 150 150'%3E%3Crect width='150' height='150' fill='%23f8f9fc'/%3E%3Ctext x='75' y='75' text-anchor='middle' dy='0.35em' fill='%23858796' font-family='Arial' font-size='14'%3ENo Photo%3C/text%3E%3C/svg%3E";
+    return $base_web_path . 'assets/img/default-user.jpg';
 }
 
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
@@ -70,7 +80,8 @@ try {
     die("A database error occurred.");
 }
 
-$photo_path = getWebAccessibleImagePath($principal['principal_image'], BASE_URL, 'principal');
+// --- FIX: Call the new, simplified function. ---
+$photo_path = getWebAccessibleImagePath($principal['principal_image'], BASE_URL);
 $default_photo = getDefaultImagePath(BASE_URL);
 ?>
 <!DOCTYPE html>
@@ -98,7 +109,7 @@ $default_photo = getDefaultImagePath(BASE_URL);
                         <h1 class="h3 mb-0 text-gray-800">Principal Details</h1>
                         <div>
                             <a href="principal_list.php" class="btn btn-secondary btn-sm mr-2"><i class="fas fa-arrow-left"></i> Back to List</a>
-                            <a href="edit.php?id=<?php echo $principal['id']; ?>" class="btn btn-primary btn-sm"><i class="fas fa-edit"></i> Edit Principal</a>
+                            <a href="../forms/edit_principal.php?id=<?php echo $principal['id']; ?>" class="btn btn-primary btn-sm"><i class="fas fa-edit"></i> Edit Principal</a>
                         </div>
                     </div>
                     <div class="row">

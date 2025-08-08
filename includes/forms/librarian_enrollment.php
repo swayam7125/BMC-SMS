@@ -94,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Note: Assumes a 'librarian_timings' table exists similar to 'principal_timings'
             $stmt_timing = $conn->prepare('INSERT INTO "librarian_timings" (librarian_id, day_of_week, opens_at, closes_at, is_closed) VALUES (?, ?, ?, ?, ?)');
             foreach ($timings as $day => $details) {
-                $is_closed = isset($details['is_closed']);
+                $is_closed = isset($details['is_closed']) ? 1 : 0;
                 $opens_at = ($is_closed || empty($details['opens_at'])) ? null : $details['opens_at'];
                 $closes_at = ($is_closed || empty($details['closes_at'])) ? null : $details['closes_at'];
                 $stmt_timing->execute([$new_user_id, $day, $opens_at, $closes_at, $is_closed]);

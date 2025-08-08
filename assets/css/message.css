@@ -1,147 +1,84 @@
-/* assets/css/message.css */
-
-#contacts-list {
-    max-height: 65vh;
-    overflow-y: auto;
-}
-
-.contact-item {
-    display: flex;
-    align-items: center;
-    padding: 12px 20px;
-    cursor: pointer;
-    border-bottom: 1px solid #e3e6f0;
-    transition: background-color 0.2s ease-in-out;
-}
-
-.contact-item:last-child {
-    border-bottom: none;
-}
-
-.contact-item:hover {
-    background-color: #f8f9fc;
-}
-
-.contact-item.active {
-    background-color: #4e73df;
-    color: #fff;
-    font-weight: 600;
-}
-
-.contact-image {
-    width: 45px;
-    height: 45px;
-    border-radius: 50%;
-    object-fit: cover;
-    margin-right: 15px;
-    border: 2px solid #fff;
-    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-}
-
-.contact-item.active .contact-image {
-    border-color: #8fa8e9;
-}
-
+/* Main container for the chat messages */
 .message-display {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem; /* Adds space between messages */
+    padding: 1rem;
     height: 60vh;
-    padding: 20px;
     overflow-y: auto;
     background-color: #f8f9fc;
+}
+
+/* Wrapper for each message to handle alignment */
+.message-wrapper {
+    display: flex;
+    width: 100%;
+}
+
+/* Style for the message bubble itself */
+.message-bubble {
+    display: flex;
+    align-items: flex-start; /* Aligns avatar with the top of the bubble */
+    gap: 10px;
+    max-width: 75%;
+    padding: 10px 15px;
+    border-radius: 18px;
+    position: relative;
+}
+
+/* Content inside the bubble (text and time) */
+.message-content {
     display: flex;
     flex-direction: column;
 }
 
-.message-container, .message-container-grouped {
-    display: flex;
-    align-items: flex-end;
-    margin-bottom: 5px;
-    max-width: 85%;
-}
-
-/* NOTE: Alignment is now handled directly in message.js 
-  to prevent browser caching issues.
-*/
-
-.message-image {
-    width: 32px;
-    height: 32px;
+/* Chat avatar styling */
+.chat-avatar {
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     object-fit: cover;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: 2px solid #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.message-container-grouped {
-    margin-bottom: 2px;
+/* Styling for messages RECEIVED (from the other person) */
+.message-wrapper.received {
+    justify-content: flex-start; /* Aligns the bubble to the left */
+}
+.message-bubble.received {
+    background-color: #f1f0f0; /* Light gray background */
+    color: #333;
+    border-top-left-radius: 5px;
 }
 
-.message-container-grouped .message-image {
-    visibility: hidden; 
+/* Styling for messages SENT (by you) */
+.message-wrapper.sent {
+    justify-content: flex-end; /* Aligns the bubble to the right */
 }
-
-.message-bubble {
-    padding: 10px 15px;
-    border-radius: 18px;
-    position: relative;
-    max-width: 100%;
-}
-
-/* This rule colors YOUR sent messages BLUE */
-.sent .message-bubble {
-    background-color: #4e73df; 
+.message-bubble.sent {
+    background-color: #4e73df; /* Primary blue background */
     color: #fff;
-    margin-left: 12px;
-    border-bottom-left-radius: 5px;
+    flex-direction: row-reverse; /* This moves the avatar to the right of the text */
+    border-top-right-radius: 5px;
 }
 
-/* This rule keeps incoming messages GRAY */
-.received .message-bubble {
-    background-color: #e9ecef; 
-    color: #3a3b45; 
-    margin-left: 12px;
-    border-bottom-left-radius: 5px;
-}
-
-.message-text {
+/* Styling for the message text */
+.message-bubble p {
     margin: 0;
-    padding: 0;
     word-wrap: break-word;
-    font-size: 0.9rem;
-    line-height: 1.4;
 }
 
-.message-timestamp {
-    display: block;
-    font-size: 11px;
-    margin-top: 5px;
+/* Styling for the timestamp */
+.message-time {
+    font-size: 0.75rem;
+    margin-top: 4px;
+    opacity: 0.8;
     text-align: right;
 }
-
-.sent .message-timestamp {
-    color: rgba(255, 255, 255, 0.75);
+.message-bubble.received .message-time {
+    color: #666;
 }
-
-.received .message-timestamp {
-    color: #858796;
-}
-
-.card-footer {
-    border-top: 1px solid #e3e6f0;
-}
-
-#message-text.form-control {
-    border-right: none;
-}
-
-#message-text.form-control:focus {
-    box-shadow: none;
-    border-color: #d1d3e2;
-}
-
-#send-button {
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
-}
-
-#send-button .fa-paper-plane {
-    margin-right: 5px;
+.message-bubble.sent .message-time {
+    color: #f0f0f0;
 }

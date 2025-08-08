@@ -2,10 +2,9 @@
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 
-session_start();
-$success_message = $_SESSION['success_message'] ?? null;
-$error_message = $_SESSION['error_message'] ?? null;
-unset($_SESSION['success_message'], $_SESSION['error_message']);
+// Messages are now read from URL parameters instead of sessions
+$success_message = isset($_GET['success']) ? htmlspecialchars($_GET['success']) : null;
+$error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null;
 
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 $user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
@@ -31,7 +30,6 @@ try {
         die("Could not determine the librarian's school. Access denied.");
     }
 
-    // --- CORRECTED: All queries converted to PDO ---
     $available_books_stmt = $conn->prepare('SELECT "book_id", "title", "author" FROM "books" WHERE "school_id" = ? AND "quantity_available" > 0 AND "is_digital" = false');
     $available_books_stmt->execute([$school_id]);
     $available_books = $available_books_stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -40,11 +38,31 @@ try {
     $issued_books_stmt->execute([$school_id]);
     $issued_books = $issued_books_stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $returned_history_stmt = $conn->prepare('SELECT br.*, b.title, u.email as borrower_email FROM "borrowing_records" br JOIN "books" b ON br.book_id = b.book_id JOIN "users" u ON br.borrower_id = u.id WHERE b.school_id = ? AND br.is_returned = true ORDER BY br.return_date DESC');
+    // === FIX: Rewrote the SQL query to be more explicit and prevent ambiguity ===
+    $returned_history_sql = '
+        SELECT 
+            br.borrower_role,
+            br.checkout_date,
+            br.due_date,
+            br.return_date,
+            b.title,
+            u.email AS borrower_email
+        FROM 
+            "borrowing_records" br 
+        JOIN 
+            "books" b ON br.book_id = b.book_id 
+        JOIN 
+            "users" u ON br.borrower_id = u.id 
+        WHERE 
+            b.school_id = ? AND br.is_returned = true 
+        ORDER BY 
+            br.return_date DESC';
+    $returned_history_stmt = $conn->prepare($returned_history_sql);
     $returned_history_stmt->execute([$school_id]);
     $returned_history = $returned_history_stmt->fetchAll(PDO::FETCH_ASSOC);
 
 } catch (PDOException $e) {
+    // If there's a DB error, we can still display it
     $error_message = "Database Error: " . $e->getMessage();
 }
 ?>
@@ -72,13 +90,13 @@ try {
                 
                 <?php if ($success_message): ?>
                     <div class="alert alert-success alert-dismissible fade show" role="alert">
-                        <?php echo htmlspecialchars($success_message); ?>
+                        <?php echo $success_message; ?>
                         <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                     </div>
                 <?php endif; ?>
                 <?php if ($error_message): ?>
                     <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        <?php echo htmlspecialchars($error_message); ?>
+                        <?php echo $error_message; ?>
                         <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                     </div>
                 <?php endif; ?>

@@ -136,7 +136,7 @@ $standards = ['Nursery', 'Junior', 'Senior', '1', '2', '3', '4', '5', '6', '7', 
                                         </div>
                                         <hr>
                                         <button type="submit" name="assign_subjects" class="btn btn-primary">
-                                            <i class="fas fa-save mr-2"></i>Save Assignment
+                                            <i class="fas fa-save mr-2"></i>Update Subjects
                                         </button>
                                     </form>
                                 </div>

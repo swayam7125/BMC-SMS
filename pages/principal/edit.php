@@ -1,31 +1,52 @@
 <?php
+// Includes for database connection and encryption functions.
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
+// Define the base URL if it's not already defined. This is crucial for creating correct file paths.
 if (!defined('BASE_URL')) {
     define('BASE_URL', '/BMC-SMS/');
 }
 
+/**
+ * Generates a web-accessible URL for an image path stored in the database.
+ * It checks if the path is a full URL, or constructs a path from the document root.
+ *
+ * @param string|null $db_image_path The path stored in the database.
+ * @return string|null The web-accessible path or null if not found.
+ */
 function getWebAccessibleImagePath($db_image_path)
 {
     if (empty($db_image_path)) return null;
+    // If it's already a full URL, return it.
     if (filter_var($db_image_path, FILTER_VALIDATE_URL)) return $db_image_path;
+    // Construct the full filesystem path to check if the file exists.
     $filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . BASE_URL . ltrim($db_image_path, '/');
-    if (@is_file($filesystem_path)) return BASE_URL . ltrim($db_image_path, '/');
+    if (@is_file($filesystem_path)) {
+        // Return the web-accessible relative path.
+        return BASE_URL . ltrim($db_image_path, '/');
+    }
     return null;
 }
 
+// --- User Authentication Check ---
+// Every secure page should start with this check.
+// It decrypts the user role from the cookie and ensures the user is logged in.
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 if (!$role) {
+    // If no role is found, redirect to the login page and stop script execution.
     header("Location: ../../login.php");
     exit;
 }
 
+// --- ID Validation ---
+// Check if a principal ID is provided in the URL.
 if (!isset($_GET['id']) || empty($_GET['id'])) {
     header("Location: principal_list.php?error=Invalid ID provided");
     exit;
 }
 
+// Sanitize the ID to ensure it's an integer.
 $principal_id = intval($_GET['id']);
 $errors = [];
 $principal = null;
@@ -34,9 +55,10 @@ $schools_result = [];
 
 try {
     // --- MODIFIED: Moved the school fetching logic to the top ---
-    // This ensures the school list is always available for the form dropdown.
+    // This ensures the school list is always available for the form dropdown, even if there's a POST error.
     $schools_result = $conn->query("SELECT id, school_name FROM school ORDER BY school_name")->fetchAll(PDO::FETCH_ASSOC);
 
+    // Fetch the existing principal's data to populate the form.
     $stmt_principal_fetch = $conn->prepare("SELECT * FROM principal WHERE id = ?");
     $stmt_principal_fetch->execute([$principal_id]);
     if ($stmt_principal_fetch->rowCount() === 0) {
@@ -44,17 +66,21 @@ try {
         exit;
     }
     $principal = $stmt_principal_fetch->fetch(PDO::FETCH_ASSOC);
+    // Store original values for comparison later.
     $original_image_path = $principal['principal_image'];
     $original_email = $principal['email'];
     $original_batch = $principal['batch'];
 
+    // Fetch the existing principal's weekly timings.
     $stmt_timings_fetch = $conn->prepare("SELECT * FROM principal_timings WHERE principal_id = ?");
     $stmt_timings_fetch->execute([$principal_id]);
     while ($row = $stmt_timings_fetch->fetch(PDO::FETCH_ASSOC)) {
         $timings[$row['day_of_week']] = $row;
     }
 
+    // --- Form Submission Logic ---
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        // Sanitize and retrieve all form data.
         $principal_name = trim($_POST['principal_name']);
         $new_email = trim($_POST['email']);
         $phone = trim($_POST['phone']);
@@ -69,6 +95,7 @@ try {
         $posted_timings = $_POST['timings'] ?? [];
         $image_path_for_db = $original_image_path;
 
+        // --- Image Upload Logic ---
         if (isset($_FILES['principal_image']) && $_FILES['principal_image']['error'] === UPLOAD_ERR_OK) {
             $file = $_FILES['principal_image'];
             $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
@@ -89,9 +116,11 @@ try {
             }
         }
 
+        // --- Database Update Logic ---
         if (empty($errors)) {
             $conn->beginTransaction();
 
+            // Handle batch swapping if another principal is in the same school/batch.
             if ($new_batch !== $original_batch) {
                 $stmt_swap_check = $conn->prepare("SELECT id FROM principal WHERE school_id = ? AND batch = ? AND id != ?");
                 $stmt_swap_check->execute([$school_id, $new_batch, $principal_id]);
@@ -102,33 +131,49 @@ try {
                 }
             }
 
+            // If email is changed, update the corresponding record in the 'users' table.
             if ($new_email !== $original_email) {
                 $stmt_user = $conn->prepare("UPDATE users SET email=? WHERE id=? AND role='principal'");
                 $stmt_user->execute([$new_email, $principal_id]);
             }
 
+            // Update the main principal record.
             $update_principal_query = "UPDATE principal SET principal_image=?, principal_name=?, email=?, phone=?, dob=?, gender=?, blood_group=?, address=?, qualification=?, salary=?, school_id=?, batch=? WHERE id=?";
             $stmt_principal_update = $conn->prepare($update_principal_query);
             $stmt_principal_update->execute([$image_path_for_db, $principal_name, $new_email, $phone, $dob, $gender, $blood_group, $address, $qualification, $salary, $school_id, $new_batch, $principal_id]);
 
+            // Upsert (UPDATE or INSERT) the weekly timings.
             $upsert_timing_query = "INSERT INTO principal_timings (principal_id, day_of_week, opens_at, closes_at, is_closed) VALUES (?, ?, ?, ?, ?) ON CONFLICT (principal_id, day_of_week) DO UPDATE SET opens_at = EXCLUDED.opens_at, closes_at = EXCLUDED.closes_at, is_closed = EXCLUDED.is_closed";
             $stmt_timing_upsert = $conn->prepare($upsert_timing_query);
             foreach ($days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as $day) {
                 $details = $posted_timings[$day] ?? [];
-                $is_closed = isset($details['is_closed']);
-                $opens_at = ($is_closed || empty($details['opens_at'])) ? null : $details['opens_at'];
-                $closes_at = ($is_closed || empty($details['closes_at'])) ? null : $details['closes_at'];
-                $stmt_timing_upsert->execute([$principal_id, $day, $opens_at, $closes_at, $is_closed]);
+
+                // *** FIX STARTS HERE ***
+                // The original code passed a PHP boolean (from isset) directly to the database.
+                // When 'is_closed' was not set, this resulted in `false`, which PDO sent as an empty string `''`.
+                // PostgreSQL's boolean type does not accept `''`, causing the `SQLSTATE[22P02]` error.
+                // The fix is to convert the PHP boolean to an integer (1 or 0), which is a valid boolean representation in SQL.
+                
+                $is_closed_bool = isset($details['is_closed']);
+                $is_closed_for_db = $is_closed_bool ? 1 : 0; // Convert boolean to 1 or 0 for the database.
+
+                // Set times to null if the day is marked as closed.
+                $opens_at = ($is_closed_bool || empty($details['opens_at'])) ? null : $details['opens_at'];
+                $closes_at = ($is_closed_bool || empty($details['closes_at'])) ? null : $details['closes_at'];
+                
+                // Execute the query with the corrected boolean value.
+                $stmt_timing_upsert->execute([$principal_id, $day, $opens_at, $closes_at, $is_closed_for_db]);
+                // *** FIX ENDS HERE ***
             }
 
+            // If all queries were successful, commit the transaction.
             $conn->commit();
             header("Location: principal_list.php?success=Principal updated successfully.");
             exit;
         }
     }
-    // --- MODIFIED: Removed the school fetching logic from here ---
-
 } catch (Exception $e) {
+    // If any error occurs, roll back the transaction and display the error message.
     if (isset($conn) && $conn->inTransaction()) $conn->rollBack();
     $errors[] = "Database error: " . $e->getMessage();
 }
@@ -271,6 +316,8 @@ try {
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // This script handles the "Closed" checkbox for each day's timing.
+            // When checked, it disables the time input fields for that day.
             document.querySelectorAll('.timing-row .custom-control-input').forEach(function(checkbox) {
                 const row = checkbox.closest('.timing-row');
                 const timeInputs = row.querySelectorAll('input[type="time"]');
@@ -278,6 +325,7 @@ try {
                     timeInputs.forEach(input => input.disabled = checkbox.checked);
                 }
                 checkbox.addEventListener('change', toggle);
+                // Run on page load to set initial state.
                 toggle();
             });
         });

@@ -26,7 +26,7 @@ if (!$userId) {
 $notifications = [];
 
 try {
-    // Prepare the SQL query to fetch notifications for the logged-in user
+    // This query correctly fetches ALL notifications (read and unread) for the dashboard
     $stmt = $conn->prepare("SELECT message, link, is_read, created_at, type FROM notifications WHERE user_id = ? ORDER BY created_at DESC");
     $stmt->execute([$userId]);
     $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -103,3 +103,4 @@ function time_ago($timestamp)
 }
 
 echo json_encode($categorized);
+?>

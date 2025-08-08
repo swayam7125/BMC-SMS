@@ -121,7 +121,7 @@ try {
                                                     <td><?php echo htmlspecialchars($book['quantity_available']); ?></td>
                                                     <td><?php echo $book['is_digital'] ? '<span class="badge badge-info">Digital</span>' : '<span class="badge badge-secondary">Physical</span>'; ?></td>
                                                     <td>
-                                                        <a href="edit.php?id=<?php echo $book['book_id']; ?>" class="btn btn-primary btn-sm" title="Edit"><i class="fas fa-edit"></i></a>
+                                                        <a href="book_edit.php?id=<?php echo $book['book_id']; ?>" class="btn btn-primary btn-sm" title="Edit"><i class="fas fa-edit"></i></a>
                                                         <a href="delete.php?id=<?php echo $book['book_id']; ?>" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure you want to delete this book?');"><i class="fas fa-trash"></i></a>
                                                     </td>
                                                 </tr>

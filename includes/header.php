@@ -88,23 +88,26 @@ if ($isLoggedIn && isset($_COOKIE['encrypted_user_id'])) {
     }
 }
 
-// Function to determine notification icon based on type
-function getNotificationIcon($type) {
-    switch ($type) {
-        case 'borrow_status': return 'fas fa-book-reader text-white';
-        case 'borrow_request': return 'fas fa-hand-holding-hand text-white';
-        case 'leave_request': return 'fas fa-calendar-plus text-white';
-        case 'new_notice': return 'fas fa-file-alt text-white';
-        case 'principal_notice': return 'fas fa-user-tie text-white';
-        case 'principal_to_librarian_notice': return 'fas fa-user-graduate text-white';
-        case 'leave_status': return 'fas fa-check-circle text-white';
-        case 'school_notice': return 'fas fa-chalkboard-teacher text-white';
-        case 'new_assignment': return 'fas fa-file-signature text-white';
-        case 'marks_uploaded': return 'fas fa-award text-white';
-        case 'exam_timetable': return 'fas fa-calendar-alt text-white';
-        case 'new_notes': return 'fas fa-sticky-note text-white';
-        case 'result_published': return 'fas fa-poll-h text-white';
-        default: return 'fas fa-bell text-white';
+// --- FIX: Wrap the function in a check to prevent redeclaration ---
+if (!function_exists('getNotificationIcon')) {
+    // Function to determine notification icon based on type
+    function getNotificationIcon($type) {
+        switch ($type) {
+            case 'borrow_status': return 'fas fa-book-reader text-white';
+            case 'borrow_request': return 'fas fa-hand-holding-hand text-white';
+            case 'leave_request': return 'fas fa-calendar-plus text-white';
+            case 'new_notice': return 'fas fa-file-alt text-white';
+            case 'principal_notice': return 'fas fa-user-tie text-white';
+            case 'principal_to_librarian_notice': return 'fas fa-user-graduate text-white';
+            case 'leave_status': return 'fas fa-check-circle text-white';
+            case 'school_notice': return 'fas fa-chalkboard-teacher text-white';
+            case 'new_assignment': return 'fas fa-file-signature text-white';
+            case 'marks_uploaded': return 'fas fa-award text-white';
+            case 'exam_timetable': return 'fas fa-calendar-alt text-white';
+            case 'new_notes': return 'fas fa-sticky-note text-white';
+            case 'result_published': return 'fas fa-poll-h text-white';
+            default: return 'fas fa-bell text-white';
+        }
     }
 }
 ?>
@@ -380,6 +383,73 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(error => console.error('Error clearing notifications:', error));
         });
     }
+
+    // --- START: Search Bar Functionality ---
+    const searchInput = document.getElementById('pageSearchInput');
+    const searchResults = document.getElementById('pageSearchResults');
+    const base_url_for_search = '<?php echo BASE_WEB_PATH; ?>';
+
+    // A list of pages for the 'principal' role. This list can be expanded.
+    const pages = [
+        { title: 'Dashboard', url: 'dashboard.php' },
+        { title: 'Enroll Teacher', url: 'includes/forms/teacher_enrollment.php' },
+        { title: 'Teacher List', url: 'pages/teacher/teacher_list.php' },
+        { title: 'Teacher Attendance', url: 'pages/principal/teacher_attendence.php' },
+        { title: 'View Teacher Attendance', url: 'pages/principal/view_teacher_attendence.php' },
+        { title: 'Enroll Librarian', url: 'includes/forms/librarian_enrollment.php' },
+        { title: 'Librarian List', url: 'pages/librarian/librarian_list.php' },
+        { title: 'Librarian Attendance', url: 'pages/principal/librarian_attendance.php' },
+        { title: 'View Librarian Attendance', url: 'pages/principal/view_librarian_attendance.php' },
+        { title: 'Enroll Student', url: 'includes/forms/student_enrollment.php' },
+        { title: 'Student List', url: 'pages/student/student_list.php' },
+        { title: 'Generate LC', url: 'pages/principal/generate_lc.php' },
+        { title: 'My Attendance', url: 'pages/principal/view_my_attendance.php' },
+        { title: 'Send School Notice', url: 'pages/principal/send_notice.php' },
+        { title: 'Send Notice to BMC', url: 'pages/principal/send_notice_to_bmc.php' },
+        { title: 'Send Notice to Librarian', url: 'pages/principal/send_notice_to_librarian.php' },
+        { title: 'View BMC Notices', url: 'pages/principal/view_notice.php' },
+        { title: 'Manage Subjects', url: 'pages/academics/manage_subjects.php' },
+        { title: 'Manage Timetable', url: 'pages/academics/manage_timetable.php' },
+        { title: 'Send Exam Timetable', url: 'pages/principal/send_exam_timetable.php' },
+        { title: 'Passing Criteria', url: 'pages/principal/school_settings.php' },
+        { title: 'Teacher Leave', url: 'pages/principal/principal_leave_requests.php' },
+        { title: 'Past Teacher List', url: 'pages/past_record/past_teacher.php' },
+        { title: 'Past Librarian List', url: 'pages/past_record/past_librarian.php' },
+        { title: 'Past Student List', url: 'pages/past_record/past_student.php' },
+    ];
+
+    searchInput.addEventListener('input', function() {
+        const query = searchInput.value.toLowerCase();
+        searchResults.innerHTML = '';
+        searchResults.style.display = 'none';
+
+        if (query.length > 1) {
+            const filteredPages = pages.filter(page => 
+                page.title.toLowerCase().includes(query)
+            );
+
+            if (filteredPages.length > 0) {
+                filteredPages.forEach(page => {
+                    const link = document.createElement('a');
+                    link.href = base_url_for_search + page.url;
+                    link.textContent = page.title;
+                    searchResults.appendChild(link);
+                });
+                searchResults.style.display = 'block';
+            } else {
+                searchResults.innerHTML = '<div class="no-results">No pages found.</div>';
+                searchResults.style.display = 'block';
+            }
+        }
+    });
+
+    // Hide results when clicking outside
+    document.addEventListener('click', function(event) {
+        if (!searchInput.contains(event.target) && !searchResults.contains(event.target)) {
+            searchResults.style.display = 'none';
+        }
+    });
+    // --- END: Search Bar Functionality ---
 });
 </script>
 

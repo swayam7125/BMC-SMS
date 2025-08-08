@@ -243,7 +243,6 @@ if (isset($conn) && $user_id) {
             $student_pages = ['student_enrollment.php', 'student_list.php', 'generate_lc.php'];
             $notice_pages = ['send_notice.php', 'send_notice_to_bmc.php', 'send_notice_to_librarian.php', 'view_notice.php'];
             $academics_pages = ['manage_subjects.php', 'manage_timetable.php', 'send_exam_timetable.php'];
-            $leave_pages = ['principal_leave_requests.php', 'principal_leave_history.php'];
             $past_data_pages_principal = ['past_teacher.php', 'past_librarian.php', 'past_student.php'];
         ?>
             <div class="sidebar-heading font-weight-semibold">School Management</div>
@@ -340,7 +339,7 @@ if (isset($conn) && $user_id) {
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link <?php echo (is_active_page($leave_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseLeaveManagement">
+                <a class="nav-link <?php echo (is_active_page(['teacher_leave_management.php'])) ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/principal/teacher_leave_management.php" data-notification-type="leave_request">
                     <i class="fas fa-fw fa-calendar-alt"></i>
                     <span>Teacher Leave</span>
                     <?php if ($unread_leave_requests > 0): ?>
@@ -349,20 +348,6 @@ if (isset($conn) && $user_id) {
                         </span>
                     <?php endif; ?>
                 </a>
-                <div id="collapseLeaveManagement" class="collapse <?php echo (is_active_page($leave_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
-                    <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item <?php echo ($current_page == 'principal_leave_requests.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/principal/principal_leave_requests.php" data-notification-type="leave_request">
-                            Pending Requests
-                            <?php if ($unread_leave_requests > 0): ?>
-                                <span class="badge badge-danger badge-counter">
-                                    <?php echo ($unread_leave_requests > 9) ? '9+' : $unread_leave_requests; ?>
-                                </span>
-                            <?php endif; ?>
-                        </a>
-                        <a class="collapse-item <?php echo ($current_page == 'principal_leave_history.php') ? 'active' : ''; ?>"
-                            href="<?php echo BASE_WEB_PATH; ?>pages/principal/principal_leave_history.php">Application History</a>
-                    </div>
-                </div>
             </li>
             <li class="nav-item">
                 <a class="nav-link <?php echo (is_active_page($past_data_pages_principal)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapsePastDataPrincipal">
@@ -698,7 +683,7 @@ if (isset($conn) && $user_id) {
                 </a>
                 <div id="collapsePastDataLibrarian" class="collapse <?php echo (is_active_page($past_data_librarian)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item <?php echo ($current_page == 'past_books.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/past_books.php">Past Book Records</a>
+                        <a class="collapse-item <?php echo ($current_page == 'past_books.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/past_record/past_books.php">Past Book Records</a>
                     </div>
                 </div>
             </li>

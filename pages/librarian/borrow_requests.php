@@ -1,7 +1,10 @@
 <?php
-session_start();
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
+
+// Messages are now read from URL parameters instead of sessions
+$success_message = isset($_GET['success']) ? htmlspecialchars($_GET['success']) : null;
+$error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null;
 
 $role = null;
 $user_id = null;
@@ -21,7 +24,6 @@ if ($role !== 'librarian') {
 
 $requests = [];
 try {
-    // --- CORRECTED: Using PDO ---
     if ($user_id) {
         $stmt = $conn->prepare('SELECT "school_id" FROM "librarian" WHERE "id" = ?');
         $stmt->execute([$user_id]);
@@ -32,7 +34,7 @@ try {
         die("Access denied.");
     }
 
-    // --- CORRECTED: Replaced FIELD() with CASE for PostgreSQL compatibility ---
+    // This query correctly orders requests by status and then date
     $sql = "SELECT br.request_id, b.title, u.email as borrower_email, br.borrower_role, br.request_date, br.status, br.action_date, br.requested_due_date, l_user.email as librarian_email
             FROM borrow_requests br 
             JOIN books b ON br.book_id = b.book_id 
@@ -53,7 +55,8 @@ try {
     $requests = $stmt_req->fetchAll(PDO::FETCH_ASSOC);
 
 } catch (PDOException $e) {
-    $_SESSION['error_message'] = "Database Error: " . $e->getMessage();
+    // If there is a database error, we can still display it
+    $error_message = "Database Error: " . $e->getMessage();
 }
 ?>
 <!DOCTYPE html>
@@ -78,19 +81,17 @@ try {
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Book Borrowing Requests</h1>
 
-                    <?php if (isset($_SESSION['success_message'])): ?>
+                    <?php if ($success_message): ?>
                         <div class="alert alert-success alert-dismissible fade show" role="alert">
-                            <?php echo $_SESSION['success_message']; ?>
+                            <?php echo $success_message; ?>
                             <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                         </div>
-                        <?php unset($_SESSION['success_message']); ?>
                     <?php endif; ?>
-                    <?php if (isset($_SESSION['error_message'])): ?>
+                    <?php if ($error_message): ?>
                         <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            <?php echo $_SESSION['error_message']; ?>
+                            <?php echo $error_message; ?>
                             <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                         </div>
-                        <?php unset($_SESSION['error_message']); ?>
                     <?php endif; ?>
 
                     <div class="card shadow mb-4">

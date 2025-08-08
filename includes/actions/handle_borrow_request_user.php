@@ -92,9 +92,10 @@ try {
     }
 
 } catch (PDOException $e) {
-    header("Location: " . $redirect_path . "?error=Database error: " . $e->getMessage());
+    header("Location: " . $redirect_path . "?error=Database error: " . urlencode($e->getMessage()));
 }
 
 $conn = null;
 exit;
-?>
+
+// The final ?>

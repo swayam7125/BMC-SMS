@@ -33,7 +33,7 @@ $contacts_title = ($current_user_role === 'teacher') ? "Students" : "Teachers";
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/message.css?v=1.3">
-    <link rel="stylesheet" href="../../assets/css/custom.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
 <body id="page-top">
     <div id="wrapper">
@@ -88,7 +88,7 @@ $contacts_title = ($current_user_role === 'teacher') ? "Students" : "Teachers";
     <script src="/BMC-SMS/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="/BMC-SMS/assets/js/sb-admin-2.min.js"></script>
     <script>
-        // Pass PHP variables to JavaScript for reliable pathing
+        // Pass PHP variables to JavaScript
         window.currentUserId = '<?php echo $current_user_id; ?>';
         window.currentUserRole = '<?php echo $current_user_role; ?>';
         window.base_url = '/BMC-SMS/';
