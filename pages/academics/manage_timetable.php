@@ -15,19 +15,29 @@ $teachers = [];
 $subjects = [];
 $standards = [];
 $timetable_data = [];
+$errorMessage = '';
+$successMessage = '';
 
 try {
-    // --- CORRECTED: Using PDO throughout ---
     $stmt_school = $conn->prepare('SELECT "school_id" FROM "principal" WHERE "id" = ?');
     $stmt_school->execute([$userId]);
     $school_id = $stmt_school->fetchColumn();
 
     if ($school_id) {
-        $teachers_stmt = $conn->prepare('SELECT "id", "teacher_name" FROM "teacher" WHERE "school_id" = ? ORDER BY "teacher_name"');
-        $teachers_stmt->execute([$school_id]);
-        $teachers = $teachers_stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        $standards_stmt = $conn->prepare('SELECT DISTINCT "std" FROM "student" WHERE "school_id" = ? ORDER BY CAST("std" AS INTEGER)');
+        // This query is now moved inside the if ($selected_std) block below
+        
+        $standards_stmt = $conn->prepare("
+            SELECT \"std\" FROM \"student\" 
+            WHERE \"school_id\" = ? 
+            GROUP BY \"std\"
+            ORDER BY 
+                CASE
+                    WHEN \"std\" = 'Pre-Primary' THEN 0
+                    WHEN \"std\" ~ '^[0-9]+$' THEN CAST(\"std\" AS INTEGER)
+                    ELSE 999
+                END,
+            \"std\"
+        ");
         $standards_stmt->execute([$school_id]);
         $standards = $standards_stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -41,7 +51,6 @@ try {
 
         $conn->beginTransaction();
 
-        // --- CORRECTED: PostgreSQL compatible upsert logic (DELETE then INSERT) ---
         $delete_stmt = $conn->prepare('DELETE FROM "school_timetable" WHERE "school_id" = ? AND "standard" = ?');
         $delete_stmt->execute([$school_id, $standard_to_save]);
 
@@ -62,6 +71,11 @@ try {
     }
 
     if ($selected_std) {
+        // --- CORRECTED: Fetch only teachers who teach the selected standard ---
+        $teachers_stmt = $conn->prepare('SELECT "id", "teacher_name", "subject" FROM "teacher" WHERE "school_id" = ? AND ? = ANY("std") ORDER BY "teacher_name"');
+        $teachers_stmt->execute([$school_id, $selected_std]);
+        $teachers = $teachers_stmt->fetchAll(PDO::FETCH_ASSOC);
+        
         $subjects_stmt = $conn->prepare('SELECT s."subject_name" FROM "standard_subjects" ss JOIN "subjects" s ON ss."subject_id" = s."subject_id" WHERE ss."standard" = ? ORDER BY s."subject_name" ASC');
         $subjects_stmt->execute([$selected_std]);
         $subjects = $subjects_stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -87,14 +101,12 @@ $days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturd
 
 <head>
     <title>Manage Timetable</title>
-
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800,900" rel="stylesheet">
     <link href="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
-
     <style>
     .table-responsive {
         overflow-x: auto;
@@ -110,9 +122,13 @@ $days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturd
                 <?php include '../../includes/header.php'; ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Manage School Timetable</h1>
+                    <?php if (!empty($successMessage)): ?>
+                    <div class="alert alert-success"><?php echo htmlspecialchars($successMessage); ?></div>
+                    <?php endif; ?>
 
-                    <?php if (isset($successMessage)) echo "<div class='alert alert-success'>$successMessage</div>"; ?>
-
+                    <?php if (!empty($errorMessage)): ?>
+                    <div class="alert alert-danger"><?php echo htmlspecialchars($errorMessage); ?></div>
+                    <?php endif; ?>
                     <div class="card shadow mb-4">
                         <div class="card-header">
                             <h6 class="m-0 font-weight-bold text-primary">Select Options</h6>
@@ -133,14 +149,13 @@ $days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturd
                                 </div>
                                 <div class="form-group mr-3">
                                     <label for="periods" class="mr-2">Periods per Day:</label>
-                                    <input type="number" name="periods" id="periods" class="form-control" 
-                                           value="<?php echo htmlspecialchars($total_periods); ?>" min="1" max="12">
+                                    <input type="number" name="periods" id="periods" class="form-control"
+                                        value="<?php echo htmlspecialchars($total_periods); ?>" min="1" max="12">
                                 </div>
                                 <button type="submit" class="btn btn-primary">Generate Timetable</button>
                             </form>
                         </div>
                     </div>
-
                     <?php if ($selected_std): ?>
                     <div class="card shadow mb-4">
                         <div class="card-header">
@@ -168,24 +183,24 @@ $days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturd
                                                 <td>
                                                     <div class="form-group mb-2">
                                                         <select
-                                                            name="timetable[<?php echo $day; ?>][<?php echo $p; ?>][subject]"
-                                                            class="form-control form-control-sm">
-                                                            <option value="">- Subject -</option>
-                                                            <?php foreach ($subjects as $subject) {
-                                                                    $selected = ($entry && $entry['subject_name'] == $subject['subject_name']) ? 'selected' : '';
-                                                                    echo "<option value='{$subject['subject_name']}' $selected>{$subject['subject_name']}</option>";
+                                                            name="timetable[<?php echo $day; ?>][<?php echo $p; ?>][teacher]"
+                                                            class="form-control form-control-sm teacher-select"
+                                                            data-period-id="<?php echo $p; ?>"
+                                                            data-day="<?php echo $day; ?>">
+                                                            <option value="">- Teacher -</option>
+                                                            <?php foreach ($teachers as $teacher) {
+                                                                    $selected = ($entry && $entry['teacher_id'] == $teacher['id']) ? 'selected' : '';
+                                                                    echo "<option value='{$teacher['id']}' $selected>" . htmlspecialchars($teacher['teacher_name']) . "</option>";
                                                                 } ?>
                                                         </select>
                                                     </div>
                                                     <div class="form-group mb-2">
                                                         <select
-                                                            name="timetable[<?php echo $day; ?>][<?php echo $p; ?>][teacher]"
-                                                            class="form-control form-control-sm">
-                                                            <option value="">- Teacher -</option>
-                                                            <?php foreach ($teachers as $teacher) {
-                                                                    $selected = ($entry && $entry['teacher_id'] == $teacher['id']) ? 'selected' : '';
-                                                                    echo "<option value='{$teacher['id']}' $selected>{$teacher['teacher_name']}</option>";
-                                                                } ?>
+                                                            name="timetable[<?php echo $day; ?>][<?php echo $p; ?>][subject]"
+                                                            class="form-control form-control-sm subject-select"
+                                                            id="subject-<?php echo $day; ?>-<?php echo $p; ?>">
+                                                            <option value="">- Subject -</option>
+                                                            <?php // The subjects are now dynamically loaded via AJAX ?>
                                                         </select>
                                                     </div>
                                                     <div class="input-group input-group-sm">
@@ -216,11 +231,73 @@ $days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturd
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
-        <?php include_once "../../includes/logout_modal.php"?>
-
+    <?php include_once "../../includes/logout_modal.php"?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
+    <script>
+    $(document).ready(function() {
+        function loadSubjects(teacherId, subjectDropdown, selectedSubject = '') {
+            if (teacherId) {
+                $.ajax({
+                    url: 'ajax_handler_timetable.php',
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {
+                        action: 'get_teacher_subjects',
+                        teacher_id: teacherId
+                    },
+                    success: function(response) {
+                        subjectDropdown.empty().append('<option value="">- Subject -</option>');
+                        if (response.success && response.subjects.length > 0) {
+                            $.each(response.subjects, function(index, subject) {
+                                const isSelected = (subject === selectedSubject) ?
+                                    'selected' : '';
+                                subjectDropdown.append($('<option>', {
+                                    value: subject,
+                                    text: subject,
+                                    selected: isSelected
+                                }));
+                            });
+                        }
+                    },
+                    error: function() {
+                        subjectDropdown.empty().append(
+                            '<option value="">- Subject Error -</option>');
+                    }
+                });
+            } else {
+                subjectDropdown.empty().append('<option value="">- Subject -</option>');
+            }
+        }
+
+        // On page load, populate subjects for existing timetable entries
+        $('table .teacher-select').each(function() {
+            const teacherId = $(this).val();
+            if (teacherId) {
+                const day = $(this).data('day');
+                const period = $(this).data('period-id');
+                const subjectDropdown = $('#subject-' + day + '-' + period);
+
+                // Get the previously selected subject from the PHP rendered HTML
+                const selectedSubject = subjectDropdown.data('selected-subject');
+
+                loadSubjects(teacherId, subjectDropdown, selectedSubject);
+            }
+        });
+
+        // Bind the change event to all teacher dropdowns
+        $(document).on('change', '.teacher-select', function() {
+            const teacherId = $(this).val();
+            const day = $(this).data('day');
+            const period = $(this).data('period-id');
+            const subjectDropdown = $('#subject-' + day + '-' + period);
+
+            loadSubjects(teacherId, subjectDropdown);
+        });
+    });
+    </script>
 </body>
+
 </html>
 <?php $conn = null; ?>

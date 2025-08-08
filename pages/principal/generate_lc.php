@@ -62,6 +62,22 @@ if (!defined('BASE_URL')) {
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const leavingDateInput = document.getElementById('leaving_date');
+            
+            // Get today's date in YYYY-MM-DD format
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-based
+            const day = String(today.getDate()).padStart(2, '0');
+            const formattedDate = `${year}-${month}-${day}`;
+            
+            // Set the min attribute of the date input
+            leavingDateInput.setAttribute('min', formattedDate);
+        });
+    </script>
 </body>
 
 </html>

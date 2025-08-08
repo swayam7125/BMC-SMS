@@ -30,6 +30,31 @@ if ($role === 'principal' && $userId) {
 }
 
 $errors = [];
+$schools = [];
+$standards = [];
+
+try {
+    $stmt_schools = $conn->query('SELECT "id", "school_name" FROM "school" ORDER BY "school_name"');
+    $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
+
+    // --- CORRECTED: Use GROUP BY to fix PostgreSQL SELECT DISTINCT error ---
+    $standards_stmt = $conn->prepare("
+        SELECT standard FROM \"standard_subjects\"
+        GROUP BY standard
+        ORDER BY
+            CASE
+                WHEN standard = 'Pre-Primary' THEN 0
+                WHEN standard ~ '^[0-9]+$' THEN CAST(standard AS INTEGER)
+                ELSE 999
+            END,
+        standard
+    ");
+    $standards_stmt->execute();
+    $standards = $standards_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+} catch (PDOException $e) {
+    $errors[] = "Database error: " . $e->getMessage();
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $student_name = trim($_POST['student_name']);
@@ -54,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $file = $_FILES['student_image'];
         $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         $allowed_exts = ['jpg', 'jpeg', 'png', 'gif'];
-        
+
         if (in_array($file_ext, $allowed_exts)) {
             $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/student/uploads/';
             if (!is_dir($upload_dir)) {
@@ -62,11 +87,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $new_filename = 'student_' . uniqid() . '.' . $file_ext;
             $destination = $upload_dir . $new_filename;
-            
+
             if (move_uploaded_file($file['tmp_name'], $destination)) {
                 $image_path_for_db = 'pages/student/uploads/' . $new_filename;
             } else {
-                $errors[] = "Failed to move uploaded file.";
+                $errors[] = "Failed to move uploaded file. Check directory permissions.";
             }
         } else {
             $errors[] = "Invalid file type. Only JPG, JPEG, PNG, and GIF are allowed.";
@@ -120,10 +145,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
-
-$schools = [];
-$stmt_schools = $conn->query('SELECT "id", "school_name" FROM "school" ORDER BY "school_name"');
-$schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -167,7 +188,7 @@ $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
                                 <div class="row">
                                     <div class="col-md-3 text-center">
                                         <label>Photo Preview</label><br>
-                                        <img src="../../assets/images/unisex.png" alt="Student Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
+                                        <img src="../../assets/images/undraw_profile.svg" alt="Student Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
                                         <div class="form-group">
                                             <label for="student_image" class="small btn btn-sm btn-info"><i class="fas fa-upload fa-sm"></i> Upload Photo</label>
                                             <input type="file" class="d-none" id="student_image" name="student_image">
@@ -223,13 +244,12 @@ $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
                                         <label for="std">Standard / Class *</label>
                                         <select class="form-control" id="std" name="std" required>
                                             <option value="">-- Select Standard --</option>
-                                            <?php
-                                            $standards = ['Pre-Primary', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th', '11th', '12th'];
-                                            foreach ($standards as $standard) {
-                                                $selected = (isset($_POST['std']) && $_POST['std'] == $standard) ? 'selected' : '';
-                                                echo "<option value='{$standard}' {$selected}>{$standard}</option>";
-                                            }
-                                            ?>
+                                            <?php foreach ($standards as $standard): ?>
+                                                <option value="<?php echo htmlspecialchars($standard['standard']); ?>"
+                                                    <?php echo (isset($_POST['std']) && $_POST['std'] == $standard['standard']) ? 'selected' : ''; ?>>
+                                                    <?php echo htmlspecialchars($standard['standard']); ?>
+                                                </option>
+                                            <?php endforeach; ?>
                                         </select>
                                     </div>
                                     <div class="form-group col-md-6"><label for="rollno">Roll Number *</label><input type="text" class="form-control" id="rollno" name="rollno" value="<?php echo htmlspecialchars($_POST['rollno'] ?? ''); ?>" required></div>

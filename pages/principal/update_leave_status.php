@@ -20,7 +20,7 @@ try {
         $action_status_message = 'Rejected';
 
         if (empty($rejection_reason)) {
-            header("Location: principal_leave_requests.php?error=reason_required");
+            header("Location: teacher_leave_management.php?error=reason_required");
             exit;
         }
 
@@ -62,9 +62,9 @@ try {
     }
 } catch (PDOException $e) {
     error_log("Update Leave Status Error: " . $e->getMessage());
-    header("Location: principal_leave_requests.php?error=db_error");
+    header("Location: teacher_leave_management.php?error=db_error");
     exit;
 }
 
-header("Location: principal_leave_requests.php?status=updated");
+header("Location: teacher_leave_management.php?status=updated");
 exit;

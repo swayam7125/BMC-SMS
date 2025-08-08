@@ -175,6 +175,10 @@ try {
             const toDateInput = document.getElementById('to_date');
             const leaveTypeContainer = document.getElementById('leave_type_container');
 
+            // --- ADDED: Set min attribute for from_date to today's date ---
+            const today = new Date().toISOString().split('T')[0];
+            fromDateInput.setAttribute('min', today);
+
             function toggleLeaveTypeVisibility() {
                 if (fromDateInput.value && fromDateInput.value === toDateInput.value) {
                     leaveTypeContainer.style.display = 'block';
