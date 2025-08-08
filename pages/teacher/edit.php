@@ -208,7 +208,7 @@ if (is_string($raw_stds) && !empty($raw_stds)) {
                             <form method="POST" enctype="multipart/form-data">
                                 <div class="row">
                                     <div class="col-md-3 text-center">
-                                        <img src="<?php echo htmlspecialchars(!empty($teacher['teacher_image']) && file_exists($_SERVER['DOCUMENT_ROOT'] . $teacher['teacher_image']) ? $teacher['teacher_image'] : '../../assets/img/default-user.jpg'); ?>" alt="Teacher Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
+                                        <img src="<?php echo htmlspecialchars(!empty($teacher['teacher_image']) && file_exists($_SERVER['DOCUMENT_ROOT'] . $teacher['teacher_image']) ? $teacher['teacher_image'] : '../../assets/images/unisex.png'); ?>" alt="Teacher Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
                                         <div class="form-group"><label for="teacher_image" class="small btn btn-sm btn-info"><i class="fas fa-upload fa-sm"></i> Change Photo</label><input type="file" class="d-none" id="teacher_image" name="teacher_image" onchange="document.getElementById('imagePreview').src = window.URL.createObjectURL(this.files[0])"></div>
                                     </div>
                                     <div class="col-md-9">

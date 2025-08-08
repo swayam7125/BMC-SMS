@@ -33,7 +33,7 @@ if (!defined('BASE_WEB_PATH')) {
 // Set default values
 $userName = 'Guest';
 $user_role = 'User';
-$userProfileImage = BASE_WEB_PATH . 'assets/images/undraw_profile.svg';
+$userProfileImage = BASE_WEB_PATH . 'assets/images/unisex.png';
 $isLoggedIn = false;
 
 // Determine user details if logged in
@@ -106,6 +106,7 @@ if (!function_exists('getNotificationIcon')) {
             case 'exam_timetable': return 'fas fa-calendar-alt text-white';
             case 'new_notes': return 'fas fa-sticky-note text-white';
             case 'result_published': return 'fas fa-poll-h text-white';
+            case 'acquisition_request': return 'fas fa-inbox text-white'; // FIX: Added icon for book requests
             default: return 'fas fa-bell text-white';
         }
     }
@@ -263,7 +264,7 @@ if (!function_exists('getNotificationIcon')) {
                 <span
                     class="mr-2 d-none d-lg-inline text-gray-600 small"><?php echo htmlspecialchars($userName); ?></span>
                 <img class="img-profile rounded-circle" src="<?php echo htmlspecialchars($userProfileImage); ?>"
-                    onerror="this.src='<?php echo BASE_WEB_PATH; ?>assets/images/undraw_profile.svg';" alt="Profile"
+                    onerror="this.src='<?php echo BASE_WEB_PATH; ?>assets/images/unisex.png';" alt="Profile"
                     style="width: 32px; height: 32px; object-fit: cover;">
             </a>
             <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="userDropdown">
@@ -450,6 +451,34 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     // --- END: Search Bar Functionality ---
+
+    // --- START: FIX - SIDEBAR NOTIFICATION CLEARING SCRIPT ---
+    const sidebarNotificationLinks = document.querySelectorAll('#accordionSidebar .nav-link[data-notification-type]');
+    
+    sidebarNotificationLinks.forEach(link => {
+        link.addEventListener('click', function(event) {
+            const notificationType = this.getAttribute('data-notification-type');
+            const badge = this.querySelector('.badge-counter');
+
+            // If a notification type is defined and a badge is visible, send a background request to mark them as read.
+            if (notificationType && badge && badge.style.display !== 'none') {
+                let formData = new FormData();
+                formData.append('type', notificationType);
+                
+                // This is the new endpoint you just created
+                const endpoint = '<?php echo BASE_WEB_PATH; ?>includes/actions/mark_notifications_as_read.php';
+
+                // 'keepalive' ensures the request is sent even if the user navigates away immediately.
+                fetch(endpoint, {
+                    method: 'POST',
+                    body: formData,
+                    keepalive: true 
+                }).catch(error => console.error('Sidebar notification clear error:', error));
+            }
+        });
+    });
+    // --- END: FIX ---
+
 });
 </script>
 

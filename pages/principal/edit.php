@@ -214,7 +214,7 @@ try {
                                 <div class="row">
                                     <div class="col-md-3 text-center">
                                         <?php
-                                        $default_image_path = BASE_URL . 'assets/img/default-user.jpg';
+                                        $default_image_path = BASE_URL . 'assets/images/unisex.png';
                                         $current_image_web_path = getWebAccessibleImagePath($principal['principal_image']) ?? $default_image_path;
                                         ?>
                                         <img src="<?php echo htmlspecialchars($current_image_web_path); ?>" alt="Principal Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;" onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($default_image_path); ?>';">

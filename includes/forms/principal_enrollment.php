@@ -188,7 +188,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <div class="row">
                                     <div class="col-md-3 text-center">
                                         <label>Photo Preview</label><br>
-                                        <img src="<?php echo !empty($_POST['image_preview_data']) ? htmlspecialchars($_POST['image_preview_data']) : '../../assets/img/default-user.jpg'; ?>" alt="Principal Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
+                                        <img src="<?php echo !empty($_POST['image_preview_data']) ? htmlspecialchars($_POST['image_preview_data']) : '../../assets/images/unisex.png'; ?>" alt="Principal Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
                                         <div class="form-group"><label for="principal_image" class="small btn btn-sm btn-info"><i class="fas fa-upload fa-sm"></i> Upload Photo</label><input type="file" class="d-none" id="principal_image" name="principal_image" accept="image/*"></div>
                                     </div>
                                     <div class="col-md-9">
@@ -317,7 +317,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             document.querySelector('button[type="reset"]').addEventListener('click', function() {
                 document.getElementById('principalForm').reset();
-                document.getElementById('imagePreview').src = '../../assets/img/default-user.jpg';
+                document.getElementById('imagePreview').src = '../../assets/images/unisex.png';
                 document.getElementById('imagePreviewData').value = '';
                 // Clear the hidden temp image path on reset
                 document.querySelector('input[name="temp_image_path"]').value = '';

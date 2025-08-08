@@ -1,4 +1,5 @@
 <?php
+// Note: Debugging lines have been removed as the issue is resolved.
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
 
@@ -23,12 +24,14 @@ if (!$role || !$userId) {
 try {
     // --- START: NOTIFICATION LOGIC ---
     if (($role === 'student' || $role === 'teacher') && $userId) {
-        $stmt_mark_all_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND type = 'school_notice' AND is_read = 0");
+        // FIX: Changed integer 0 to boolean FALSE to match PostgreSQL boolean type.
+        $stmt_mark_all_read = $conn->prepare("UPDATE notifications SET is_read = TRUE WHERE user_id = ? AND type = 'school_notice' AND is_read = FALSE");
         $stmt_mark_all_read->execute([$userId]);
     }
     if (isset($_GET['notif_id']) && is_numeric($_GET['notif_id'])) {
         $notification_id = $_GET['notif_id'];
-        $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?");
+        // FIX: Changed integer 1 to boolean TRUE.
+        $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = TRUE WHERE id = ? AND user_id = ?");
         $stmt_mark_read->execute([$notification_id, $userId]);
     }
     // --- END: NOTIFICATION LOGIC ---
@@ -43,7 +46,7 @@ try {
             $schoolId = $row['school_id'];
             $studentStd = $row['std'];
             if (!$schoolId || !$studentStd) {
-                 $error_message = "Your profile is incomplete (missing School or Standard assignment). Please contact an administrator.";
+                $error_message = "Your profile is incomplete (missing School or Standard assignment). Please contact an administrator.";
             }
         } else {
             $error_message = "Could not find your student profile.";
@@ -68,7 +71,7 @@ try {
                 FROM school_notices_content c
                 JOIN school_notice_recipients r ON c.id = r.notice_id
                 WHERE c.school_id = ?";
-        
+
         $params = [$schoolId];
         $can_fetch = false;
 
@@ -88,13 +91,12 @@ try {
             $notices = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
     } elseif (!$error_message) {
-        // This condition is met if a valid user (like a principal) has no logic to see notices here.
-        // You can set a message or leave notices empty.
         $error_message = "No notice viewing rules configured for your role.";
     }
     // --- END: FETCH NOTICES ---
 
 } catch (PDOException $e) {
+    // Revert to a user-friendly error message for production.
     error_log("DB Error in view_notice.php: " . $e->getMessage());
     $error_message = "A database error occurred. Please try again later.";
 }
@@ -165,4 +167,5 @@ $pageTitle = 'View School Notices';
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
+
 </html>

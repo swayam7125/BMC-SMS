@@ -36,7 +36,7 @@ function getWebAccessibleImagePath($relative_path, $base_url)
 
 function getDefaultImagePath($base_web_path)
 {
-    return $base_web_path . 'assets/img/default-user.jpg';
+    return $base_web_path . 'assets/images/unisex.png';
 }
 
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
