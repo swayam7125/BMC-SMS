@@ -50,16 +50,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $batch = $_POST['batch'];
     $timings = $_POST['timings'] ?? [];
     $class_teacher = isset($_POST['class_teacher']) ? 1 : 0;
-    $class_teacher_std = $class_teacher ? ($_POST['class_teacher_std'] ?? null) : null;
+    
+    // This is the corrected logic to handle the class_teacher_std field.
+    // It will be null unless the checkbox is checked AND a standard is selected.
+    $class_teacher_std = null;
+    if ($class_teacher && !empty($_POST['class_teacher_std'])) {
+        $class_teacher_std = $_POST['class_teacher_std'];
+    }
+    
     $school_id = ($role === 'principal') ? $admin_school_id : $_POST['school_id'];
     $image_path_for_db = null;
 
-    // File upload logic remains the same
+    // --- START: ADDED FILE UPLOAD LOGIC ---
+    if (isset($_FILES['teacher_image']) && $_FILES['teacher_image']['error'] === UPLOAD_ERR_OK) {
+        $file = $_FILES['teacher_image'];
+        $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/teacher/uploads/';
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0777, true);
+        }
+        $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        // Use a unique ID to prevent filename conflicts
+        $new_filename = 'teacher_' . uniqid() . '.' . $file_ext;
+        $destination = $upload_dir . $new_filename;
+        
+        if (move_uploaded_file($file['tmp_name'], $destination)) {
+            $image_path_for_db = '/BMC-SMS/pages/teacher/uploads/' . $new_filename;
+        } else {
+            $errors[] = "Failed to move uploaded file.";
+        }
+    }
+    // --- END: ADDED FILE UPLOAD LOGIC ---
 
     if (empty($school_id)) $errors[] = "A school must be selected.";
     if (empty($teacher_name)) $errors[] = "Teacher name is required.";
     if (empty($batch)) $errors[] = "Batch selection is required.";
-    if ($class_teacher && empty($class_teacher_std)) $errors[] = "Please select a standard for the class teacher.";
+    if ($class_teacher && empty($_POST['class_teacher_std'])) $errors[] = "Please select a standard for the class teacher.";
 
     if (empty($errors)) {
         try {
@@ -145,7 +170,7 @@ $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
                                 <div class="row">
                                     <div class="col-md-3 text-center">
                                         <label>Photo Preview</label><br>
-                                        <img src="../../assets/img/default-user.jpg" alt="Teacher Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
+                                        <img src="../../assets/images/undraw_profile.svg" alt="Teacher Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
                                         <div class="form-group">
                                             <label for="teacher_image" class="small btn btn-sm btn-info"><i class="fas fa-upload fa-sm"></i> Upload Photo</label>
                                             <input type="file" class="d-none" id="teacher_image" name="teacher_image">

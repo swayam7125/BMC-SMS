@@ -49,7 +49,7 @@ try {
 
 // --- START: CORRECTED PHOTO PATH LOGIC ---
 $photo_path = $teacher['teacher_image'];
-$default_photo = "../../assets/img/default-user.jpg";
+$default_photo = "../../assets/images/undraw_profile.svg";
 
 if (!empty($photo_path)) {
     // Build the correct, absolute filesystem path to check if the file exists
