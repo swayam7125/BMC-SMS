@@ -451,10 +451,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     // --- END: Search Bar Functionality ---
-    
+
     // --- START: FIX - SIDEBAR NOTIFICATION CLEARING SCRIPT ---
-    // Note: This assumes you will create the corresponding PHP script to handle the backend logic.
-    // This script will mark notifications of a specific type as read.
     const sidebarNotificationLinks = document.querySelectorAll('#accordionSidebar .nav-link[data-notification-type]');
     
     sidebarNotificationLinks.forEach(link => {
@@ -467,9 +465,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 let formData = new FormData();
                 formData.append('type', notificationType);
                 
-                // Assuming you have or will create this endpoint.
-                // It should accept a 'type' and mark corresponding notifications as read.
-                const endpoint = '<?php echo BASE_WEB_PATH; ?>includes/actions/mark_notifications_by_type.php';
+                // This is the new endpoint you just created
+                const endpoint = '<?php echo BASE_WEB_PATH; ?>includes/actions/mark_notifications_as_read.php';
 
                 // 'keepalive' ensures the request is sent even if the user navigates away immediately.
                 fetch(endpoint, {
@@ -477,9 +474,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     body: formData,
                     keepalive: true 
                 }).catch(error => console.error('Sidebar notification clear error:', error));
-
-                // We don't need to wait for the response. The badge will be gone on the next page load
-                // because the database will have been updated. This just triggers the action.
             }
         });
     });

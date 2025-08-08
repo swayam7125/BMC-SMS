@@ -77,6 +77,7 @@ if (!function_exists('getNotificationIcon')) {
             case 'exam_timetable': return 'fas fa-calendar-alt text-white';
             case 'new_notes': return 'fas fa-sticky-note text-white';
             case 'result_published': return 'fas fa-poll-h text-white';
+            case 'acquisition_status': return 'fas fa-check-circle text-white';
             default: return 'fas fa-bell text-white';
         }
     }
