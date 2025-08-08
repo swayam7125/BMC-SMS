@@ -1,13 +1,11 @@
 <?php
 header('Content-Type: application/json');
 
-// Use __DIR__ for reliable pathing, ensuring files are found from within the '/includes/' directory.
 include_once __DIR__ . "/../encryption.php";
 include_once __DIR__ . "/connect.php";
 
 $response = ['status' => 'error', 'message' => 'An unknown error occurred.'];
 
-// Check if the database connection was successful
 if (!isset($conn) || $conn === null) {
     error_log("Database connection failed in messaging_api.php.");
     $response['message'] = 'Server configuration error: Could not connect to the database.';
@@ -17,7 +15,7 @@ if (!isset($conn) || $conn === null) {
 
 $current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
 $current_user_role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
-$action = $_POST['action'] ?? $_GET['action'] ?? ''; // Allow GET for simple tests
+$action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 if (!$current_user_id || !$current_user_role) {
     $response['message'] = 'Authentication failed.';
@@ -30,7 +28,6 @@ try {
         case 'get_contacts':
             $contacts = [];
 
-            // --- Logic for when a TEACHER is logged in ---
             if ($current_user_role === 'teacher') {
                 $stmt_teacher = $conn->prepare("SELECT school_id, std FROM teacher WHERE id = ?");
                 $stmt_teacher->execute([$current_user_id]);
@@ -38,26 +35,27 @@ try {
 
                 if ($teacher_data && !empty($teacher_data['std'])) {
                     $school_id = $teacher_data['school_id'];
+                    
+                    // 1. Parse the database string (e.g., "{10,11}") into a PHP array
+                    $stds_string = trim($teacher_data['std'], '{}');
+                    $stds_array = explode(',', $stds_string);
 
-                    // THE FIX: Convert the array string from PostgreSQL (e.g., "{10,11}") into a PHP array.
-                    $stds_string = trim($teacher_data['std'], '{}'); // Remove curly braces
-                    $stds_array = explode(',', $stds_string);      // Split by comma
+                    if (!empty($stds_array) && !empty($stds_array[0])) {
+                        // 2. Manually format the PHP array into a PostgreSQL array literal string
+                        $postgres_array_string = '{' . implode(',', $stds_array) . '}';
 
-                    if (!empty($stds_array)) {
-                        // Find all students whose 'std' is in the teacher's list of standards
                         $sql = "SELECT s.id, s.student_name AS name, s.student_image AS image_path
                                 FROM student s
                                 WHERE s.school_id = ? AND s.std = ANY(?)";
                         
                         $stmt_students = $conn->prepare($sql);
-                        // Execute with the correctly formatted PHP array
-                        $stmt_students->execute([$school_id, $stds_array]);
+
+                        // 3. Execute the query, passing the correctly formatted string
+                        $stmt_students->execute([$school_id, $postgres_array_string]);
                         $contacts = $stmt_students->fetchAll(PDO::FETCH_ASSOC);
                     }
                 }
-            }
-            // --- Logic for when a STUDENT is logged in ---
-            elseif ($current_user_role === 'student') {
+            } elseif ($current_user_role === 'student') {
                 $stmt_student = $conn->prepare('SELECT std, school_id FROM student WHERE id = ?');
                 $stmt_student->execute([$current_user_id]);
                 $student_data = $stmt_student->fetch(PDO::FETCH_ASSOC);
@@ -66,7 +64,6 @@ try {
                     $student_std = $student_data['std'];
                     $school_id = $student_data['school_id'];
 
-                    // This query correctly finds all teachers whose 'std' array contains the student's standard.
                     $sql = 'SELECT id, teacher_name AS name, teacher_image AS image_path
                             FROM teacher
                             WHERE school_id = ? AND ? = ANY(std)';
@@ -89,9 +86,25 @@ try {
             $stmt_mark_read = $conn->prepare("UPDATE messages SET is_read = true WHERE sender_id = ? AND receiver_id = ? AND is_read = false");
             $stmt_mark_read->execute([$other_user_id, $current_user_id]);
 
-            // Fetch the conversation
-            $stmt = $conn->prepare("SELECT * FROM messages WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?) ORDER BY timestamp ASC");
-            $stmt->execute([$current_user_id, $other_user_id, $other_user_id, $current_user_id]);
+            // UPDATED QUERY: Fetch the conversation AND the sender's image
+            $sql = "
+                SELECT 
+                    m.*,
+                    COALESCE(t.teacher_image, s.student_image) AS sender_image
+                FROM messages m
+                LEFT JOIN teacher t ON m.sender_id = t.id
+                LEFT JOIN student s ON m.sender_id = s.id
+                WHERE (m.sender_id = ? AND m.receiver_id = ?) OR (m.sender_id = ? AND m.receiver_id = ?) 
+                ORDER BY m.timestamp ASC
+            ";
+
+            $stmt = $conn->prepare($sql);
+            $stmt->execute([
+                $current_user_id,
+                $other_user_id,
+                $other_user_id,
+                $current_user_id
+            ]);
             $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             $response = ['status' => 'success', 'messages' => $messages];
@@ -117,9 +130,7 @@ try {
             break;
     }
 } catch (PDOException $e) {
-    // Log the actual error to your server's error log for debugging
     error_log("Messaging API Error: " . $e->getMessage());
-    // Provide a generic error to the user
     $response['message'] = 'A database error occurred on the server.';
 }
 
