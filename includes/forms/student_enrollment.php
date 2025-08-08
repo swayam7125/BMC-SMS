@@ -32,7 +32,6 @@ if ($role === 'principal' && $userId) {
 $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Form data retrieval remains the same
     $student_name = trim($_POST['student_name']);
     $rollno = trim($_POST['rollno']);
     $std = trim($_POST['std']);
@@ -50,12 +49,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mother_phone = trim($_POST['mother_phone']);
     $image_path_for_db = null;
 
-    // File upload logic remains the same
+    // --- START: ADDED FILE UPLOAD LOGIC ---
+    if (isset($_FILES['student_image']) && $_FILES['student_image']['error'] === UPLOAD_ERR_OK) {
+        $file = $_FILES['student_image'];
+        $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        $allowed_exts = ['jpg', 'jpeg', 'png', 'gif'];
+        
+        if (in_array($file_ext, $allowed_exts)) {
+            $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/student/uploads/';
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0777, true);
+            }
+            $new_filename = 'student_' . uniqid() . '.' . $file_ext;
+            $destination = $upload_dir . $new_filename;
+            
+            if (move_uploaded_file($file['tmp_name'], $destination)) {
+                $image_path_for_db = 'pages/student/uploads/' . $new_filename;
+            } else {
+                $errors[] = "Failed to move uploaded file.";
+            }
+        } else {
+            $errors[] = "Invalid file type. Only JPG, JPEG, PNG, and GIF are allowed.";
+        }
+    }
+    // --- END: ADDED FILE UPLOAD LOGIC ---
 
     if (empty($student_name)) $errors[] = "Student name is required.";
     if (empty($school_id)) $errors[] = "A school must be selected.";
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "A valid email is required.";
     if (empty($password)) $errors[] = "Password is required.";
+
+    // --- NEW: Check for duplicate roll number in the same standard/school ---
+    if (empty($errors)) {
+        try {
+            $stmt_check_rollno = $conn->prepare('SELECT COUNT(*) FROM "student" WHERE "school_id" = ? AND "std" = ? AND "rollno" = ?');
+            $stmt_check_rollno->execute([$school_id, $std, $rollno]);
+            $count = $stmt_check_rollno->fetchColumn();
+
+            if ($count > 0) {
+                $errors[] = "Roll number '{$rollno}' already exists for this standard and school.";
+            }
+        } catch (PDOException $e) {
+            $errors[] = "Database error while checking for roll number: " . $e->getMessage();
+        }
+    }
 
     if (empty($errors)) {
         try {
@@ -63,7 +100,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
             $user_role = 'student';
 
-            // --- CORRECTED: Using PDO ---
             $stmt_user = $conn->prepare('INSERT INTO "users" ("role", "email", "password") VALUES (?, ?, ?)');
             $stmt_user->execute([$user_role, $email, $hashed_password]);
             $new_user_id = $conn->lastInsertId();
@@ -85,7 +121,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// --- CORRECTED: Fetch schools using PDO for the dropdown ---
 $schools = [];
 $stmt_schools = $conn->query('SELECT "id", "school_name" FROM "school" ORDER BY "school_name"');
 $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
@@ -132,7 +167,7 @@ $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
                                 <div class="row">
                                     <div class="col-md-3 text-center">
                                         <label>Photo Preview</label><br>
-                                        <img src="../../assets/img/default-user.jpg" alt="Student Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
+                                        <img src="../../assets/images/undraw_profile.svg" alt="Student Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
                                         <div class="form-group">
                                             <label for="student_image" class="small btn btn-sm btn-info"><i class="fas fa-upload fa-sm"></i> Upload Photo</label>
                                             <input type="file" class="d-none" id="student_image" name="student_image">
@@ -163,8 +198,8 @@ $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
                                             <select class="form-control" id="school_id" name="school_id" required>
                                                 <option value="">-- Select School --</option>
                                                 <?php
-                                                if ($school_result) {
-                                                    while ($school = mysqli_fetch_assoc($school_result)) {
+                                                if ($schools) {
+                                                    foreach ($schools as $school) {
                                                         $selected = (isset($_POST['school_id']) && $_POST['school_id'] == $school['id']) ? 'selected' : '';
                                                         echo "<option value='{$school['id']}' {$selected}>" . htmlspecialchars($school['school_name']) . "</option>";
                                                     }
@@ -184,7 +219,19 @@ $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
                                         </select></div>
                                 </div>
                                 <div class="form-row">
-                                    <div class="form-group col-md-6"><label for="std">Standard / Class *</label><input type="text" class="form-control" id="std" name="std" value="<?php echo htmlspecialchars($_POST['std'] ?? ''); ?>" required></div>
+                                    <div class="form-group col-md-6">
+                                        <label for="std">Standard / Class *</label>
+                                        <select class="form-control" id="std" name="std" required>
+                                            <option value="">-- Select Standard --</option>
+                                            <?php
+                                            $standards = ['Pre-Primary', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th', '11th', '12th'];
+                                            foreach ($standards as $standard) {
+                                                $selected = (isset($_POST['std']) && $_POST['std'] == $standard) ? 'selected' : '';
+                                                echo "<option value='{$standard}' {$selected}>{$standard}</option>";
+                                            }
+                                            ?>
+                                        </select>
+                                    </div>
                                     <div class="form-group col-md-6"><label for="rollno">Roll Number *</label><input type="text" class="form-control" id="rollno" name="rollno" value="<?php echo htmlspecialchars($_POST['rollno'] ?? ''); ?>" required></div>
                                 </div>
                                 <hr>
