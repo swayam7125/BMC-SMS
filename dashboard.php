@@ -41,10 +41,20 @@ if (!$role) {
 }
 
 // Initialize variables for counts and user-specific data
-$totalSchools = 0; $totalPrincipals = 0; $totalTeachers = 0; $totalStudents = 0;
-$totalAdmissions = 0; $totalStudentsLeft = 0; $salary = 0; $totalPresent = 0;
-$totalLeaves = 0; $totalAbsent = 0; $totalBooks = 0; $issuedToday = 0;
-$overdueBooks = 0; $totalLibraryMembers = 0;
+$totalSchools = 0;
+$totalPrincipals = 0;
+$totalTeachers = 0;
+$totalStudents = 0;
+$totalAdmissions = 0;
+$totalStudentsLeft = 0;
+$salary = 0;
+$totalPresent = 0;
+$totalLeaves = 0;
+$totalAbsent = 0;
+$totalBooks = 0;
+$issuedToday = 0;
+$overdueBooks = 0;
+$totalLibraryMembers = 0;
 
 // Fetch data based on user role
 try {
@@ -143,16 +153,17 @@ if ($userId && isset($conn)) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title><?php
-        $pageTitle = 'Dashboard';
-        if ($role) $pageTitle = ucfirst($role) . ' - Dashboard';
-        if ($role == 'superadmin') $pageTitle = 'Super Admin - Dashboard';
-        echo htmlspecialchars($pageTitle);
-    ?></title>
+            $pageTitle = 'Dashboard';
+            if ($role) $pageTitle = ucfirst($role) . ' - Dashboard';
+            if ($role == 'superadmin') $pageTitle = 'Super Admin - Dashboard';
+            echo htmlspecialchars($pageTitle);
+            ?></title>
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
     <link href="/BMC-SMS/assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/BMC-SMS/assets/css/notification_window.css">
@@ -160,10 +171,17 @@ if ($userId && isset($conn)) {
     <link rel="stylesheet" href="/BMC-SMS/assets/css/scrollbar_hidden.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <style>
-        .notification-dashboard-list { max-height: 350px; overflow-y: auto; }
-        .card-link { text-decoration: none; }
+        .notification-dashboard-list {
+            max-height: 350px;
+            overflow-y: auto;
+        }
+
+        .card-link {
+            text-decoration: none;
+        }
     </style>
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include './includes/sidebar.php'; ?>
@@ -428,16 +446,16 @@ if ($userId && isset($conn)) {
                                                 <div class="col mr-2">
                                                     <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">My Standard</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php
-                                                        $student_std = 'N/A';
-                                                        if ($userId && isset($conn)) {
-                                                            $stmt_std = $conn->prepare('SELECT "std" FROM "student" WHERE "id" = ?');
-                                                            $stmt_std->execute([$userId]);
-                                                            if ($std_data = $stmt_std->fetch(PDO::FETCH_ASSOC)) {
-                                                                $student_std = htmlspecialchars($std_data['std']);
-                                                            }
-                                                        }
-                                                        echo $student_std;
-                                                    ?></div>
+                                                                                                        $student_std = 'N/A';
+                                                                                                        if ($userId && isset($conn)) {
+                                                                                                            $stmt_std = $conn->prepare('SELECT "std" FROM "student" WHERE "id" = ?');
+                                                                                                            $stmt_std->execute([$userId]);
+                                                                                                            if ($std_data = $stmt_std->fetch(PDO::FETCH_ASSOC)) {
+                                                                                                                $student_std = htmlspecialchars($std_data['std']);
+                                                                                                            }
+                                                                                                        }
+                                                                                                        echo $student_std;
+                                                                                                        ?></div>
                                                 </div>
                                                 <div class="col-auto"><i class="fas fa-book-open fa-2x text-gray-300"></i></div>
                                             </div>
@@ -495,16 +513,22 @@ if ($userId && isset($conn)) {
                     <div class="row mb-4">
                         <div class="col-xl-8 col-lg-7">
                             <div class="card shadow mb-4 h-100">
-                                <div class="card-header py-3"><h6 id="chart-title" class="m-0 font-weight-bold text-primary">Overview</h6></div>
-                                <div class="card-body"><div class="chart-area"><canvas id="myAreaChart" data-role="<?php echo htmlspecialchars($role ?? ''); ?>" data-user-id="<?php echo htmlspecialchars($userId ?? ''); ?>" data-base-url="/BMC-SMS/"></canvas></div></div>
+                                <div class="card-header py-3">
+                                    <h6 id="chart-title" class="m-0 font-weight-bold text-primary">Overview</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-area"><canvas id="myAreaChart" data-role="<?php echo htmlspecialchars($role ?? ''); ?>" data-user-id="<?php echo htmlspecialchars($userId ?? ''); ?>" data-base-url="/BMC-SMS/"></canvas></div>
+                                </div>
                             </div>
                         </div>
                         <div class="col-xl-4 col-lg-5">
                             <div class="card shadow mb-4 h-100">
-                                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Recent Notifications</h6></div>
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-primary">Recent Notifications</h6>
+                                </div>
                                 <div class="card-body d-flex flex-column">
                                     <div class="list-group list-group-flush notification-dashboard-list" id="dashboard-notifications-list">
-                                        </div>
+                                    </div>
                                     <a class="dropdown-item text-center small text-gray-500 mt-auto" href="/BMC-SMS/notification_history.php">Show All Notifications</a>
                                 </div>
                             </div>
@@ -525,78 +549,88 @@ if ($userId && isset($conn)) {
     <script src="/BMC-SMS/assets/js/notification_window.js"></script>
     <script src="/BMC-SMS/assets/js/dynamic_chart.js"></script>
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const notificationContainer = document.getElementById('dashboard-notifications-list');
-        const base_path = '/BMC-SMS/'; 
+        document.addEventListener('DOMContentLoaded', function() {
+            const notificationContainer = document.getElementById('dashboard-notifications-list');
+            const base_path = '/BMC-SMS/';
 
-        function getIconClass(type) {
-            switch (type) {
-                case 'borrow_status': return 'fas fa-book-reader';
-                case 'borrow_request': return 'fas fa-hand-holding-hand';
-                case 'leave_request': return 'fas fa-calendar-plus';
-                case 'new_notice': return 'fas fa-file-alt';
-                case 'school_notice': return 'fas fa-chalkboard-teacher';
-                case 'new_assignment': return 'fas fa-file-signature';
-                default: return 'fas fa-bell';
-            }
-        }
-
-        fetch(`${base_path}fetch_notifications.php`)
-            .then(response => response.json())
-            .then(data => {
-                if (!notificationContainer) return;
-
-                let allNotifications = [];
-                for (const category in data) {
-                    allNotifications = allNotifications.concat(data[category]);
+            function getIconClass(type) {
+                switch (type) {
+                    case 'borrow_status':
+                        return 'fas fa-book-reader';
+                    case 'borrow_request':
+                        return 'fas fa-hand-holding-hand';
+                    case 'leave_request':
+                        return 'fas fa-calendar-plus';
+                    case 'new_notice':
+                        return 'fas fa-file-alt';
+                    case 'school_notice':
+                        return 'fas fa-chalkboard-teacher';
+                    case 'new_assignment':
+                        return 'fas fa-file-signature';
+                    default:
+                        return 'fas fa-bell';
                 }
-                
-                allNotifications.sort((a, b) => new Date(b.raw_date) - new Date(a.raw_date));
-                const recentNotifications = allNotifications.slice(0, 5);
+            }
 
-                notificationContainer.innerHTML = '';
+            fetch(`${base_path}fetch_notifications.php`)
+                .then(response => response.json())
+                .then(data => {
+                    if (!notificationContainer) return;
 
-                if (recentNotifications.length === 0) {
-                    notificationContainer.innerHTML = `
+                    let allNotifications = [];
+                    for (const category in data) {
+                        allNotifications = allNotifications.concat(data[category]);
+                    }
+
+                    allNotifications.sort((a, b) => new Date(b.raw_date) - new Date(a.raw_date));
+                    const recentNotifications = allNotifications.slice(0, 5);
+
+                    notificationContainer.innerHTML = '';
+
+                    if (recentNotifications.length === 0) {
+                        notificationContainer.innerHTML = `
                         <div class="list-group-item text-center text-gray-500 py-4">
                             <div class="mb-2"><i class="fas fa-check-circle fa-2x text-gray-300"></i></div>
                             All caught up! No notifications.
                         </div>`;
-                } else {
-                    recentNotifications.forEach(notification => {
-                        const bgClass = !notification.is_read ? 'bg-light' : '';
-                        const iconBgClass = !notification.is_read ? 'bg-primary' : 'bg-success';
-                        const fontWeightClass = !notification.is_read ? 'font-weight-bold' : '';
+                    } else {
+                        recentNotifications.forEach(notification => {
+                            const bgClass = !notification.is_read ? 'bg-light' : '';
+                            const iconBgClass = !notification.is_read ? 'bg-primary' : 'bg-primary';
+                            const fontWeightClass = !notification.is_read ? 'font-weight-bold' : '';
+                            const textColorClass = !notification.is_read ? '' : 'text-grey-500';
+                            const opacityClass = !notification.is_read ? 'opacity : 1 ;' : 'opacity : 0.85 ;';
 
-                        // Construct the final link with notif_id to mark as read
-                        const link = `${base_path}${notification.link.replace(/^\//, '')}`;
-                        const separator = link.includes('?') ? '&' : '?';
-                        const final_link = `${link}${separator}notif_id=...`; // Placeholder for notif_id which is missing
+                            // Construct the final link with notif_id to mark as read
+                            const link = `${base_path}${notification.link.replace(/^\//, '')}`;
+                            const separator = link.includes('?') ? '&' : '?';
+                            const final_link = `${link}${separator}notif_id=...`; // Placeholder for notif_id which is missing
 
-                        const notificationHtml = `
+                            const notificationHtml = `
                             <a href="${final_link}" class="list-group-item list-group-item-action d-flex align-items-center ${bgClass}">
                                 <div class="mr-3">
-                                    <div class="icon-circle ${iconBgClass}" style="height: 2.5rem; width: 2.5rem; border-radius: 100%; display: flex; align-items: center; justify-content: center;">
+                                    <div class="icon-circle ${iconBgClass}" style="height: 2.5rem; width: 2.5rem; border-radius: 100%; display: flex; align-items: center; justify-content: center; ${opacityClass}">
                                         <i class="${getIconClass(notification.type)} text-white"></i>
                                     </div>
                                 </div>
                                 <div class="flex-grow-1">
-                                    <div class="small text-gray-500">${notification.time_ago}</div>
+                                    <div class="small ${textColorClass}">${notification.time_ago}</div>
                                     <span class="${fontWeightClass}">${notification.message}</span>
                                 </div>
                             </a>`;
-                        notificationContainer.innerHTML += notificationHtml;
-                    });
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching notifications for dashboard:', error);
-                if(notificationContainer) {
-                    notificationContainer.innerHTML = '<div class="list-group-item text-danger">Could not load notifications.</div>';
-                }
-            });
-    });
+                            notificationContainer.innerHTML += notificationHtml;
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching notifications for dashboard:', error);
+                    if (notificationContainer) {
+                        notificationContainer.innerHTML = '<div class="list-group-item text-danger">Could not load notifications.</div>';
+                    }
+                });
+        });
     </script>
 </body>
+
 </html>
 <?php $conn = null; ?>

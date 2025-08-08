@@ -106,6 +106,7 @@ if (!function_exists('getNotificationIcon')) {
             case 'exam_timetable': return 'fas fa-calendar-alt text-white';
             case 'new_notes': return 'fas fa-sticky-note text-white';
             case 'result_published': return 'fas fa-poll-h text-white';
+            case 'acquisition_request': return 'fas fa-inbox text-white'; // FIX: Added icon for book requests
             default: return 'fas fa-bell text-white';
         }
     }
@@ -274,14 +275,14 @@ if (!function_exists('getNotificationIcon')) {
                 </a>
                 <?php endif; ?>
 
-                <a class="dropdown-item" href="#">
+                <!-- <a class="dropdown-item" href="#">
                     <i class="fas fa-cogs fa-sm fa-fw mr-2 text-gray-400"></i>
                     Settings
                 </a>
                 <a class="dropdown-item" href="#">
                     <i class="fas fa-list fa-sm fa-fw mr-2 text-gray-400"></i>
                     Activity Log
-                </a>
+                </a> -->
                 <div class="dropdown-divider"></div>
                 <a class="dropdown-item" href="#" data-toggle="modal" data-target="#logoutModal">
                     <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
@@ -450,6 +451,34 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     // --- END: Search Bar Functionality ---
+
+    // --- START: FIX - SIDEBAR NOTIFICATION CLEARING SCRIPT ---
+    const sidebarNotificationLinks = document.querySelectorAll('#accordionSidebar .nav-link[data-notification-type]');
+    
+    sidebarNotificationLinks.forEach(link => {
+        link.addEventListener('click', function(event) {
+            const notificationType = this.getAttribute('data-notification-type');
+            const badge = this.querySelector('.badge-counter');
+
+            // If a notification type is defined and a badge is visible, send a background request to mark them as read.
+            if (notificationType && badge && badge.style.display !== 'none') {
+                let formData = new FormData();
+                formData.append('type', notificationType);
+                
+                // This is the new endpoint you just created
+                const endpoint = '<?php echo BASE_WEB_PATH; ?>includes/actions/mark_notifications_as_read.php';
+
+                // 'keepalive' ensures the request is sent even if the user navigates away immediately.
+                fetch(endpoint, {
+                    method: 'POST',
+                    body: formData,
+                    keepalive: true 
+                }).catch(error => console.error('Sidebar notification clear error:', error));
+            }
+        });
+    });
+    // --- END: FIX ---
+
 });
 </script>
 

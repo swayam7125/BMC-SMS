@@ -23,12 +23,14 @@ if (!$role || !$userId) {
 try {
     // --- START: NOTIFICATION LOGIC ---
     if ($role === 'student' && $userId) {
-        $stmt_mark_all_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND type = 'new_notes' AND is_read = 0");
+        // FIX: Changed integer 0 to boolean FALSE for PostgreSQL compatibility.
+        $stmt_mark_all_read = $conn->prepare("UPDATE notifications SET is_read = TRUE WHERE user_id = ? AND type = 'new_notes' AND is_read = FALSE");
         $stmt_mark_all_read->execute([$userId]);
     }
     if (isset($_GET['notif_id']) && is_numeric($_GET['notif_id'])) {
         $notification_id = $_GET['notif_id'];
-        $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?");
+        // FIX: Changed integer 1 to boolean TRUE.
+        $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = TRUE WHERE id = ? AND user_id = ?");
         $stmt_mark_read->execute([$notification_id, $userId]);
     }
     // --- END: NOTIFICATION LOGIC ---
@@ -49,7 +51,7 @@ try {
                     $error_message = "Your profile is incomplete (missing School or Standard assignment). Please contact an administrator.";
                 }
             } else {
-                 $error_message = "Could not find your student profile.";
+                $error_message = "Could not find your student profile.";
             }
             break;
         case 'teacher':
@@ -60,11 +62,11 @@ try {
                 if (!empty($row['std'])) {
                     $teacherStds = explode(',', $row['std']);
                 }
-                 if (!$schoolId) {
+                if (!$schoolId) {
                     $error_message = "Your profile is incomplete (missing School assignment). Please contact an administrator.";
                 }
             } else {
-                 $error_message = "Could not find your teacher profile.";
+                $error_message = "Could not find your teacher profile.";
             }
             break;
         case 'principal':
@@ -72,7 +74,7 @@ try {
             $stmt->execute([$userId]);
             if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $schoolId = $row['school_id'];
-                 if (!$schoolId) {
+                if (!$schoolId) {
                     $error_message = "Your profile is incomplete (missing School assignment). Please contact an administrator.";
                 }
             } else {
@@ -219,6 +221,15 @@ $pageTitle = 'View Notes';
     <script src="https://cdn.datatables.net/1.10.21/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.10.21/js/dataTables.bootstrap4.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
-    <script src="../../assets/js/custom_student_scripts.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#notesTable').DataTable({
+                "order": [
+                    [4, "desc"]
+                ] // Sort by the 'Date' column descending
+            });
+        });
+    </script>
 </body>
+
 </html>

@@ -43,8 +43,45 @@ try {
 
         if (empty($errors)) {
             $stmt_insert = $conn->prepare("INSERT INTO book_requests (requester_id, requester_role, school_id, book_title, author, reason) VALUES (?, ?, ?, ?, ?, ?)");
+            
             if ($stmt_insert->execute([$user_id, $role, $school_id, $book_title, $author, $reason])) {
                 $success_msg = "Your request has been submitted successfully! The librarian will review it shortly.";
+
+                // --- START: FIX - CREATE NOTIFICATION FOR LIBRARIAN ---
+                try {
+                    // 1. Find the librarian(s) for the current school
+                    $stmt_librarians = $conn->prepare("SELECT id FROM librarian WHERE school_id = ?");
+                    $stmt_librarians->execute([$school_id]);
+                    $librarian_ids = $stmt_librarians->fetchAll(PDO::FETCH_COLUMN, 0);
+
+                    // 2. Get the requester's name for a more descriptive message
+                    $requester_name = 'a ' . ucfirst($role); // Fallback name
+                    $stmt_user_name = $conn->prepare("SELECT name FROM " . ($role === 'student' ? 'student' : 'teacher') . " WHERE id = ?");
+                    $stmt_user_name->execute([$user_id]);
+                    if ($user_data = $stmt_user_name->fetch(PDO::FETCH_ASSOC)) {
+                        $requester_name = htmlspecialchars($user_data['name']);
+                    }
+
+                    // 3. Create and send a notification to each librarian
+                    if (!empty($librarian_ids)) {
+                        $notification_msg = "New book acquisition request from " . $requester_name . ".";
+                        $notification_link = "pages/librarian/book_requests.php";
+                        $notification_type = "acquisition_request"; // Use the correct, specific type
+
+                        $stmt_notify = $conn->prepare(
+                            "INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)"
+                        );
+
+                        foreach ($librarian_ids as $librarian_id) {
+                            $stmt_notify->execute([$librarian_id, $notification_msg, $notification_link, $notification_type]);
+                        }
+                    }
+                } catch (PDOException $e) {
+                    // Log the notification error, but don't disrupt the user. Their request was successful.
+                    error_log("Failed to create book acquisition notification: " . $e->getMessage());
+                }
+                // --- END: FIX ---
+
             } else {
                 $errors[] = "Database error: Could not submit your request.";
             }

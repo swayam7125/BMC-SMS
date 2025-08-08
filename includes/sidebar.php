@@ -73,17 +73,30 @@ if (isset($conn) && $user_id) {
                 break;
 
             case 'principal':
-                $sql_counts = "SELECT
-                                COUNT(*) FILTER (WHERE type = 'new_notice') AS bmc_notices,
-                                COUNT(*) FILTER (WHERE type = 'leave_request') AS leave_requests
-                           FROM notifications WHERE user_id = ? AND is_read = false";
-                $stmt_counts = $conn->prepare($sql_counts);
-                $stmt_counts->execute([$user_id]);
-                $result = $stmt_counts->fetch(PDO::FETCH_ASSOC);
-                if ($result) {
-                    $unread_bmc_notices = (int) ($result['bmc_notices'] ?? 0);
-                    $unread_leave_requests = (int) ($result['leave_requests'] ?? 0);
-                }
+                // === START: ROBUST PRINCIPAL NOTIFICATION LOGIC ===
+                // Query 1: Get count of unread notices specifically from superadmin
+                $sql_bmc_notices = "SELECT COUNT(n.id)
+                                    FROM notifications n
+                                    JOIN notices nt ON n.notice_id = nt.id
+                                    JOIN users u ON nt.sender_id = u.id
+                                    WHERE n.user_id = ?
+                                      AND n.is_read = false
+                                      AND n.type = 'new_notice'
+                                      AND u.role = 'superadmin'";
+                $stmt_bmc = $conn->prepare($sql_bmc_notices);
+                $stmt_bmc->execute([$user_id]);
+                $unread_bmc_notices = (int) $stmt_bmc->fetchColumn();
+
+                // Query 2: Get count of unread leave requests
+                $sql_leave_requests = "SELECT COUNT(*)
+                                       FROM notifications
+                                       WHERE user_id = ?
+                                         AND is_read = false
+                                         AND type = 'leave_request'";
+                $stmt_leave = $conn->prepare($sql_leave_requests);
+                $stmt_leave->execute([$user_id]);
+                $unread_leave_requests = (int) $stmt_leave->fetchColumn();
+                // === END: ROBUST PRINCIPAL NOTIFICATION LOGIC ===
                 break;
 
             case 'teacher':
@@ -95,12 +108,13 @@ if (isset($conn) && $user_id) {
                     $is_class_teacher = true;
                 }
 
+                // UPDATED QUERY FOR TEACHER
                 $sql_counts = "SELECT
-                                  SUM(CASE WHEN type = 'school_notice' THEN 1 ELSE 0 END) AS teacher_notices,
-                                  SUM(CASE WHEN type = 'assignment_submission' THEN 1 ELSE 0 END) AS submissions,
-                                  SUM(CASE WHEN type = 'leave_status' THEN 1 ELSE 0 END) AS leave_status,
-                                  SUM(CASE WHEN type = 'exam_timetable' THEN 1 ELSE 0 END) AS exam_timetables,
-                                  SUM(CASE WHEN type = 'borrow_status' THEN 1 ELSE 0 END) AS library_status
+                                  COUNT(*) FILTER (WHERE type = 'school_notice') AS teacher_notices,
+                                  COUNT(*) FILTER (WHERE type = 'assignment_submission') AS submissions,
+                                  COUNT(*) FILTER (WHERE type = 'leave_status') AS leave_status,
+                                  COUNT(*) FILTER (WHERE type = 'exam_timetable') AS exam_timetables,
+                                  COUNT(*) FILTER (WHERE type = 'borrow_status') AS library_status
                                FROM notifications WHERE user_id = ? AND is_read = false";
                 $stmt_counts = $conn->prepare($sql_counts);
                 $stmt_counts->execute([$user_id]);
@@ -115,16 +129,19 @@ if (isset($conn) && $user_id) {
                 break;
 
             case 'librarian':
+                // --- FIX: Using consistent and efficient COUNT(*) FILTER syntax ---
                 $sql_counts = "SELECT
-                                    SUM(CASE WHEN type = 'borrow_request' THEN 1 ELSE 0 END) AS borrow_reqs,
-                                    SUM(CASE WHEN type = 'acquisition_request' THEN 1 ELSE 0 END) AS acq_reqs,
-                                    SUM(CASE WHEN type = 'principal_to_librarian_notice' THEN 1 ELSE 0 END) AS p_to_l_notices
-                                 FROM notifications WHERE user_id = ? AND is_read = false";
+                                    COUNT(*) FILTER (WHERE type = 'borrow_request') AS borrow_reqs,
+                                    -- FIX: Corrected the alias from acq_qs to acq_reqs
+                                    COUNT(*) FILTER (WHERE type = 'acquisition_request') AS acq_reqs,
+                                    COUNT(*) FILTER (WHERE type = 'principal_to_librarian_notice') AS p_to_l_notices
+                                FROM notifications WHERE user_id = ? AND is_read = false";
                 $stmt_counts = $conn->prepare($sql_counts);
                 $stmt_counts->execute([$user_id]);
                 $result = $stmt_counts->fetch(PDO::FETCH_ASSOC);
                 if ($result) {
                     $unread_borrow_requests = (int) ($result['borrow_reqs'] ?? 0);
+                    // FIX: Corrected the variable to use the correct alias from the SQL query
                     $unread_acquisition_requests = (int) ($result['acq_reqs'] ?? 0);
                     $unread_principal_to_librarian_notices = (int) ($result['p_to_l_notices'] ?? 0);
                 }
@@ -417,7 +434,13 @@ if (isset($conn) && $user_id) {
                 <div id="collapseAssignments" class="collapse <?php echo (is_active_page($assignment_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
                         <a class="collapse-item <?php echo ($current_page == 'send_assignment.php') ? 'active' : ''; ?>" href="/BMC-SMS/pages/assignments/send_assignment.php">Send Assignment</a>
-                        <a class="collapse-item <?php echo ($current_page == 'assignment_history.php') ? 'active' : ''; ?>" href="/BMC-SMS/pages/assignments/assignment_history.php" data-notification-type="assignment_submission">Assignment History</a>
+                        <a class="collapse-item <?php echo ($current_page == 'assignment_history.php') ? 'active' : ''; ?>" href="/BMC-SMS/pages/assignments/assignment_history.php" data-notification-type="assignment_submission">Assignment History
+                            <?php if ($unread_submissions > 0): ?>
+                                <span class="badge badge-danger badge-counter">
+                                    <?php echo ($unread_submissions > 9) ? '9+' : $unread_submissions; ?>
+                                </span>
+                            <?php endif; ?>
+                        </a>
                     </div>
                 </div>
             </li>
@@ -501,6 +524,7 @@ if (isset($conn) && $user_id) {
                             <?php endif; ?>
                         </a>
                         <a class="collapse-item <?php echo ($current_page == 'request_new_book.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/user/request_new_book.php">Request New Book</a>
+                        <a class="collapse-item <?php echo ($current_page == 'my_book_requests.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/user/my_book_requests.php">My Request History</a>
                     </div>
                 </div>
             </li>
@@ -607,6 +631,7 @@ if (isset($conn) && $user_id) {
                             <?php endif; ?>
                         </a>
                         <a class="collapse-item <?php echo ($current_page == 'request_new_book.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/user/request_new_book.php">Request New Book</a>
+                        <a class="collapse-item <?php echo ($current_page == 'my_book_requests.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/user/my_book_requests.php">My Request History</a>
                     </div>
                 </div>
             </li>

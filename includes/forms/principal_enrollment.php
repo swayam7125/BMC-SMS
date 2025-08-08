@@ -18,6 +18,9 @@ if (!$role) {
 $errors = [];
 $batch = $_POST['batch'] ?? '';
 $school_id_posted = $_POST['school_id'] ?? '';
+// --- FIX START: Initialize variable to hold the path of a successfully uploaded image across submissions ---
+$temp_image_path = $_POST['temp_image_path'] ?? null;
+// --- FIX END ---
 
 // Fetch available schools based on batch selection
 $schools = [];
@@ -36,93 +39,107 @@ if (!empty($batch)) {
     }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) {
-    $school_id = $_POST['school_id'];
-    $principal_name = trim($_POST['principal_name']);
-    $email = trim($_POST['email']);
-    $phone = trim($_POST['phone']);
-    $dob = !empty($_POST['dob']) ? $_POST['dob'] : null;
-    $gender = $_POST['gender'];
-    $blood_group = $_POST['blood_group'];
-    $address = trim($_POST['address']);
-    $qualification = trim($_POST['qualification']);
-    $salary = trim($_POST['salary']);
-    $password = $_POST['password'];
-    $timings = $_POST['timings'] ?? [];
-    $image_path_for_db = null;
-
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // --- FIX START: Handle a new file upload first, separately from other validations ---
     if (isset($_FILES['principal_image']) && $_FILES['principal_image']['error'] === UPLOAD_ERR_OK) {
         $file_info = $_FILES['principal_image'];
+        $file_errors = [];
         $allowed_mime_types = ['image/jpeg', 'image/png', 'image/gif'];
         if (!in_array(mime_content_type($file_info['tmp_name']), $allowed_mime_types)) {
-            $errors[] = "Invalid photo type. Only JPG, PNG, and GIF are allowed.";
+            $file_errors[] = "Invalid photo type. Only JPG, PNG, and GIF are allowed.";
         }
         if ($file_info['size'] > 5 * 1024 * 1024) { // 5MB limit
-            $errors[] = "Photo is too large. Maximum size is 5MB.";
+            $file_errors[] = "Photo is too large. Maximum size is 5MB.";
         }
 
-        if (empty($errors)) {
-            $upload_dir_physical = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . BASE_URL . 'uploads/principal_photos/';
+        if (empty($file_errors)) {
+            // Use the same directory as edit.php for consistency
+            $upload_dir_relative = 'uploads/principal_images/';
+            $upload_dir_physical = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . BASE_URL . $upload_dir_relative;
             if (!is_dir($upload_dir_physical)) {
                 mkdir($upload_dir_physical, 0777, true);
             }
 
-            $file_extension = pathinfo($file_info['name'], PATHINFO_EXTENSION);
+            $file_extension = strtolower(pathinfo($file_info['name'], PATHINFO_EXTENSION));
             $new_file_name = 'principal_' . uniqid('', true) . '.' . $file_extension;
             $destination_physical_path = $upload_dir_physical . $new_file_name;
 
             if (move_uploaded_file($file_info['tmp_name'], $destination_physical_path)) {
-                $image_path_for_db = 'uploads/principal_photos/' . $new_file_name;
+                // If successful, update our temporary path variable
+                $temp_image_path = $upload_dir_relative . $new_file_name;
+                clearstatcache();
             } else {
                 $errors[] = "Failed to move the uploaded photo.";
             }
+        } else {
+            // If the file itself had errors, add them to the main error list
+            $errors = array_merge($errors, $file_errors);
         }
     }
+    // --- FIX END ---
 
-    if (empty($school_id)) $errors[] = "A school must be selected.";
-    if (empty($principal_name)) $errors[] = "Principal name is required.";
-    if (empty($batch)) $errors[] = "Batch selection is required.";
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "A valid email is required.";
-    if (empty($password)) $errors[] = "Password is required.";
+    if (isset($_POST['enroll_principal'])) {
+        $school_id = $_POST['school_id'];
+        $principal_name = trim($_POST['principal_name']);
+        $email = trim($_POST['email']);
+        $phone = trim($_POST['phone']);
+        $dob = !empty($_POST['dob']) ? $_POST['dob'] : null;
+        $gender = $_POST['gender'];
+        $blood_group = $_POST['blood_group'];
+        $address = trim($_POST['address']);
+        $qualification = trim($_POST['qualification']);
+        $salary = trim($_POST['salary']);
+        $password = $_POST['password'];
+        $timings = $_POST['timings'] ?? [];
+        // The final path for the DB is the one we've been tracking in $temp_image_path
+        $image_path_for_db = $temp_image_path;
 
-    if (empty($errors)) {
-        $stmt_check_email = $conn->prepare('SELECT id FROM "users" WHERE "email" = ?');
-        $stmt_check_email->execute([$email]);
-        if ($stmt_check_email->fetch()) {
-            $errors[] = "This email address is already registered. Please use a different one.";
-        }
-    }
+        if (empty($school_id)) $errors[] = "A school must be selected.";
+        if (empty($principal_name)) $errors[] = "Principal name is required.";
+        if (empty($batch)) $errors[] = "Batch selection is required.";
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "A valid email is required.";
+        if (empty($password)) $errors[] = "Password is required.";
 
-    if (empty($errors)) {
-        try {
-            $conn->beginTransaction();
-            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-            $user_role = 'principal';
-
-            $stmt_user = $conn->prepare('INSERT INTO "users" ("role", "email", "password") VALUES (?, ?, ?)');
-            $stmt_user->execute([$user_role, $email, $hashed_password]);
-            $new_user_id = $conn->lastInsertId();
-
-            $stmt_principal = $conn->prepare('INSERT INTO "principal" (id, principal_image, school_id, principal_name, email, password, phone, dob, gender, blood_group, address, qualification, salary, batch) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-            $stmt_principal->execute([$new_user_id, $image_path_for_db, $school_id, $principal_name, $email, $hashed_password, $phone, $dob, $gender, $blood_group, $address, $qualification, $salary, $batch]);
-
-            $stmt_timing = $conn->prepare('INSERT INTO "principal_timings" (principal_id, day_of_week, opens_at, closes_at, is_closed) VALUES (?, ?, ?, ?, ?)');
-            foreach ($timings as $day => $details) {
-                $is_closed = isset($details['is_closed']) ? 1 : 0;
-                $opens_at = ($is_closed || empty($details['opens_at'])) ? null : $details['opens_at'];
-                $closes_at = ($is_closed || empty($details['closes_at'])) ? null : $details['closes_at'];
-                $stmt_timing->execute([$new_user_id, $day, $opens_at, $closes_at, $is_closed]);
+        if (empty($errors)) {
+            $stmt_check_email = $conn->prepare('SELECT id FROM "users" WHERE "email" = ?');
+            $stmt_check_email->execute([$email]);
+            if ($stmt_check_email->fetch()) {
+                $errors[] = "This email address is already registered. Please use a different one.";
             }
+        }
 
-            $conn->commit();
-            header("Location: ../../pages/principal/principal_list.php?success=Principal enrolled successfully");
-            exit();
-        } catch (PDOException $e) {
-            $conn->rollBack();
-            if ($e->getCode() == 23505) {
-                $errors[] = "A principal with this email already exists.";
-            } else {
-                $errors[] = "Database error: " . $e->getMessage();
+        if (empty($errors)) {
+            try {
+                $conn->beginTransaction();
+                $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+                $user_role = 'principal';
+
+                $stmt_user = $conn->prepare('INSERT INTO "users" ("role", "email", "password") VALUES (?, ?, ?)');
+                $stmt_user->execute([$user_role, $email, $hashed_password]);
+                $new_user_id = $conn->lastInsertId();
+
+                $stmt_principal = $conn->prepare('INSERT INTO "principal" (id, principal_image, school_id, principal_name, email, password, phone, dob, gender, blood_group, address, qualification, salary, batch) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+                $stmt_principal->execute([$new_user_id, $image_path_for_db, $school_id, $principal_name, $email, $hashed_password, $phone, $dob, $gender, $blood_group, $address, $qualification, $salary, $batch]);
+
+                $stmt_timing = $conn->prepare('INSERT INTO "principal_timings" (principal_id, day_of_week, opens_at, closes_at, is_closed) VALUES (?, ?, ?, ?, ?)');
+                foreach ($timings as $day => $details) {
+                    $is_closed_bool = isset($details['is_closed']);
+                    $is_closed_for_db = $is_closed_bool ? 1 : 0;
+                    $opens_at = ($is_closed_bool || empty($details['opens_at'])) ? null : $details['opens_at'];
+                    $closes_at = ($is_closed_bool || empty($details['closes_at'])) ? null : $details['closes_at'];
+                    $stmt_timing->execute([$new_user_id, $day, $opens_at, $closes_at, $is_closed_for_db]);
+                }
+
+                $conn->commit();
+                header("Location: ../../pages/principal/principal_list.php?success=Principal enrolled successfully");
+                exit();
+            } catch (PDOException $e) {
+                $conn->rollBack();
+                if ($e->getCode() == 23505) {
+                    $errors[] = "A principal with this email already exists.";
+                } else {
+                    $errors[] = "Database error: " . $e->getMessage();
+                }
             }
         }
     }
@@ -130,6 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Enroll Principal - School Management System</title>
@@ -141,6 +159,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
     <link rel="icon" type="image/x-icon" href="../../assets/img/favicon.ico">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -152,9 +171,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
                         <h1 class="h3 mb-0 text-gray-800">Enroll New Principal</h1>
                         <a href="../../pages/principal/principal_list.php" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to List</a>
                     </div>
-                    <?php if (!empty($errors)): ?>
+                    <?php if (!empty($errors)) : ?>
                         <div class="alert alert-danger">
-                            <ul class="mb-0"><?php foreach ($errors as $error): ?><li><?php echo htmlspecialchars($error); ?></li><?php endforeach; ?></ul>
+                            <ul class="mb-0"><?php foreach ($errors as $error) : ?><li><?php echo htmlspecialchars($error); ?></li><?php endforeach; ?></ul>
                         </div>
                     <?php endif; ?>
                     <div class="card shadow mb-4">
@@ -163,6 +182,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
                         </div>
                         <div class="card-body">
                             <form method="POST" enctype="multipart/form-data" id="principalForm">
+                                <input type="hidden" name="temp_image_path" value="<?php echo htmlspecialchars($temp_image_path ?? ''); ?>">
+
                                 <input type="hidden" name="image_preview_data" id="imagePreviewData" value="<?php echo htmlspecialchars($_POST['image_preview_data'] ?? ''); ?>">
                                 <div class="row">
                                     <div class="col-md-3 text-center">
@@ -213,12 +234,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
                                 <hr>
                                 <h6 class="font-weight-bold text-primary mb-3">Weekly Timings</h6>
                                 <div id="timings-schedule">
-                                    <?php $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']; foreach ($days as $day): $posted_day = $_POST['timings'][$day] ?? []; $is_closed = isset($posted_day['is_closed']); $opens_at = $posted_day['opens_at'] ?? '10:00'; $closes_at = $posted_day['closes_at'] ?? '20:00'; ?>
+                                    <?php $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                                    foreach ($days as $day) : $posted_day = $_POST['timings'][$day] ?? [];
+                                        $is_closed = isset($posted_day['is_closed']);
+                                        $opens_at = $posted_day['opens_at'] ?? '10:00';
+                                        $closes_at = $posted_day['closes_at'] ?? '20:00'; ?>
                                         <div class="form-row align-items-center mb-2 timing-row" data-day="<?php echo $day; ?>">
                                             <div class="col-md-2"><label class="mb-0"><?php echo $day; ?></label></div>
-                                            <div class="col-md-2"><div class="custom-control custom-checkbox"><input type="checkbox" class="custom-control-input closed-checkbox" id="closed_<?php echo $day; ?>" name="timings[<?php echo $day; ?>][is_closed]" <?php if ($is_closed) echo 'checked'; ?>><label class="custom-control-label" for="closed_<?php echo $day; ?>">Closed</label></div></div>
-                                            <div class="col-md-3"><div class="input-group"><div class="input-group-prepend"><span class="input-group-text small">Opens at</span></div><input type="time" class="form-control opens-at" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>></div></div>
-                                            <div class="col-md-3"><div class="input-group"><div class="input-group-prepend"><span class="input-group-text small">Closes at</span></div><input type="time" class="form-control closes-at" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>></div></div>
+                                            <div class="col-md-2">
+                                                <div class="custom-control custom-checkbox"><input type="checkbox" class="custom-control-input closed-checkbox" id="closed_<?php echo $day; ?>" name="timings[<?php echo $day; ?>][is_closed]" <?php if ($is_closed) echo 'checked'; ?>><label class="custom-control-label" for="closed_<?php echo $day; ?>">Closed</label></div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="input-group">
+                                                    <div class="input-group-prepend"><span class="input-group-text small">Opens at</span></div><input type="time" class="form-control opens-at" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="input-group">
+                                                    <div class="input-group-prepend"><span class="input-group-text small">Closes at</span></div><input type="time" class="form-control closes-at" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                </div>
+                                            </div>
                                         </div>
                                     <?php endforeach; ?>
                                 </div>
@@ -228,8 +263,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
                                     <div class="form-group col-md-6"><label for="dob">Date of Birth</label><input type="date" class="form-control" id="dob" name="dob" value="<?php echo htmlspecialchars($_POST['dob'] ?? ''); ?>"></div>
                                 </div>
                                 <div class="form-row">
-                                    <div class="form-group col-md-6"><label for="gender">Gender *</label><select class="form-control" id="gender" name="gender" required><option value="">-- Select Gender --</option><option value="Male" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Male') ? 'selected' : ''; ?>>Male</option><option value="Female" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Female') ? 'selected' : ''; ?>>Female</option><option value="Others" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Others') ? 'selected' : ''; ?>>Others</option></select></div>
-                                    <div class="form-group col-md-6"><label for="blood_group">Blood Group</label><select class="form-control" id="blood_group" name="blood_group"><option value="">-- Select Blood Group --</option><?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']; foreach ($bg_options as $bg) { $selected = (isset($_POST['blood_group']) && $_POST['blood_group'] == $bg) ? 'selected' : ''; echo "<option value='{$bg}' {$selected}>" . $bg . "</option>"; } ?></select></div>
+                                    <div class="form-group col-md-6"><label for="gender">Gender *</label><select class="form-control" id="gender" name="gender" required>
+                                            <option value="">-- Select Gender --</option>
+                                            <option value="Male" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Male') ? 'selected' : ''; ?>>Male</option>
+                                            <option value="Female" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Female') ? 'selected' : ''; ?>>Female</option>
+                                            <option value="Others" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Others') ? 'selected' : ''; ?>>Others</option>
+                                        </select></div>
+                                    <div class="form-group col-md-6"><label for="blood_group">Blood Group</label><select class="form-control" id="blood_group" name="blood_group">
+                                            <option value="">-- Select Blood Group --</option><?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+                                                                                                foreach ($bg_options as $bg) {
+                                                                                                    $selected = (isset($_POST['blood_group']) && $_POST['blood_group'] == $bg) ? 'selected' : '';
+                                                                                                    echo "<option value='{$bg}' {$selected}>" . $bg . "</option>";
+                                                                                                } ?></select></div>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group col-md-6"><label for="qualification">Qualification</label><input type="text" class="form-control" id="qualification" name="qualification" value="<?php echo htmlspecialchars($_POST['qualification'] ?? ''); ?>"></div>
@@ -248,7 +293,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
             <?php include_once '../../includes/footer.php'; ?>
         </div>
     </div>
-    
+
     <?php include_once "../../includes/logout_modal.php" ?>
 
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
@@ -260,7 +305,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
                 document.querySelectorAll('.closed-checkbox').forEach(function(checkbox) {
                     const row = checkbox.closest('.timing-row');
                     const timeInputs = row.querySelectorAll('input[type="time"]');
-                    timeInputs.forEach(function(input) { input.disabled = checkbox.checked; });
+                    timeInputs.forEach(function(input) {
+                        input.disabled = checkbox.checked;
+                    });
                 });
             }
 
@@ -272,6 +319,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
                 document.getElementById('principalForm').reset();
                 document.getElementById('imagePreview').src = '../../assets/images/unisex.png';
                 document.getElementById('imagePreviewData').value = '';
+                // Clear the hidden temp image path on reset
+                document.querySelector('input[name="temp_image_path"]').value = '';
                 setTimeout(toggleTimeInputs, 50);
             });
 
@@ -290,4 +339,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
         });
     </script>
 </body>
+
 </html>
