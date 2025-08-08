@@ -15,16 +15,22 @@ if (isset($_COOKIE['encrypted_user_id'])) {
     $userId = decrypt_id($_COOKIE['encrypted_user_id']);
 }
 
-if ($role !== 'superadmin' || !$userId) {
+// All users with a valid role can view, so we just check if a role exists.
+// The sidebar logic will handle menu visibility.
+if (!$role || !$userId) {
     header("Location: ../../login.php");
     exit;
 }
 
 try {
-    // --- CORRECTED: Using PDO ---
-    $stmt_mark_read = $conn->prepare('UPDATE "notifications" SET "is_read" = true WHERE "user_id" = ? AND "type" = \'principal_notice\' AND "is_read" = false');
-    $stmt_mark_read->execute([$userId]);
+    // This query marks notifications as 'read' for the logged-in user.
+    // This part is specific to superadmins who get formal notifications.
+    if ($role === 'superadmin') {
+        $stmt_mark_read = $conn->prepare('UPDATE "notifications" SET "is_read" = true WHERE "user_id" = ? AND "type" = \'principal_notice\' AND "is_read" = false');
+        $stmt_mark_read->execute([$userId]);
+    }
 
+    // This SQL query fetches all notices and correctly sorts them by date descending.
     $sql = 'SELECT 
                 pbn.title, pbn.content, pbn.file_path, 
                 pbn.original_filename, pbn.created_at,
@@ -32,7 +38,7 @@ try {
             FROM "principal_to_bmc_notices" pbn
             JOIN "principal" p ON pbn.principal_id = p.id
             JOIN "school" s ON pbn.school_id = s.id
-            ORDER BY pbn.created_at DESC';
+            ORDER BY pbn.created_at DESC'; // This ensures newest notices are first.
     $stmt_notices = $conn->query($sql);
     $notices = $stmt_notices->fetchAll(PDO::FETCH_ASSOC);
 
@@ -49,8 +55,7 @@ $pageTitle = 'View Principal Notices';
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-
-    <!-- <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css"> -->
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
@@ -90,7 +95,7 @@ $pageTitle = 'View Principal Notices';
                                                 <td><?php echo date('d-m-Y H:i', strtotime($notice['created_at'])); ?></td>
                                                 <td>
                                                     <?php if ($notice['file_path']): ?>
-                                                        <a href="<?php echo htmlspecialchars($notice['file_path']); ?>" class="btn btn-success btn-sm" download="<?php echo htmlspecialchars($notice['original_filename']); ?>">
+                                                        <a href="<?php echo htmlspecialchars(BASE_URL . ltrim($notice['file_path'], '/')); ?>" class="btn btn-success btn-sm" download="<?php echo htmlspecialchars($notice['original_filename']); ?>">
                                                             <i class="fas fa-download"></i> Download
                                                         </a>
                                                     <?php else: ?>
@@ -123,9 +128,10 @@ $pageTitle = 'View Principal Notices';
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
     <script>
         $(document).ready(function() {
-            $('#noticesTable').DataTable({
-                "order": [[ 4, "desc" ]] // Sort by the Date column descending
-            });
+            // --- FIX: The "order" option has been removed. ---
+            // This tells DataTables to respect the initial order of the rows
+            // provided by the server, which is already sorted with the newest notices first.
+            $('#noticesTable').DataTable();
         });
     </script>
 </body>

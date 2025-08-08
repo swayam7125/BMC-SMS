@@ -2,27 +2,71 @@
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
-// Define the base web path for your project
+// Define the base web path for your project if not already defined.
 if (!defined('BASE_WEB_PATH')) {
     define('BASE_WEB_PATH', '/BMC-SMS/');
 }
 
-$role = null;
-if (isset($_COOKIE['encrypted_user_role'])) {
-    $role = decrypt_id($_COOKIE['encrypted_user_role']);
-}
+// --- FIX: Define the base physical path for reliable file checking ---
+define('BASE_PHYSICAL_PATH', rtrim($_SERVER['DOCUMENT_ROOT'], '/') . BASE_WEB_PATH);
+
+// Authenticate user role from cookie. Redirect to login if not found.
+$role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 if (!$role) {
     header("Location: ../../login.php");
     exit;
 }
 
+// Validate that a numeric school ID is provided.
 $school_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 if ($school_id <= 0) {
     header("Location: school_list.php?error=Invalid school ID");
     exit;
 }
 
+// --- FIX: Re-engineered Image Path Function for Maximum Reliability ---
+/**
+ * Converts any DB image path into a full, web-accessible URL and confirms the file exists.
+ * This single function normalizes different path formats to prevent errors.
+ *
+ * @param string|null $db_path The path stored in the database (e.g., 'uploads/...' or '/BMC-SMS/uploads/...').
+ * @return string|null The full, verified web path or null.
+ */
+function getWebAccessibleImagePath($db_path) {
+    if (empty($db_path)) {
+        return null;
+    }
+
+    // Normalize the path: ensure it's relative to the project root.
+    $relative_path = $db_path;
+    if (strpos($db_path, BASE_WEB_PATH) === 0) {
+        // If it's an absolute web path, strip the base part to make it relative.
+        $relative_path = substr($db_path, strlen(BASE_WEB_PATH));
+    }
+
+    // Build the full physical path for checking if the file exists on the server.
+    $physical_path_to_check = BASE_PHYSICAL_PATH . ltrim($relative_path, '/');
+    // Build the full web path that will be used in the <img> src attribute.
+    $web_path_to_return = BASE_WEB_PATH . ltrim($relative_path, '/');
+
+    if (file_exists($physical_path_to_check) && is_file($physical_path_to_check)) {
+        return htmlspecialchars($web_path_to_return);
+    }
+    
+    // Return null if the file doesn't exist at the calculated path.
+    return null;
+}
+
+/**
+ * Returns the path for a default placeholder image.
+ */
+function getDefaultImagePath($type = 'school') {
+    return BASE_WEB_PATH . 'assets/img/' . ($type === 'school' ? 'default-school.png' : 'default-user.jpg');
+}
+
+
 try {
+    // Fetch school details and join with the principal table to get principal info.
     $query = "SELECT s.*, p.id as principal_user_id, p.principal_name, p.principal_image 
               FROM school s 
               LEFT JOIN principal p ON s.id = p.school_id 
@@ -39,33 +83,12 @@ try {
     die("Database query failed: " . $e->getMessage());
 }
 
-// --- START: ROBUST IMAGE PATH HANDLING ---
-function getWebAccessibleImagePath($db_path) {
-    if (empty($db_path)) {
-        return null;
-    }
-    // Construct the full physical path on the server from the web path
-    $physical_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $db_path;
-    
-    // Check if the file actually exists at that physical path
-    if (file_exists($physical_path) && is_file($physical_path)) {
-        // Return the original web path if the file exists
-        return htmlspecialchars($db_path);
-    }
-    
-    return null; // Return null if file not found
-}
-
-function getDefaultImagePath($type = 'school') {
-    return BASE_WEB_PATH . 'assets/img/' . ($type === 'school' ? 'default-school.png' : 'default-user.jpg');
-}
-
+// Generate the final, safe paths for the images using the new universal function.
 $school_logo_web_path = getWebAccessibleImagePath($school['school_logo']);
 $default_school_logo = getDefaultImagePath('school');
 
 $principal_photo_web_path = getWebAccessibleImagePath($school['principal_image']);
 $default_principal_photo = getDefaultImagePath('principal');
-// --- END: ROBUST IMAGE PATH HANDLING ---
 
 ?>
 <!DOCTYPE html>
@@ -94,7 +117,6 @@ $default_principal_photo = getDefaultImagePath('principal');
                             <a href="edit.php?id=<?php echo $school['id']; ?>" class="btn btn-primary btn-sm"><i class="fas fa-edit fa-sm"></i> Edit School</a>
                         </div>
                     </div>
-
                     <div class="row">
                         <div class="col-lg-4 mb-4">
                             <div class="card shadow h-100">
@@ -114,7 +136,6 @@ $default_principal_photo = getDefaultImagePath('principal');
                                 </div>
                             </div>
                         </div>
-
                         <div class="col-lg-8 mb-4">
                             <div class="card shadow h-100">
                                 <div class="card-header py-3">
@@ -148,7 +169,6 @@ $default_principal_photo = getDefaultImagePath('principal');
                                 </div>
                             </div>
                         </div>
-
                         <div class="col-lg-6 mb-4">
                             <div class="card shadow h-100">
                                 <div class="card-header py-3">
@@ -174,7 +194,6 @@ $default_principal_photo = getDefaultImagePath('principal');
                                 </div>
                             </div>
                         </div>
-
                         <div class="col-lg-6 mb-4">
                             <div class="card shadow h-100">
                                 <div class="card-header py-3">
@@ -203,18 +222,13 @@ $default_principal_photo = getDefaultImagePath('principal');
                                 </div>
                             </div>
                         </div>
-
                     </div>
                 </div>
             </div>
-            <?php
-            include '../../includes/footer.php';
-            ?>
+            <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
-    
     <?php include_once "../../includes/logout_modal.php"?>
-
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>

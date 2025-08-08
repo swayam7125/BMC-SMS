@@ -51,43 +51,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
     $timings = $_POST['timings'] ?? [];
     $image_path_for_db = null;
 
-    // --- START: COMPLETE FILE UPLOAD LOGIC ---
     if (isset($_FILES['principal_image']) && $_FILES['principal_image']['error'] === UPLOAD_ERR_OK) {
         $file_info = $_FILES['principal_image'];
-        $file_name = $file_info['name'];
-        $file_tmp_path = $file_info['tmp_name'];
-        $file_size = $file_info['size'];
-        
         $allowed_mime_types = ['image/jpeg', 'image/png', 'image/gif'];
-        $file_mime_type = mime_content_type($file_tmp_path);
-        if (!in_array($file_mime_type, $allowed_mime_types)) {
+        if (!in_array(mime_content_type($file_info['tmp_name']), $allowed_mime_types)) {
             $errors[] = "Invalid photo type. Only JPG, PNG, and GIF are allowed.";
         }
-
-        if ($file_size > 5 * 1024 * 1024) { // 5MB limit
+        if ($file_info['size'] > 5 * 1024 * 1024) { // 5MB limit
             $errors[] = "Photo is too large. Maximum size is 5MB.";
         }
 
         if (empty($errors)) {
             $upload_dir_physical = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . BASE_URL . 'uploads/principal_photos/';
-            
             if (!is_dir($upload_dir_physical)) {
                 mkdir($upload_dir_physical, 0777, true);
             }
 
-            $file_extension = pathinfo($file_name, PATHINFO_EXTENSION);
+            $file_extension = pathinfo($file_info['name'], PATHINFO_EXTENSION);
             $new_file_name = 'principal_' . uniqid('', true) . '.' . $file_extension;
             $destination_physical_path = $upload_dir_physical . $new_file_name;
 
-            if (move_uploaded_file($file_tmp_path, $destination_physical_path)) {
-                // If successful, set the web-accessible path to be stored in the DB
-                $image_path_for_db = BASE_URL . 'uploads/principal_photos/' . $new_file_name;
+            if (move_uploaded_file($file_info['tmp_name'], $destination_physical_path)) {
+                $image_path_for_db = 'uploads/principal_photos/' . $new_file_name;
             } else {
                 $errors[] = "Failed to move the uploaded photo.";
             }
         }
     }
-    // --- END: COMPLETE FILE UPLOAD LOGIC ---
 
     if (empty($school_id)) $errors[] = "A school must be selected.";
     if (empty($principal_name)) $errors[] = "Principal name is required.";
@@ -153,10 +143,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
 </head>
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../sidebar.php'; ?>
+        <?php include '../../includes/sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../header.php'; ?>
+                <?php include_once '../../includes/header.php'; ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Enroll New Principal</h1>
@@ -173,10 +163,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
                         </div>
                         <div class="card-body">
                             <form method="POST" enctype="multipart/form-data" id="principalForm">
+                                <input type="hidden" name="image_preview_data" id="imagePreviewData" value="<?php echo htmlspecialchars($_POST['image_preview_data'] ?? ''); ?>">
                                 <div class="row">
                                     <div class="col-md-3 text-center">
                                         <label>Photo Preview</label><br>
-                                        <img src="../../assets/img/default-user.jpg" alt="Principal Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
+                                        <img src="<?php echo !empty($_POST['image_preview_data']) ? htmlspecialchars($_POST['image_preview_data']) : '../../assets/img/default-user.jpg'; ?>" alt="Principal Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
                                         <div class="form-group"><label for="principal_image" class="small btn btn-sm btn-info"><i class="fas fa-upload fa-sm"></i> Upload Photo</label><input type="file" class="d-none" id="principal_image" name="principal_image" accept="image/*"></div>
                                     </div>
                                     <div class="col-md-9">
@@ -185,7 +176,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
                                         </div>
                                         <div class="form-row">
                                             <div class="form-group col-md-6"><label for="email">Email *</label><input type="email" class="form-control" id="email" name="email" value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>" required></div>
-                                            <div class="form-group col-md-6"><label for="password">Password *</label><input type="password" class="form-control" id="password" name="password" required></div>
+                                            <div class="form-group col-md-6">
+                                                <label for="password">Password *</label>
+                                                <input type="password" class="form-control" id="password" name="password" value="<?php echo htmlspecialchars($_POST['password'] ?? ''); ?>" required>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -219,34 +213,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
                                 <hr>
                                 <h6 class="font-weight-bold text-primary mb-3">Weekly Timings</h6>
                                 <div id="timings-schedule">
-                                    <?php
-                                    $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-                                    foreach ($days as $day):
-                                        $posted_day = $_POST['timings'][$day] ?? [];
-                                        $is_closed = isset($posted_day['is_closed']);
-                                        $opens_at = $posted_day['opens_at'] ?? '10:00';
-                                        $closes_at = $posted_day['closes_at'] ?? '20:00';
-                                    ?>
+                                    <?php $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']; foreach ($days as $day): $posted_day = $_POST['timings'][$day] ?? []; $is_closed = isset($posted_day['is_closed']); $opens_at = $posted_day['opens_at'] ?? '10:00'; $closes_at = $posted_day['closes_at'] ?? '20:00'; ?>
                                         <div class="form-row align-items-center mb-2 timing-row" data-day="<?php echo $day; ?>">
                                             <div class="col-md-2"><label class="mb-0"><?php echo $day; ?></label></div>
-                                            <div class="col-md-2">
-                                                <div class="custom-control custom-checkbox">
-                                                    <input type="checkbox" class="custom-control-input closed-checkbox" id="closed_<?php echo $day; ?>" name="timings[<?php echo $day; ?>][is_closed]" <?php if ($is_closed) echo 'checked'; ?>>
-                                                    <label class="custom-control-label" for="closed_<?php echo $day; ?>">Closed</label>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-3">
-                                                <div class="input-group">
-                                                    <div class="input-group-prepend"><span class="input-group-text small">Opens at</span></div>
-                                                    <input type="time" class="form-control opens-at" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-3">
-                                                <div class="input-group">
-                                                    <div class="input-group-prepend"><span class="input-group-text small">Closes at</span></div>
-                                                    <input type="time" class="form-control closes-at" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
-                                                </div>
-                                            </div>
+                                            <div class="col-md-2"><div class="custom-control custom-checkbox"><input type="checkbox" class="custom-control-input closed-checkbox" id="closed_<?php echo $day; ?>" name="timings[<?php echo $day; ?>][is_closed]" <?php if ($is_closed) echo 'checked'; ?>><label class="custom-control-label" for="closed_<?php echo $day; ?>">Closed</label></div></div>
+                                            <div class="col-md-3"><div class="input-group"><div class="input-group-prepend"><span class="input-group-text small">Opens at</span></div><input type="time" class="form-control opens-at" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>></div></div>
+                                            <div class="col-md-3"><div class="input-group"><div class="input-group-prepend"><span class="input-group-text small">Closes at</span></div><input type="time" class="form-control closes-at" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>></div></div>
                                         </div>
                                     <?php endforeach; ?>
                                 </div>
@@ -256,28 +228,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
                                     <div class="form-group col-md-6"><label for="dob">Date of Birth</label><input type="date" class="form-control" id="dob" name="dob" value="<?php echo htmlspecialchars($_POST['dob'] ?? ''); ?>"></div>
                                 </div>
                                 <div class="form-row">
-                                    <div class="form-group col-md-6"><label for="gender">Gender *</label><select class="form-control" id="gender" name="gender" required>
-                                            <option value="">-- Select Gender --</option>
-                                            <option value="Male" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Male') ? 'selected' : ''; ?>>Male</option>
-                                            <option value="Female" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Female') ? 'selected' : ''; ?>>Female</option>
-                                            <option value="Others" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Others') ? 'selected' : ''; ?>>Others</option>
-                                        </select></div>
-                                    <div class="form-group col-md-6"><label for="blood_group">Blood Group</label><select class="form-control" id="blood_group" name="blood_group">
-                                            <option value="">-- Select Blood Group --</option><?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-                                                                                                foreach ($bg_options as $bg) {
-                                                                                                    $selected = (isset($_POST['blood_group']) && $_POST['blood_group'] == $bg) ? 'selected' : '';
-                                                                                                    echo "<option value='{$bg}' {$selected}>" . $bg . "</option>";
-                                                                                                } ?>
-                                        </select></div>
+                                    <div class="form-group col-md-6"><label for="gender">Gender *</label><select class="form-control" id="gender" name="gender" required><option value="">-- Select Gender --</option><option value="Male" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Male') ? 'selected' : ''; ?>>Male</option><option value="Female" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Female') ? 'selected' : ''; ?>>Female</option><option value="Others" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Others') ? 'selected' : ''; ?>>Others</option></select></div>
+                                    <div class="form-group col-md-6"><label for="blood_group">Blood Group</label><select class="form-control" id="blood_group" name="blood_group"><option value="">-- Select Blood Group --</option><?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']; foreach ($bg_options as $bg) { $selected = (isset($_POST['blood_group']) && $_POST['blood_group'] == $bg) ? 'selected' : ''; echo "<option value='{$bg}' {$selected}>" . $bg . "</option>"; } ?></select></div>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group col-md-6"><label for="qualification">Qualification</label><input type="text" class="form-control" id="qualification" name="qualification" value="<?php echo htmlspecialchars($_POST['qualification'] ?? ''); ?>"></div>
                                     <div class="form-group col-md-6"><label for="salary">Salary</label><input type="number" class="form-control" id="salary" name="salary" value="<?php echo htmlspecialchars($_POST['salary'] ?? ''); ?>" step="0.01" min="0"></div>
                                 </div>
-                                <div class="form-group">
-                                    <label for="address">Address</label>
-                                    <textarea class="form-control" id="address" name="address" rows="2"><?php echo htmlspecialchars($_POST['address'] ?? ''); ?></textarea>
-                                </div>
+                                <div class="form-group"><label for="address">Address</label><textarea class="form-control" id="address" name="address" rows="2"><?php echo htmlspecialchars($_POST['address'] ?? ''); ?></textarea></div>
                                 <div class="form-group mt-4">
                                     <button type="submit" name="enroll_principal" class="btn btn-primary"><i class="fas fa-user-plus"></i> Enroll Principal</button>
                                     <button type="reset" class="btn btn-secondary"><i class="fas fa-times"></i> Reset Form</button>
@@ -287,11 +245,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
                     </div>
                 </div>
             </div>
-            <?php include_once '../footer.php'; ?>
+            <?php include_once '../../includes/footer.php'; ?>
         </div>
     </div>
     
-    <?php include_once "../logout_modal.php" ?>
+    <?php include_once "../../includes/logout_modal.php" ?>
 
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
@@ -302,9 +260,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
                 document.querySelectorAll('.closed-checkbox').forEach(function(checkbox) {
                     const row = checkbox.closest('.timing-row');
                     const timeInputs = row.querySelectorAll('input[type="time"]');
-                    timeInputs.forEach(function(input) {
-                        input.disabled = checkbox.checked;
-                    });
+                    timeInputs.forEach(function(input) { input.disabled = checkbox.checked; });
                 });
             }
 
@@ -315,6 +271,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
             document.querySelector('button[type="reset"]').addEventListener('click', function() {
                 document.getElementById('principalForm').reset();
                 document.getElementById('imagePreview').src = '../../assets/img/default-user.jpg';
+                document.getElementById('imagePreviewData').value = '';
                 setTimeout(toggleTimeInputs, 50);
             });
 
@@ -323,6 +280,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_principal'])) 
                     const reader = new FileReader();
                     reader.onload = function(e) {
                         document.getElementById('imagePreview').src = e.target.result;
+                        document.getElementById('imagePreviewData').value = e.target.result;
                     }
                     reader.readAsDataURL(event.target.files[0]);
                 }
