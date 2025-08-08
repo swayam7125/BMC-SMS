@@ -90,7 +90,7 @@ $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
     <script src="../../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../../assets/js/sb-admin-2.min.js"></script>
-    <script src="../../../assets/js/custom_marks_scripts.js"></script>
+    <script src="../../../assets/js/custom_marks_scripts.js?v=1.1"></script>
 </body>
 
 </html>
