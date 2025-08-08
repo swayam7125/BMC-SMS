@@ -106,6 +106,7 @@ if (!function_exists('getNotificationIcon')) {
             case 'exam_timetable': return 'fas fa-calendar-alt text-white';
             case 'new_notes': return 'fas fa-sticky-note text-white';
             case 'result_published': return 'fas fa-poll-h text-white';
+            case 'acquisition_request': return 'fas fa-inbox text-white'; // FIX: Added icon for book requests
             default: return 'fas fa-bell text-white';
         }
     }
@@ -450,6 +451,40 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     // --- END: Search Bar Functionality ---
+    
+    // --- START: FIX - SIDEBAR NOTIFICATION CLEARING SCRIPT ---
+    // Note: This assumes you will create the corresponding PHP script to handle the backend logic.
+    // This script will mark notifications of a specific type as read.
+    const sidebarNotificationLinks = document.querySelectorAll('#accordionSidebar .nav-link[data-notification-type]');
+    
+    sidebarNotificationLinks.forEach(link => {
+        link.addEventListener('click', function(event) {
+            const notificationType = this.getAttribute('data-notification-type');
+            const badge = this.querySelector('.badge-counter');
+
+            // If a notification type is defined and a badge is visible, send a background request to mark them as read.
+            if (notificationType && badge && badge.style.display !== 'none') {
+                let formData = new FormData();
+                formData.append('type', notificationType);
+                
+                // Assuming you have or will create this endpoint.
+                // It should accept a 'type' and mark corresponding notifications as read.
+                const endpoint = '<?php echo BASE_WEB_PATH; ?>includes/actions/mark_notifications_by_type.php';
+
+                // 'keepalive' ensures the request is sent even if the user navigates away immediately.
+                fetch(endpoint, {
+                    method: 'POST',
+                    body: formData,
+                    keepalive: true 
+                }).catch(error => console.error('Sidebar notification clear error:', error));
+
+                // We don't need to wait for the response. The badge will be gone on the next page load
+                // because the database will have been updated. This just triggers the action.
+            }
+        });
+    });
+    // --- END: FIX ---
+
 });
 </script>
 

@@ -96,11 +96,11 @@ if (isset($conn) && $user_id) {
                 }
 
                 $sql_counts = "SELECT
-                                  SUM(CASE WHEN type = 'school_notice' THEN 1 ELSE 0 END) AS teacher_notices,
-                                  SUM(CASE WHEN type = 'assignment_submission' THEN 1 ELSE 0 END) AS submissions,
-                                  SUM(CASE WHEN type = 'leave_status' THEN 1 ELSE 0 END) AS leave_status,
-                                  SUM(CASE WHEN type = 'exam_timetable' THEN 1 ELSE 0 END) AS exam_timetables,
-                                  SUM(CASE WHEN type = 'borrow_status' THEN 1 ELSE 0 END) AS library_status
+                                  COUNT(*) FILTER (WHERE type = 'school_notice') AS teacher_notices,
+                                  COUNT(*) FILTER (WHERE type = 'assignment_submission') AS submissions,
+                                  COUNT(*) FILTER (WHERE type = 'leave_status') AS leave_status,
+                                  COUNT(*) FILTER (WHERE type = 'exam_timetable') AS exam_timetables,
+                                  COUNT(*) FILTER (WHERE type = 'borrow_status') AS library_status
                                FROM notifications WHERE user_id = ? AND is_read = false";
                 $stmt_counts = $conn->prepare($sql_counts);
                 $stmt_counts->execute([$user_id]);
@@ -115,17 +115,18 @@ if (isset($conn) && $user_id) {
                 break;
 
             case 'librarian':
+                // --- FIX: Using consistent and efficient COUNT(*) FILTER syntax ---
                 $sql_counts = "SELECT
-                                    SUM(CASE WHEN type = 'borrow_request' THEN 1 ELSE 0 END) AS borrow_reqs,
-                                    SUM(CASE WHEN type = 'acquisition_request' THEN 1 ELSE 0 END) AS acq_reqs,
-                                    SUM(CASE WHEN type = 'principal_to_librarian_notice' THEN 1 ELSE 0 END) AS p_to_l_notices
+                                    COUNT(*) FILTER (WHERE type = 'borrow_request') AS borrow_reqs,
+                                    COUNT(*) FILTER (WHERE type = 'acquisition_request') AS acq_reqs,
+                                    COUNT(*) FILTER (WHERE type = 'principal_to_librarian_notice') AS p_to_l_notices
                                  FROM notifications WHERE user_id = ? AND is_read = false";
                 $stmt_counts = $conn->prepare($sql_counts);
                 $stmt_counts->execute([$user_id]);
                 $result = $stmt_counts->fetch(PDO::FETCH_ASSOC);
                 if ($result) {
                     $unread_borrow_requests = (int) ($result['borrow_reqs'] ?? 0);
-                    $unread_acquisition_requests = (int) ($result['acq_reqs'] ?? 0);
+                    $unread_acquisition_requests = (int) ($result['acq_qs'] ?? 0);
                     $unread_principal_to_librarian_notices = (int) ($result['p_to_l_notices'] ?? 0);
                 }
                 break;
