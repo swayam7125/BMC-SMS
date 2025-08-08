@@ -80,20 +80,35 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email']) && isset($_PO
                     $att_stmt->execute([$user['id'], $user['school_id'], date("Y-m-d"), $attendance_status, $user_lat, $user_lon]);
                 }
 
+                // --- START OF THE FIX ---
+                
                 // User profile data is now fetched from the single initial query
                 $user_name = $user[$user['role'] . '_name'] ?? $email;
-                $profile_image_raw = $user[$user['role'] . '_image'] ?? '/BMC-SMS/assets/images/undraw_profile.svg';
+                $profile_image_raw = $user[$user['role'] . '_image'] ?? null;
 
-                $profile_image = $profile_image_raw;
-                if (!empty($profile_image_raw) && !str_starts_with($profile_image_raw, '/')) {
-                    $profile_image = 'pages/' . $user['role'] . '/uploads/' . basename($profile_image_raw);
+                $profile_image_for_cookie = '';
+                if (!empty($profile_image_raw)) {
+                    // Define the base path that needs to be removed from the start of the string
+                    $base_path_to_remove = '/BMC-SMS/';
+                    
+                    // Check if the raw path from the DB starts with the base path
+                    if (str_starts_with($profile_image_raw, $base_path_to_remove)) {
+                        // If it does, remove it to create a relative path for the cookie
+                        $profile_image_for_cookie = substr($profile_image_raw, strlen($base_path_to_remove));
+                    } else {
+                        // This is a fallback for other roles if their path is just a filename
+                        $profile_image_for_cookie = 'pages/' . $user['role'] . '/uploads/' . basename($profile_image_raw);
+                    }
                 }
 
                 // Set all necessary cookies
                 setcookie("encrypted_user_id", encrypt_id($user['id']), time() + 86400, "/");
                 setcookie("encrypted_user_role", encrypt_id($user['role']), time() + 86400, "/");
-                setcookie("encrypted_profile_image", encrypt_id($profile_image), time() + 86400, "/");
+                // Use the newly corrected and formatted path for the image cookie
+                setcookie("encrypted_profile_image", encrypt_id($profile_image_for_cookie), time() + 86400, "/");
                 setcookie("encrypted_user_name", encrypt_id($user_name), time() + 86400, "/");
+                
+                // --- END OF THE FIX ---
 
                 $response = ['status' => 'success', 'redirect' => 'index.php'];
             }
