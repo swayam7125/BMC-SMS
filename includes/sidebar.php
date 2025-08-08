@@ -73,17 +73,30 @@ if (isset($conn) && $user_id) {
                 break;
 
             case 'principal':
-                $sql_counts = "SELECT
-                                COUNT(*) FILTER (WHERE type = 'new_notice') AS bmc_notices,
-                                COUNT(*) FILTER (WHERE type = 'leave_request') AS leave_requests
-                           FROM notifications WHERE user_id = ? AND is_read = false";
-                $stmt_counts = $conn->prepare($sql_counts);
-                $stmt_counts->execute([$user_id]);
-                $result = $stmt_counts->fetch(PDO::FETCH_ASSOC);
-                if ($result) {
-                    $unread_bmc_notices = (int) ($result['bmc_notices'] ?? 0);
-                    $unread_leave_requests = (int) ($result['leave_requests'] ?? 0);
-                }
+                // === START: ROBUST PRINCIPAL NOTIFICATION LOGIC ===
+                // Query 1: Get count of unread notices specifically from superadmin
+                $sql_bmc_notices = "SELECT COUNT(n.id)
+                                    FROM notifications n
+                                    JOIN notices nt ON n.notice_id = nt.id
+                                    JOIN users u ON nt.sender_id = u.id
+                                    WHERE n.user_id = ?
+                                      AND n.is_read = false
+                                      AND n.type = 'new_notice'
+                                      AND u.role = 'superadmin'";
+                $stmt_bmc = $conn->prepare($sql_bmc_notices);
+                $stmt_bmc->execute([$user_id]);
+                $unread_bmc_notices = (int) $stmt_bmc->fetchColumn();
+
+                // Query 2: Get count of unread leave requests
+                $sql_leave_requests = "SELECT COUNT(*)
+                                       FROM notifications
+                                       WHERE user_id = ?
+                                         AND is_read = false
+                                         AND type = 'leave_request'";
+                $stmt_leave = $conn->prepare($sql_leave_requests);
+                $stmt_leave->execute([$user_id]);
+                $unread_leave_requests = (int) $stmt_leave->fetchColumn();
+                // === END: ROBUST PRINCIPAL NOTIFICATION LOGIC ===
                 break;
 
             case 'teacher':
@@ -95,6 +108,7 @@ if (isset($conn) && $user_id) {
                     $is_class_teacher = true;
                 }
 
+                // UPDATED QUERY FOR TEACHER
                 $sql_counts = "SELECT
                                   COUNT(*) FILTER (WHERE type = 'school_notice') AS teacher_notices,
                                   COUNT(*) FILTER (WHERE type = 'assignment_submission') AS submissions,
@@ -420,7 +434,13 @@ if (isset($conn) && $user_id) {
                 <div id="collapseAssignments" class="collapse <?php echo (is_active_page($assignment_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
                         <a class="collapse-item <?php echo ($current_page == 'send_assignment.php') ? 'active' : ''; ?>" href="/BMC-SMS/pages/assignments/send_assignment.php">Send Assignment</a>
-                        <a class="collapse-item <?php echo ($current_page == 'assignment_history.php') ? 'active' : ''; ?>" href="/BMC-SMS/pages/assignments/assignment_history.php" data-notification-type="assignment_submission">Assignment History</a>
+                        <a class="collapse-item <?php echo ($current_page == 'assignment_history.php') ? 'active' : ''; ?>" href="/BMC-SMS/pages/assignments/assignment_history.php" data-notification-type="assignment_submission">Assignment History
+                            <?php if ($unread_submissions > 0): ?>
+                                <span class="badge badge-danger badge-counter">
+                                    <?php echo ($unread_submissions > 9) ? '9+' : $unread_submissions; ?>
+                                </span>
+                            <?php endif; ?>
+                        </a>
                     </div>
                 </div>
             </li>
