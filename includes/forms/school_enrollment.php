@@ -27,18 +27,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $education_board = isset($_POST['education_board']) ? $_POST['education_board'] : [];
     $school_medium = isset($_POST['school_medium']) ? $_POST['school_medium'] : [];
     $school_category = isset($_POST['school_category']) ? $_POST['school_category'] : [];
-    $logo_path_for_db = null;
-
+    
+    // Form validation
     if (empty($school_name)) $errors[] = "School name is required";
     if (empty($email)) $errors[] = "Email is required";
     if (empty($phone)) $errors[] = "Phone is required";
-    // Add other validation as needed...
 
     if (empty($errors)) {
         try {
             $conn->beginTransaction();
 
-            // Insert initial school data with a null logo.
+            // Step 1: Insert initial school data with a null logo.
             $insert_query = 'INSERT INTO "school" (school_name, email, phone, school_opening, school_type, education_board, school_medium, school_category, address) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
             $stmt = $conn->prepare($insert_query);
 
@@ -51,33 +50,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Get the ID of the newly inserted school.
             $last_school_id = $conn->lastInsertId();
 
-            // --- FIX: ADDED COMPLETE FILE UPLOAD LOGIC ---
+            // Step 2: Process the uploaded logo
             if (isset($_FILES['school_logo']) && $_FILES['school_logo']['error'] === UPLOAD_ERR_OK) {
                 $file_info = $_FILES['school_logo'];
                 
-                // Server-side validation
                 $allowed_mime_types = ['image/jpeg', 'image/png', 'image/gif'];
                 if (!in_array(mime_content_type($file_info['tmp_name']), $allowed_mime_types)) {
                     $errors[] = "Invalid file type. Only JPG, PNG, and GIF are allowed.";
                 } elseif ($file_info['size'] > 5 * 1024 * 1024) { // 5MB limit
                     $errors[] = "File is too large. Maximum size is 5MB.";
                 } else {
-                    // Define the physical upload directory.
                     $upload_dir_physical = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . BASE_WEB_PATH . 'uploads/school_logos/';
                     if (!is_dir($upload_dir_physical)) {
                         mkdir($upload_dir_physical, 0777, true);
                     }
                     
-                    // Create a new unique filename.
                     $file_extension = pathinfo($file_info['name'], PATHINFO_EXTENSION);
                     $new_file_name = 'school_' . $last_school_id . '_' . time() . '.' . $file_extension;
                     $destination_physical_path = $upload_dir_physical . $new_file_name;
 
                     if (move_uploaded_file($file_info['tmp_name'], $destination_physical_path)) {
-                        // Create the correct, web-accessible path to store in the DB.
-                        $logo_path_for_db = BASE_WEB_PATH . 'uploads/school_logos/' . $new_file_name;
+                        // --- FIX: Storing a relative path for consistency. ---
+                        $logo_path_for_db = 'uploads/school_logos/' . $new_file_name;
                         
-                        // Update the new school record with the logo path.
+                        // Step 3: Update the new school record with the logo path.
                         $update_logo_stmt = $conn->prepare('UPDATE "school" SET "school_logo" = ? WHERE "id" = ?');
                         $update_logo_stmt->execute([$logo_path_for_db, $last_school_id]);
                     } else {
@@ -86,12 +82,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
+            // If there were any file upload errors, roll back the transaction
             if (empty($errors)) {
                 $conn->commit();
                 header("Location: ../../pages/school/school_list.php?success=School enrolled successfully");
                 exit;
             } else {
-                // If there were upload errors, roll back the initial insert.
                 $conn->rollBack();
             }
 
