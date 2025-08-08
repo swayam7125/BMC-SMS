@@ -24,17 +24,22 @@ if (!$role || !$userId || $role !== 'teacher') {
 }
 
 try {
-    // --- CORRECTED: Fetch teacher's info with PDO ---
     $stmt_teacher_info = $conn->prepare('SELECT "school_id", "teacher_name", "std", "subject" FROM "teacher" WHERE "id" = ?');
     $stmt_teacher_info->execute([$userId]);
     if ($row = $stmt_teacher_info->fetch(PDO::FETCH_ASSOC)) {
         $schoolId = $row['school_id'];
         $teacherName = $row['teacher_name'];
+        
         if (!empty($row['std'])) {
-            // 'std' is a text[] array in PostgreSQL
-            $availableStandards = $row['std'];
+            // MODIFIED: Parse the PostgreSQL array string (e.g., "{10,11}") into a proper PHP array
+            $std_string_from_db = trim($row['std'], '{}'); // Remove the curly braces
+            if (!empty($std_string_from_db)) {
+                $availableStandards = explode(',', $std_string_from_db); // Split the string by comma
+            }
         }
+
         if (!empty($row['subject'])) {
+            // This part is correct as 'subject' is a simple comma-separated string
             $availableSubjects = explode(',', $row['subject']);
         }
     }
@@ -48,7 +53,6 @@ try {
         $filePathForDB = null;
         $originalFilename = null;
 
-        // File upload logic remains the same
         if (isset($_FILES['assignment_file']) && $_FILES['assignment_file']['error'] == 0) {
             $originalFilename = basename($_FILES["assignment_file"]["name"]);
             $uploadDirServer = __DIR__ . '/uploads/';
@@ -63,7 +67,6 @@ try {
             }
         }
 
-        // --- CORRECTED: Insert assignment and notify students using PDO ---
         $conn->beginTransaction();
 
         $insert_stmt = $conn->prepare('INSERT INTO "assignments" (teacher_id, school_id, standard, subject, title, description, due_date, file_path, original_filename) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
@@ -179,7 +182,7 @@ $pageTitle = 'Send Assignment';
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
-        <?php include_once "../../includes/logout_modal.php"?>
+    <?php include_once "../../includes/logout_modal.php"?>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
