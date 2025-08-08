@@ -61,7 +61,7 @@ function getWebAccessibleImagePath($db_path) {
  * Returns the path for a default placeholder image.
  */
 function getDefaultImagePath($type = 'school') {
-    return BASE_WEB_PATH . 'assets/img/' . ($type === 'school' ? 'default-school.png' : 'default-user.jpg');
+    return BASE_WEB_PATH . 'assets/images/' . ($type === 'school' ? 'default-school.png' : 'unisex.png');
 }
 
 

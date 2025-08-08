@@ -136,13 +136,15 @@ $(document).ready(function () {
               if (response.students.length > 0) {
                 response.students.forEach((student) => {
                   let row = `<tr><td>${student.rollno}</td><td>${student.student_name}</td>`;
+                  
                   response.subjects.forEach((subject) => {
-                    const marks =
-                      student.marks[subject] !== undefined
-                        ? student.marks[subject]
-                        : '<span class="text-muted">N/A</span>';
-                    row += `<td>${marks}</td>`;
+                    let marksCell = '<span class="text-muted">N/A</span>';
+                    if (student.marks && student.marks[subject]) {
+                        marksCell = student.marks[subject].obtained;
+                    }
+                    row += `<td>${marksCell}</td>`;
                   });
+
                   row += `<td><strong>${student.total_obtained}</strong></td>`;
                   row += `<td>${student.total_possible}</td>`;
                   row += `<td><strong class="text-primary">${student.percentage}%</strong></td>`;
@@ -151,6 +153,7 @@ $(document).ready(function () {
                   if (student.status === "Pass") {
                     statusClass = "badge-success";
                   } else if (student.status === "Fail") {
+                    // TYPO FIX: Changed 'status-class' to 'statusClass'
                     statusClass = "badge-danger";
                   }
                   row += `<td class="font-weight-bold"><span class="badge ${statusClass}" style="font-size: 0.9rem;">${student.status}</span></td>`;

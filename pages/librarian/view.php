@@ -46,7 +46,7 @@ try {
 
     // Photo path logic
     $photo_path = $librarian['librarian_image'];
-    $default_photo = '/BMC-SMS/assets/img/default-user.jpg';
+    $default_photo = '/BMC-SMS/assets/images/unisex.png';
     $server_photo_path = !empty($photo_path) ? rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $photo_path : '';
     if (empty($photo_path) || !file_exists($server_photo_path)) {
         $photo_path = $default_photo;

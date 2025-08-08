@@ -33,7 +33,7 @@ if (!defined('BASE_WEB_PATH')) {
 // Set default values
 $userName = 'Guest';
 $user_role = 'User';
-$userProfileImage = BASE_WEB_PATH . 'assets/images/undraw_profile.svg';
+$userProfileImage = BASE_WEB_PATH . 'assets/images/unisex.png';
 $isLoggedIn = false;
 
 // Determine user details if logged in
@@ -263,7 +263,7 @@ if (!function_exists('getNotificationIcon')) {
                 <span
                     class="mr-2 d-none d-lg-inline text-gray-600 small"><?php echo htmlspecialchars($userName); ?></span>
                 <img class="img-profile rounded-circle" src="<?php echo htmlspecialchars($userProfileImage); ?>"
-                    onerror="this.src='<?php echo BASE_WEB_PATH; ?>assets/images/undraw_profile.svg';" alt="Profile"
+                    onerror="this.src='<?php echo BASE_WEB_PATH; ?>assets/images/unisex.png';" alt="Profile"
                     style="width: 32px; height: 32px; object-fit: cover;">
             </a>
             <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="userDropdown">

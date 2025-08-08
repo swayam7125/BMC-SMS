@@ -138,7 +138,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                                     <div class="card-body text-center">
                                         <?php
                                         $path_role = ($user_role === 'principal' || $user_role === 'librarian') ? $user_role : $user_role;
-                                        $defaultImagePath = BASE_URL . 'assets/img/default-user.jpg';
+                                        $defaultImagePath = BASE_URL . 'assets/images/unisex.png';
                                         $imagePathFromDB = $user_data[$image_field] ?? '';
                                         $profileImagePath = getWebAccessibleImagePath($imagePathFromDB, BASE_URL, $path_role) ?? $defaultImagePath;
                                         ?>

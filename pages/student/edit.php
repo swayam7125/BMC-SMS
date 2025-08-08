@@ -199,7 +199,7 @@ try {
                             <form method="POST" enctype="multipart/form-data">
                                 <div class="row">
                                     <div class="col-md-3 text-center">
-                                        <img src="<?php echo htmlspecialchars(!empty($student['student_image']) && file_exists('../../' . $student['student_image']) ? '../../' . $student['student_image'] : '../../assets/img/default-user.jpg'); ?>"
+                                        <img src="<?php echo htmlspecialchars(!empty($student['student_image']) && file_exists('../../' . $student['student_image']) ? '../../' . $student['student_image'] : '../../assets/images/unisex.png'); ?>"
                                             alt="Student Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
                                         <div class="form-group">
                                             <label for="student_image" class="small">Change Photo</label>
