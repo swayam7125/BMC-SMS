@@ -109,7 +109,7 @@ try {
 // If the path from the DB exists and the file is found on the server, use it. Otherwise, use the default.
 $logo_display_path = (!empty($school['school_logo']) && file_exists(rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $school['school_logo']))
     ? htmlspecialchars($school['school_logo'])
-    : BASE_WEB_PATH . 'assets/img/default-school.png';
+    : BASE_WEB_PATH . 'assets/images/unisex.png';
 ?>
 <!DOCTYPE html>
 <html lang="en">

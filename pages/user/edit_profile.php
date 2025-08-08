@@ -264,7 +264,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                                 <div class="row">
                                     <div class="col-md-4 text-center">
                                         <?php
-                                        $default_image_path = BASE_URL . 'assets/img/default-user.jpg';
+                                        $default_image_path = BASE_URL . 'assets/images/unisex.png';
                                         $imagePathFromDB = $user_data[$image_field] ?? '';
                                         $current_image_web_path = getWebAccessibleImagePath($imagePathFromDB, BASE_URL, $path_role) ?? $default_image_path;
                                         ?>
