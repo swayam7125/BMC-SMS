@@ -47,8 +47,15 @@ try {
         $params[] = $principal_school_id;
     }
 
-    // PostgreSQL Change: Cast `std` to an integer for correct sorting
-    $query .= " ORDER BY CAST(s.std AS INTEGER), s.rollno ASC";
+    // --- CORRECTED: Use a CASE statement for proper sorting ---
+    // This sorts 'Pre-Primary' first, then numeric standards, and finally anything else.
+    $query .= " ORDER BY
+        CASE 
+            WHEN s.std = 'Pre-Primary' THEN 0
+            WHEN s.std ~ '^[0-9]+$' THEN CAST(s.std AS INTEGER)
+            ELSE 999
+        END, 
+        s.rollno ASC";
 
     $stmt = $conn->prepare($query);
     $stmt->execute($params);
