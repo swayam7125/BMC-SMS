@@ -1,0 +1,1446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PlayHub - Premium Play Facilities Booking</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
+            color: #2d3748;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Navigation - Fully Responsive */
+        .navbar {
+            background: #1a1a1a;
+            padding: 1rem 0;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 1rem;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #fff;
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            color: #fff;
+            text-decoration: none;
+            transition: color 0.3s ease;
+            font-weight: 500;
+        }
+
+        .nav-links a:hover {
+            color: #4299e1;
+        }
+
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        /* Page Container */
+        .page {
+            display: none;
+            min-height: 100vh;
+            padding-top: 80px;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        /* Hero Section - Responsive */
+        .hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4rem 0;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            min-height: 60vh;
+            display: flex;
+            align-items: center;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="80" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="40" cy="60" r="1" fill="rgba(255,255,255,0.1)"/></svg>');
+            animation: float 20s infinite linear;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px) rotate(0deg); }
+            100% { transform: translateY(-20px) rotate(360deg); }
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+        }
+
+        .hero h1 {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            margin-bottom: 1rem;
+            animation: slideInDown 1s ease-out;
+        }
+
+        .hero p {
+            font-size: clamp(1rem, 3vw, 1.3rem);
+            margin-bottom: 2rem;
+            opacity: 0.9;
+            animation: slideInUp 1s ease-out 0.3s both;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        @keyframes slideInDown {
+            from { opacity: 0; transform: translateY(-50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideInUp {
+            from { opacity: 0; transform: translateY(50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Search Section - Responsive */
+        .search-section {
+            background: white;
+            padding: 2rem 1rem;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
+            margin-top: -50px;
+            position: relative;
+            z-index: 3;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .search-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .search-input {
+            padding: 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+            width: 100%;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #4299e1;
+        }
+
+        .search-btn {
+            padding: 1rem 2rem;
+            background: #4299e1;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .search-btn:hover {
+            background: #3182ce;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(66, 153, 225, 0.4);
+        }
+
+        /* Play Facilities Cards - Responsive Grid */
+        .facilities-section {
+            padding: 4rem 0;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: clamp(2rem, 4vw, 2.5rem);
+            margin-bottom: 3rem;
+            color: #2d3748;
+        }
+
+        .facilities-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-bottom: 4rem;
+        }
+
+        .facility-card {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .facility-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .facility-card:hover::before {
+            left: 100%;
+        }
+
+        .facility-card:hover {
+            transform: translateY(-10px) rotateX(5deg);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+        }
+
+        .facility-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            display: block;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+
+        .facility-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #2d3748;
+        }
+
+        .facility-card p {
+            color: #718096;
+            margin-bottom: 1.5rem;
+            flex-grow: 1;
+        }
+
+        .facility-price {
+            font-weight: bold;
+            color: #4299e1;
+            font-size: 1.2rem;
+        }
+
+        /* Why Choose Us - Responsive */
+        .features-section {
+            background: white;
+            padding: 4rem 0;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-item {
+            text-align: center;
+            padding: 2rem 1rem;
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            color: #4299e1;
+            margin-bottom: 1rem;
+        }
+
+        .feature-item h3 {
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Venue Cards - Responsive */
+        .venues-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            padding: 2rem 0;
+        }
+
+        .venue-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .venue-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+
+        .venue-image {
+            height: 200px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            color: white;
+        }
+
+        .venue-info {
+            padding: 1.5rem;
+        }
+
+        .venue-name {
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .venue-facilities {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin: 1rem 0;
+        }
+
+        .facility-tag {
+            background: #e2e8f0;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: #4a5568;
+        }
+
+        .venue-price {
+            font-weight: bold;
+            color: #4299e1;
+            font-size: 1.1rem;
+        }
+
+        /* Booking Interface - Responsive */
+        .booking-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .booking-section {
+            margin-bottom: 2rem;
+        }
+
+        .booking-section h3 {
+            margin-bottom: 1rem;
+            color: #2d3748;
+        }
+
+        .date-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .date-btn {
+            padding: 1rem 0.5rem;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 12px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .date-btn:hover, .date-btn.selected {
+            border-color: #4299e1;
+            background: #4299e1;
+            color: white;
+        }
+
+        .time-slots {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .time-slot {
+            padding: 1rem 0.5rem;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 12px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .time-slot:hover {
+            border-color: #48bb78;
+            background: #48bb78;
+            color: white;
+        }
+
+        .time-slot.booked {
+            background: #fed7d7;
+            border-color: #fc8181;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .time-slot.selected {
+            background: #48bb78;
+            border-color: #48bb78;
+            color: white;
+        }
+
+        /* Booking Summary - Responsive */
+        .booking-summary {
+            background: #f7fafc;
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-top: 2rem;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .summary-item:last-child {
+            border-bottom: none;
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: #4299e1;
+        }
+
+        /* Footer - Responsive */
+        .footer {
+            background: #1a1a1a;
+            color: white;
+            padding: 4rem 0 2rem;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-section h3 {
+            margin-bottom: 1rem;
+            color: #4299e1;
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid #2d3748;
+            opacity: 0.7;
+        }
+
+        /* Buttons - Responsive */
+        .btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .btn-primary {
+            background: #4299e1;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #3182ce;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #38a169;
+            transform: translateY(-2px);
+        }
+
+        /* Mobile Responsive Breakpoints */
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                width: 100%;
+                background: #1a1a1a;
+                flex-direction: column;
+                padding: 1rem;
+                box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            }
+
+            .nav-links.mobile-open {
+                display: flex;
+            }
+
+            .mobile-menu-btn {
+                display: block;
+            }
+
+            .logo {
+                font-size: 1.5rem;
+            }
+
+            .hero {
+                padding: 3rem 0;
+                min-height: 50vh;
+            }
+
+            .search-container {
+                grid-template-columns: 1fr;
+            }
+
+            .facilities-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+
+            .venues-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .booking-container {
+                margin: 1rem;
+                padding: 1.5rem;
+            }
+
+            .date-selector {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .time-slots {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .btn {
+                padding: 1rem;
+                font-size: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 0 0.5rem;
+            }
+
+            .hero {
+                padding: 2rem 0;
+            }
+
+            .search-section {
+                padding: 1.5rem 0.5rem;
+            }
+
+            .facilities-section {
+                padding: 3rem 0;
+            }
+
+            .facility-card {
+                padding: 1.5rem;
+            }
+
+            .booking-container {
+                margin: 0.5rem;
+                padding: 1rem;
+            }
+
+            .date-selector,
+            .time-slots {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.5rem;
+            }
+
+            .date-btn,
+            .time-slot {
+                padding: 0.8rem 0.3rem;
+                font-size: 0.8rem;
+            }
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Additional Animations */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes slideOutRight {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+
+        /* Utilities */
+        .text-center { text-align: center; }
+        .mb-2 { margin-bottom: 2rem; }
+        .mt-2 { margin-top: 2rem; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="#" class="logo" onclick="showPage('home')">PlayHub</a>
+            <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="#" onclick="showPage('home')">Home</a></li>
+                <li><a href="#" onclick="showPage('venues')">Venues</a></li>
+                <li><a href="#" onclick="showPage('booking')">Book Slot</a></li>
+                <li><a href="#about">About</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Home Page -->
+    <div id="home" class="page active">
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="container">
+                <div class="hero-content">
+                    <h1>Book Premium Play Facilities</h1>
+                    <p>Discover and book the best pool, box cricket, pickleball, snooker, and golf facilities near you. Premium equipment, professional courts, and unmatched experience await.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Search Section -->
+        <section class="search-section">
+            <div class="container">
+                <div class="search-container">
+                    <input type="text" class="search-input" placeholder="Search facilities...">
+                    <select class="search-input">
+                        <option>All Facilities</option>
+                        <option>Pool</option>
+                        <option>Box Cricket</option>
+                        <option>Pickleball</option>
+                        <option>Snooker</option>
+                        <option>Golf</option>
+                    </select>
+                    <select class="search-input">
+                        <option>Any Location</option>
+                        <option>Downtown</option>
+                        <option>Business District</option>
+                        <option>Sports Complex</option>
+                        <option>Mall Area</option>
+                    </select>
+                    <button class="search-btn" onclick="showPage('venues')">Search Facilities</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Play Facilities Cards -->
+        <section class="facilities-section">
+            <div class="container">
+                <h2 class="section-title">Premium Play Facilities</h2>
+                <div class="facilities-grid">
+                    <div class="facility-card" onclick="filterFacility('pool')">
+                        <span class="facility-icon">🎱</span>
+                        <h3>Pool & Billiards</h3>
+                        <p>Professional pool tables with premium felt and regulation equipment. Perfect for tournaments and casual games.</p>
+                        <div class="facility-price">₹200-500/hour</div>
+                    </div>
+                    <div class="facility-card" onclick="filterFacility('box-cricket')">
+                        <span class="facility-icon">🏏</span>
+                        <h3>Box Cricket</h3>
+                        <p>Indoor cricket cages with bowling machines and professional nets. All weather play guaranteed.</p>
+                        <div class="facility-price">₹800-1500/hour</div>
+                    </div>
+                    <div class="facility-card" onclick="filterFacility('pickleball')">
+                        <span class="facility-icon">🏓</span>
+                        <h3>Pickleball</h3>
+                        <p>Regulation pickleball courts with professional-grade surfaces and equipment rental available.</p>
+                        <div class="facility-price">₹300-700/hour</div>
+                    </div>
+                    <div class="facility-card" onclick="filterFacility('snooker')">
+                        <span class="facility-icon">🎯</span>
+                        <h3>Snooker</h3>
+                        <p>Championship snooker tables with precision leveling and professional lighting systems.</p>
+                        <div class="facility-price">₹400-800/hour</div>
+                    </div>
+                    <div class="facility-card" onclick="filterFacility('golf')">
+                        <span class="facility-icon">⛳</span>
+                        <h3>Golf Simulator</h3>
+                        <p>State-of-the-art golf simulators with real course experiences and swing analysis technology.</p>
+                        <div class="facility-price">₹1000-2500/hour</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Why Choose Us -->
+        <section class="features-section">
+            <div class="container">
+                <h2 class="section-title">Why Choose PlayHub?</h2>
+                <div class="features-grid">
+                    <div class="feature-item">
+                        <div class="feature-icon">⚡</div>
+                        <h3>Instant Booking</h3>
+                        <p>Book your favorite facilities instantly with real-time availability and instant confirmation.</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">🏆</div>
+                        <h3>Premium Equipment</h3>
+                        <p>Access to tournament-grade equipment and professionally maintained facilities.</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">💰</div>
+                        <h3>Competitive Rates</h3>
+                        <p>Best prices in the city with transparent pricing and no hidden charges.</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">🔐</div>
+                        <h3>Secure & Safe</h3>
+                        <p>100% secure payments and sanitized facilities with safety protocols.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="container">
+                <div class="footer-content">
+                    <div class="footer-section">
+                        <h3>PlayHub</h3>
+                        <p>Your premier destination for booking premium play facilities. Making recreational sports accessible and enjoyable for everyone.</p>
+                    </div>
+                    <div class="footer-section">
+                        <h3>Facilities</h3>
+                        <p>• Pool & Billiards<br>• Box Cricket<br>• Pickleball<br>• Snooker<br>• Golf Simulator</p>
+                    </div>
+                    <div class="footer-section">
+                        <h3>Quick Links</h3>
+                        <p>• Home<br>• Find Venues<br>• Book Now<br>• Support<br>• Terms & Conditions</p>
+                    </div>
+                    <div class="footer-section">
+                        <h3>Contact Us</h3>
+                        <p>📞 +91 98765 43210<br>✉️ info@playhub.com<br>📍 Mumbai, India<br>🕒 Open 24/7</p>
+                    </div>
+                </div>
+                <div class="footer-bottom">
+                    <p>&copy; 2025 PlayHub. All rights reserved. | Making play time premium time.</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Venues Page -->
+    <div id="venues" class="page">
+        <div class="container">
+            <h1 class="section-title">Premium Play Venues</h1>
+            <div class="venues-grid">
+                <div class="venue-card" onclick="selectVenue('Elite Play Center')">
+                    <div class="venue-image">🎱</div>
+                    <div class="venue-info">
+                        <div class="venue-name">Elite Play Center</div>
+                        <p>Premium multi-facility center with championship-grade equipment</p>
+                        <div class="venue-facilities">
+                            <span class="facility-tag">Snooker</span>
+                            <span class="facility-tag">Pool</span>
+                        </div>
+                        <div class="venue-price">₹500-1000/hour</div>
+                    </div>
+                </div>
+
+                <div class="venue-card" onclick="selectVenue('PlayZone Ultimate')">
+                    <div class="venue-image">🎮</div>
+                    <div class="venue-info">
+                        <div class="venue-name">PlayZone Ultimate</div>
+                        <p>All-in-one entertainment center with multiple play facilities</p>
+                        <div class="venue-facilities">
+                            <span class="facility-tag">Pool</span>
+                            <span class="facility-tag">Box Cricket</span>
+                            <span class="facility-tag">Pickleball</span>
+                            <span class="facility-tag">Snooker</span>
+                        </div>
+                        <div class="venue-price">₹600-2000/hour</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Booking Page -->
+    <div id="booking" class="page">
+        <div class="container">
+            <div class="booking-container">
+                <h1 class="text-center mb-2">Book Your Play Slot</h1>
+                
+                <div class="booking-section">
+                    <h3>Selected Venue</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                        <span id="selected-venue" style="font-size: 1.2rem; font-weight: bold; color: #4299e1;">Elite Play Center</span>
+                        <button class="btn btn-primary" onclick="showPage('venues')" style="max-width: 150px;">Change Venue</button>
+                    </div>
+                </div>
+
+                <div class="booking-section">
+                    <h3>Select Facility</h3>
+                    <select id="facility-select" class="search-input">
+                        <option>Pool</option>
+                        <option>Box Cricket</option>
+                        <option>Pickleball</option>
+                        <option>Snooker</option>
+                        <option>Golf Simulator</option>
+                    </select>
+                </div>
+
+                <div class="booking-section">
+                    <h3>Select Date</h3>
+                    <div class="date-selector">
+                        <div class="date-btn" onclick="selectDate(this)">
+                            <div style="font-weight: bold;">Today</div>
+                            <div style="font-size: 0.8rem; opacity: 0.7;">Jul 27</div>
+                        </div>
+                        <div class="date-btn" onclick="selectDate(this)">
+                            <div style="font-weight: bold;">Tomorrow</div>
+                            <div style="font-size: 0.8rem; opacity: 0.7;">Jul 28</div>
+                        </div>
+                        <div class="date-btn" onclick="selectDate(this)">
+                            <div style="font-weight: bold;">Tue</div>
+                            <div style="font-size: 0.8rem; opacity: 0.7;">Jul 29</div>
+                        </div>
+                        <div class="date-btn" onclick="selectDate(this)">
+                            <div style="font-weight: bold;">Wed</div>
+                            <div style="font-size: 0.8rem; opacity: 0.7;">Jul 30</div>
+                        </div>
+                        <div class="date-btn" onclick="selectDate(this)">
+                            <div style="font-weight: bold;">Thu</div>
+                            <div style="font-size: 0.8rem; opacity: 0.7;">Jul 31</div>
+                        </div>
+                        <div class="date-btn" onclick="selectDate(this)">
+                            <div style="font-weight: bold;">Fri</div>
+                            <div style="font-size: 0.8rem; opacity: 0.7;">Aug 1</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="booking-section">
+                    <h3>Available Time Slots</h3>
+                    <div class="time-slots">
+                        <div class="time-slot" onclick="selectTimeSlot(this)">09:00</div>
+                        <div class="time-slot" onclick="selectTimeSlot(this)">10:00</div>
+                        <div class="time-slot" onclick="selectTimeSlot(this)">11:00</div>
+                        <div class="time-slot booked">12:00</div>
+                        <div class="time-slot" onclick="selectTimeSlot(this)">13:00</div>
+                        <div class="time-slot" onclick="selectTimeSlot(this)">14:00</div>
+                        <div class="time-slot booked">15:00</div>
+                        <div class="time-slot" onclick="selectTimeSlot(this)">16:00</div>
+                        <div class="time-slot" onclick="selectTimeSlot(this)">17:00</div>
+                        <div class="time-slot" onclick="selectTimeSlot(this)">18:00</div>
+                        <div class="time-slot" onclick="selectTimeSlot(this)">19:00</div>
+                        <div class="time-slot booked">20:00</div>
+                        <div class="time-slot" onclick="selectTimeSlot(this)">21:00</div>
+                        <div class="time-slot" onclick="selectTimeSlot(this)">22:00</div>
+                    </div>
+                    <div style="margin-top: 1rem; font-size: 0.9rem; color: #718096;">
+                        <span style="color: #48bb78;">●</span> Available &nbsp;&nbsp;
+                        <span style="color: #fc8181;">●</span> Booked &nbsp;&nbsp;
+                        <span style="color: #4299e1;">●</span> Selected
+                    </div>
+                </div>
+
+                <div class="booking-summary">
+                    <h3 style="margin-bottom: 1rem;">Booking Summary</h3>
+                    <div class="summary-item">
+                        <span>Venue:</span>
+                        <span id="summary-venue">Elite Play Center</span>
+                    </div>
+                    <div class="summary-item">
+                        <span>Facility:</span>
+                        <span id="summary-facility">Pool</span>
+                    </div>
+                    <div class="summary-item">
+                        <span>Date:</span>
+                        <span id="summary-date">Please select a date</span>
+                    </div>
+                    <div class="summary-item">
+                        <span>Time:</span>
+                        <span id="summary-time">Please select a time slot</span>
+                    </div>
+                    <div class="summary-item">
+                        <span>Duration:</span>
+                        <span>1 hour</span>
+                    </div>
+                    <div class="summary-item">
+                        <span>Total Price:</span>
+                        <span>₹<span id="summary-price">500</span></span>
+                    </div>
+                </div>
+
+                <div class="text-center mt-2">
+                    <button class="btn btn-success" onclick="confirmBooking()" style="font-size: 1.1rem; padding: 1.2rem 3rem;">
+                        Confirm Booking & Pay
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mobile Menu Toggle
+        function toggleMobileMenu() {
+            const navLinks = document.getElementById('navLinks');
+            navLinks.classList.toggle('mobile-open');
+        }
+
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', function(e) {
+            const navLinks = document.getElementById('navLinks');
+            const mobileBtn = document.querySelector('.mobile-menu-btn');
+            
+            if (!navLinks.contains(e.target) && !mobileBtn.contains(e.target)) {
+                navLinks.classList.remove('mobile-open');
+            }
+        });
+
+        // Page Navigation
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            document.getElementById(pageId).classList.add('active');
+            
+            // Close mobile menu
+            document.getElementById('navLinks').classList.remove('mobile-open');
+            
+            // Smooth scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Filter facilities from home page
+        function filterFacility(facility) {
+            showPage('venues');
+            // Add visual feedback
+            setTimeout(() => {
+                const venueCards = document.querySelectorAll('.venue-card');
+                venueCards.forEach(card => {
+                    card.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        card.style.transform = 'scale(1)';
+                    }, 200);
+                });
+            }, 100);
+        }
+
+        // Venue Selection
+        function selectVenue(venueName) {
+            document.getElementById('selected-venue').textContent = venueName;
+            document.getElementById('summary-venue').textContent = venueName;
+            showPage('booking');
+            
+            // Update price based on venue and facility
+            updatePrice();
+        }
+
+        // Update price based on venue and facility
+        function updatePrice() {
+            const venue = document.getElementById('summary-venue').textContent;
+            const facility = document.getElementById('summary-facility').textContent;
+            
+            const prices = {
+                'Elite Play Center': { 'Pool': 500, 'Snooker': 600, 'Pickleball': 400, 'Box Cricket': 1200, 'Golf Simulator': 2000 },
+                'Champions Cricket Arena': { 'Pool': 400, 'Snooker': 500, 'Pickleball': 350, 'Box Cricket': 1500, 'Golf Simulator': 1800 },
+                'Golf Pro Simulator': { 'Pool': 600, 'Snooker': 700, 'Pickleball': 500, 'Box Cricket': 1800, 'Golf Simulator': 2500 },
+                'Racquet Sports Club': { 'Pool': 450, 'Snooker': 550, 'Pickleball': 600, 'Box Cricket': 1100, 'Golf Simulator': 2200 },
+                'Cue Sports Palace': { 'Pool': 550, 'Snooker': 800, 'Pickleball': 400, 'Box Cricket': 1300, 'Golf Simulator': 2300 },
+                'PlayZone Ultimate': { 'Pool': 600, 'Snooker': 700, 'Pickleball': 500, 'Box Cricket': 1600, 'Golf Simulator': 2400 }
+            };
+            
+            const price = prices[venue] ? prices[venue][facility] : 500;
+            document.getElementById('summary-price').textContent = price;
+        }
+
+        // Date Selection
+        function selectDate(element) {
+            // Remove previous selection
+            document.querySelectorAll('.date-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            
+            // Add selection to clicked element
+            element.classList.add('selected');
+            
+            // Update summary
+            const dateText = element.querySelector('div:last-child').textContent;
+            document.getElementById('summary-date').textContent = dateText;
+            
+            // Add animation
+            element.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                element.style.transform = 'scale(1)';
+            }, 150);
+        }
+
+        // Time Slot Selection
+        function selectTimeSlot(element) {
+            // Don't allow selection of booked slots
+            if (element.classList.contains('booked')) {
+                element.style.animation = 'shake 0.5s ease-in-out';
+                setTimeout(() => {
+                    element.style.animation = '';
+                }, 500);
+                showNotification('This slot is already booked. Please select another time.', 'error');
+                return;
+            }
+            
+            // Remove previous selection
+            document.querySelectorAll('.time-slot').forEach(slot => {
+                slot.classList.remove('selected');
+            });
+            
+            // Add selection to clicked element
+            element.classList.add('selected');
+            
+            // Update summary
+            document.getElementById('summary-time').textContent = element.textContent + ':00';
+            
+            // Add animation
+            element.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                element.style.transform = 'scale(1)';
+            }, 150);
+        }
+
+        // Facility Selection Change
+        document.addEventListener('DOMContentLoaded', function() {
+            const facilitySelect = document.getElementById('facility-select');
+            if (facilitySelect) {
+                facilitySelect.addEventListener('change', function() {
+                    document.getElementById('summary-facility').textContent = this.value;
+                    updatePrice();
+                });
+            }
+        });
+
+        // Confirm Booking
+        function confirmBooking() {
+            const venue = document.getElementById('summary-venue').textContent;
+            const facility = document.getElementById('summary-facility').textContent;
+            const date = document.getElementById('summary-date').textContent;
+            const time = document.getElementById('summary-time').textContent;
+            const price = document.getElementById('summary-price').textContent;
+            
+            // Validation
+            if (date === 'Please select a date') {
+                showNotification('Please select a date for your booking', 'error');
+                return;
+            }
+            
+            if (time === 'Please select a time slot') {
+                showNotification('Please select a time slot for your booking', 'error');
+                return;
+            }
+            
+            // Show loading state
+            const button = event.target;
+            const originalText = button.textContent;
+            button.innerHTML = '<span class="loading"></span> Processing Payment...';
+            button.disabled = true;
+            
+            // Simulate booking process
+            setTimeout(() => {
+                const bookingId = 'PH' + Math.random().toString(36).substr(2, 9).toUpperCase();
+                
+                showSuccessMessage(`🎉 Booking Confirmed!\n\nBooking ID: ${bookingId}\nVenue: ${venue}\nFacility: ${facility}\nDate: ${date}\nTime: ${time}\nAmount Paid: ₹${price}\n\nYou will receive a confirmation email shortly.`);
+                
+                // Reset button
+                button.textContent = originalText;
+                button.disabled = false;
+                
+                // Reset form
+                resetBookingForm();
+                
+                // Redirect to venues page after success
+                setTimeout(() => {
+                    showPage('home');
+                }, 3000);
+            }, 2500);
+        }
+
+        // Reset Booking Form
+        function resetBookingForm() {
+            // Reset date selection
+            document.querySelectorAll('.date-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            
+            // Reset time slot selection
+            document.querySelectorAll('.time-slot').forEach(slot => {
+                slot.classList.remove('selected');
+            });
+            
+            // Reset summary
+            document.getElementById('summary-date').textContent = 'Please select a date';
+            document.getElementById('summary-time').textContent = 'Please select a time slot';
+        }
+
+        // Search functionality
+        function performSearch() {
+            const searchInput = document.querySelector('.search-input');
+            const searchTerm = searchInput.value.toLowerCase();
+            
+            if (searchTerm.trim()) {
+                // Show loading animation
+                const button = document.querySelector('.search-btn');
+                const originalText = button.textContent;
+                button.innerHTML = '<span class="loading"></span> Searching...';
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    showPage('venues');
+                    
+                    // Highlight matching venues
+                    const venueCards = document.querySelectorAll('.venue-card');
+                    venueCards.forEach(card => {
+                        const venueName = card.querySelector('.venue-name').textContent.toLowerCase();
+                        if (venueName.includes(searchTerm)) {
+                            card.style.border = '3px solid #4299e1';
+                            card.style.animation = 'pulse 1s ease-in-out 3';
+                        }
+                    });
+                }, 1000);
+            } else {
+                showPage('venues');
+            }
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            const bgColor = type === 'error' ? '#fc8181' : type === 'success' ? '#48bb78' : '#4299e1';
+            
+            notification.style.cssText = `
+                position: fixed;
+                top: 100px;
+                right: 20px;
+                background: ${bgColor};
+                color: white;
+                padding: 1rem 2rem;
+                border-radius: 12px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                z-index: 10000;
+                animation: slideInRight 0.5s ease-out;
+                max-width: 300px;
+                font-size: 0.9rem;
+                line-height: 1.4;
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOutRight 0.5s ease-in';
+                setTimeout(() => {
+                    if (document.body.contains(notification)) {
+                        document.body.removeChild(notification);
+                    }
+                }, 500);
+            }, 4000);
+        }
+
+        // Show success message
+        function showSuccessMessage(message) {
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.8);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 10001;
+                padding: 2rem;
+            `;
+            
+            const content = document.createElement('div');
+            content.style.cssText = `
+                background: white;
+                padding: 2rem;
+                border-radius: 20px;
+                text-align: center;
+                max-width: 500px;
+                width: 100%;
+                animation: slideInUp 0.5s ease-out;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            `;
+            
+            content.innerHTML = `
+                <div style="font-size: 3rem; margin-bottom: 1rem;">🎉</div>
+                <h2 style="color: #48bb78; margin-bottom: 1rem;">Booking Confirmed!</h2>
+                <pre style="white-space: pre-wrap; font-family: inherit; color: #2d3748; line-height: 1.6;">${message}</pre>
+                <button onclick="this.closest('.modal').remove()" style="margin-top: 2rem; padding: 1rem 2rem; background: #48bb78; color: white; border: none; border-radius: 12px; cursor: pointer; font-size: 1rem;">Close</button>
+            `;
+            
+            modal.className = 'modal';
+            modal.appendChild(content);
+            document.body.appendChild(modal);
+        }
+
+        // Add search button click event
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchBtn = document.querySelector('.search-btn');
+            if (searchBtn) {
+                searchBtn.addEventListener('click', performSearch);
+            }
+            
+            // Add enter key support for search
+            const searchInputs = document.querySelectorAll('.search-input');
+            searchInputs.forEach(input => {
+                if (input.type !== 'select-one') {
+                    input.addEventListener('keypress', function(e) {
+                        if (e.key === 'Enter') {
+                            performSearch();
+                        }
+                    });
+                }
+            });
+        });
+
+        // Smooth scrolling for navigation
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Add intersection observer for animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.animation = 'slideInUp 0.8s ease-out forwards';
+                    entry.target.style.opacity = '1';
+                }
+            });
+        }, observerOptions);
+
+        // Observe elements for scroll animations
+        document.addEventListener('DOMContentLoaded', function() {
+            const animatedElements = document.querySelectorAll('.facility-card, .venue-card, .feature-item');
+            animatedElements.forEach(el => {
+                el.style.opacity = '0';
+                el.style.transform = 'translateY(30px)';
+                observer.observe(el);
+            });
+        });
+
+        // Handle window resize for mobile responsiveness
+        window.addEventListener('resize', function() {
+            const navLinks = document.getElementById('navLinks');
+            if (window.innerWidth > 768) {
+                navLinks.classList.remove('mobile-open');
+            }
+        });
+
+        // Add loading states for better UX
+        function addLoadingState(element, duration = 1000) {
+            const originalContent = element.innerHTML;
+            element.innerHTML = '<span class="loading"></span>';
+            element.disabled = true;
+            
+            setTimeout(() => {
+                element.innerHTML = originalContent;
+                element.disabled = false;
+            }, duration);
+        }
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set initial facility
+            updatePrice();
+            
+            // Add smooth animations
+            document.body.style.opacity = '0';
+            setTimeout(() => {
+                document.body.style.opacity = '1';
+                document.body.style.transition = 'opacity 0.5s ease-in';
+            }, 100);
+        });
+    </script>
+</body>
+</html><span class="facility-tag">Pool</span>
+                            <span class="facility-tag">Snooker</span>
+                            <span class="facility-tag">Pickleball</span>
+                        </div>
+                        <div class="venue-price">₹300-800/hour</div>
+                    </div>
+                </div>
+
+                <div class="venue-card" onclick="selectVenue('Champions Cricket Arena')">
+                    <div class="venue-image">🏏</div>
+                    <div class="venue-info">
+                        <div class="venue-name">Champions Cricket Arena</div>
+                        <p>Professional box cricket facility with advanced bowling machines</p>
+                        <div class="venue-facilities">
+                            <span class="facility-tag">Box Cricket</span>
+                            <span class="facility-tag">Nets</span>
+                        </div>
+                        <div class="venue-price">₹1000-1800/hour</div>
+                    </div>
+                </div>
+
+                <div class="venue-card" onclick="selectVenue('Golf Pro Simulator')">
+                    <div class="venue-image">⛳</div>
+                    <div class="venue-info">
+                        <div class="venue-name">Golf Pro Simulator</div>
+                        <p>Latest golf simulator technology with world-famous courses</p>
+                        <div class="venue-facilities">
+                            <span class="facility-tag">Golf Simulator</span>
+                            <span class="facility-tag">Swing Analysis</span>
+                        </div>
+                        <div class="venue-price">₹1500-3000/hour</div>
+                    </div>
+                </div>
+
+                <div class="venue-card" onclick="selectVenue('Racquet Sports Club')">
+                    <div class="venue-image">🏓</div>
+                    <div class="venue-info">
+                        <div class="venue-name">Racquet Sports Club</div>
+                        <p>Dedicated pickleball courts with professional coaching available</p>
+                        <div class="venue-facilities">
+                            <span class="facility-tag">Pickleball</span>
+                            <span class="facility-tag">Equipment Rental</span>
+                        </div>
+                        <div class="venue-price">₹400-900/hour</div>
+                    </div>
+                </div>
+
+                <div class="venue-card" onclick="selectVenue('Cue Sports Palace')">
+                    <div class="venue-image">🎯</div>
+                    <div class="venue-info">
+                        <div class="venue-name">Cue Sports Palace</div>
+                        <p>Premium snooker hall with tournament-standard tables</p>
+                        <div class="venue-facilities">
+                            
