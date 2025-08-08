@@ -97,12 +97,12 @@ function getDefaultImagePath($type = 'user', $base_web_path)
     }
 
     $default_paths = [
-        "assets/images/default-{$type}.jpg", // Try default-student.jpg
-        "assets/img/default-{$type}.jpg",    // Try default-student.jpg
-        "assets/images/default-user.jpg",    // Generic user default
-        "assets/img/default-user.jpg",       // Generic user default
-        "assets/images/no-photo.jpg",        // General no photo
-        "assets/img/no-photo.jpg"            // General no photo
+        "assets/images/unisex.png", // Try default-student.jpg
+        "assets/images/unisex.png",    // Try default-student.jpg
+        "assets/images/unisex.png",    // Generic user default
+        "assets/images/unisex.png",       // Generic user default
+        "assets/images/unisex.png",        // General no photo
+        "assets/images/unisex.png"            // General no photo
     ];
 
     foreach ($default_paths as $path) {

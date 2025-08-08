@@ -10,7 +10,6 @@ if (isset($_POST['class_std']) && isset($_POST['exam_type']) && isset($_POST['ac
     $academic_year = $_POST['academic_year'];
 
     try {
-        // PDO Change: Converted all mysqli queries to PDO
         $subjects_query = "SELECT s.subject_name 
                            FROM standard_subjects ss
                            JOIN subjects s ON ss.subject_id = s.subject_id
@@ -73,17 +72,38 @@ if (isset($_POST['class_std']) && isset($_POST['exam_type']) && isset($_POST['ac
 
             while ($mark_row = $stmt_marks->fetch(PDO::FETCH_ASSOC)) {
                 if (isset($students[$mark_row['student_id']])) {
-                    $students[$mark_row['student_id']]['marks'][$mark_row['subject_name']] = $mark_row['marks_obtained'];
+                    // MODIFIED: Store both obtained and total marks for each subject
+                    $students[$mark_row['student_id']]['marks'][$mark_row['subject_name']] = [
+                        'obtained' => $mark_row['marks_obtained'],
+                        'total' => $mark_row['total_marks']
+                    ];
                     $students[$mark_row['student_id']]['total_obtained'] += $mark_row['marks_obtained'];
                     $students[$mark_row['student_id']]['total_possible'] += $mark_row['total_marks'];
                 }
             }
 
-            foreach ($students as &$student_data) { // Use reference to modify array directly
+            // MODIFIED: Loop through students to apply the new pass/fail logic
+            foreach ($students as &$student_data) {
                 if ($student_data['total_possible'] > 0) {
-                    $percentage = ($student_data['total_obtained'] / $student_data['total_possible']) * 100;
-                    $student_data['percentage'] = round($percentage, 2);
-                    $student_data['status'] = ($percentage >= $passing_percentage) ? 'Pass' : 'Fail';
+                    $overall_percentage = ($student_data['total_obtained'] / $student_data['total_possible']) * 100;
+                    $student_data['percentage'] = round($overall_percentage, 2);
+
+                    // ADDED: Logic to check for failure in any single subject
+                    $failed_a_subject = false;
+                    foreach ($student_data['marks'] as $subject => $mark_details) {
+                        $subject_percentage = ($mark_details['obtained'] / $mark_details['total']) * 100;
+                        if ($subject_percentage < $passing_percentage) {
+                            $failed_a_subject = true;
+                            break; // Exit the loop early if one failure is found
+                        }
+                    }
+
+                    // ADDED: Final status check
+                    if ($overall_percentage >= $passing_percentage && !$failed_a_subject) {
+                        $student_data['status'] = 'Pass';
+                    } else {
+                        $student_data['status'] = 'Fail';
+                    }
                 }
             }
             unset($student_data); // Unset reference
