@@ -24,7 +24,7 @@ if ($student_id <= 0) {
 
 // Fetch student data with school information
 // PDO Change: Switched from mysqli_prepare to PDO prepare/execute
-$query = "SELECT s.*, sc.school_name, sc.address as school_address
+$query = "SELECT s.*, sc.school_name, sc.address as school_address, sc.email as school_email, sc.phone as school_phone
           FROM student s 
           LEFT JOIN school sc ON s.school_id = sc.id
           WHERE s.id = ?";
@@ -165,7 +165,7 @@ $default_photo = getDefaultImagePath('student', BASE_WEB_PATH);
                 <div class="container-fluid">
 
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                        <h1 class="h3 mb-0 text-gray-800">Student Details</h1>
+                        <h1 class="h3 mb-0 text-gray-800">Student's Details</h1>
                         <div>
                             <a href="student_list.php" class="btn btn-secondary btn-sm mr-2">
                                 <i class="fas fa-arrow-left"></i> Back to List
@@ -181,10 +181,10 @@ $default_photo = getDefaultImagePath('student', BASE_WEB_PATH);
                     <div class="row">
 
                         <div class="col-lg-4 mb-4">
-                            <div class="card shadow">
+                            <div class="card shadow h-100">
                                 <div class="card-header py-3">
                                     <h6 class="m-0 font-weight-bold text-primary">
-                                        <i class="fas fa-camera"></i> Student Photo
+                                        <i class="fas fa-camera"></i> Student Profile
                                     </h6>
                                 </div>
                                 <div class="card-body">
@@ -202,7 +202,9 @@ $default_photo = getDefaultImagePath('student', BASE_WEB_PATH);
                                     </div>
                                     <div class="text-center">
                                         <small class="text-muted">
-                                            <?php echo ($photo_path) ? 'Student Photo' : 'Default Avatar'; ?>
+                                            <!-- <?php echo ($photo_path) ? 'Student Photo' : 'Default Avatar'; ?> -->
+                                            <h4 class="font-weight-bold text-gray-800"><?php echo htmlspecialchars($student['student_name']); ?></h4>
+                                    <p class="text-muted">Roll No : <?php echo htmlspecialchars($student['rollno']); ?></p>
                                         </small>
                                     </div>
                                 </div>
@@ -306,7 +308,7 @@ $default_photo = getDefaultImagePath('student', BASE_WEB_PATH);
                         </div>
 
                         <div class="col-lg-6 mb-4">
-                            <div class="card shadow">
+                            <div class="card shadow h-100">
                                 <div class="card-header py-3">
                                     <h6 class="m-0 font-weight-bold text-primary">
                                         <i class="fas fa-school"></i> School Information
@@ -323,6 +325,18 @@ $default_photo = getDefaultImagePath('student', BASE_WEB_PATH);
                                         <div class="col-sm-4 font-weight-bold">School Address:</div>
                                         <div class="col-sm-8">
                                             <?php echo htmlspecialchars($student['school_address'] ?? 'N/A'); ?></div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-sm-4 font-weight-bold">School Email:</div>
+                                        <div class="col-sm-8">
+                                            <?php echo htmlspecialchars($student['school_email'] ?? 'N/A'); ?></div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-sm-4 font-weight-bold">School Phone:</div>
+                                        <div class="col-sm-8">
+                                            <?php echo htmlspecialchars($student['school_phone'] ?? 'N/A'); ?></div>
                                     </div>
                                 </div>
                             </div>
