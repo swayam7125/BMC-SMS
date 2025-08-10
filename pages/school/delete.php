@@ -21,7 +21,6 @@ try {
     $conn->beginTransaction();
 
     // --- 1. ARCHIVE AND DELETE PRINCIPALS ---
-    // CORRECTED: Explicitly select columns to ensure order and count.
     $stmt_principals = $conn->prepare('SELECT id, principal_name, email, phone, dob, gender, blood_group, address, qualification, salary, batch, school_id FROM "principal" WHERE "school_id" = ?');
     $stmt_principals->execute([$school_id]);
     $principals = $stmt_principals->fetchAll(PDO::FETCH_ASSOC);
@@ -29,10 +28,11 @@ try {
     $archive_p_stmt = $conn->prepare('INSERT INTO "deleted_principals" (id, principal_name, email, phone, dob, gender, blood_group, address, qualification, salary, batch, school_id, deleted_by_role) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     $delete_user_stmt = $conn->prepare('DELETE FROM "users" WHERE "id" = ?');
     foreach ($principals as $principal) {
-        // CORRECTED: Manually build the parameter array to guarantee it matches the INSERT statement.
         $params = [
             $principal['id'], $principal['principal_name'], $principal['email'], $principal['phone'], $principal['dob'],
-            $principal['gender'], $principal['blood_group'], $principal['address'], $principal['qualification'],
+            // CORRECTED: Convert gender to lowercase before inserting
+            strtolower($principal['gender']),
+            $principal['blood_group'], $principal['address'], $principal['qualification'],
             $principal['salary'], $principal['batch'], $principal['school_id'], $role
         ];
         $archive_p_stmt->execute($params);
@@ -40,17 +40,17 @@ try {
     }
 
     // --- 2. ARCHIVE AND DELETE TEACHERS ---
-    // CORRECTED: Explicitly select columns.
     $stmt_teachers = $conn->prepare('SELECT id, teacher_name, email, phone, gender, dob, blood_group, address, school_id, qualification, subject, language_known, salary, std, experience, batch, class_teacher, class_teacher_std FROM "teacher" WHERE "school_id" = ?');
     $stmt_teachers->execute([$school_id]);
     $teachers = $stmt_teachers->fetchAll(PDO::FETCH_ASSOC);
     
     $archive_t_stmt = $conn->prepare('INSERT INTO "deleted_teachers" (id, teacher_name, email, phone, gender, dob, blood_group, address, school_id, qualification, subject, language_known, salary, std, experience, batch, class_teacher, class_teacher_std, deleted_by_role) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     foreach ($teachers as $teacher) {
-        // CORRECTED: Manually build the parameter array.
         $params = [
-            $teacher['id'], $teacher['teacher_name'], $teacher['email'], $teacher['phone'], $teacher['gender'], $teacher['dob'],
-            $teacher['blood_group'], $teacher['address'], $teacher['school_id'], $teacher['qualification'], $teacher['subject'],
+            $teacher['id'], $teacher['teacher_name'], $teacher['email'], $teacher['phone'],
+            // CORRECTED: Convert gender to lowercase before inserting
+            strtolower($teacher['gender']),
+            $teacher['dob'], $teacher['blood_group'], $teacher['address'], $teacher['school_id'], $teacher['qualification'], $teacher['subject'],
             $teacher['language_known'], $teacher['salary'], $teacher['std'], $teacher['experience'], $teacher['batch'],
             $teacher['class_teacher'], $teacher['class_teacher_std'], $role
         ];
@@ -59,17 +59,18 @@ try {
     }
 
     // --- 3. ARCHIVE AND DELETE STUDENTS ---
-    // CORRECTED: Explicitly select columns.
     $stmt_students = $conn->prepare('SELECT id, student_name, email, rollno, std, academic_year, dob, gender, blood_group, address, father_name, father_phone, mother_name, mother_phone, school_id FROM "student" WHERE "school_id" = ?');
     $stmt_students->execute([$school_id]);
     $students = $stmt_students->fetchAll(PDO::FETCH_ASSOC);
 
     $archive_s_stmt = $conn->prepare('INSERT INTO "deleted_students" (id, student_name, email, rollno, std, academic_year, dob, gender, blood_group, address, father_name, father_phone, mother_name, mother_phone, school_id, deleted_by_role) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     foreach ($students as $student) {
-        // CORRECTED: Manually build the parameter array.
         $params = [
             $student['id'], $student['student_name'], $student['email'], $student['rollno'], $student['std'],
-            $student['academic_year'], $student['dob'], $student['gender'], $student['blood_group'], $student['address'],
+            $student['academic_year'], $student['dob'],
+            // CORRECTED: Convert gender to lowercase before inserting
+            strtolower($student['gender']),
+            $student['blood_group'], $student['address'],
             $student['father_name'], $student['father_phone'], $student['mother_name'], $student['mother_phone'],
             $student['school_id'], $role
         ];
@@ -78,7 +79,6 @@ try {
     }
 
     // --- 4. ARCHIVE AND DELETE THE SCHOOL ---
-    // CORRECTED: Explicitly select columns.
     $stmt_school = $conn->prepare('SELECT id, school_logo, school_name, email, phone, school_opening, school_type, education_board, school_medium, school_category, address FROM "school" WHERE "id" = ?');
     $stmt_school->execute([$school_id]);
     $school_data = $stmt_school->fetch(PDO::FETCH_ASSOC);
@@ -86,7 +86,6 @@ try {
     if ($school_data) {
         $archive_sc_stmt = $conn->prepare('INSERT INTO "deleted_schools" (id, school_logo, school_name, email, phone, school_opening, school_type, education_board, school_medium, school_category, address, deleted_by_role) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
         
-        // CORRECTED: Manually build the parameter array.
         $params = [
             $school_data['id'], $school_data['school_logo'], $school_data['school_name'], $school_data['email'],
             $school_data['phone'], $school_data['school_opening'], $school_data['school_type'], $school_data['education_board'],

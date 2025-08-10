@@ -109,7 +109,7 @@ $default_photo = getDefaultImagePath(BASE_URL);
                         <h1 class="h3 mb-0 text-gray-800">Principal Details</h1>
                         <div>
                             <a href="principal_list.php" class="btn btn-secondary btn-sm mr-2"><i class="fas fa-arrow-left"></i> Back to List</a>
-                            <a href="../forms/edit_principal.php?id=<?php echo $principal['id']; ?>" class="btn btn-primary btn-sm"><i class="fas fa-edit"></i> Edit Principal</a>
+                            <a href="edit.php?id=<?php echo $principal['id']; ?>" class="btn btn-primary btn-sm"><i class="fas fa-edit"></i> Edit Principal</a>
                         </div>
                     </div>
                     <div class="row">
