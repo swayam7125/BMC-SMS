@@ -53,8 +53,13 @@ $pageTitle = 'Exam Timetables';
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400i,600,700" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.21/css/dataTables.bootstrap4.min.css">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+
 </head>
 
 <body id="page-top">
@@ -70,7 +75,7 @@ $pageTitle = 'Exam Timetables';
                         <div class="card shadow mb-4">
                             <div class="card-body text-center">No exam timetables have been published yet.</div>
                         </div>
-                    <?php else: foreach ($timetables as $tt): ?>
+                        <?php else: foreach ($timetables as $tt): ?>
                             <div class="card shadow mb-4">
                                 <div class="card-header py-3">
                                     <h6 class="m-0 font-weight-bold text-primary"><?php echo htmlspecialchars($tt['title']); ?></h6>
@@ -78,7 +83,7 @@ $pageTitle = 'Exam Timetables';
                                 <div class="card-body">
                                     <?php if (!empty($tt['description'])): ?><p><?php echo nl2br(htmlspecialchars($tt['description'])); ?></p><?php endif; ?>
                                     <p class="small text-muted">Published on: <?php echo date('d F, Y', strtotime($tt['created_at'])); ?></p>
-                                    
+
                                     <a href="<?php echo htmlspecialchars(BASE_WEB_PATH . ltrim($tt['file_path'], '/')); ?>" class="btn btn-primary" download="<?php echo htmlspecialchars($tt['original_filename']); ?>">
                                         <i class="fas fa-download fa-sm"></i> Download Timetable
                                     </a>
