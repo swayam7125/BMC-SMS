@@ -546,13 +546,13 @@ if ($userId && isset($conn)) {
     <script src="/BMC-SMS/assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="/BMC-SMS/assets/js/sb-admin-2.min.js"></script>
     <script src="/BMC-SMS/assets/vendor/chart.js/Chart.min.js"></script>
-    <script src="/BMC-SMS/assets/js/notification_window.js"></script>
     <script src="/BMC-SMS/assets/js/dynamic_chart.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const notificationContainer = document.getElementById('dashboard-notifications-list');
             const base_path = '/BMC-SMS/';
 
+            // FIX: This function now includes the new icon for acquisition requests
             function getIconClass(type) {
                 switch (type) {
                     case 'borrow_status':
@@ -567,6 +567,8 @@ if ($userId && isset($conn)) {
                         return 'fas fa-chalkboard-teacher';
                     case 'new_assignment':
                         return 'fas fa-file-signature';
+                    case 'acquisition_request':
+                        return 'fas fa-inbox';
                     default:
                         return 'fas fa-bell';
                 }
@@ -601,8 +603,8 @@ if ($userId && isset($conn)) {
                             const textColorClass = !notification.is_read ? '' : 'text-grey-500';
                             const opacityClass = !notification.is_read ? 'opacity : 1 ;' : 'opacity : 0.85 ;';
 
-                            // Construct the final link with notif_id to mark as read
-                            const link = `${base_path}${notification.link.replace(/^\//, '')}`;
+                            // FIX: The link is now directly from the database and does not need a redundant base_path prepend.
+                            const link = `${notification.link}`;
                             const separator = link.includes('?') ? '&' : '?';
                             const final_link = `${link}${separator}notif_id=...`; // Placeholder for notif_id which is missing
 
@@ -633,4 +635,3 @@ if ($userId && isset($conn)) {
 </body>
 
 </html>
-<?php $conn = null; ?>

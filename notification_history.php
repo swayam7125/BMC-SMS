@@ -77,6 +77,9 @@ if (!function_exists('getNotificationIcon')) {
             case 'exam_timetable': return 'fas fa-calendar-alt text-white';
             case 'new_notes': return 'fas fa-sticky-note text-white';
             case 'result_published': return 'fas fa-poll-h text-white';
+            // FIX: Added icon for acquisition requests
+            case 'acquisition_request': return 'fas fa-inbox text-white';
+            // FIX: Added icon for acquisition status
             case 'acquisition_status': return 'fas fa-check-circle text-white';
             default: return 'fas fa-bell text-white';
         }
@@ -155,16 +158,21 @@ if (!defined('BASE_WEB_PATH')) {
                                             $base_link = htmlspecialchars(BASE_WEB_PATH . ltrim($notification['link'], '/'));
                                             $separator = (strpos($base_link, '?') === false) ? '?' : '&';
                                             $final_link = $notification['is_read'] ? $base_link : $base_link . $separator . 'notif_id=' . $notification['id'];
+                                            // FIX: The icon class is now dynamically retrieved using the updated function
+                                            $icon_class = getNotificationIcon($notification['type']);
+                                            $bgClass = !$notification['is_read'] ? 'bg-light' : '';
+                                            $iconBgClass = !$notification['is_read'] ? 'bg-primary' : 'bg-success';
+                                            $fontWeightClass = !$notification['is_read'] ? 'font-weight-bold' : '';
                                         ?>
-                                        <a href="<?php echo $final_link; ?>" class="list-group-item list-group-item-action d-flex align-items-center <?php echo !$notification['is_read'] ? 'bg-light' : ''; ?>">
+                                        <a href="<?php echo $final_link; ?>" class="list-group-item list-group-item-action d-flex align-items-center <?php echo $bgClass; ?>">
                                             <div class="mr-3">
-                                                <div class="icon-circle <?php echo !$notification['is_read'] ? 'bg-primary' : 'bg-success'; ?>">
-                                                    <i class="<?php echo getNotificationIcon($notification['type']); ?>"></i>
+                                                <div class="icon-circle <?php echo $iconBgClass; ?>">
+                                                    <i class="<?php echo $icon_class; ?>"></i>
                                                 </div>
                                             </div>
                                             <div class="flex-grow-1">
                                                 <div class="small text-gray-500"><?php echo date('F j, Y, g:i a', strtotime($notification['created_at'])); ?></div>
-                                                <span class="<?php echo !$notification['is_read'] ? 'font-weight-bold' : ''; ?>"><?php echo htmlspecialchars($notification['message']); ?></span>
+                                                <span class="<?php echo $fontWeightClass; ?>"><?php echo htmlspecialchars($notification['message']); ?></span>
                                             </div>
                                             <div class="ml-3">
                                                 <span class="badge badge-light p-2"><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $notification['type']))); ?></span>

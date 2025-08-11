@@ -52,13 +52,13 @@ if (isset($conn) && $user_id) {
             case 'student':
                 // Using COUNT with FILTER is more efficient in PostgreSQL
                 $sql_counts = "SELECT
-                                COUNT(*) FILTER (WHERE type = 'new_assignment') AS assignments,
-                                COUNT(*) FILTER (WHERE type = 'marks_uploaded') AS results,
-                                COUNT(*) FILTER (WHERE type = 'school_notice') AS notices,
-                                COUNT(*) FILTER (WHERE type = 'new_notes') AS notes,
-                                COUNT(*) FILTER (WHERE type = 'exam_timetable') AS exam_timetables,
-                                COUNT(*) FILTER (WHERE type = 'borrow_status') AS library_status
-                           FROM notifications WHERE user_id = ? AND is_read = false";
+                                COUNT(*) FILTER (WHERE type = 'new_assignment' AND is_read = false) AS assignments,
+                                COUNT(*) FILTER (WHERE type = 'marks_uploaded' AND is_read = false) AS results,
+                                COUNT(*) FILTER (WHERE type = 'school_notice' AND is_read = false) AS notices,
+                                COUNT(*) FILTER (WHERE type = 'new_notes' AND is_read = false) AS notes,
+                                COUNT(*) FILTER (WHERE type = 'exam_timetable' AND is_read = false) AS exam_timetables,
+                                COUNT(*) FILTER (WHERE type = 'borrow_status' AND is_read = false) AS library_status
+                           FROM notifications WHERE user_id = ?";
                 $stmt_counts = $conn->prepare($sql_counts);
                 $stmt_counts->execute([$user_id]);
                 $result = $stmt_counts->fetch(PDO::FETCH_ASSOC);
@@ -77,8 +77,7 @@ if (isset($conn) && $user_id) {
                 // Query 1: Get count of unread notices specifically from superadmin
                 $sql_bmc_notices = "SELECT COUNT(n.id)
                                     FROM notifications n
-                                    JOIN notices nt ON n.notice_id = nt.id
-                                    JOIN users u ON nt.sender_id = u.id
+                                    JOIN users u ON n.user_id = u.id
                                     WHERE n.user_id = ?
                                       AND n.is_read = false
                                       AND n.type = 'new_notice'
@@ -110,12 +109,12 @@ if (isset($conn) && $user_id) {
 
                 // UPDATED QUERY FOR TEACHER
                 $sql_counts = "SELECT
-                                  COUNT(*) FILTER (WHERE type = 'school_notice') AS teacher_notices,
-                                  COUNT(*) FILTER (WHERE type = 'assignment_submission') AS submissions,
-                                  COUNT(*) FILTER (WHERE type = 'leave_status') AS leave_status,
-                                  COUNT(*) FILTER (WHERE type = 'exam_timetable') AS exam_timetables,
-                                  COUNT(*) FILTER (WHERE type = 'borrow_status') AS library_status
-                               FROM notifications WHERE user_id = ? AND is_read = false";
+                                  COUNT(*) FILTER (WHERE type = 'school_notice' AND is_read = false) AS teacher_notices,
+                                  COUNT(*) FILTER (WHERE type = 'assignment_submission' AND is_read = false) AS submissions,
+                                  COUNT(*) FILTER (WHERE type = 'leave_status' AND is_read = false) AS leave_status,
+                                  COUNT(*) FILTER (WHERE type = 'exam_timetable' AND is_read = false) AS exam_timetables,
+                                  COUNT(*) FILTER (WHERE type = 'borrow_status' AND is_read = false) AS library_status
+                               FROM notifications WHERE user_id = ?";
                 $stmt_counts = $conn->prepare($sql_counts);
                 $stmt_counts->execute([$user_id]);
                 $result = $stmt_counts->fetch(PDO::FETCH_ASSOC);
@@ -129,19 +128,17 @@ if (isset($conn) && $user_id) {
                 break;
 
             case 'librarian':
-                // --- FIX: Using consistent and efficient COUNT(*) FILTER syntax ---
+                // FIX: Added the acquisition_request to the query
                 $sql_counts = "SELECT
-                                    COUNT(*) FILTER (WHERE type = 'borrow_request') AS borrow_reqs,
-                                    -- FIX: Corrected the alias from acq_qs to acq_reqs
-                                    COUNT(*) FILTER (WHERE type = 'acquisition_request') AS acq_reqs,
-                                    COUNT(*) FILTER (WHERE type = 'principal_to_librarian_notice') AS p_to_l_notices
-                                FROM notifications WHERE user_id = ? AND is_read = false";
+                                    COUNT(*) FILTER (WHERE type = 'borrow_request' AND is_read = false) AS borrow_reqs,
+                                    COUNT(*) FILTER (WHERE type = 'acquisition_request' AND is_read = false) AS acq_reqs,
+                                    COUNT(*) FILTER (WHERE type = 'principal_to_librarian_notice' AND is_read = false) AS p_to_l_notices
+                                FROM notifications WHERE user_id = ?";
                 $stmt_counts = $conn->prepare($sql_counts);
                 $stmt_counts->execute([$user_id]);
                 $result = $stmt_counts->fetch(PDO::FETCH_ASSOC);
                 if ($result) {
                     $unread_borrow_requests = (int) ($result['borrow_reqs'] ?? 0);
-                    // FIX: Corrected the variable to use the correct alias from the SQL query
                     $unread_acquisition_requests = (int) ($result['acq_reqs'] ?? 0);
                     $unread_principal_to_librarian_notices = (int) ($result['p_to_l_notices'] ?? 0);
                 }
@@ -726,4 +723,4 @@ if (isset($conn) && $user_id) {
 </ul>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="../../assets/js/sidebar.js"></script>
+<script src="/BMC-SMS/assets/js/sidebar.js"></script>

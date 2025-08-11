@@ -6,6 +6,11 @@ include_once __DIR__ . "/connect.php";
 
 $response = ['status' => 'error', 'message' => 'An unknown error occurred.'];
 
+// FIX: Define BASE_WEB_PATH here for consistent path handling
+if (!defined('BASE_WEB_PATH')) {
+    define('BASE_WEB_PATH', '/BMC-SMS/');
+}
+
 if (!isset($conn) || $conn === null) {
     error_log("Database connection failed in messaging_api.php.");
     $response['message'] = 'Server configuration error: Could not connect to the database.';
@@ -53,6 +58,13 @@ try {
                         // 3. Execute the query, passing the correctly formatted string
                         $stmt_students->execute([$school_id, $postgres_array_string]);
                         $contacts = $stmt_students->fetchAll(PDO::FETCH_ASSOC);
+
+                        // FIX: Normalize image paths to be absolute URLs before sending
+                        foreach ($contacts as &$contact) {
+                            if (!empty($contact['image_path'])) {
+                                $contact['image_path'] = BASE_WEB_PATH . ltrim($contact['image_path'], '/');
+                            }
+                        }
                     }
                 }
             } elseif ($current_user_role === 'student') {
@@ -70,6 +82,13 @@ try {
                     $stmt_teachers = $conn->prepare($sql);
                     $stmt_teachers->execute([$school_id, $student_std]);
                     $contacts = $stmt_teachers->fetchAll(PDO::FETCH_ASSOC);
+
+                    // FIX: Normalize image paths to be absolute URLs before sending
+                    foreach ($contacts as &$contact) {
+                        if (!empty($contact['image_path'])) {
+                            $contact['image_path'] = BASE_WEB_PATH . ltrim($contact['image_path'], '/');
+                        }
+                    }
                 }
             }
             $response = ['status' => 'success', 'contacts' => $contacts];
@@ -106,6 +125,13 @@ try {
                 $current_user_id
             ]);
             $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // FIX: Normalize sender image paths to be absolute URLs
+            foreach ($messages as &$msg) {
+                if (!empty($msg['sender_image'])) {
+                    $msg['sender_image'] = BASE_WEB_PATH . ltrim($msg['sender_image'], '/');
+                }
+            }
 
             $response = ['status' => 'success', 'messages' => $messages];
             break;

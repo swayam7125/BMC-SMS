@@ -41,7 +41,7 @@ try {
 
         // Create a notification for the user who made the request
         $notification_msg = "Your book request for \"" . htmlspecialchars($book_title) . "\" has been " . strtolower($new_status) . ".";
-        $notification_link = 'notification_history.php';
+        $notification_link = 'pages/user/my_book_requests.php';
         $notification_type = 'acquisition_status';
 
         $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");

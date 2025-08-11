@@ -88,7 +88,7 @@ if ($isLoggedIn && isset($_COOKIE['encrypted_user_id'])) {
     }
 }
 
-// --- FIX: Wrap the function in a check to prevent redeclaration ---
+// --- FIX: Wrap the function in a check to prevent redeclaration and add new notification types ---
 if (!function_exists('getNotificationIcon')) {
     // Function to determine notification icon based on type
     function getNotificationIcon($type) {
@@ -106,7 +106,8 @@ if (!function_exists('getNotificationIcon')) {
             case 'exam_timetable': return 'fas fa-calendar-alt text-white';
             case 'new_notes': return 'fas fa-sticky-note text-white';
             case 'result_published': return 'fas fa-poll-h text-white';
-            case 'acquisition_request': return 'fas fa-inbox text-white'; // FIX: Added icon for book requests
+            case 'acquisition_request': return 'fas fa-inbox text-white';
+            case 'acquisition_status': return 'fas fa-check-circle text-white';
             default: return 'fas fa-bell text-white';
         }
     }

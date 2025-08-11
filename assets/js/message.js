@@ -1,7 +1,7 @@
 $(document).ready(function() {
     let activeContactId = null;
     const api_url = window.base_url + 'includes/messaging_api.php';
-    const default_avatar = window.base_url + 'assets/img/default-user.jpg';
+    const default_avatar = window.base_url + 'assets/images/unisex.png'; // FIX: Corrected default avatar path
     let messageInterval = null;
 
     function loadContacts() {
@@ -15,7 +15,8 @@ $(document).ready(function() {
                 contactsList.empty();
                 if (response.status === 'success' && response.contacts.length > 0) {
                     response.contacts.forEach(contact => {
-                        const contactImage = contact.image_path ? window.base_url + contact.image_path.replace(/^\//, '') : default_avatar;
+                        // FIX: Use the full path provided by the API directly
+                        const contactImage = contact.image_path || default_avatar;
                         const contactElement = `
                             <li class="list-group-item list-group-item-action contact-item" data-contact-id="${contact.id}" data-contact-name="${escapeHtml(contact.name)}">
                                 <div class="d-flex align-items-center">
@@ -56,8 +57,8 @@ $(document).ready(function() {
                         const wrapperClass = isSender ? 'sent' : 'received';
                         const bubbleClass = isSender ? 'sent' : 'received';
                         
-                        // Use sender's image, or a default if not available
-                        const senderImage = msg.sender_image ? window.base_url + msg.sender_image.replace(/^\//, '') : default_avatar;
+                        // FIX: Use the full path provided by the API directly
+                        const senderImage = msg.sender_image || default_avatar;
 
                         const messageHtml = `
                             <div class="message-wrapper ${wrapperClass}">

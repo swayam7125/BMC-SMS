@@ -111,7 +111,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
             $email = trim($_POST['email']);
             $phone = trim($_POST['phone'] ?? '');
             $dob = $_POST['dob'];
-            $gender = strtolower($_POST['gender']);
+            $gender = $_POST['gender'];
             $blood_group = trim($_POST['blood_group']);
             $address = trim($_POST['address']);
             $current_image_path = $_POST['current_image_path'];

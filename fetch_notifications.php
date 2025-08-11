@@ -27,7 +27,7 @@ $notifications = [];
 
 try {
     // This query correctly fetches ALL notifications (read and unread) for the dashboard
-    $stmt = $conn->prepare("SELECT message, link, is_read, created_at, type FROM notifications WHERE user_id = ? ORDER BY created_at DESC");
+    $stmt = $conn->prepare("SELECT id, message, link, is_read, created_at, type FROM notifications WHERE user_id = ? ORDER BY created_at DESC");
     $stmt->execute([$userId]);
     $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -45,6 +45,7 @@ $conn = null;
 
 // --- Categorize Notifications ---
 $categorized = [
+    'Acquisition Requests' => [], // FIX: Added a new category for Acquisition Requests
     'Assignments' => [],
     'Leave Status' => [],
     'Notices' => [],
@@ -56,6 +57,7 @@ foreach ($notifications as $notification) {
     $type = $notification['type'];
     // Sanitize and format the notification data
     $formatted_notification = [
+        'id' => htmlspecialchars($notification['id']),
         'message' => htmlspecialchars($notification['message']),
         'link' => htmlspecialchars($notification['link'] ?? '#'),
         'is_read' => (bool)$notification['is_read'],
@@ -63,8 +65,10 @@ foreach ($notifications as $notification) {
         'raw_date' => $notification['created_at']
     ];
 
-    // Categorization logic based on the 'type' column
-    if (strpos($type, 'assignment') !== false) {
+    // FIX: Added logic to categorize acquisition_request notifications
+    if (strpos($type, 'acquisition_request') !== false) {
+        $categorized['Acquisition Requests'][] = $formatted_notification;
+    } elseif (strpos($type, 'assignment') !== false) {
         $categorized['Assignments'][] = $formatted_notification;
     } elseif (strpos($type, 'leave') !== false) {
         $categorized['Leave Status'][] = $formatted_notification;
