@@ -142,7 +142,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                                         $imagePathFromDB = $user_data[$image_field] ?? '';
                                         $profileImagePath = getWebAccessibleImagePath($imagePathFromDB, BASE_URL, $path_role) ?? $defaultImagePath;
                                         ?>
-                                        <img src="<?php echo htmlspecialchars($profileImagePath); ?>" class="profile-photo mb-3" alt="Profile Photo" onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($defaultImagePath); ?>';">
+                                        <img src="<?php echo htmlspecialchars($profileImagePath); ?>" class="profile-photo mb-4 mt-3 h-50 w-50" alt="Profile Photo" onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($defaultImagePath); ?>';">
                                         <h4 class="text-primary font-weight-bold"><?php echo htmlspecialchars($user_data[$name_field] ?? 'N/A'); ?></h4>
                                         <p class="text-muted text-capitalize"><?php echo htmlspecialchars($user_role); ?></p>
                                     </div>
