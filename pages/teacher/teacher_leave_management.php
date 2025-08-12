@@ -1,7 +1,7 @@
 <?php
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
-// include_once '../../includes/email_functions.php'; // Uncomment if email is set up
+include_once '../../includes/email_functions.php';
 
 $message = '';
 $teacher_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;

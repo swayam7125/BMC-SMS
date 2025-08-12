@@ -45,7 +45,7 @@ try {
         $stmt->execute([$userId, $title, $content, $filePathForDB, $originalFilename]);
 
         $message = "New notice from BMC: " . substr($title, 0, 50);
-        $link = "/pages/principal/view_notice.php";
+        $link = "pages/principal/view_notice.php";
         $type = 'new_notice';
 
         $stmt_principals = $conn->query('SELECT "id" FROM "users" WHERE "role" = \'principal\'');

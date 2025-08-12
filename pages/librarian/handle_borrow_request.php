@@ -38,7 +38,7 @@ try {
         if ($stmt_reject->execute([$librarian_user_id, $rejection_reason, $request_id]) && $stmt_reject->rowCount() > 0) {
             if ($info) {
                 $message = "Your request for '" . htmlspecialchars($info['title']) . "' was rejected. Reason: " . htmlspecialchars($rejection_reason);
-                $link = ($info['borrower_role'] === 'student') ? '/pages/student/my_library_record.php' : '/pages/teacher/my_library_record.php';
+                $link = ($info['borrower_role'] === 'student') ? 'pages/student/my_library_record.php' : 'pages/teacher/my_library_record.php';
                 $type = "borrow_status";
                 $stmt_notify = $conn->prepare('INSERT INTO "notifications" (user_id, message, link, type) VALUES (?, ?, ?, ?)');
                 $stmt_notify->execute([$info['borrower_id'], $message, $link, $type]);
@@ -87,7 +87,7 @@ try {
         $stmt_insert_br->execute([$request['book_id'], $request['borrower_id'], $request['borrower_role'], $due_date]);
         
         $message = "Your request for '" . htmlspecialchars($book['title']) . "' has been approved. Please collect it from the library.";
-        $link = ($request['borrower_role'] === 'student') ? '/pages/student/my_library_record.php' : '/pages/teacher/my_library_record.php';
+        $link = ($request['borrower_role'] === 'student') ? 'pages/student/my_library_record.php' : '/pages/teacher/my_library_record.php';
         $type = "borrow_status";
         $stmt_notify = $conn->prepare('INSERT INTO "notifications" (user_id, message, link, type) VALUES (?, ?, ?, ?)');
         $stmt_notify->execute([$request['borrower_id'], $message, $link, $type]);

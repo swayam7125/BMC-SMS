@@ -79,7 +79,7 @@ try {
         if ($librarian_id) {
             $user_name = isset($_COOKIE['encrypted_user_name']) ? decrypt_id($_COOKIE['encrypted_user_name']) : 'A user';
             $message = htmlspecialchars($user_name) . " has requested to borrow a book.";
-            $link = "/pages/librarian/borrow_requests.php";
+            $link = "pages/librarian/borrow_requests.php";
             $type = "borrow_request";
 
             $stmt_notify = $conn->prepare('INSERT INTO "notifications" (user_id, message, link, type) VALUES (?, ?, ?, ?)');
