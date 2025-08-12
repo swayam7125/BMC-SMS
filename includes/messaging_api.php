@@ -48,15 +48,16 @@ try {
                     if (!empty($stds_array) && !empty($stds_array[0])) {
                         // 2. Manually format the PHP array into a PostgreSQL array literal string
                         $postgres_array_string = '{' . implode(',', $stds_array) . '}';
-
-                        $sql = "SELECT s.id, s.student_name AS name, s.student_image AS image_path
+                        
+                        // MODIFIED QUERY: Added a subquery to count unread messages for each student contact.
+                        $sql = "SELECT s.id, s.student_name AS name, s.student_image AS image_path,
+                                (SELECT COUNT(m.id) FROM messages m WHERE m.sender_id = s.id AND m.receiver_id = ? AND m.is_read = FALSE) AS unread_count
                                 FROM student s
                                 WHERE s.school_id = ? AND s.std = ANY(?)";
                         
                         $stmt_students = $conn->prepare($sql);
-
-                        // 3. Execute the query, passing the correctly formatted string
-                        $stmt_students->execute([$school_id, $postgres_array_string]);
+                        // 3. Execute the query, passing the correctly formatted string and current user ID
+                        $stmt_students->execute([$current_user_id, $school_id, $postgres_array_string]);
                         $contacts = $stmt_students->fetchAll(PDO::FETCH_ASSOC);
 
                         // FIX: Normalize image paths to be absolute URLs before sending
@@ -75,12 +76,14 @@ try {
                 if ($student_data) {
                     $student_std = $student_data['std'];
                     $school_id = $student_data['school_id'];
-
-                    $sql = 'SELECT id, teacher_name AS name, teacher_image AS image_path
-                            FROM teacher
-                            WHERE school_id = ? AND ? = ANY(std)';
+                    
+                    // MODIFIED QUERY: Added a subquery to count unread messages for each teacher contact.
+                    $sql = 'SELECT t.id, t.teacher_name AS name, t.teacher_image AS image_path,
+                            (SELECT COUNT(m.id) FROM messages m WHERE m.sender_id = t.id AND m.receiver_id = ? AND m.is_read = FALSE) AS unread_count
+                            FROM teacher t
+                            WHERE t.school_id = ? AND ? = ANY(t.std)';
                     $stmt_teachers = $conn->prepare($sql);
-                    $stmt_teachers->execute([$school_id, $student_std]);
+                    $stmt_teachers->execute([$current_user_id, $school_id, $student_std]);
                     $contacts = $stmt_teachers->fetchAll(PDO::FETCH_ASSOC);
 
                     // FIX: Normalize image paths to be absolute URLs before sending
@@ -149,6 +152,13 @@ try {
             $stmt->execute([$current_user_id, $receiver_id, $message_text]);
             
             $response = ['status' => 'success', 'message' => 'Message sent.'];
+            break;
+            
+        case 'get_unread_total':
+            $stmt = $conn->prepare("SELECT COUNT(*) AS total_unread FROM messages WHERE receiver_id = ? AND is_read = FALSE");
+            $stmt->execute([$current_user_id]);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            $response = ['status' => 'success', 'total_unread' => (int) $result['total_unread']];
             break;
 
         default:

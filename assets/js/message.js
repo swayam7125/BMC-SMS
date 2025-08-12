@@ -1,9 +1,30 @@
 $(document).ready(function() {
     let activeContactId = null;
     const api_url = window.base_url + 'includes/messaging_api.php';
-    const default_avatar = window.base_url + 'assets/images/unisex.png'; // FIX: Corrected default avatar path
+    const default_avatar = window.base_url + 'assets/images/unisex.png'; 
     let messageInterval = null;
 
+    // A new polling function to get the total unread messages for the header icon
+    function pollForNotifications() {
+        $.ajax({
+            url: api_url,
+            type: 'GET',
+            dataType: 'json',
+            data: { action: 'get_unread_total' },
+            success: function(response) {
+                if (response.status === 'success' && response.total_unread > 0) {
+                    $('#message-notification-badge').text(response.total_unread).show();
+                } else {
+                    $('#message-notification-badge').hide().text('');
+                }
+            },
+            error: function(xhr) {
+                console.error("Error polling for notifications:", xhr.responseText);
+            }
+        });
+    }
+
+    // Function to load contacts and their unread counts
     function loadContacts() {
         $.ajax({
             url: api_url,
@@ -17,6 +38,10 @@ $(document).ready(function() {
                     response.contacts.forEach(contact => {
                         // FIX: Use the full path provided by the API directly
                         const contactImage = contact.image_path || default_avatar;
+                        // NEW: Create a badge for unread messages if count is > 0
+                        const unreadBadge = contact.unread_count > 0 ? 
+                            `<span class="badge badge-danger badge-counter">${contact.unread_count}</span>` : '';
+                        
                         const contactElement = `
                             <li class="list-group-item list-group-item-action contact-item" data-contact-id="${contact.id}" data-contact-name="${escapeHtml(contact.name)}">
                                 <div class="d-flex align-items-center">
@@ -24,6 +49,7 @@ $(document).ready(function() {
                                     <div class="flex-grow-1">
                                         <h6 class="mb-1">${escapeHtml(contact.name)}</h6>
                                     </div>
+                                    ${unreadBadge}
                                 </div>
                             </li>`;
                         contactsList.append(contactElement);
@@ -39,6 +65,7 @@ $(document).ready(function() {
         });
     }
 
+    // Function to load and display messages
     function loadMessages(contactId) {
         if (!contactId) return;
         activeContactId = contactId;
@@ -77,6 +104,10 @@ $(document).ready(function() {
                 } else {
                     messageArea.html('<div class="text-center h-100 d-flex justify-content-center align-items-center text-muted"><p>Start the conversation!</p></div>');
                 }
+                // After loading messages for a contact, reload the contacts to update the unread badge
+                loadContacts(); 
+                // Also update the main header notification
+                pollForNotifications();
             },
             error: function(xhr) {
                 console.error("Error loading messages:", xhr.responseText);
@@ -104,7 +135,8 @@ $(document).ready(function() {
                     $('#message-text').val('');
                     loadMessages(activeContactId); // Reload messages after sending
                 } else {
-                    alert('Error sending message: ' + response.message);
+                    // Use a custom modal instead of alert
+                    showCustomAlert('Error sending message: ' + response.message);
                 }
             },
             complete: function() {
@@ -138,7 +170,10 @@ $(document).ready(function() {
         }
     });
     
+    // Initial loads and polling
     loadContacts();
+    pollForNotifications();
+    setInterval(pollForNotifications, 30000); // Poll for new notifications every 30 seconds
 
     function formatTimestamp(timestamp) {
         const date = new Date(timestamp);
