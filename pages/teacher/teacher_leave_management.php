@@ -45,7 +45,7 @@ try {
                 $stmt_principal->execute([$teacher_id]);
                 if ($principal_data = $stmt_principal->fetch(PDO::FETCH_ASSOC)) {
                     $notification_message = "New leave request from " . htmlspecialchars($teacher_name);
-                    $link = "/BMC-SMS/pages/principal/teacher_leave_management.php";
+                    $link = "pages/principal/teacher_leave_management.php";
                     $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, 'leave_request')");
                     $stmt_notify->execute([$principal_data['id'], $notification_message, $link]);
                     // Email sending logic here
