@@ -14,8 +14,49 @@
   /* **SCROLLING FIX:** Jo options vadhare hoy to sidebar scroll thashe */
   overflow-y: auto; 
   overflow-x: hidden;
-  transition: width 0.3s ease;
+  transition: all 0.3s ease;
   flex-shrink: 0;
+  z-index: 1030;
+}
+
+@media (max-width: 768px) {
+  #accordionSidebar {
+    position: fixed;
+    left: -100%;
+    width: min(85vw, 250px) !important;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+  }
+  
+  #accordionSidebar.toggled {
+    left: 0;
+  }
+  
+  .sidebar-brand {
+    padding: 1rem !important;
+  }
+  
+  #content-wrapper {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+}
+
+/* Overlay when mobile sidebar is open */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 1020;
+}
+
+@media (max-width: 768px) {
+  .sidebar-overlay.show {
+    display: block;
+  }
 }
 
 /* --- Aadhunik Scrollbar --- */
