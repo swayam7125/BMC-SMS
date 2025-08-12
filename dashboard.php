@@ -6,6 +6,33 @@ ini_set('display_errors', 1);
 include_once "encryption.php";
 include_once "./includes/connect.php"; // Uses the new PDO $conn object
 
+/**
+ * CORRECTED: Formats a number into the Indian currency system (lakhs, crores).
+ * @param float|int $number The number to format.
+ * @return string The formatted number as a string with the Rupee symbol (e.g., ₹10,00,000).
+ */
+function formatIndianCurrency($number)
+{
+    $number = (string)round($number, 2);
+    $parts = explode('.', $number);
+    $integer_part = $parts[0];
+    $decimal_part = isset($parts[1]) ? '.' . str_pad($parts[1], 2, '0', STR_PAD_RIGHT) : '';
+
+    $len = strlen($integer_part);
+    if ($len <= 3) {
+        return '₹' . $integer_part . $decimal_part;
+    }
+
+    $last_three = substr($integer_part, -3);
+    $rest_units = substr($integer_part, 0, -3);
+
+    // Format the rest of the number with commas after every two digits.
+    $rest_formatted = strrev(implode(',', str_split(strrev($rest_units), 2)));
+
+    return '₹' . $rest_formatted . ',' . $last_three . $decimal_part;
+}
+
+
 $role = null;
 $userId = null;
 $userEmail = ''; // Initialize userEmail for consistent fetching
@@ -338,7 +365,7 @@ if ($userId && isset($conn)) {
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
                                                     <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Salary</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800">₹<?php echo number_format($salary); ?></div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo formatIndianCurrency($salary); ?></div>
                                                 </div>
                                                 <div class="col-auto"><i class="fas fa-indian-rupee-sign fa-2x text-gray-300"></i></div>
                                             </div>
