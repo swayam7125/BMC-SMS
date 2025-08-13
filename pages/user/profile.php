@@ -167,13 +167,13 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                                             <hr>
                                         <?php elseif ($user_role === 'student'): ?>
                                             <div class="row info-row">
-                                                <div class="col-sm-4 info-label">Father's Phone:</div>
-                                                <div class="col-sm-8 info-value"><?php echo htmlspecialchars($user_data['father_phone'] ?? 'N/A'); ?></div>
+                                                <div class="col-sm-4 info-label">Father's Name:</div>
+                                                <div class="col-sm-8 info-value"><?php echo htmlspecialchars($user_data['father_name'] ?? 'N/A'); ?></div>
                                             </div>
                                             <hr>
                                             <div class="row info-row">
-                                                <div class="col-sm-4 info-label">Mother's Phone:</div>
-                                                <div class="col-sm-8 info-value"><?php echo htmlspecialchars($user_data['mother_phone'] ?? 'N/A'); ?></div>
+                                                <div class="col-sm-4 info-label">Mother's Name:</div>
+                                                <div class="col-sm-8 info-value"><?php echo htmlspecialchars($user_data['mother_name'] ?? 'N/A'); ?></div>
                                             </div>
                                             <hr>
                                         <?php endif; ?>

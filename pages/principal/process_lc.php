@@ -17,6 +17,7 @@ $student_email = trim($_POST['student_email'] ?? '');
 $leaving_date = trim($_POST['leaving_date'] ?? '');
 $reason_for_leaving = trim($_POST['reason_for_leaving'] ?? '');
 $principal_user_id = decrypt_id($_COOKIE['encrypted_user_id']);
+$principal_user_role = decrypt_id($_COOKIE['encrypted_user_role']);
 
 if (empty($student_email) || empty($leaving_date) || empty($reason_for_leaving)) {
     header("Location: generate_lc.php?error=All fields are required.");
@@ -27,7 +28,7 @@ try {
     $conn->beginTransaction();
 
     $query = "SELECT s.*, sch.school_name, sch.address AS school_address, sch.phone AS school_phone, sch.email AS school_email, u.id AS user_id, u.role AS user_role
-              FROM student s 
+              FROM student s
               LEFT JOIN school sch ON s.school_id = sch.id
               LEFT JOIN users u ON s.email = u.email
               WHERE s.email = ?";
@@ -51,10 +52,14 @@ try {
     $principal_name = $principal_data['principal_name'] ?? 'Principal Name';
 
     $deleted_at = date('Y-m-d H:i:s');
-    $insert_deleted_query = "INSERT INTO deleted_students 
+    $insert_deleted_query = "INSERT INTO deleted_students
                              (id, student_name, email, rollno, std, academic_year, dob, gender, blood_group, address, father_name, father_phone, mother_name, mother_phone, school_id, reason_for_leaving, deleted_by_role, deleted_at)
                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     $stmt_insert = $conn->prepare($insert_deleted_query);
+    
+    // FIX: Capitalize the first letter of the gender value for insertion
+    $gender_for_db = ucfirst($student_data['gender']);
+
     $stmt_insert->execute([
         $student_id,
         $student_data['student_name'],
@@ -63,7 +68,7 @@ try {
         $student_data['std'],
         $student_data['academic_year'],
         $student_data['dob'],
-        $student_data['gender'],
+        $gender_for_db, // Use the capitalized variable here
         $student_data['blood_group'],
         $student_data['address'],
         $student_data['father_name'],
@@ -72,7 +77,7 @@ try {
         $student_data['mother_phone'],
         $student_data['school_id'],
         $reason_for_leaving,
-        $student_data['user_role'],
+        $principal_user_role, // Pass the principal's role here, which is dynamic
         $deleted_at
     ]);
 
@@ -134,3 +139,5 @@ try {
     header("Location: generate_lc.php?error=An error occurred: " . urlencode($e->getMessage()));
     exit;
 }
+
+?>

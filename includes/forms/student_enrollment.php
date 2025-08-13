@@ -260,9 +260,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <div class="form-group col-md-6"><label for="dob">Date of Birth *</label><input type="date" class="form-control" id="dob" name="dob" value="<?php echo htmlspecialchars($_POST['dob'] ?? ''); ?>" required></div>
                                     <div class="form-group col-md-6"><label for="gender">Gender *</label><select class="form-control" id="gender" name="gender" required>
                                             <option value="">-- Select Gender --</option>
-                                            <option value="male" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'male') ? 'selected' : ''; ?>>Male</option>
-                                            <option value="female" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'female') ? 'selected' : ''; ?>>Female</option>
-                                            <option value="others" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'others') ? 'selected' : ''; ?>>Others</option>
+                                            <option value="Male" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Male') ? 'selected' : ''; ?>>Male</option>
+                                            <option value="Female" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Female') ? 'selected' : ''; ?>>Female</option>
+                                            <option value="Others" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Others') ? 'selected' : ''; ?>>Others</option>
                                         </select></div>
                                 </div>
                                 <div class="form-row">
@@ -270,7 +270,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                             <option value="">-- Select Blood Group --</option><?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
                                                                                                 foreach ($bg_options as $bg) {
                                                                                                     $selected = (isset($_POST['blood_group']) && $_POST['blood_group'] == $bg) ? 'selected' : '';
-                                                                                                    echo "<option value='{$bg}' {$selected}>" . strtoupper($bg) . "</option>";
+                                                                                                    echo "<option value='{$bg}' {$selected}>" . ($bg) . "</option>";
                                                                                                 } ?>
                                         </select></div>
                                     <div class="form-group col-md-6"><label for="address">Residential Address *</label><textarea class="form-control" id="address" name="address" rows="1" required><?php echo htmlspecialchars($_POST['address'] ?? ''); ?></textarea></div>

@@ -37,11 +37,16 @@ try {
     }
 
     // Step 2: Insert the fetched student data into the `deleted_students` table
-    $query_archive_student = "INSERT INTO deleted_students 
-                                (id, student_name, email, rollno, std, academic_year, dob, gender, blood_group, address, father_name, father_phone, mother_name, mother_phone, school_id, deleted_by_role) 
+   // Step 2: Insert the fetched student data into the `deleted_students` table
+    $query_archive_student = "INSERT INTO deleted_students
+                                (id, student_name, email, rollno, std, academic_year, dob, gender, blood_group, address, father_name, father_phone, mother_name, mother_phone, school_id, deleted_by_role)
                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     $stmt_archive = $conn->prepare($query_archive_student);
+
+    // FIX: Capitalize the first letter of the gender value
+    $gender_for_db = ucfirst($student_data['gender']);
+
     $stmt_archive->execute([
         $student_data['id'],
         $student_data['student_name'],
@@ -50,7 +55,7 @@ try {
         $student_data['std'],
         $student_data['academic_year'],
         $student_data['dob'],
-        $student_data['gender'],
+        $gender_for_db, // Use the capitalized variable here
         $student_data['blood_group'],
         $student_data['address'],
         $student_data['father_name'],

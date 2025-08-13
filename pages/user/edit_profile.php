@@ -307,9 +307,9 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                                     <div class="form-group col-md-6">
                                         <label for="gender">Gender *</label>
                                         <select class="form-control" id="gender" name="gender" required>
-                                            <option value="Male" <?php echo ($user_data['gender'] ?? '') === 'male' ? 'selected' : ''; ?>>Male</option>
-                                            <option value="Female" <?php echo ($user_data['gender'] ?? '') === 'female' ? 'selected' : ''; ?>>Female</option>
-                                            <option value="Others" <?php echo ($user_data['gender'] ?? '') === 'others' ? 'selected' : ''; ?>>Others</option>
+                                            <option value="Male" <?php echo ($user_data['gender'] ?? '') === 'Male' ? 'selected' : ''; ?>>Male</option>
+                                            <option value="Female" <?php echo ($user_data['gender'] ?? '') === 'Female' ? 'selected' : ''; ?>>Female</option>
+                                            <option value="Others" <?php echo ($user_data['gender'] ?? '') === 'Others' ? 'selected' : ''; ?>>Others</option>
                                         </select>
                                     </div>
                                 </div>
