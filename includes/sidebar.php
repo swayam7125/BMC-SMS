@@ -257,6 +257,7 @@ if (isset($conn) && $user_id) {
             $student_pages = ['student_enrollment.php', 'student_list.php', 'generate_lc.php'];
             $notice_pages = ['send_notice.php', 'send_notice_to_bmc.php', 'send_notice_to_librarian.php', 'view_notice.php'];
             $academics_pages = ['manage_subjects.php', 'manage_timetable.php', 'send_exam_timetable.php'];
+            $salary_pages = ['generate_payroll.php', 'generate_librarian_payroll.php']; // ADDED
             $past_data_pages_principal = ['past_teacher.php', 'past_librarian.php', 'past_student.php'];
         ?>
             <div class="sidebar-heading font-weight-semibold">School Management</div>
@@ -312,9 +313,7 @@ if (isset($conn) && $user_id) {
                     <i class="fas fa-fw fa-bullhorn"></i>
                     <span>Notices</span>
                     <?php if ($unread_bmc_notices > 0): ?>
-                        <span class="badge badge-danger badge-counter">
-                            <?php echo ($unread_bmc_notices > 9) ? '9+' : $unread_bmc_notices; ?>
-                        </span>
+                        <span class="badge badge-danger badge-counter"><?php echo ($unread_bmc_notices > 9) ? '9+' : $unread_bmc_notices; ?></span>
                     <?php endif; ?>
                 </a>
                 <div id="collapseNotices" class="collapse <?php echo (is_active_page($notice_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
@@ -324,9 +323,7 @@ if (isset($conn) && $user_id) {
                         <a class="collapse-item <?php echo ($current_page == 'send_notice_to_librarian.php') ? 'active' : ''; ?>" href="/BMC-SMS/pages/principal/send_notice_to_librarian.php">Send Notice to Librarian</a>
                         <a class="collapse-item <?php echo ($current_page == 'view_notice.php') ? 'active' : ''; ?>" href="/BMC-SMS/pages/principal/view_notice.php" data-notification-type="new_notice">View BMC Notices
                             <?php if ($unread_bmc_notices > 0): ?>
-                                <span class="badge badge-danger badge-counter">
-                                    <?php echo ($unread_bmc_notices > 9) ? '9+' : $unread_bmc_notices; ?>
-                                </span>
+                                <span class="badge badge-danger badge-counter"><?php echo ($unread_bmc_notices > 9) ? '9+' : $unread_bmc_notices; ?></span>
                             <?php endif; ?>
                         </a>
                     </div>
@@ -346,9 +343,22 @@ if (isset($conn) && $user_id) {
                     </div>
                 </div>
             </li>
+            
+            <li class="nav-item">
+                <a class="nav-link <?php echo (is_active_page($salary_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseSalary">
+                    <i class="fas fa-fw fa-hand-holding-usd"></i>
+                    <span>Salary Management</span>
+                </a>
+                <div id="collapseSalary" class="collapse <?php echo (is_active_page($salary_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item <?php echo ($current_page == 'generate_payroll.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/principal/generate_payroll.php">Teacher Payroll</a>
+                        <a class="collapse-item <?php echo ($current_page == 'generate_librarian_payroll.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/principal/generate_librarian_payroll.php">Librarian Payroll</a>
+                    </div>
+                </div>
+            </li>
             <li class="nav-item <?php echo ($current_page == 'school_settings.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/principal/school_settings.php">
-                    <i class="fas fa-fw fa-children"></i>
+                    <i class="fas fa-fw fa-cogs"></i>
                     <span>Passing Criteria</span>
                 </a>
             </li>
@@ -357,9 +367,7 @@ if (isset($conn) && $user_id) {
                     <i class="fas fa-fw fa-calendar-alt"></i>
                     <span>Teacher Leave</span>
                     <?php if ($unread_leave_requests > 0): ?>
-                        <span class="badge badge-danger badge-counter">
-                            <?php echo ($unread_leave_requests > 9) ? '9+' : $unread_leave_requests; ?>
-                        </span>
+                        <span class="badge badge-danger badge-counter"><?php echo ($unread_leave_requests > 9) ? '9+' : $unread_leave_requests; ?></span>
                     <?php endif; ?>
                 </a>
             </li>
@@ -398,6 +406,13 @@ if (isset($conn) && $user_id) {
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/view_my_attendance.php">
                     <i class="fas fa-fw fa-user-check"></i>
                     <span>My Attendance</span>
+                </a>
+            </li>
+
+            <li class="nav-item <?php echo ($current_page == 'view_salary_history.php') ? 'active' : ''; ?>">
+                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/view_salary_history.php">
+                    <i class="fas fa-fw fa-receipt"></i>
+                    <span>My Salary History</span>
                 </a>
             </li>
 
