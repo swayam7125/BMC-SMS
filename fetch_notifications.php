@@ -1,9 +1,4 @@
 <?php
-// Enable error reporting for debugging
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
-
-// Set timezone to ensure 'time_ago' function is accurate
 date_default_timezone_set('Asia/Kolkata');
 
 // NOTE: These paths assume fetch_notifications.php is in the root directory.

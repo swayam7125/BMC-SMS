@@ -3,10 +3,6 @@
 include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/connect.php';
 include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/encryption.php';
 
-// For debugging
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
 // --- START: CODE TO MARK INDIVIDUAL NOTIFICATION AS READ (PDO VERSION) ---
 if (isset($_GET['notif_id'])) {
     $notification_id_to_mark = filter_var($_GET['notif_id'], FILTER_VALIDATE_INT);

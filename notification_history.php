@@ -3,10 +3,6 @@
 include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/connect.php';
 include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/encryption.php';
 
-// For debugging
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
 // Redirect to login if not logged in
 if (!isset($_COOKIE['encrypted_user_id'])) {
     header("Location: /BMC-SMS/login.php");
