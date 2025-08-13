@@ -37,22 +37,15 @@ try {
         $isbn = trim($_POST['isbn']);
         $publisher = trim($_POST['publisher']);
         $quantity = (int)$_POST['quantity_total'];
-        $is_digital = (int)$_POST['is_digital'];
-        $file_path_for_db = null;
-
-        // File upload logic remains the same...
-        if ($is_digital && isset($_FILES['file_path']) && $_FILES['file_path']['error'] === UPLOAD_ERR_OK) {
-            // Handle file upload here
-        }
-
+        
         if (empty($title)) $errors[] = "Title is required.";
         if (empty($author)) $errors[] = "Author is required.";
         if ($quantity <= 0) $errors[] = "Quantity must be a positive number.";
 
         if (empty($errors)) {
             // --- CORRECTED: Using PDO to insert the new book ---
-            $stmt_insert = $conn->prepare('INSERT INTO "books" (school_id, title, author, isbn, publisher, quantity_total, quantity_available, is_digital, file_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
-            if ($stmt_insert->execute([$school_id, $title, $author, $isbn, $publisher, $quantity, $quantity, $is_digital, $file_path_for_db])) {
+            $stmt_insert = $conn->prepare('INSERT INTO "books" (school_id, title, author, isbn, publisher, quantity_total, quantity_available) VALUES (?, ?, ?, ?, ?, ?, ?)');
+            if ($stmt_insert->execute([$school_id, $title, $author, $isbn, $publisher, $quantity, $quantity])) {
                 header("Location: book_list.php?success=Book added successfully");
                 exit();
             } else {
@@ -100,7 +93,7 @@ try {
                             <h6 class="m-0 font-weight-bold text-primary">Book Details</h6>
                         </div>
                         <div class="card-body">
-                            <form method="POST" enctype="multipart/form-data">
+                            <form method="POST">
                                 <div class="form-row">
                                     <div class="form-group col-md-6"><label for="title">Title *</label><input type="text" class="form-control" id="title" name="title" required></div>
                                     <div class="form-group col-md-6"><label for="author">Author *</label><input type="text" class="form-control" id="author" name="author" required></div>
@@ -109,19 +102,7 @@ try {
                                     <div class="form-group col-md-6"><label for="isbn">ISBN</label><input type="text" class="form-control" id="isbn" name="isbn"></div>
                                     <div class="form-group col-md-6"><label for="publisher">Publisher</label><input type="text" class="form-control" id="publisher" name="publisher"></div>
                                 </div>
-                                <div class="form-row">
-                                    <div class="form-group col-md-4"><label for="quantity_total">Total Quantity *</label><input type="number" class="form-control" id="quantity_total" name="quantity_total" required min="1"></div>
-                                    <div class="form-group col-md-4"><label for="is_digital">Book Type</label>
-                                        <select class="form-control" id="is_digital" name="is_digital">
-                                            <option value="0">Physical</option>
-                                            <option value="1">Digital</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group col-md-4" id="digital_file_upload" style="display: none;">
-                                        <label for="file_path">Upload E-book</label>
-                                        <input type="file" class="form-control-file" id="file_path" name="file_path">
-                                    </div>
-                                </div>
+                                <div class="form-group"><label for="quantity_total">Total Quantity *</label><input type="number" class="form-control" id="quantity_total" name="quantity_total" required min="1"></div>
                                 <button type="submit" class="btn btn-primary"><i class="fas fa-plus-circle"></i> Add Book</button>
                             </form>
                         </div>
@@ -136,11 +117,6 @@ try {
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
-    <script>
-        document.getElementById('is_digital').addEventListener('change', function () {
-            document.getElementById('digital_file_upload').style.display = this.value == 1 ? 'block' : 'none';
-        });
-    </script>
 </body>
 </html>
 

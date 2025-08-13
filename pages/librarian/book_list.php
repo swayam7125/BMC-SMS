@@ -33,7 +33,7 @@ try {
         die("Could not determine the librarian's school. Access denied.");
     }
 
-    $sql = 'SELECT * FROM "books" WHERE "school_id" = ?';
+    $sql = 'SELECT book_id, title, author, isbn, quantity_total, quantity_available FROM "books" WHERE "school_id" = ?';
     $params = [$school_id];
 
     if (!empty($search_query)) {
@@ -106,7 +106,6 @@ try {
                                             <th>ISBN</th>
                                             <th>Total</th>
                                             <th>Available</th>
-                                            <th>Type</th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
@@ -119,7 +118,6 @@ try {
                                                     <td><?php echo htmlspecialchars($book['isbn']); ?></td>
                                                     <td><?php echo htmlspecialchars($book['quantity_total']); ?></td>
                                                     <td><?php echo htmlspecialchars($book['quantity_available']); ?></td>
-                                                    <td><?php echo $book['is_digital'] ? '<span class="badge badge-info">Digital</span>' : '<span class="badge badge-secondary">Physical</span>'; ?></td>
                                                     <td>
                                                         <a href="book_edit.php?id=<?php echo $book['book_id']; ?>" class="btn btn-primary btn-sm" title="Edit"><i class="fas fa-edit"></i></a>
                                                         <a href="delete.php?id=<?php echo $book['book_id']; ?>" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure you want to delete this book?');"><i class="fas fa-trash"></i></a>
@@ -128,7 +126,7 @@ try {
                                             <?php endforeach; ?>
                                         <?php else: ?>
                                             <tr>
-                                                <td colspan="7" class="text-center">
+                                                <td colspan="6" class="text-center">
                                                     <?php if (!empty($search_query)): ?>
                                                         No books found matching your search for "<?php echo htmlspecialchars($search_query); ?>".
                                                     <?php else: ?>
