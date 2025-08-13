@@ -36,18 +36,14 @@ try {
         $errorMessage = "Access Denied: You are not assigned to a school.";
     }
 
-    // --- START OF MODIFICATION ---
-    // Get the current date in the same format
     $current_date = date('Y-m-d');
     
     $attendance_date_display = isset($_GET['date']) ? $_GET['date'] : $current_date;
 
-    // If the date from the GET parameter is a future date, set it to the current date.
     if ($attendance_date_display > $current_date) {
         $attendance_date_display = $current_date;
         $errorMessage = "You cannot view attendance for a future date. The date has been reset to today.";
     }
-    // --- END OF MODIFICATION ---
 
     if (empty($errorMessage)) {
         $stmt_att = $conn->prepare("
@@ -104,7 +100,6 @@ try {
                                         <form method="GET" action="" class="form-inline">
                                             <div class="form-group">
                                                 <label for="date" class="mr-2">Date:</label>
-                                                <!-- Add max attribute to disable future dates -->
                                                 <input type="date" id="date" name="date" class="form-control" value="<?php echo htmlspecialchars($attendance_date_display); ?>" max="<?php echo $current_date; ?>">
                                             </div>
                                             <button type="submit" class="btn btn-primary ml-2">View</button>
@@ -135,12 +130,16 @@ try {
                                                         <td><?php echo htmlspecialchars($record['batch']); ?></td>
                                                         <td><?php if ($record['class_teacher']): ?>Yes (Std: <?php echo htmlspecialchars($record['class_teacher_std']); ?>)<?php else: ?>No<?php endif; ?></td>
                                                         <td>
-                                                            <?php $status = $record['status'] ?? 'Not Marked';
-                                                            $badge_class = 'badge-secondary';
-                                                            if ($status == 'Present') $badge_class = 'badge-success';
-                                                            if ($status == 'Absent') $badge_class = 'badge-danger';
-                                                            if ($status == 'Leave') $badge_class = 'badge-warning';
-                                                            echo "<span class='badge {$badge_class}'>" . htmlspecialchars($status) . "</span>"; ?>
+                                                            <?php 
+                                                                $status = $record['status'] ?? 'Not Marked';
+                                                                $badge_class = 'badge-secondary';
+                                                                if ($status == 'Present') $badge_class = 'badge-success';
+                                                                if ($status == 'Absent') $badge_class = 'badge-danger';
+                                                                if ($status == 'Leave') $badge_class = 'badge-warning';
+                                                                // ADDED: Badge for Half Day
+                                                                if ($status == 'Half Day') $badge_class = 'badge-info';
+                                                                echo "<span class='badge {$badge_class} p-2'>" . htmlspecialchars($status) . "</span>"; 
+                                                            ?>
                                                         </td>
                                                         <td><a href="teacher_attendence.php?attendance_date=<?php echo htmlspecialchars($attendance_date_display); ?>&edit_teacher_id=<?php echo $record['teacher_id']; ?>" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i> Edit</a></td>
                                                     </tr>

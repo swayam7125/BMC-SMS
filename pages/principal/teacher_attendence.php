@@ -3,11 +3,15 @@ session_start();
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 
+// IMPROVEMENT: Set a consistent timezone for all date operations
+date_default_timezone_set('Asia/Kolkata');
+
 $role = null;
 $userId = null;
 $errorMessage = '';
 $principalDetails = null;
 $teachers_with_details = [];
+$all_missing_dates = []; // To hold ALL dates with incomplete attendance
 
 $edit_teacher_id = isset($_GET['edit_teacher_id']) ? (int)$_GET['edit_teacher_id'] : null;
 
@@ -31,18 +35,39 @@ try {
         $errorMessage = "Access Denied: You are not assigned to a school.";
     }
     
-    // Set a variable for the current date to use for validation and the date input's max attribute.
     $current_date = date('Y-m-d');
-
-    // Get the attendance date from the URL or default to the current date.
     $attendance_date_display = isset($_GET['attendance_date']) ? $_GET['attendance_date'] : $current_date;
-    
-    // Removed the server-side check for future dates. The 'max' attribute on the date input now handles this.
 
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // --- REVISED: Mandatory Past Attendance Check for ALL missing dates ---
+    if (empty($errorMessage) && !$edit_teacher_id) { // Only check in bulk mode
+        $target_date = new DateTime($attendance_date_display);
+        $start_date = new DateTime($target_date->format('Y-m-01'));
+        $interval = new DateInterval('P1D');
+        $period = new DatePeriod($start_date, $interval, $target_date);
+
+        $teacher_count_stmt = $conn->prepare("SELECT COUNT(id) FROM teacher WHERE school_id = ?");
+        $teacher_count_stmt->execute([$principalDetails['school_id']]);
+        $total_teachers = $teacher_count_stmt->fetchColumn();
+
+        if ($total_teachers > 0) {
+            $att_count_stmt = $conn->prepare("SELECT COUNT(teacher_id) FROM teacher_attendance WHERE school_id = ? AND attendance_date = ?");
+            foreach ($period as $date) {
+                if ($date->format('N') < 7) { // Mon-Sat
+                    $date_to_check = $date->format('Y-m-d');
+                    $att_count_stmt->execute([$principalDetails['school_id'], $date_to_check]);
+                    $recorded_teachers = $att_count_stmt->fetchColumn();
+                    if ($recorded_teachers < $total_teachers) {
+                        $all_missing_dates[] = $date_to_check;
+                    }
+                }
+            }
+        }
+    }
+    // --- END: Mandatory Past Attendance Check ---
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($all_missing_dates)) {
         $conn->beginTransaction();
 
-        // PostgreSQL Change: Using ON CONFLICT for INSERT/UPDATE
         $upsert_sql = "INSERT INTO teacher_attendance (teacher_id, school_id, attendance_date, status, marked_by_user_id) 
                        VALUES (?, ?, ?, ?, ?)
                        ON CONFLICT (teacher_id, attendance_date) 
@@ -53,7 +78,6 @@ try {
             $attendance_data = $_POST['attendance'];
             $attendance_date = $_POST['attendance_date'];
             foreach ($attendance_data as $teacher_id => $status) {
-                // The server-side check is removed from here as well.
                 $stmt_upsert->execute([$teacher_id, $principalDetails['school_id'], $attendance_date, $status, $userId]);
             }
             $_SESSION['success_message'] = "Attendance for " . htmlspecialchars($attendance_date) . " has been successfully saved!";
@@ -61,7 +85,6 @@ try {
             $teacher_id_to_update = $_POST['teacher_id'];
             $status = $_POST['status'];
             $attendance_date = $_POST['attendance_date'];
-            // The server-side check is removed from here as well.
             $stmt_upsert->execute([$teacher_id_to_update, $principalDetails['school_id'], $attendance_date, $status, $userId]);
             $_SESSION['success_message'] = "Attendance for the teacher has been updated successfully!";
         }
@@ -71,7 +94,7 @@ try {
         exit();
     }
 
-    if (empty($errorMessage)) {
+    if (empty($errorMessage) && empty($all_missing_dates)) {
         if ($edit_teacher_id) {
             $teacher_stmt = $conn->prepare("SELECT id, teacher_name, std, batch FROM teacher WHERE id = ? AND school_id = ?");
             $teacher_stmt->execute([$edit_teacher_id, $principalDetails['school_id']]);
@@ -123,8 +146,20 @@ try {
 
                     <?php if (!empty($errorMessage)): ?>
                         <div class="alert alert-danger"><?php echo $errorMessage; ?></div>
-                    <?php endif; ?>
-                    
+                    <?php elseif (!empty($all_missing_dates)): ?>
+                         <div class="alert alert-warning">
+                            <h4 class="alert-heading">Action Required</h4>
+                            <p>You cannot mark attendance for <strong><?php echo htmlspecialchars($attendance_date_display); ?></strong> because teacher attendance for the following past date(s) is incomplete:</p>
+                            <ul>
+                                <?php foreach ($all_missing_dates as $missing_date): ?>
+                                    <li><strong><?php echo htmlspecialchars($missing_date); ?></strong></li>
+                                <?php endforeach; ?>
+                            </ul>
+                            <hr>
+                            <p class="mb-0">Please start by filling the attendance for <strong><?php echo htmlspecialchars($all_missing_dates[0]); ?></strong>.</p>
+                            <a href="teacher_attendence.php?attendance_date=<?php echo htmlspecialchars($all_missing_dates[0]); ?>" class="btn btn-primary mt-3">Go to First Pending Attendance Sheet</a>
+                        </div>
+                    <?php else: ?>
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
                             <h6 class="m-0 font-weight-bold text-primary">
@@ -134,7 +169,9 @@ try {
                             </h6>
                         </div>
                         <div class="card-body">
-                            <?php if (!$edit_teacher_id): ?>
+                             <?php if ($edit_teacher_id): ?>
+                                <p class="text-info">Single Edit Mode: Only one teacher is editable.</p>
+                            <?php else: ?>
                                 <p class="text-info">Bulk Edit Mode: All teachers are editable.</p>
                             <?php endif; ?>
                             <form method="POST" action="">
@@ -165,15 +202,19 @@ try {
                                                         <?php $current_status = $teacher['status']; ?>
                                                         <div class="form-check form-check-inline">
                                                             <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Present" <?php if ($current_status == 'Present') echo 'checked'; ?>>
-                                                            <label>Present</label>
+                                                            <label class="form-check-label">Present</label>
                                                         </div>
                                                         <div class="form-check form-check-inline">
                                                             <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Absent" <?php if ($current_status == 'Absent') echo 'checked'; ?>>
-                                                            <label>Absent</label>
+                                                            <label class="form-check-label">Absent</label>
+                                                        </div>
+                                                        <div class="form-check form-check-inline">
+                                                            <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Half Day" <?php if ($current_status == 'Half Day') echo 'checked'; ?>>
+                                                            <label class="form-check-label">Half Day</label>
                                                         </div>
                                                         <div class="form-check form-check-inline">
                                                             <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Leave" <?php if ($current_status == 'Leave') echo 'checked'; ?>>
-                                                            <label>Leave</label>
+                                                            <label class="form-check-label">Leave</label>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -187,6 +228,7 @@ try {
                             </form>
                         </div>
                     </div>
+                    <?php endif; ?>
                 </div>
             </div>
             <?php include_once '../../includes/footer.php'; ?>
@@ -213,10 +255,8 @@ try {
                 table.column(1).search($(this).val()).draw();
             });
 
-            // Handle date change
             $('#changeDateBtn').on('click', function() {
                 var selectedDate = $('#attendanceDateInput').val();
-                // We need to keep the edit_teacher_id in the URL if it's there
                 var editTeacherId = '<?php echo $edit_teacher_id; ?>';
                 var redirectUrl = 'teacher_attendence.php?attendance_date=' + selectedDate;
                 if (editTeacherId) {

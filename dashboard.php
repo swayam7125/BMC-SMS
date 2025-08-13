@@ -1,4 +1,8 @@
 <?php
+// Enable all error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 include_once "encryption.php";
 include_once "./includes/connect.php"; // Uses the new PDO $conn object
 
@@ -26,6 +30,27 @@ function formatIndianCurrency($number)
     $rest_formatted = strrev(implode(',', str_split(strrev($rest_units), 2)));
 
     return '₹' . $rest_formatted . ',' . $last_three . $decimal_part;
+}
+
+/**
+ * NEW: Calculates the number of working days in a given month.
+ * Assumes a 6-day work week (Monday to Saturday are working days).
+ * @param int $year The year (e.g., 2024).
+ * @param int $month The month (1-12).
+ * @return int The total number of working days.
+ */
+function getWorkingDays($year, $month)
+{
+    $workingDays = 0;
+    $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+    for ($i = 1; $i <= $daysInMonth; $i++) {
+        // 'N' returns 1 for Monday through 7 for Sunday
+        $dayOfWeek = date('N', strtotime("$year-$month-$i"));
+        if ($dayOfWeek < 7) { // Counts Monday (1) to Saturday (6) as working days
+            $workingDays++;
+        }
+    }
+    return $workingDays;
 }
 
 
@@ -74,10 +99,14 @@ $salary = 0;
 $totalPresent = 0;
 $totalLeaves = 0;
 $totalAbsent = 0;
+$deduction_amount = 0;
 $totalBooks = 0;
 $issuedToday = 0;
 $overdueBooks = 0;
 $totalLibraryMembers = 0;
+$monthly_present_days = 0;
+$librarian_total_absent = 0; // ADDED: For librarian absence count
+$librarian_deduction_amount = 0; // ADDED: For librarian deduction amount
 
 // Fetch data based on user role
 try {
@@ -114,25 +143,96 @@ try {
             $teacherData = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($teacherData) {
                 $schoolId = $teacherData['school_id'];
-                $salary = $teacherData['salary'] ?? 0;
+                $base_salary = $teacherData['salary'] ?? 0;
+
+                $current_year = date('Y');
+                $current_month = date('m');
+                $total_working_days = getWorkingDays($current_year, $current_month);
+
+                // MODIFIED: Calculate payable days (Present = 1, Half Day = 0.5)
+                $payableDaysStmt = $conn->prepare("
+                    SELECT SUM(
+                        CASE 
+                            WHEN \"status\" = 'Present' THEN 1
+                            WHEN \"status\" = 'Half Day' THEN 0.5
+                            ELSE 0 
+                        END
+                    ) as payable_days 
+                    FROM \"teacher_attendance\" 
+                    WHERE \"teacher_id\" = ? 
+                    AND EXTRACT(YEAR FROM \"attendance_date\") = ? 
+                    AND EXTRACT(MONTH FROM \"attendance_date\") = ?
+                ");
+                $payableDaysStmt->execute([$userId, $current_year, $current_month]);
+                $totalPresent = (float)$payableDaysStmt->fetchColumn();
+
+
+                $absentStmt = $conn->prepare('SELECT COUNT(*) FROM "teacher_attendance" WHERE "teacher_id" = ? AND "status" = \'Absent\' AND EXTRACT(YEAR FROM "attendance_date") = ? AND EXTRACT(MONTH FROM "attendance_date") = ?');
+                $absentStmt->execute([$userId, $current_year, $current_month]);
+                $totalAbsent = $absentStmt->fetchColumn();
+
+                $per_day_salary = 0;
+                if ($total_working_days > 0 && $base_salary > 0) {
+                    $per_day_salary = $base_salary / $total_working_days;
+                }
+                
+                // MODIFIED: Salary is based on payable days
+                $salary = $per_day_salary * $totalPresent;
+                $deduction_amount = $per_day_salary * $totalAbsent;
+
                 $studentStmt = $conn->prepare('SELECT COUNT(*) FROM "student" WHERE "school_id" = ?');
                 $studentStmt->execute([$schoolId]);
                 $totalStudents = $studentStmt->fetchColumn();
                 $leavesStmt = $conn->prepare('SELECT COUNT(*) FROM "leave_applications" WHERE "teacher_id" = ? AND "status" = \'Approved\'');
                 $leavesStmt->execute([$userId]);
                 $totalLeaves = $leavesStmt->fetchColumn();
-                $presentStmt = $conn->prepare('SELECT COUNT(DISTINCT "attendance_date") FROM "teacher_attendance" WHERE "teacher_id" = ? AND "status" = \'Present\'');
-                $presentStmt->execute([$userId]);
-                $totalPresent = $presentStmt->fetchColumn();
             }
             break;
 
         case 'librarian':
-            $stmt = $conn->prepare('SELECT "school_id" FROM "librarian" WHERE "id" = ?');
+            $stmt = $conn->prepare('SELECT "school_id", "salary" FROM "librarian" WHERE "id" = ?');
             $stmt->execute([$userId]);
             $librarianData = $stmt->fetch(PDO::FETCH_ASSOC);
+
             if ($librarianData) {
                 $schoolId = $librarianData['school_id'];
+                $base_salary = $librarianData['salary'] ?? 0;
+
+                $current_year = date('Y');
+                $current_month = date('m');
+                $total_working_days = getWorkingDays($current_year, $current_month);
+
+                // MODIFIED: Calculate payable days for librarian (Present = 1, Half Day = 0.5)
+                $payableDaysStmt = $conn->prepare("
+                    SELECT SUM(
+                        CASE 
+                            WHEN \"status\" = 'Present' THEN 1
+                            WHEN \"status\" = 'Half Day' THEN 0.5
+                            ELSE 0 
+                        END
+                    ) as payable_days 
+                    FROM \"librarian_attendance\" 
+                    WHERE \"librarian_id\" = ? 
+                    AND EXTRACT(YEAR FROM \"attendance_date\") = ? 
+                    AND EXTRACT(MONTH FROM \"attendance_date\") = ?
+                ");
+                $payableDaysStmt->execute([$userId, $current_year, $current_month]);
+                $monthly_present_days = (float)$payableDaysStmt->fetchColumn();
+
+
+                $absentStmt = $conn->prepare('SELECT COUNT(*) FROM "librarian_attendance" WHERE "librarian_id" = ? AND "status" = \'Absent\' AND EXTRACT(YEAR FROM "attendance_date") = ? AND EXTRACT(MONTH FROM "attendance_date") = ?');
+                $absentStmt->execute([$userId, $current_year, $current_month]);
+                $librarian_total_absent = $absentStmt->fetchColumn();
+
+                $per_day_salary = 0;
+                if ($total_working_days > 0 && $base_salary > 0) {
+                    $per_day_salary = $base_salary / $total_working_days;
+                }
+                
+                // MODIFIED: Salary based on payable days
+                $salary = $per_day_salary * $monthly_present_days;
+                $librarian_deduction_amount = $per_day_salary * $librarian_total_absent;
+
                 $booksStmt = $conn->prepare('SELECT COUNT(*) FROM "books" WHERE "school_id" = ?');
                 $booksStmt->execute([$schoolId]);
                 $totalBooks = $booksStmt->fetchColumn();
@@ -165,7 +265,6 @@ try {
 $dashboard_notifications = [];
 if ($userId && isset($conn)) {
     try {
-        // === THE ONLY CHANGE IS HERE: This query now fetches the 6 most recent notifications, regardless of read status ===
         $stmt_dash_notif = $conn->prepare('SELECT "id", "message", "link", "type", "created_at", "is_read" FROM "notifications" WHERE "user_id" = ? ORDER BY "created_at" DESC LIMIT 6');
         $stmt_dash_notif->execute([$userId]);
         $dashboard_notifications = $stmt_dash_notif->fetchAll(PDO::FETCH_ASSOC);
@@ -202,6 +301,9 @@ if ($userId && isset($conn)) {
         .card-link {
             text-decoration: none;
         }
+        .absent-salary-cal{
+            color: #dc3545; opacity: 0.8;
+        }
     </style>
 </head>
 
@@ -216,7 +318,7 @@ if ($userId && isset($conn)) {
                         <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
                     </div>
                     <div class="row">
-                        <?php if ($role == 'superadmin'): ?>
+                        <?php if ($role == 'superadmin') : ?>
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <a class="card-link" href="./pages/school/school_list.php">
                                     <div class="card border-left-primary shadow h-100 py-2">
@@ -277,7 +379,7 @@ if ($userId && isset($conn)) {
                                     </div>
                                 </a>
                             </div>
-                        <?php elseif ($role == 'principal'): ?>
+                        <?php elseif ($role == 'principal') : ?>
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <a class="card-link" href="./pages/teacher/teacher_list.php">
                                     <div class="card border-left-primary shadow h-100 py-2">
@@ -338,7 +440,7 @@ if ($userId && isset($conn)) {
                                     </div>
                                 </a>
                             </div>
-                        <?php elseif ($role == 'teacher'): ?>
+                        <?php elseif ($role == 'teacher') : ?>
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <a class="card-link" href="./pages/student/student_list.php">
                                     <div class="card border-left-primary shadow h-100 py-2">
@@ -360,8 +462,15 @@ if ($userId && isset($conn)) {
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Salary</div>
+                                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Monthly Salary</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo formatIndianCurrency($salary); ?></div>
+
+                                                    <?php if ($totalAbsent > 0) : ?>
+                                                        <small class="d-block mt-1 absent-salary-cal">
+                                                            (-<?php echo formatIndianCurrency($deduction_amount); ?> for <?php echo $totalAbsent; ?> absent day/s)
+                                                        </small>
+                                                    <?php endif; ?>
+
                                                 </div>
                                                 <div class="col-auto"><i class="fas fa-indian-rupee-sign fa-2x text-gray-300"></i></div>
                                             </div>
@@ -370,12 +479,12 @@ if ($userId && isset($conn)) {
                                 </a>
                             </div>
                             <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="#">
+                                <a class="card-link" href="./pages/teacher/view_my_attendance.php">
                                     <div class="card border-left-info shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Total Present Days</div>
+                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Payable Days (This Month)</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalPresent; ?></div>
                                                 </div>
                                                 <div class="col-auto"><i class="fas fa-user-check fa-2x text-gray-300"></i></div>
@@ -399,7 +508,44 @@ if ($userId && isset($conn)) {
                                     </div>
                                 </a>
                             </div>
-                        <?php elseif ($role == 'librarian'): ?>
+                        <?php elseif ($role == 'librarian') : ?>
+                            <div class="col-xl-3 col-md-6 mb-4">
+                                <a class="card-link" href="#">
+                                    <div class="card border-left-success shadow h-100 py-2">
+                                        <div class="card-body">
+                                            <div class="row no-gutters align-items-center">
+                                                <div class="col mr-2">
+                                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Monthly Salary</div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo formatIndianCurrency($salary); ?></div>
+
+                                                    <?php if ($librarian_total_absent > 0) : ?>
+                                                        <small class="d-block mt-1 absent-salary-cal">
+                                                            (-<?php echo formatIndianCurrency($librarian_deduction_amount); ?> for <?php echo $librarian_total_absent; ?> absent day/s)
+                                                        </small>
+                                                    <?php endif; ?>
+
+                                                </div>
+                                                <div class="col-auto"><i class="fas fa-indian-rupee-sign fa-2x text-gray-300"></i></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="col-xl-3 col-md-6 mb-4">
+                                <a class="card-link" href="#">
+                                    <div class="card border-left-info shadow h-100 py-2">
+                                        <div class="card-body">
+                                            <div class="row no-gutters align-items-center">
+                                                <div class="col mr-2">
+                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Payable Days (This Month)</div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $monthly_present_days; ?></div>
+                                                </div>
+                                                <div class="col-auto"><i class="fas fa-user-check fa-2x text-gray-300"></i></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <a class="card-link" href="/BMC-SMS/pages/librarian/book_list.php">
                                     <div class="card border-left-primary shadow h-100 py-2">
@@ -410,36 +556,6 @@ if ($userId && isset($conn)) {
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo number_format($totalBooks); ?></div>
                                                 </div>
                                                 <div class="col-auto"><i class="fas fa-book-bookmark fa-2x text-gray-300"></i></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </a>
-                            </div>
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="/BMC-SMS/pages/librarian/issue_return.php">
-                                    <div class="card border-left-success shadow h-100 py-2">
-                                        <div class="card-body">
-                                            <div class="row no-gutters align-items-center">
-                                                <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Library Members</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalLibraryMembers; ?></div>
-                                                </div>
-                                                <div class="col-auto"><i class="fas fa-users-line fa-2x text-gray-300"></i></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </a>
-                            </div>
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="/BMC-SMS/pages/librarian/issue_return.php">
-                                    <div class="card border-left-info shadow h-100 py-2">
-                                        <div class="card-body">
-                                            <div class="row no-gutters align-items-center">
-                                                <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Issued Today</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $issuedToday; ?></div>
-                                                </div>
-                                                <div class="col-auto"><i class="fas fa-right-from-bracket fa-2x text-gray-300"></i></div>
                                             </div>
                                         </div>
                                     </div>
@@ -460,7 +576,7 @@ if ($userId && isset($conn)) {
                                     </div>
                                 </a>
                             </div>
-                        <?php elseif ($role == 'student'): ?>
+                        <?php elseif ($role == 'student') : ?>
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <a class="card-link" href="dashboard.php">
                                     <div class="card border-left-primary shadow h-100 py-2">

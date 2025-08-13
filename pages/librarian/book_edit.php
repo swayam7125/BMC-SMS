@@ -66,7 +66,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $isbn = trim($_POST['isbn']);
     $quantity_total = filter_var($_POST['quantity_total'], FILTER_VALIDATE_INT);
     $quantity_available = filter_var($_POST['quantity_available'], FILTER_VALIDATE_INT);
-    $is_digital = isset($_POST['is_digital']) ? 1 : 0;
 
     if ($quantity_available > $quantity_total) {
         $errors[] = "Available quantity cannot be greater than the total quantity.";
@@ -75,10 +74,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($errors)) {
         try {
             $conn->beginTransaction();
-            $sql_update = "UPDATE books SET title = ?, author = ?, isbn = ?, quantity_total = ?, quantity_available = ?, is_digital = ? WHERE book_id = ? AND school_id = ?";
+            $sql_update = "UPDATE books SET title = ?, author = ?, isbn = ?, quantity_total = ?, quantity_available = ? WHERE book_id = ? AND school_id = ?";
             $stmt_update = $conn->prepare($sql_update);
             $stmt_update->execute([
-                $title, $author, $isbn, $quantity_total, $quantity_available, $is_digital, $book_id, $school_id
+                $title, $author, $isbn, $quantity_total, $quantity_available, $book_id, $school_id
             ]);
             $conn->commit();
             header("Location: book_list.php?success=Book updated successfully");
@@ -134,10 +133,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <div class="col-md-6 form-group"><label for="quantity_available">Available Quantity *</label><input type="number" class="form-control" id="quantity_available" name="quantity_available" value="<?php echo htmlspecialchars($book['quantity_available'] ?? 0); ?>" required></div>
                                 </div>
                                 <hr>
-                                <div class="form-group form-check">
-                                    <input type="checkbox" class="form-check-input" id="is_digital" name="is_digital" <?php echo !empty($book['is_digital']) ? 'checked' : ''; ?>>
-                                    <label class="form-check-label" for="is_digital">This is a digital book (eBook)</label>
-                                </div>
                                 <div class="form-group mt-4">
                                     <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update Book</button>
                                     <a href="book_list.php" class="btn btn-secondary"><i class="fas fa-times"></i> Cancel</a>

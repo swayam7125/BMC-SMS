@@ -3,12 +3,16 @@
 include_once '../../includes/connect.php'; // Database connection
 include_once '../../encryption.php';    // Encryption functions
 
+// IMPROVEMENT: Set a consistent timezone for all date operations
+date_default_timezone_set('Asia/Kolkata');
+
 // Initialize variables
 $role = null;
 $userId = null;
 $errorMessage = '';
 $teacherDetails = null;
 $students = [];
+$all_missing_dates = []; // To hold ALL dates with incomplete attendance
 
 // Retrieve and decrypt user role and ID from cookies
 if (isset($_COOKIE['encrypted_user_role'])) {
@@ -25,7 +29,7 @@ if (!$role || $role !== 'teacher') {
 }
 
 try {
-    // PDO Change: Converted to PDO. Note B'1' for boolean TRUE in PostgreSQL.
+    // Fetch teacher details
     $stmt = $conn->prepare("SELECT class_teacher, class_teacher_std, school_id FROM teacher WHERE id = ? AND class_teacher = B'1'");
     $stmt->execute([$userId]);
     $teacherDetails = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -34,8 +38,41 @@ try {
         $errorMessage = "Access Denied: You are not assigned as a class teacher and cannot add attendance.";
     }
 
+    $attendance_date_display = $_GET['attendance_date'] ?? date('Y-m-d');
+
+    // --- REVISED: Mandatory Past Attendance Check for ALL missing dates ---
+    if (empty($errorMessage)) {
+        $target_date = new DateTime($attendance_date_display);
+        $start_date = new DateTime($target_date->format('Y-m-01')); // Check from the 1st of the month
+        $interval = new DateInterval('P1D');
+        $period = new DatePeriod($start_date, $interval, $target_date);
+
+        // Get the total number of students in the class
+        $student_count_stmt = $conn->prepare("SELECT COUNT(id) FROM student WHERE std = ? AND school_id = ?");
+        $student_count_stmt->execute([$teacherDetails['class_teacher_std'], $teacherDetails['school_id']]);
+        $total_students = $student_count_stmt->fetchColumn();
+
+        if ($total_students > 0) {
+            $att_count_stmt = $conn->prepare("SELECT COUNT(student_id) FROM attendance WHERE std = ? AND school_id = ? AND attendance_date = ?");
+            foreach ($period as $date) {
+                // Check only for working days (Mon-Sat)
+                if ($date->format('N') < 7) {
+                    $date_to_check = $date->format('Y-m-d');
+                    $att_count_stmt->execute([$teacherDetails['class_teacher_std'], $teacherDetails['school_id'], $date_to_check]);
+                    $recorded_students = $att_count_stmt->fetchColumn();
+
+                    if ($recorded_students < $total_students) {
+                        $all_missing_dates[] = $date_to_check; // Add date to the list
+                    }
+                }
+            }
+        }
+    }
+    // --- END: Mandatory Past Attendance Check ---
+
     // Handle form submission to save attendance
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($errorMessage)) {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($errorMessage) && empty($all_missing_dates)) {
+        // This part will only run if the mandatory check passes
         $attendance_date = $_POST['attendance_date'];
         $attendance_data = $_POST['attendance'];
         $class_std = $teacherDetails['class_teacher_std'];
@@ -43,8 +80,6 @@ try {
 
         $conn->beginTransaction();
 
-        // PostgreSQL Change: Using ON CONFLICT for INSERT/UPDATE logic
-        // Assumes a UNIQUE constraint exists on (student_id, attendance_date)
         $upsert_sql = "INSERT INTO attendance (student_id, teacher_id, school_id, std, attendance_date, status) 
                        VALUES (?, ?, ?, ?, ?, ?)
                        ON CONFLICT (student_id, attendance_date) 
@@ -60,16 +95,12 @@ try {
         $successMessage = "Attendance for " . htmlspecialchars($attendance_date) . " has been saved successfully!";
     }
 
-    // Fetch students for the form
-    $attendance_date_display = $_GET['attendance_date'] ?? date('Y-m-d');
-
-    if (empty($errorMessage)) {
-        // Fetch students
+    // Fetch students for the form, only if no errors and no missing past attendance
+    if (empty($errorMessage) && empty($all_missing_dates)) {
         $student_stmt = $conn->prepare("SELECT id, rollno, student_name FROM student WHERE std = ? AND school_id = ? ORDER BY rollno ASC");
         $student_stmt->execute([$teacherDetails['class_teacher_std'], $teacherDetails['school_id']]);
         $students = $student_stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Fetch existing attendance records
         $existing_attendance = [];
         if (!empty($students)) {
             $att_stmt = $conn->prepare("SELECT student_id, status FROM attendance WHERE std = ? AND school_id = ? AND attendance_date = ?");
@@ -114,6 +145,19 @@ try {
                     <?php endif; ?>
                     <?php if (!empty($errorMessage)): ?>
                         <div class="alert alert-danger"><?php echo $errorMessage; ?></div>
+                    <?php elseif (!empty($all_missing_dates)): ?>
+                        <div class="alert alert-warning">
+                            <h4 class="alert-heading">Action Required</h4>
+                            <p>You cannot mark attendance for <strong><?php echo htmlspecialchars($attendance_date_display); ?></strong> because attendance for the following past date(s) is incomplete:</p>
+                            <ul>
+                                <?php foreach ($all_missing_dates as $missing_date): ?>
+                                    <li><strong><?php echo htmlspecialchars($missing_date); ?></strong></li>
+                                <?php endforeach; ?>
+                            </ul>
+                            <hr>
+                            <p class="mb-0">Please start by filling the attendance for <strong><?php echo htmlspecialchars($all_missing_dates[0]); ?></strong>.</p>
+                            <a href="add_attendance.php?attendance_date=<?php echo htmlspecialchars($all_missing_dates[0]); ?>" class="btn btn-primary mt-3">Go to First Pending Attendance Sheet</a>
+                        </div>
                     <?php else: ?>
                         <div class="card shadow mb-4">
                             <div class="card-header py-3">

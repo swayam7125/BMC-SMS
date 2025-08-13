@@ -30,7 +30,8 @@ try {
         die("Could not determine the librarian's school. Access denied.");
     }
 
-    $available_books_stmt = $conn->prepare('SELECT "book_id", "title", "author" FROM "books" WHERE "school_id" = ? AND "quantity_available" > 0 AND "is_digital" = false');
+    // FIX: Removed reference to 'is_digital' column
+    $available_books_stmt = $conn->prepare('SELECT "book_id", "title", "author" FROM "books" WHERE "school_id" = ? AND "quantity_available" > 0');
     $available_books_stmt->execute([$school_id]);
     $available_books = $available_books_stmt->fetchAll(PDO::FETCH_ASSOC);
 
