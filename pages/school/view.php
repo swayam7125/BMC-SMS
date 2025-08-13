@@ -65,6 +65,24 @@ function getDefaultImagePath($type = 'school') {
 }
 
 
+// --- NEW: Helper function to correctly format the PostgreSQL array for display ---
+function cleanPgArray($pg_array_string) {
+    // Remove the leading and trailing curly braces
+    $trimmed_string = trim($pg_array_string, '{}');
+    
+    // Split the string by commas, which correctly handles quoted and unquoted items
+    $items = preg_split('/,(?=(?:(?:[^"]*"){2})*[^"]*$)/', $trimmed_string);
+    
+    // Trim each item, removing any leading/trailing quotes and whitespace
+    $cleaned_items = array_map(function($item) {
+        return trim($item, ' "');
+    }, $items);
+    
+    // Join them back into a clean string for display
+    return implode(', ', $cleaned_items);
+}
+
+
 try {
     // Fetch school details and join with the principal table to get principal info.
     $query = "SELECT s.*, p.id as principal_user_id, p.principal_name, p.principal_image 
@@ -181,15 +199,15 @@ $default_principal_photo = getDefaultImagePath('principal');
                                     </div>
                                     <div class="row info-row">
                                         <div class="col-sm-5 font-weight-bold">Education Board(s):</div>
-                                        <div class="col-sm-7"><?php echo htmlspecialchars(str_replace(',', ', ', trim($school['education_board'], '{}'))); ?></div>
+                                        <div class="col-sm-7"><?php echo htmlspecialchars(cleanPgArray($school['education_board'])); ?></div>
                                     </div>
                                     <div class="row info-row">
                                         <div class="col-sm-5 font-weight-bold">Medium(s):</div>
-                                        <div class="col-sm-7"><?php echo htmlspecialchars(str_replace(',', ', ', trim($school['school_medium'], '{}'))); ?></div>
+                                        <div class="col-sm-7"><?php echo htmlspecialchars(cleanPgArray($school['school_medium'])); ?></div>
                                     </div>
                                     <div class="row info-row">
                                         <div class="col-sm-5 font-weight-bold">Categories:</div>
-                                        <div class="col-sm-7"><?php echo htmlspecialchars(str_replace(',', ', ', trim($school['school_category'], '{}'))); ?></div>
+                                        <div class="col-sm-7"><?php echo htmlspecialchars(cleanPgArray($school['school_category'])); ?></div>
                                     </div>
                                 </div>
                             </div>

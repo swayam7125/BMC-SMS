@@ -19,7 +19,6 @@ if (!$role) {
 $admin_school_id = null;
 $admin_school_name = null;
 if ($role === 'principal' && $userId) {
-    // --- CORRECTED: Using PDO ---
     $stmt = $conn->prepare('SELECT s."id", s."school_name" FROM "principal" p JOIN "school" s ON p."school_id" = s."id" WHERE p."id" = ?');
     $stmt->execute([$userId]);
     $admin_data = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -31,27 +30,12 @@ if ($role === 'principal' && $userId) {
 
 $errors = [];
 $schools = [];
+// The standards array is no longer populated statically here.
 $standards = [];
 
 try {
     $stmt_schools = $conn->query('SELECT "id", "school_name" FROM "school" ORDER BY "school_name"');
     $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
-
-    // --- CORRECTED: Use GROUP BY to fix PostgreSQL SELECT DISTINCT error ---
-    $standards_stmt = $conn->prepare("
-        SELECT standard FROM \"standard_subjects\"
-        GROUP BY standard
-        ORDER BY
-            CASE
-                WHEN standard = 'Pre-Primary' THEN 0
-                WHEN standard ~ '^[0-9]+$' THEN CAST(standard AS INTEGER)
-                ELSE 999
-            END,
-        standard
-    ");
-    $standards_stmt->execute();
-    $standards = $standards_stmt->fetchAll(PDO::FETCH_ASSOC);
-
 } catch (PDOException $e) {
     $errors[] = "Database error: " . $e->getMessage();
 }
@@ -81,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $allowed_exts = ['jpg', 'jpeg', 'png', 'gif'];
 
         if (in_array($file_ext, $allowed_exts)) {
-            $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/student/uploads/';
+            $upload_dir = $_SERVER['DOCUMENT_ROOT'] . 'pages/student/uploads/';
             if (!is_dir($upload_dir)) {
                 mkdir($upload_dir, 0777, true);
             }
@@ -242,14 +226,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <div class="form-row">
                                     <div class="form-group col-md-6">
                                         <label for="std">Standard / Class *</label>
+                                        <!-- This select is now empty and will be populated dynamically by JavaScript -->
                                         <select class="form-control" id="std" name="std" required>
-                                            <option value="">-- Select Standard --</option>
-                                            <?php foreach ($standards as $standard): ?>
-                                                <option value="<?php echo htmlspecialchars($standard['standard']); ?>"
-                                                    <?php echo (isset($_POST['std']) && $_POST['std'] == $standard['standard']) ? 'selected' : ''; ?>>
-                                                    <?php echo htmlspecialchars($standard['standard']); ?>
-                                                </option>
-                                            <?php endforeach; ?>
+                                            <option value="">-- Select a school first --</option>
                                         </select>
                                     </div>
                                     <div class="form-group col-md-6"><label for="rollno">Roll Number *</label><input type="text" class="form-control" id="rollno" name="rollno" value="<?php echo htmlspecialchars($_POST['rollno'] ?? ''); ?>" required></div>
@@ -305,9 +284,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script>
-        document.getElementById('student_image').addEventListener('change', function(event) {
-            if (event.target.files[0]) {
-                document.getElementById('imagePreview').src = URL.createObjectURL(event.target.files[0]);
+        const studentImageInput = document.getElementById('student_image');
+        if (studentImageInput) {
+            studentImageInput.addEventListener('change', function(event) {
+                if (event.target.files[0]) {
+                    document.getElementById('imagePreview').src = URL.createObjectURL(event.target.files[0]);
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const schoolSelect = document.getElementById('school_id');
+            const standardSelect = document.getElementById('std');
+
+            function fetchStandards(schoolId) {
+                if (!standardSelect) return;
+                
+                standardSelect.innerHTML = '<option value="">-- Loading standards --</option>';
+
+                if (schoolId) {
+                    fetch('../../pages/student/get_standards_by_school_id.php?school_id=' + schoolId)
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok');
+                            }
+                            return response.json();
+                        })
+                        .then(standards => {
+                            standardSelect.innerHTML = '<option value="">-- Select Standard --</option>';
+                            if (standards.length > 0) {
+                                standards.forEach(std => {
+                                    const option = document.createElement('option');
+                                    option.value = std.standard_name;
+                                    option.textContent = std.standard_name;
+                                    standardSelect.appendChild(option);
+                                });
+                            } else {
+                                standardSelect.innerHTML = '<option value="">No standards found for this school</option>';
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error fetching standards:', error);
+                            standardSelect.innerHTML = '<option value="">-- Error loading standards --</option>';
+                        });
+                } else {
+                    standardSelect.innerHTML = '<option value="">-- Select a school first --</option>';
+                }
+            }
+
+            // Check for a pre-selected school ID on page load.
+            // This handles the case where a principal is logged in.
+            const preselectedSchoolInput = document.querySelector('input[name="school_id"][type="hidden"]');
+            if (preselectedSchoolInput && preselectedSchoolInput.value) {
+                fetchStandards(preselectedSchoolInput.value);
+            }
+
+            // Add event listener for manual selection (for superadmin).
+            if (schoolSelect) {
+                schoolSelect.addEventListener('change', function() {
+                    fetchStandards(this.value);
+                });
             }
         });
     </script>

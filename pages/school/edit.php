@@ -35,7 +35,14 @@ try {
     // Prepare arrays for multi-select dropdowns
     $selected_boards = $school['education_board'] ? explode(',', trim($school['education_board'], '{}')) : [];
     $selected_mediums = $school['school_medium'] ? explode(',', trim($school['school_medium'], '{}')) : [];
-    $selected_categories = $school['school_category'] ? explode(',', trim($school['school_category'], '{}')) : [];
+    
+    // Correctly parse the PostgreSQL array for school_category, handling quoted values
+    $school_category_string = trim($school['school_category'], '{}');
+    $categories_raw = preg_split('/,(?=(?:(?:[^"]*"){2})*[^"]*$)/', $school_category_string);
+    $selected_categories = array_map(function($category) {
+        return trim($category, ' "');
+    }, $categories_raw);
+
     $original_logo_path = $school['school_logo'];
 
     // Handle form submission
@@ -87,7 +94,12 @@ try {
 
             $education_board_pg = '{' . implode(',', $education_board) . '}';
             $school_medium_pg = '{' . implode(',', $school_medium) . '}';
-            $school_category_pg = '{' . implode(',', $school_category) . '}';
+            
+            // Re-quote values with spaces for PostgreSQL
+            $school_category_quoted = array_map(function($cat) {
+                return strpos($cat, ' ') !== false ? '"' . $cat . '"' : $cat;
+            }, $school_category);
+            $school_category_pg = '{' . implode(',', $school_category_quoted) . '}';
 
             if ($stmt->execute([$logo_path_for_db, $school_name, $email, $phone, $address, $school_opening, $school_type, $education_board_pg, $school_medium_pg, $school_category_pg, $school_id])) {
                 header("Location: ../../pages/school/school_list.php?success=School updated successfully");
@@ -195,12 +207,13 @@ $logo_display_path = (!empty($school['school_logo']) && file_exists(rtrim($_SERV
     </div>
     <?php include_once "../../includes/logout_modal.php"?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
-    <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
         $(document).ready(function() {
             $('.multi-select').select2();
         });
     </script>
+    <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
 </html>
