@@ -210,13 +210,16 @@ try {
                                                             <td><?php echo htmlspecialchars($librarians_with_details[0]['librarian_name']); ?></td>
                                                             <td>
                                                                 <div class="form-check form-check-inline">
-                                                                    <input class="form-check-input" type="radio" name="status" value="Present" <?php if ($librarians_with_details[0]['status'] == 'Present') echo 'checked'; ?>><label>Present</label>
+                                                                    <input class="form-check-input" type="radio" name="status" value="Present" <?php if ($librarians_with_details[0]['status'] == 'Present') echo 'checked'; ?>><label class="form-check-label">Present</label>
                                                                 </div>
                                                                 <div class="form-check form-check-inline">
-                                                                    <input class="form-check-input" type="radio" name="status" value="Absent" <?php if ($librarians_with_details[0]['status'] == 'Absent') echo 'checked'; ?>><label>Absent</label>
+                                                                    <input class="form-check-input" type="radio" name="status" value="Absent" <?php if ($librarians_with_details[0]['status'] == 'Absent') echo 'checked'; ?>><label class="form-check-label">Absent</label>
                                                                 </div>
                                                                 <div class="form-check form-check-inline">
-                                                                    <input class="form-check-input" type="radio" name="status" value="Leave" <?php if ($librarians_with_details[0]['status'] == 'Leave') echo 'checked'; ?>><label>Leave</label>
+                                                                    <input class="form-check-input" type="radio" name="status" value="Half Day" <?php if ($librarians_with_details[0]['status'] == 'Half Day') echo 'checked'; ?>><label class="form-check-label">Half Day</label>
+                                                                </div>
+                                                                <div class="form-check form-check-inline">
+                                                                    <input class="form-check-input" type="radio" name="status" value="Leave" <?php if ($librarians_with_details[0]['status'] == 'Leave') echo 'checked'; ?>><label class="form-check-label">Leave</label>
                                                                 </div>
                                                             </td>
                                                         </tr>
@@ -243,13 +246,16 @@ try {
                                                             <td><?php echo htmlspecialchars($librarian['librarian_name']); ?></td>
                                                             <td>
                                                                 <div class="form-check form-check-inline">
-                                                                    <input class="form-check-input" type="radio" name="attendance[<?php echo $librarian['id']; ?>]" value="Present" <?php if ($librarian['status'] == 'Present') echo 'checked'; ?>><label>Present</label>
+                                                                    <input class="form-check-input" type="radio" name="attendance[<?php echo $librarian['id']; ?>]" value="Present" <?php if ($librarian['status'] == 'Present') echo 'checked'; ?>><label class="form-check-label">Present</label>
                                                                 </div>
                                                                 <div class="form-check form-check-inline">
-                                                                    <input class="form-check-input" type="radio" name="attendance[<?php echo $librarian['id']; ?>]" value="Absent" <?php if ($librarian['status'] == 'Absent') echo 'checked'; ?>><label>Absent</label>
+                                                                    <input class="form-check-input" type="radio" name="attendance[<?php echo $librarian['id']; ?>]" value="Absent" <?php if ($librarian['status'] == 'Absent') echo 'checked'; ?>><label class="form-check-label">Absent</label>
                                                                 </div>
                                                                 <div class="form-check form-check-inline">
-                                                                    <input class="form-check-input" type="radio" name="attendance[<?php echo $librarian['id']; ?>]" value="Leave" <?php if ($librarian['status'] == 'Leave') echo 'checked'; ?>><label>Leave</label>
+                                                                    <input class="form-check-input" type="radio" name="attendance[<?php echo $librarian['id']; ?>]" value="Half Day" <?php if ($librarian['status'] == 'Half Day') echo 'checked'; ?>><label class="form-check-label">Half Day</label>
+                                                                </div>
+                                                                <div class="form-check form-check-inline">
+                                                                    <input class="form-check-input" type="radio" name="attendance[<?php echo $librarian['id']; ?>]" value="Leave" <?php if ($librarian['status'] == 'Leave') echo 'checked'; ?>><label class="form-check-label">Leave</label>
                                                                 </div>
                                                             </td>
                                                         </tr>

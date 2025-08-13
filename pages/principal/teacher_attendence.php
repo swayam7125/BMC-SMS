@@ -202,15 +202,19 @@ try {
                                                         <?php $current_status = $teacher['status']; ?>
                                                         <div class="form-check form-check-inline">
                                                             <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Present" <?php if ($current_status == 'Present') echo 'checked'; ?>>
-                                                            <label>Present</label>
+                                                            <label class="form-check-label">Present</label>
                                                         </div>
                                                         <div class="form-check form-check-inline">
                                                             <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Absent" <?php if ($current_status == 'Absent') echo 'checked'; ?>>
-                                                            <label>Absent</label>
+                                                            <label class="form-check-label">Absent</label>
+                                                        </div>
+                                                        <div class="form-check form-check-inline">
+                                                            <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Half Day" <?php if ($current_status == 'Half Day') echo 'checked'; ?>>
+                                                            <label class="form-check-label">Half Day</label>
                                                         </div>
                                                         <div class="form-check form-check-inline">
                                                             <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Leave" <?php if ($current_status == 'Leave') echo 'checked'; ?>>
-                                                            <label>Leave</label>
+                                                            <label class="form-check-label">Leave</label>
                                                         </div>
                                                     </td>
                                                 </tr>
