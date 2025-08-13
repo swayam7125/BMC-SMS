@@ -24,11 +24,10 @@ body {
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: clamp(1rem, 5vw, 2rem);
+  padding: 2rem;
   background: linear-gradient(45deg, var(--primary-blue-dark), var(--primary-blue-light));
   background-size: 200% 200%;
   animation: animated-gradient 12s ease infinite, slideInLeft 0.7s ease-out;
-  min-height: 100vh;
   min-height: 100vh;
 }
 .login-branding-panel .logo {

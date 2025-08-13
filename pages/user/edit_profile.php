@@ -1,4 +1,9 @@
 <?php
+// --- DEBUGGING: Display all PHP errors. Remove or comment these out for production. ---
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 // Includes and session start
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
