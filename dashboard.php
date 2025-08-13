@@ -149,9 +149,23 @@ try {
                 $current_month = date('m');
                 $total_working_days = getWorkingDays($current_year, $current_month);
 
-                $presentStmt = $conn->prepare('SELECT COUNT(*) FROM "teacher_attendance" WHERE "teacher_id" = ? AND "status" = \'Present\' AND EXTRACT(YEAR FROM "attendance_date") = ? AND EXTRACT(MONTH FROM "attendance_date") = ?');
-                $presentStmt->execute([$userId, $current_year, $current_month]);
-                $totalPresent = $presentStmt->fetchColumn();
+                // MODIFIED: Calculate payable days (Present = 1, Half Day = 0.5)
+                $payableDaysStmt = $conn->prepare("
+                    SELECT SUM(
+                        CASE 
+                            WHEN \"status\" = 'Present' THEN 1
+                            WHEN \"status\" = 'Half Day' THEN 0.5
+                            ELSE 0 
+                        END
+                    ) as payable_days 
+                    FROM \"teacher_attendance\" 
+                    WHERE \"teacher_id\" = ? 
+                    AND EXTRACT(YEAR FROM \"attendance_date\") = ? 
+                    AND EXTRACT(MONTH FROM \"attendance_date\") = ?
+                ");
+                $payableDaysStmt->execute([$userId, $current_year, $current_month]);
+                $totalPresent = (float)$payableDaysStmt->fetchColumn();
+
 
                 $absentStmt = $conn->prepare('SELECT COUNT(*) FROM "teacher_attendance" WHERE "teacher_id" = ? AND "status" = \'Absent\' AND EXTRACT(YEAR FROM "attendance_date") = ? AND EXTRACT(MONTH FROM "attendance_date") = ?');
                 $absentStmt->execute([$userId, $current_year, $current_month]);
@@ -161,7 +175,8 @@ try {
                 if ($total_working_days > 0 && $base_salary > 0) {
                     $per_day_salary = $base_salary / $total_working_days;
                 }
-
+                
+                // MODIFIED: Salary is based on payable days
                 $salary = $per_day_salary * $totalPresent;
                 $deduction_amount = $per_day_salary * $totalAbsent;
 
@@ -183,14 +198,27 @@ try {
                 $schoolId = $librarianData['school_id'];
                 $base_salary = $librarianData['salary'] ?? 0;
 
-                // --- REVISED: Calculate Salary, Absences, and Deductions for Librarian ---
                 $current_year = date('Y');
                 $current_month = date('m');
                 $total_working_days = getWorkingDays($current_year, $current_month);
 
-                $presentStmt = $conn->prepare('SELECT COUNT(*) FROM "librarian_attendance" WHERE "librarian_id" = ? AND "status" = \'Present\' AND EXTRACT(YEAR FROM "attendance_date") = ? AND EXTRACT(MONTH FROM "attendance_date") = ?');
-                $presentStmt->execute([$userId, $current_year, $current_month]);
-                $monthly_present_days = $presentStmt->fetchColumn();
+                // MODIFIED: Calculate payable days for librarian (Present = 1, Half Day = 0.5)
+                $payableDaysStmt = $conn->prepare("
+                    SELECT SUM(
+                        CASE 
+                            WHEN \"status\" = 'Present' THEN 1
+                            WHEN \"status\" = 'Half Day' THEN 0.5
+                            ELSE 0 
+                        END
+                    ) as payable_days 
+                    FROM \"librarian_attendance\" 
+                    WHERE \"librarian_id\" = ? 
+                    AND EXTRACT(YEAR FROM \"attendance_date\") = ? 
+                    AND EXTRACT(MONTH FROM \"attendance_date\") = ?
+                ");
+                $payableDaysStmt->execute([$userId, $current_year, $current_month]);
+                $monthly_present_days = (float)$payableDaysStmt->fetchColumn();
+
 
                 $absentStmt = $conn->prepare('SELECT COUNT(*) FROM "librarian_attendance" WHERE "librarian_id" = ? AND "status" = \'Absent\' AND EXTRACT(YEAR FROM "attendance_date") = ? AND EXTRACT(MONTH FROM "attendance_date") = ?');
                 $absentStmt->execute([$userId, $current_year, $current_month]);
@@ -200,10 +228,10 @@ try {
                 if ($total_working_days > 0 && $base_salary > 0) {
                     $per_day_salary = $base_salary / $total_working_days;
                 }
-
+                
+                // MODIFIED: Salary based on payable days
                 $salary = $per_day_salary * $monthly_present_days;
                 $librarian_deduction_amount = $per_day_salary * $librarian_total_absent;
-                // --- END: Librarian Salary Calculation ---
 
                 $booksStmt = $conn->prepare('SELECT COUNT(*) FROM "books" WHERE "school_id" = ?');
                 $booksStmt->execute([$schoolId]);
@@ -456,7 +484,7 @@ if ($userId && isset($conn)) {
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Present Days (This Month)</div>
+                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Payable Days (This Month)</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalPresent; ?></div>
                                                 </div>
                                                 <div class="col-auto"><i class="fas fa-user-check fa-2x text-gray-300"></i></div>
@@ -509,7 +537,7 @@ if ($userId && isset($conn)) {
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Present Days (This Month)</div>
+                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Payable Days (This Month)</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $monthly_present_days; ?></div>
                                                 </div>
                                                 <div class="col-auto"><i class="fas fa-user-check fa-2x text-gray-300"></i></div>

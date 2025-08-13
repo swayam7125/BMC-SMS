@@ -2,10 +2,6 @@
 include_once '../../includes/connect.php'; // Assumes this file now provides a PDO connection object, e.g., $conn
 include_once '../../encryption.php';
 
-// Enable error reporting for debugging
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 $userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
 
@@ -105,7 +101,6 @@ try {
                                 <form method="GET" action="" class="form-inline">
                                     <div class="form-group">
                                         <label for="date" class="mr-2">Date:</label>
-                                        <!-- Added max attribute to disable future dates -->
                                         <input type="date" id="date" name="date" class="form-control" value="<?php echo htmlspecialchars($filter_date); ?>" max="<?php echo $current_date; ?>">
                                     </div>
                                     <button type="submit" class="btn btn-primary ml-2"><i class="fas fa-search fa-sm"></i> View</button>
@@ -121,7 +116,6 @@ try {
                                         <tr>
                                             <th>Librarian Name</th>
                                             <th>Status</th>
-                                            <!-- ADDED: New 'Action' header -->
                                             <th>Action</th>
                                         </tr>
                                     </thead>
@@ -137,10 +131,11 @@ try {
                                                         if ($status == 'Present') $badge_class = 'badge-success';
                                                         if ($status == 'Absent') $badge_class = 'badge-danger';
                                                         if ($status == 'Leave') $badge_class = 'badge-warning';
+                                                        // ADDED: Badge for Half Day
+                                                        if ($status == 'Half Day') $badge_class = 'badge-info';
                                                         echo "<span class='badge {$badge_class} p-2'>" . htmlspecialchars($status) . "</span>";
                                                     ?>
                                                 </td>
-                                                <!-- ADDED: New 'Action' column with an 'Edit' button -->
                                                 <td>
                                                     <a href="librarian_attendance.php?attendance_date=<?php echo htmlspecialchars($filter_date); ?>&edit_librarian_id=<?php echo $record['librarian_id']; ?>" class="btn btn-sm btn-warning">
                                                         <i class="fas fa-edit"></i> Edit
@@ -150,7 +145,6 @@ try {
                                             <?php endforeach; ?>
                                         <?php else: ?>
                                             <tr>
-                                                <!-- UPDATED: colspan to 3 to account for the new column -->
                                                 <td colspan="3" class="text-center">No librarians found for this school or date.</td>
                                             </tr>
                                         <?php endif; ?>
