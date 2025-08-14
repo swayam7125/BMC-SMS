@@ -58,7 +58,7 @@ try {
 
         if (!empty($bmc_user_ids)) {
             $notification_message = "New Notice from " . htmlspecialchars($principalName);
-            $notification_link = "/BMC-SMS/pages/bmc/view_principal_notices.php";
+            $notification_link = "pages/bmc/view_principal_notices.php";
             $notification_type = "principal_notice";
 
             $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");

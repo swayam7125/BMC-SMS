@@ -30,7 +30,7 @@ try {
         if (isset($_FILES['timetable_file']) && $_FILES['timetable_file']['error'] == 0) {
             $originalFilename = basename($_FILES["timetable_file"]["name"]);
             $uploadDirServer = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/teacher/uploads/timetables/';
-            $uploadDirWeb = 'pages/teacher/uploads/timetables/';
+            $uploadDirWeb = '/pages/teacher/uploads/timetables/';
 
             if (!is_dir($uploadDirServer)) {
                 mkdir($uploadDirServer, 0777, true);
@@ -53,7 +53,7 @@ try {
 
                 if (!empty($student_ids_to_notify)) {
                     $notification_message = "A new timetable has been uploaded for your class.";
-                    $notification_link = "/BMC-SMS/pages/student/view_timetable.php";
+                    $notification_link = "pages/student/view_timetable.php";
                     $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, 'exam_timetable')");
                     foreach ($student_ids_to_notify as $student_id) {
                         $stmt_notify->execute([$student_id, $notification_message, $notification_link]);

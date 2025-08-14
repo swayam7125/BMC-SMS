@@ -77,7 +77,7 @@ try {
         $students = $stmt_students->fetchAll(PDO::FETCH_ASSOC);
 
         $notification_message = "New Assignment: " . substr($title, 0, 50) . "...";
-        $notification_link = "/pages/assignments/view_assignments.php";
+        $notification_link = "pages/assignments/view_assignments.php";
         $notification_type = "new_assignment";
         $stmt_notify = $conn->prepare('INSERT INTO "notifications" (user_id, message, link, type) VALUES (?, ?, ?, ?)');
 

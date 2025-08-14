@@ -86,7 +86,7 @@ if (!function_exists('getNotificationIcon')) {
     }
 }
 if (!defined('BASE_WEB_PATH')) {
-    define('BASE_WEB_PATH', '/BMC-SMS/');
+    define('BASE_WEB_PA1TH', '/BMC-SMS/');
 }
 ?>
 <!DOCTYPE html>

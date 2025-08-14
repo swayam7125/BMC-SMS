@@ -52,7 +52,7 @@ try {
 
             $notification_message = "Your leave application has been " . $action_status_message . ".";
             // Correct the notification link here
-            $notification_link = "/BMC-SMS/pages/teacher/teacher_leave_management.php";
+            $notification_link = "pages/teacher/teacher_leave_management.php";
             $notification_type = "leave_status";
 
             $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");

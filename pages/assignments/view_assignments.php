@@ -69,7 +69,7 @@ try {
                     $student_name = $student_info['student_name'] ?? 'A student';
 
                     $notification_message = htmlspecialchars($student_name) . " has submitted an assignment.";
-                    $notification_link = "/BMC-SMS/pages/assignments/view_submissions.php?id=" . $assignment_id;
+                    $notification_link = "pages/assignments/view_submissions.php?id=" . $assignment_id;
                     $notification_type = "assignment_submission";
 
                     $insert_notif_stmt = $conn->prepare('INSERT INTO "notifications" (user_id, message, link, type) VALUES (?, ?, ?, ?)');
