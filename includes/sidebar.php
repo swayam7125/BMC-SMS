@@ -43,6 +43,7 @@ $unread_borrow_requests = 0;
 $unread_acquisition_requests = 0;
 $unread_library_status = 0;
 $unread_principal_to_librarian_notices = 0;
+$unread_librarian_requests = 0; // NEW: Initialize new counter for librarian leave requests
 $is_class_teacher = false; // Initialize teacher-specific flag
 
 // Fetch counts based on the user's role if a valid user ID and connection exist
@@ -95,6 +96,17 @@ if (isset($conn) && $user_id) {
                 $stmt_leave = $conn->prepare($sql_leave_requests);
                 $stmt_leave->execute([$user_id]);
                 $unread_leave_requests = (int) $stmt_leave->fetchColumn();
+                
+                // NEW Query: Get count of unread librarian leave requests
+                $sql_librarian_leave_requests = "SELECT COUNT(*)
+                                       FROM notifications
+                                       WHERE user_id = ?
+                                         AND is_read = false
+                                         AND type = 'librarian_leave_request'";
+                $stmt_librarian_leave = $conn->prepare($sql_librarian_leave_requests);
+                $stmt_librarian_leave->execute([$user_id]);
+                $unread_librarian_requests = (int) $stmt_librarian_leave->fetchColumn();
+                
                 // === END: ROBUST PRINCIPAL NOTIFICATION LOGIC ===
                 break;
 
@@ -260,6 +272,10 @@ if (isset($conn) && $user_id) {
             $academics_pages = ['manage_subjects.php', 'manage_timetable.php', 'send_exam_timetable.php', 'manage_holidays.php'];
             $salary_pages = ['generate_payroll.php', 'generate_librarian_payroll.php']; // ADDED
             $past_data_pages_principal = ['past_teacher.php', 'past_librarian.php', 'past_student.php'];
+            // Determine if any leave management page is active
+            $leave_management_pages = ['teacher_leave_management.php', 'librarian_leave_management.php'];
+            $is_leave_management_active = in_array($current_page, $leave_management_pages);
+            
         ?>
             <div class="sidebar-heading font-weight-semibold">School Management</div>
             <li class="nav-item">
@@ -364,14 +380,35 @@ if (isset($conn) && $user_id) {
                     <span>Passing Criteria</span>
                 </a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link <?php echo (is_active_page(['teacher_leave_management.php'])) ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/principal/teacher_leave_management.php" data-notification-type="leave_request">
+            <li class="nav-item <?php echo $is_leave_management_active ? 'active' : ''; ?>">
+                <a class="nav-link <?php echo $is_leave_management_active ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseLeave">
                     <i class="fas fa-fw fa-calendar-alt"></i>
-                    <span>Teacher Leave</span>
-                    <?php if ($unread_leave_requests > 0): ?>
-                        <span class="badge badge-danger badge-counter"><?php echo ($unread_leave_requests > 9) ? '9+' : $unread_leave_requests; ?></span>
+                    <span>Leave Management</span>
+                    <?php 
+                        $total_leave_notifs = $unread_leave_requests + $unread_librarian_requests;
+                        if ($total_leave_notifs > 0): 
+                    ?>
+                        <span class="badge badge-danger badge-counter">
+                            <?php echo ($total_leave_notifs > 9) ? '9+' : $total_leave_notifs; ?>
+                        </span>
                     <?php endif; ?>
                 </a>
+                <div id="collapseLeave" class="collapse <?php echo $is_leave_management_active ? 'show' : ''; ?>" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item <?php echo ($current_page == 'teacher_leave_management.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/principal/teacher_leave_management.php" data-notification-type="leave_request">
+                            Teacher Leave
+                            <?php if ($unread_leave_requests > 0): ?>
+                                <span class="badge badge-danger badge-counter"><?php echo ($unread_leave_requests > 9) ? '9+' : $unread_leave_requests; ?></span>
+                            <?php endif; ?>
+                        </a>
+                        <a class="collapse-item <?php echo ($current_page == 'librarian_leave_management.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/principal/librarian_leave_management.php" data-notification-type="librarian_leave_request">
+                            Librarian Leave
+                            <?php if ($unread_librarian_requests > 0): ?>
+                                <span class="badge badge-danger badge-counter"><?php echo ($unread_librarian_requests > 9) ? '9+' : $unread_librarian_requests; ?></span>
+                            <?php endif; ?>
+                        </a>
+                    </div>
+                </div>
             </li>
             <li class="nav-item">
                 <a class="nav-link <?php echo (is_active_page($past_data_pages_principal)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapsePastDataPrincipal">
@@ -656,6 +693,7 @@ if (isset($conn) && $user_id) {
         case 'librarian':
             $books_pages = ['book_list.php', 'add_new_book.php'];
             $past_data_librarian = ['past_books.php'];
+            $leave_pages = ['my_leave_management.php'];
         ?>
             <div class="sidebar-heading font-weight-semibold">Library Management</div>
             <li class="nav-item <?php echo ($current_page == 'profile.php') ? 'active' : ''; ?>">
@@ -668,6 +706,29 @@ if (isset($conn) && $user_id) {
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/view_my_attendance.php">
                     <i class="fas fa-fw fa-user-check"></i>
                     <span>My Attendance</span>
+                </a>
+            </li>
+            <li class="nav-item <?php echo (is_active_page($leave_pages)) ? 'active' : ''; ?>">
+                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/my_leave_management.php" data-notification-type="librarian_leave_status">
+                    <i class="fas fa-fw fa-calendar-alt"></i>
+                    <span>Manage Leave</span>
+                    <?php
+                        $unread_librarian_leave_status = 0;
+                        if (isset($conn) && $user_id) {
+                            try {
+                                $stmt_leave_status = $conn->prepare("SELECT COUNT(*) FROM notifications WHERE user_id = ? AND type = 'librarian_leave_status' AND is_read = false");
+                                $stmt_leave_status->execute([$user_id]);
+                                $unread_librarian_leave_status = (int) $stmt_leave_status->fetchColumn();
+                            } catch (PDOException $e) {
+                                error_log("Librarian Leave Status count error: " . $e->getMessage());
+                            }
+                        }
+                        if ($unread_librarian_leave_status > 0):
+                    ?>
+                        <span class="badge badge-danger badge-counter">
+                            <?php echo ($unread_librarian_leave_status > 9) ? '9+' : $unread_librarian_leave_status; ?>
+                        </span>
+                    <?php endif; ?>
                 </a>
             </li>
             <li class="nav-item">
@@ -726,7 +787,7 @@ if (isset($conn) && $user_id) {
                     </div>
                 </div>
             </li>
-    <?php
+        <?php
             break;
     }
     ?>

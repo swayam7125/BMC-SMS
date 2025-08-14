@@ -148,7 +148,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
             $sql_teachers = "SELECT id, email, teacher_name FROM teacher WHERE id IN ($placeholders)";
             $stmt_teachers = $conn->prepare($sql_teachers);
             $stmt_teachers->execute($teacher_ids_to_notify);
-            $notification_link = "/pages/teacher/view_notice.php";
+            $notification_link = "pages/teacher/view_notice.php";
             while ($teacher = $stmt_teachers->fetch(PDO::FETCH_ASSOC)) {
                 $stmt_notify->execute([$teacher['id'], $notification_message, $notification_link, $notification_type]);
                 send_email($teacher['email'], $email_subject, "<p>Dear " . htmlspecialchars($teacher['teacher_name']) . ",</p>" . $email_content_base);
@@ -161,7 +161,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
             $stmt_students = $conn->prepare($sql_students);
             $params = array_merge([$schoolId], $standards_to_notify);
             $stmt_students->execute($params);
-            $notification_link = "/pages/student/view_notice.php";
+            $notification_link = "pages/student/view_notice.php";
             while ($student = $stmt_students->fetch(PDO::FETCH_ASSOC)) {
                 $stmt_notify->execute([$student['id'], $notification_message, $notification_link, $notification_type]);
                 send_email($student['email'], $email_subject, "<p>Dear " . htmlspecialchars($student['student_name']) . ",</p>" . $email_content_base);

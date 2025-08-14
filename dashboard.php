@@ -693,7 +693,7 @@ if ($userId && isset($conn)) {
                                 </div>
                                 <div class="card-body d-flex flex-column">
                                     <div class="list-group list-group-flush notification-dashboard-list" id="dashboard-notifications-list">
-                                    </div>
+                                        </div>
                                     <a class="dropdown-item text-center small text-gray-500 mt-auto" href="/BMC-SMS/notification_history.php">Show All Notifications</a>
                                 </div>
                             </div>
@@ -714,6 +714,46 @@ if ($userId && isset($conn)) {
     <script src="/BMC-SMS/assets/js/dynamic_chart.js"></script>
     <script src="/BMC-SMS/assets/js/notification.js"></script>
     <script src="/BMC-SMS/assets/js/sidebar.js"></script>
+    
+    <script>
+    // New script block to handle notification clicks on the dashboard
+    document.addEventListener('DOMContentLoaded', function() {
+        const base_path = '/BMC-SMS/';
+        const notification_api_endpoint = base_path + 'includes/header.php'; // The API is now inside header.php
+
+        // Use event delegation to handle clicks on links that are dynamically added
+        document.getElementById('dashboard-notifications-list').addEventListener('click', function(event) {
+            // Find the clicked link
+            const link = event.target.closest('a.list-group-item');
+            if (!link) {
+                return; // Click was not on a notification link
+            }
+
+            const isUnread = link.classList.contains('unread');
+            const notifId = link.getAttribute('data-notif-id');
+            
+            if (isUnread && notifId) {
+                event.preventDefault(); // Stop the default navigation
+                const targetUrl = link.getAttribute('href');
+
+                let formData = new FormData();
+                formData.append('action', 'mark_single_read');
+                formData.append('notif_id', notifId);
+
+                fetch(notification_api_endpoint, {
+                    method: 'POST',
+                    body: formData
+                })
+                .catch(error => console.error('Error marking dashboard notification as read:', error))
+                .finally(() => {
+                    // Navigate after the API call is complete to ensure the state is updated
+                    window.location.href = targetUrl;
+                });
+            }
+        });
+    });
+    </script>
+
 </body>
 
 </html>

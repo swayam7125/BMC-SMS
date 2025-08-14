@@ -77,9 +77,7 @@ if (!function_exists('getNotificationIcon')) {
             case 'exam_timetable': return 'fas fa-calendar-alt text-white';
             case 'new_notes': return 'fas fa-sticky-note text-white';
             case 'result_published': return 'fas fa-poll-h text-white';
-            // FIX: Added icon for acquisition requests
             case 'acquisition_request': return 'fas fa-inbox text-white';
-            // FIX: Added icon for acquisition status
             case 'acquisition_status': return 'fas fa-check-circle text-white';
             default: return 'fas fa-bell text-white';
         }
@@ -156,15 +154,18 @@ if (!defined('BASE_WEB_PATH')) {
                                     <?php foreach ($all_notifications as $notification): ?>
                                         <?php
                                             $base_link = htmlspecialchars(BASE_WEB_PATH . ltrim($notification['link'], '/'));
-                                            $separator = (strpos($base_link, '?') === false) ? '?' : '&';
-                                            $final_link = $notification['is_read'] ? $base_link : $base_link . $separator . 'notif_id=' . $notification['id'];
-                                            // FIX: The icon class is now dynamically retrieved using the updated function
+                                            $is_unread = !$notification['is_read'];
+                                            
+                                            // Add a special class and data-attribute for unread notifications to be handled by JS
+                                            $link_class = $is_unread ? 'notification-history-link unread' : '';
+                                            $data_attr = $is_unread ? 'data-notif-id="' . htmlspecialchars($notification['id']) . '"' : '';
+
                                             $icon_class = getNotificationIcon($notification['type']);
-                                            $bgClass = !$notification['is_read'] ? 'bg-light' : '';
-                                            $iconBgClass = !$notification['is_read'] ? 'bg-primary' : 'bg-success';
-                                            $fontWeightClass = !$notification['is_read'] ? 'font-weight-bold' : '';
+                                            $bgClass = $is_unread ? 'bg-light' : '';
+                                            $iconBgClass = $is_unread ? 'bg-primary' : 'bg-success';
+                                            $fontWeightClass = $is_unread ? 'font-weight-bold' : '';
                                         ?>
-                                        <a href="<?php echo $final_link; ?>" class="list-group-item list-group-item-action d-flex align-items-center <?php echo $bgClass; ?>">
+                                        <a href="<?php echo $base_link; ?>" class="list-group-item list-group-item-action d-flex align-items-center <?php echo $bgClass; ?> <?php echo $link_class; ?>" <?php echo $data_attr; ?>>
                                             <div class="mr-3">
                                                 <div class="icon-circle <?php echo $iconBgClass; ?>">
                                                     <i class="<?php echo $icon_class; ?>"></i>
@@ -194,6 +195,39 @@ if (!defined('BASE_WEB_PATH')) {
     <script src="/BMC-SMS/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="/BMC-SMS/assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="/BMC-SMS/assets/js/sb-admin-2.min.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const base_api_path = '<?php echo BASE_WEB_PATH; ?>includes/actions/mark_notifications_as_read.php';
+
+        // Add click handler for unread notifications on this page
+        document.querySelectorAll('.notification-history-link.unread').forEach(link => {
+            link.addEventListener('click', function(event) {
+                event.preventDefault(); // Stop navigation
+                
+                const notifId = this.getAttribute('data-notif-id');
+                const targetUrl = this.getAttribute('href');
+
+                if (notifId) {
+                    let formData = new FormData();
+                    formData.append('notif_id', notifId);
+
+                    // Call the API and then navigate, ensuring the read status is updated
+                    fetch(base_api_path, {
+                        method: 'POST',
+                        body: formData,
+                        keepalive: true
+                    })
+                    .catch(error => console.error('Error marking notification as read:', error))
+                    .finally(() => {
+                        window.location.href = targetUrl; // Navigate after the attempt
+                    });
+                } else {
+                    window.location.href = targetUrl; // Fallback navigation
+                }
+            });
+        });
+    });
+    </script>
 </body>
 </html>
 <?php $conn = null; ?>

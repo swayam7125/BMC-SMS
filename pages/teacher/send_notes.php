@@ -57,7 +57,7 @@ try {
         if (isset($_FILES['note_file']) && $_FILES['note_file']['error'] == 0) {
             $originalFilename = basename($_FILES["note_file"]["name"]);
             $uploadDirServer = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/teacher/uploads/notes/';
-            $uploadDirWeb = 'pages/teacher/uploads/notes/';
+            $uploadDirWeb = '/pages/teacher/uploads/notes/';
 
             if (!is_dir($uploadDirServer)) {
                 mkdir($uploadDirServer, 0777, true);
@@ -80,7 +80,7 @@ try {
 
         if ($students_to_notify) {
             $notification_message = "New notes posted: " . substr($title, 0, 40) . "...";
-            $notification_link = "/BMC-SMS/pages/student/view_notes.php";
+            $notification_link = "pages/student/view_notes.php";
             $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, 'new_notes')");
             foreach ($students_to_notify as $student) {
                 $stmt_notify->execute([$student['id'], $notification_message, $notification_link]);

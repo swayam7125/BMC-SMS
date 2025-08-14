@@ -1,7 +1,6 @@
 <?php
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
-// include_once '../../includes/email_functions.php'; // Uncomment if email is set up
 
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : '';
 if ($role !== 'principal') {
@@ -20,53 +19,53 @@ try {
         $action_status_message = 'Rejected';
 
         if (empty($rejection_reason)) {
-            header("Location: teacher_leave_management.php?error=reason_required");
+            header("Location: librarian_leave_management.php?error=reason_required");
             exit;
         }
 
-        $stmt = $conn->prepare("UPDATE leave_applications SET status = 'Rejected', rejection_reason = ? WHERE id = ?");
+        $stmt = $conn->prepare("UPDATE librarian_leave_applications SET status = 'Rejected', rejection_reason = ? WHERE id = ?");
         $stmt->execute([$rejection_reason, $leave_id]);
     } elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'approve') {
         $leave_id = (int) $_GET['id'];
         $action_status_message = 'Approved';
 
-        $stmt = $conn->prepare("UPDATE leave_applications SET status = 'Approved', rejection_reason = NULL WHERE id = ?");
+        $stmt = $conn->prepare("UPDATE librarian_leave_applications SET status = 'Approved', rejection_reason = NULL WHERE id = ?");
         $stmt->execute([$leave_id]);
     }
 
     if ($leave_id > 0 && !empty($action_status_message)) {
-        $stmt_get_teacher = $conn->prepare(
-            "SELECT l.teacher_id, t.teacher_name, t.email, l.from_date, l.to_date 
-             FROM leave_applications l 
-             JOIN teacher t ON l.teacher_id = t.id 
+        $stmt_get_librarian = $conn->prepare(
+            "SELECT l.librarian_id, li.librarian_name, li.email, l.from_date, l.to_date 
+             FROM librarian_leave_applications l 
+             JOIN librarian li ON l.librarian_id = li.id 
              WHERE l.id = ?"
         );
-        $stmt_get_teacher->execute([$leave_id]);
+        $stmt_get_librarian->execute([$leave_id]);
 
-        if ($leave_data = $stmt_get_teacher->fetch(PDO::FETCH_ASSOC)) {
-            $teacher_id = $leave_data['teacher_id'];
-            $teacher_name = $leave_data['teacher_name'];
-            $teacher_email = $leave_data['email'];
+        if ($leave_data = $stmt_get_librarian->fetch(PDO::FETCH_ASSOC)) {
+            $librarian_id = $leave_data['librarian_id'];
+            $librarian_name = $leave_data['librarian_name'];
+            $librarian_email = $leave_data['email'];
             $from_date = $leave_data['from_date'];
             $to_date = $leave_data['to_date'];
 
             $notification_message = "Your leave application has been " . $action_status_message . ".";
             // Correct the notification link here
-            $notification_link = "pages/teacher/teacher_leave_management.php";
-            $notification_type = "leave_status";
+            $notification_link = "pages/librarian/my_leave_management.php";
+            $notification_type = "librarian_leave_status";
 
             $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");
-            $stmt_notify->execute([$teacher_id, $notification_message, $notification_link, $notification_type]);
+            $stmt_notify->execute([$librarian_id, $notification_message, $notification_link, $notification_type]);
 
             // Email sending logic can be added here
         }
     }
 } catch (PDOException $e) {
-    error_log("Update Leave Status Error: " . $e->getMessage());
-    header("Location: teacher_leave_management.php?error=db_error");
+    error_log("Update Librarian Leave Status Error: " . $e->getMessage());
+    header("Location: librarian_leave_management.php?error=db_error");
     exit;
 }
 
-header("Location: teacher_leave_management.php?status=updated");
+header("Location: librarian_leave_management.php?status=updated");
 exit;
 ?>

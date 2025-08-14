@@ -1,27 +1,27 @@
 <?php
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
-include_once '../../includes/email_functions.php';
+// include_once '../../includes/email_functions.php'; // Uncomment if email is set up
 
 $message = '';
-$teacher_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
-$teacher_name = 'N/A';
-$teacher_email = 'N/A';
+$librarian_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+$librarian_name = 'N/A';
+$librarian_email = 'N/A';
 $leave_history = [];
 
 try {
-    if ($teacher_id) {
+    if ($librarian_id) {
+        // Mark notifications as read
         if (isset($_GET['notif_id']) && is_numeric($_GET['notif_id'])) {
-            // FIX: Change '1' to 'TRUE' for PostgreSQL
             $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = TRUE WHERE id = ? AND user_id = ?");
-            $stmt_mark_read->execute([$_GET['notif_id'], $teacher_id]);
+            $stmt_mark_read->execute([$_GET['notif_id'], $librarian_id]);
         }
 
-        $stmt_user = $conn->prepare("SELECT teacher_name, email FROM teacher WHERE id = ?");
-        $stmt_user->execute([$teacher_id]);
+        $stmt_user = $conn->prepare("SELECT librarian_name, email FROM librarian WHERE id = ?");
+        $stmt_user->execute([$librarian_id]);
         if ($user = $stmt_user->fetch(PDO::FETCH_ASSOC)) {
-            $teacher_name = $user['teacher_name'];
-            $teacher_email = $user['email'];
+            $librarian_name = $user['librarian_name'];
+            $librarian_email = $user['email'];
         }
 
         if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -39,15 +39,16 @@ try {
 
                 $conn->beginTransaction();
 
-                $stmt_insert = $conn->prepare("INSERT INTO leave_applications (teacher_id, from_date, to_date, reason, leave_type) VALUES (?, ?, ?, ?, ?)");
-                $stmt_insert->execute([$teacher_id, $from_date, $to_date, $reason, $leave_type]);
+                $stmt_insert = $conn->prepare("INSERT INTO librarian_leave_applications (librarian_id, from_date, to_date, reason, leave_type) VALUES (?, ?, ?, ?, ?)");
+                $stmt_insert->execute([$librarian_id, $from_date, $to_date, $reason, $leave_type]);
 
-                $stmt_principal = $conn->prepare("SELECT p.id, p.email, p.principal_name FROM principal p JOIN teacher t ON p.school_id = t.school_id WHERE t.id = ?");
-                $stmt_principal->execute([$teacher_id]);
+                // Find the principal to send a notification
+                $stmt_principal = $conn->prepare("SELECT p.id, p.email, p.principal_name FROM principal p JOIN librarian l ON p.school_id = l.school_id WHERE l.id = ?");
+                $stmt_principal->execute([$librarian_id]);
                 if ($principal_data = $stmt_principal->fetch(PDO::FETCH_ASSOC)) {
-                    $notification_message = "New leave request from " . htmlspecialchars($teacher_name);
-                    $link = "pages/principal/teacher_leave_management.php";
-                    $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, 'leave_request')");
+                    $notification_message = "New leave request from " . htmlspecialchars($librarian_name);
+                    $link = "pages/principal/librarian_leave_management.php";
+                    $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, 'librarian_leave_request')");
                     $stmt_notify->execute([$principal_data['id'], $notification_message, $link]);
                     // Email sending logic here
                 }
@@ -58,8 +59,8 @@ try {
         }
 
         // Fetch Leave History
-        $stmt_history = $conn->prepare("SELECT from_date, to_date, leave_type, reason, applied_on, status, rejection_reason FROM leave_applications WHERE teacher_id = ? ORDER BY applied_on DESC");
-        $stmt_history->execute([$teacher_id]);
+        $stmt_history = $conn->prepare("SELECT from_date, to_date, leave_type, reason, applied_on, status, rejection_reason FROM librarian_leave_applications WHERE librarian_id = ? ORDER BY applied_on DESC");
+        $stmt_history->execute([$librarian_id]);
         $leave_history = $stmt_history->fetchAll(PDO::FETCH_ASSOC);
     }
 } catch (Exception $e) {
@@ -67,7 +68,7 @@ try {
         $conn->rollBack();
     }
     $message = '<div class="alert alert-danger">An error occurred: ' . $e->getMessage() . '</div>';
-    error_log("Leave Management Error: " . $e->getMessage());
+    error_log("Librarian Leave Management Error: " . $e->getMessage());
 }
 ?>
 <!DOCTYPE html>
@@ -75,7 +76,7 @@ try {
 
 <head>
     <meta charset="UTF-8">
-    <title>Leave Management</title>
+    <title>Librarian Leave Management</title>
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
@@ -89,29 +90,44 @@ try {
             <div id="content">
                 <?php include '../../includes/header.php'; ?>
                 <div class="container-fluid">
-                    <h1 class="h3 mb-4 text-gray-800">Leave Management</h1>
+                    <h1 class="h3 mb-4 text-gray-800">Librarian Leave Management</h1>
                     <?php echo $message; ?>
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
                             <h6 class="m-0 font-weight-bold text-primary">Apply for Leave</h6>
                         </div>
                         <div class="card-body">
-                            <form method="POST" action="teacher_leave_management.php">
-                                <div class="form-group"><label>Name</label><input type="text" class="form-control" value="<?php echo htmlspecialchars($teacher_name); ?>" readonly></div>
+                            <form method="POST" action="my_leave_management.php">
+                                <div class="form-group">
+                                    <label>Name</label>
+                                    <input type="text" class="form-control" value="<?php echo htmlspecialchars($librarian_name); ?>" readonly>
+                                </div>
                                 <div class="row">
                                     <div class="col-md-6">
-                                        <div class="form-group"><label for="from_date">From Date</label><input type="date" class="form-control" id="from_date" name="from_date" required></div>
+                                        <div class="form-group">
+                                            <label for="from_date">From Date</label>
+                                            <input type="date" class="form-control" id="from_date" name="from_date" required>
+                                        </div>
                                     </div>
                                     <div class="col-md-6">
-                                        <div class="form-group"><label for="to_date">To Date</label><input type="date" class="form-control" id="to_date" name="to_date" required></div>
+                                        <div class="form-group">
+                                            <label for="to_date">To Date</label>
+                                            <input type="date" class="form-control" id="to_date" name="to_date" required>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="form-group" id="leave_type_container" style="display: none;"><label for="leave_type">Leave Type</label><select class="form-control" id="leave_type" name="leave_type">
+                                <div class="form-group" id="leave_type_container" style="display: none;">
+                                    <label for="leave_type">Leave Type</label>
+                                    <select class="form-control" id="leave_type" name="leave_type">
                                         <option value="Full Day">Full Day</option>
                                         <option value="First Half">First Half</option>
                                         <option value="Second Half">Second Half</option>
-                                    </select></div>
-                                <div class="form-group"><label for="reason">Reason for Leave</label><textarea class="form-control" id="reason" name="reason" rows="4" required></textarea></div>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="reason">Reason for Leave</label>
+                                    <textarea class="form-control" id="reason" name="reason" rows="4" required></textarea>
+                                </div>
                                 <button type="submit" class="btn btn-primary">Submit Application</button>
                             </form>
                         </div>
@@ -135,7 +151,8 @@ try {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php if (!empty($leave_history)): foreach ($leave_history as $row): ?>
+                                        <?php if (!empty($leave_history)):
+                                            foreach ($leave_history as $row): ?>
                                                 <tr>
                                                     <td><?php echo htmlspecialchars($row['from_date']); ?></td>
                                                     <td><?php echo htmlspecialchars($row['to_date']); ?></td>
@@ -143,10 +160,15 @@ try {
                                                     <td><?php echo htmlspecialchars($row['reason']); ?></td>
                                                     <td><?php echo htmlspecialchars(date('d-m-Y H:i', strtotime($row['applied_on']))); ?></td>
                                                     <td>
-                                                        <?php $status_color = 'secondary';
-                                                        if ($row['status'] == 'Approved') $status_color = 'success';
-                                                        elseif ($row['status'] == 'Rejected') $status_color = 'danger';
-                                                        echo '<span class="badge badge-' . $status_color . ' p-2">' . htmlspecialchars($row['status']) . '</span>'; ?>
+                                                        <?php
+                                                        $status_color = 'secondary';
+                                                        if ($row['status'] == 'Approved') {
+                                                            $status_color = 'success';
+                                                        } elseif ($row['status'] == 'Rejected') {
+                                                            $status_color = 'danger';
+                                                        }
+                                                        echo '<span class="badge badge-' . $status_color . ' p-2">' . htmlspecialchars($row['status']) . '</span>';
+                                                        ?>
                                                     </td>
                                                     <td><?php echo htmlspecialchars($row['rejection_reason'] ?? 'N/A'); ?></td>
                                                 </tr>
@@ -176,7 +198,6 @@ try {
             const toDateInput = document.getElementById('to_date');
             const leaveTypeContainer = document.getElementById('leave_type_container');
 
-            // --- ADDED: Set min attribute for from_date to today's date ---
             const today = new Date().toISOString().split('T')[0];
             fromDateInput.setAttribute('min', today);
 
