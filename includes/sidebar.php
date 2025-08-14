@@ -170,7 +170,45 @@ if (isset($conn) && $user_id) {
 }
 // --- END: FETCH UNREAD NOTIFICATION COUNTS ---
 ?>
+<style>
+    .sidebar .nav-item .nav-link {
+        display: flex;
+        align-items: center; /* Vertically align items */
+        justify-content: space-between; /* Pushes badge to the right */
+        width: 100%;
+    }
 
+    /* This new div groups the icon and text, allowing the badge to be positioned relative to the group */
+    .sidebar .nav-item .nav-link > div {
+        display: flex;
+        align-items: center;
+    }
+    
+    .sidebar .nav-item .nav-link .badge-counter {
+        /* Make the badge smaller and tighter */
+        font-size: 0.65rem;
+        padding: 0.25em 0.5em;
+
+        /* Bring it closer to the text */
+        margin-left: 0.5rem; 
+        
+        /* Fine-tune vertical position to be perfectly in-line */
+        transform: translateY(1px); 
+    }
+
+    /* Style for collapsed sidebar items */
+    .sidebar.toggled .nav-item .nav-link {
+        justify-content: center;
+    }
+    
+    .sidebar.toggled .nav-item .nav-link .badge-counter {
+        /* Position badge on top-right of the icon when collapsed */
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        transform: scale(0.7) translate(50%, -50%);
+    }
+</style>
 <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
 
     <a class="sidebar-brand d-flex align-items-center justify-content-center"
@@ -184,8 +222,11 @@ if (isset($conn) && $user_id) {
 
     <li class="nav-item <?php echo ($current_page == 'dashboard.php') ? 'active' : ''; ?>">
         <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>dashboard.php">
-            <i class="fas fa-fw fa-tachometer-alt"></i>
-            <span>Dashboard</span></a>
+            <div>
+                <i class="fas fa-fw fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </div>
+        </a>
     </li>
 
     <hr class="sidebar-divider">
@@ -203,8 +244,8 @@ if (isset($conn) && $user_id) {
             <div class="sidebar-heading font-weight-semibold">Admin Controls</div>
             <li class="nav-item">
                 <a class="nav-link <?php echo (is_active_page($school_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseSchool">
-                    <i class="fas fa-fw fa-school"></i>
-                    <span>School Management</span>
+                    <div><i class="fas fa-fw fa-school"></i>
+                    <span>School Management</span></div>
                 </a>
                 <div id="collapseSchool" class="collapse <?php echo (is_active_page($school_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
@@ -215,8 +256,8 @@ if (isset($conn) && $user_id) {
             </li>
             <li class="nav-item">
                 <a class="nav-link <?php echo (is_active_page($principal_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapsePrincipal">
-                    <i class="fas fa-fw fa-user-tie"></i>
-                    <span>Principal Management</span>
+                    <div><i class="fas fa-fw fa-user-tie"></i>
+                    <span>Principal Management</span></div>
                 </a>
                 <div id="collapsePrincipal" class="collapse <?php echo (is_active_page($principal_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
@@ -227,20 +268,20 @@ if (isset($conn) && $user_id) {
             </li>
             <li class="nav-item <?php echo ($current_page == 'principal_attendance.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/bmc/principal_attendance.php">
-                    <i class="fas fa-fw fa-user-clock"></i>
-                    <span>Principal Attendance</span>
+                    <div><i class="fas fa-fw fa-user-clock"></i>
+                    <span>Principal Attendance</span></div>
                 </a>
             </li>
             <li class="nav-item <?php echo ($current_page == 'send_notice.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/bmc/send_notice.php">
-                    <i class="fas fa-fw fa-paper-plane"></i>
-                    <span>Send Notice to Principals</span>
+                    <div><i class="fas fa-fw fa-paper-plane"></i>
+                    <span>Send Notice to Principals</span></div>
                 </a>
             </li>
             <li class="nav-item <?php echo ($current_page == 'view_principal_notices.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/bmc/view_principal_notices.php" data-notification-type="principal_notice">
-                    <i class="fas fa-fw fa-envelope-open-text"></i>
-                    <span>View Principal Notices</span>
+                    <div><i class="fas fa-fw fa-envelope-open-text"></i>
+                    <span>View Principal Notices</span></div>
                     <?php if ($unread_principal_notices > 0): ?>
                         <span class="badge badge-danger badge-counter"><?php echo ($unread_principal_notices > 9) ? '9+' : $unread_principal_notices; ?></span>
                     <?php endif; ?>
@@ -248,8 +289,8 @@ if (isset($conn) && $user_id) {
             </li>
             <li class="nav-item">
                 <a class="nav-link <?php echo (is_active_page($past_data_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapsePastData">
-                    <i class="fas fa-fw fa-history"></i>
-                    <span>View Past Data</span>
+                    <div><i class="fas fa-fw fa-history"></i>
+                    <span>View Past Data</span></div>
                 </a>
                 <div id="collapsePastData" class="collapse <?php echo (is_active_page($past_data_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
@@ -269,9 +310,8 @@ if (isset($conn) && $user_id) {
             $student_pages = ['student_enrollment.php', 'student_list.php', 'generate_lc.php'];
             $notice_pages = ['send_notice.php', 'send_notice_to_bmc.php', 'send_notice_to_librarian.php', 'view_notice.php'];
             $academics_pages = ['manage_subjects.php', 'manage_timetable.php', 'send_exam_timetable.php'];
-            $salary_pages = ['generate_payroll.php', 'generate_librarian_payroll.php']; // ADDED
+            $salary_pages = ['generate_payroll.php', 'generate_librarian_payroll.php'];
             $past_data_pages_principal = ['past_teacher.php', 'past_librarian.php', 'past_student.php'];
-            // Determine if any leave management page is active
             $leave_management_pages = ['teacher_leave_management.php', 'librarian_leave_management.php'];
             $is_leave_management_active = in_array($current_page, $leave_management_pages);
             
@@ -279,8 +319,8 @@ if (isset($conn) && $user_id) {
             <div class="sidebar-heading font-weight-semibold">School Management</div>
             <li class="nav-item">
                 <a class="nav-link <?php echo (is_active_page($teacher_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseTeacher">
-                    <i class="fas fa-fw fa-person-chalkboard"></i>
-                    <span>Manage Teachers</span>
+                    <div><i class="fas fa-fw fa-person-chalkboard"></i>
+                    <span>Manage Teachers</span></div>
                 </a>
                 <div id="collapseTeacher" class="collapse <?php echo (is_active_page($teacher_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
@@ -293,8 +333,8 @@ if (isset($conn) && $user_id) {
             </li>
             <li class="nav-item">
                 <a class="nav-link <?php echo (is_active_page($librarian_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseLibrarian">
-                    <i class="fas fa-fw fa-book-reader"></i>
-                    <span>Manage Librarians</span>
+                    <div><i class="fas fa-fw fa-book-reader"></i>
+                    <span>Manage Librarians</span></div>
                 </a>
                 <div id="collapseLibrarian" class="collapse <?php echo (is_active_page($librarian_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
@@ -307,8 +347,8 @@ if (isset($conn) && $user_id) {
             </li>
             <li class="nav-item">
                 <a class="nav-link <?php echo (is_active_page($student_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseStudent">
-                    <i class="fas fa-fw fa-children"></i>
-                    <span>Manage Students</span>
+                    <div><i class="fas fa-fw fa-children"></i>
+                    <span>Manage Students</span></div>
                 </a>
                 <div id="collapseStudent" class="collapse <?php echo (is_active_page($student_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
@@ -320,14 +360,14 @@ if (isset($conn) && $user_id) {
             </li>
             <li class="nav-item <?php echo ($current_page == 'view_my_attendance.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_my_attendance.php">
-                    <i class="fas fa-fw fa-user-check"></i>
-                    <span>My Attendance</span>
+                    <div><i class="fas fa-fw fa-user-check"></i>
+                    <span>My Attendance</span></div>
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link <?php echo (is_active_page($notice_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseNotices">
-                    <i class="fas fa-fw fa-bullhorn"></i>
-                    <span>Notices</span>
+                    <div><i class="fas fa-fw fa-bullhorn"></i>
+                    <span>Notices</span></div>
                     <?php if ($unread_bmc_notices > 0): ?>
                         <span class="badge badge-danger badge-counter"><?php echo ($unread_bmc_notices > 9) ? '9+' : $unread_bmc_notices; ?></span>
                     <?php endif; ?>
@@ -348,8 +388,8 @@ if (isset($conn) && $user_id) {
 
             <li class="nav-item">
                 <a class="nav-link <?php echo (is_active_page($academics_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseAcademics">
-                    <i class="fas fa-fw fa-book"></i>
-                    <span>Academics</span>
+                    <div><i class="fas fa-fw fa-book"></i>
+                    <span>Academics</span></div>
                 </a>
                 <div id="collapseAcademics" class="collapse <?php echo (is_active_page($academics_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
@@ -362,8 +402,8 @@ if (isset($conn) && $user_id) {
             
             <li class="nav-item">
                 <a class="nav-link <?php echo (is_active_page($salary_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseSalary">
-                    <i class="fas fa-fw fa-hand-holding-usd"></i>
-                    <span>Salary Management</span>
+                    <div><i class="fas fa-fw fa-hand-holding-usd"></i>
+                    <span>Salary Management</span></div>
                 </a>
                 <div id="collapseSalary" class="collapse <?php echo (is_active_page($salary_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
@@ -374,14 +414,14 @@ if (isset($conn) && $user_id) {
             </li>
             <li class="nav-item <?php echo ($current_page == 'school_settings.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/principal/school_settings.php">
-                    <i class="fas fa-fw fa-cogs"></i>
-                    <span>Passing Criteria</span>
+                    <div><i class="fas fa-fw fa-cogs"></i>
+                    <span>Passing Criteria</span></div>
                 </a>
             </li>
             <li class="nav-item <?php echo $is_leave_management_active ? 'active' : ''; ?>">
                 <a class="nav-link <?php echo $is_leave_management_active ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseLeave">
-                    <i class="fas fa-fw fa-calendar-alt"></i>
-                    <span>Leave Management</span>
+                    <div><i class="fas fa-fw fa-calendar-alt"></i>
+                    <span>Leave Management</span></div>
                     <?php 
                         $total_leave_notifs = $unread_leave_requests + $unread_librarian_requests;
                         if ($total_leave_notifs > 0): 
@@ -410,8 +450,8 @@ if (isset($conn) && $user_id) {
             </li>
             <li class="nav-item">
                 <a class="nav-link <?php echo (is_active_page($past_data_pages_principal)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapsePastDataPrincipal">
-                    <i class="fas fa-fw fa-history"></i>
-                    <span>View Past Data</span>
+                    <div><i class="fas fa-fw fa-history"></i>
+                    <span>View Past Data</span></div>
                 </a>
                 <div id="collapsePastDataPrincipal" class="collapse <?php echo (is_active_page($past_data_pages_principal)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
@@ -435,29 +475,29 @@ if (isset($conn) && $user_id) {
             <div class="sidebar-heading font-weight-semibold">Classroom & Actions</div>
             <li class="nav-item <?php echo ($current_page == 'student_list.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/student/student_list.php">
-                    <i class="fas fa-fw fa-children"></i>
-                    <span>My Students</span>
+                    <div><i class="fas fa-fw fa-children"></i>
+                    <span>My Students</span></div>
                 </a>
             </li>
             <li class="nav-item <?php echo ($current_page == 'view_my_attendance.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/view_my_attendance.php">
-                    <i class="fas fa-fw fa-user-check"></i>
-                    <span>My Attendance</span>
+                    <div><i class="fas fa-fw fa-user-check"></i>
+                    <span>My Attendance</span></div>
                 </a>
             </li>
 
             <li class="nav-item <?php echo ($current_page == 'view_salary_history.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/view_salary_history.php">
-                    <i class="fas fa-fw fa-receipt"></i>
-                    <span>My Salary History</span>
+                    <div><i class="fas fa-fw fa-receipt"></i>
+                    <span>My Salary History</span></div>
                 </a>
             </li>
 
             <?php if ($is_class_teacher): ?>
                 <li class="nav-item">
                     <a class="nav-link <?php echo (is_active_page($marks_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseMarks">
-                        <i class="fas fa-fw fa-marker"></i>
-                        <span>Manage Marks</span>
+                        <div><i class="fas fa-fw fa-marker"></i>
+                        <span>Manage Marks</span></div>
                     </a>
                     <div id="collapseMarks" class="collapse <?php echo (is_active_page($marks_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                         <div class="bg-white py-2 collapse-inner rounded">
@@ -472,8 +512,8 @@ if (isset($conn) && $user_id) {
 
             <li class="nav-item">
                 <a class="nav-link <?php echo (is_active_page($assignment_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseAssignments">
-                    <i class="fas fa-fw fa-book-open"></i>
-                    <span>Manage Assignment</span>
+                    <div><i class="fas fa-fw fa-book-open"></i>
+                    <span>Manage Assignment</span></div>
                     <?php if ($unread_submissions > 0): ?>
                         <span class="badge badge-danger badge-counter">
                             <?php echo ($unread_submissions > 9) ? '9+' : $unread_submissions; ?>
@@ -496,8 +536,8 @@ if (isset($conn) && $user_id) {
 
             <li class="nav-item <?php echo ($current_page == 'teacher_leave_management.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/teacher_leave_management.php" data-notification-type="leave_status">
-                    <i class="fas fa-fw fa-calendar-alt"></i>
-                    <span>Manage Leave</span>
+                    <div><i class="fas fa-fw fa-calendar-alt"></i>
+                    <span>Manage Leave</span></div>
                     <?php if ($unread_leave_status > 0): ?>
                         <span class="badge badge-danger badge-counter">
                             <?php echo ($unread_leave_status > 9) ? '9+' : $unread_leave_status; ?>
@@ -508,8 +548,8 @@ if (isset($conn) && $user_id) {
 
             <li class="nav-item">
                 <a class="nav-link <?php echo (is_active_page($attendance_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseAttendance">
-                    <i class="fas fa-fw fa-clipboard-user"></i>
-                    <span>Manage Attendance</span>
+                    <div><i class="fas fa-fw fa-clipboard-user"></i>
+                    <span>Manage Attendance</span></div>
                 </a>
                 <div id="collapseAttendance" class="collapse <?php echo (is_active_page($attendance_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
@@ -521,14 +561,14 @@ if (isset($conn) && $user_id) {
 
             <li class="nav-item <?php echo ($current_page == 'view_timetable.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/student/view_timetable.php">
-                    <i class="fas fa-fw fa-calendar-week"></i>
-                    <span>View Lecture Timetable</span>
+                    <div><i class="fas fa-fw fa-calendar-week"></i>
+                    <span>View Lecture Timetable</span></div>
                 </a>
             </li>
             <li class="nav-item <?php echo ($current_page == 'view_exam_timetable.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/teacher/view_exam_timetable.php" data-notification-type="exam_timetable">
-                    <i class="fas fa-fw fa-calendar-alt"></i>
-                    <span>View Exam Timetable</span>
+                    <div><i class="fas fa-fw fa-calendar-alt"></i>
+                    <span>View Exam Timetable</span></div>
                     <?php if ($unread_exam_timetables > 0): ?>
                         <span class="badge badge-danger badge-counter">
                             <?php echo ($unread_exam_timetables > 9) ? '9+' : $unread_exam_timetables; ?>
@@ -538,13 +578,13 @@ if (isset($conn) && $user_id) {
             </li>
             <li class="nav-item <?php echo ($current_page == 'send_notes.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/teacher/send_notes.php">
-                    <i class="fas fa-fw fa-paper-plane"></i>
-                    <span>Send Notes</span></a>
+                    <div><i class="fas fa-fw fa-paper-plane"></i>
+                    <span>Send Notes</span></div></a>
             </li>
             <li class="nav-item <?php echo ($current_page == 'view_notice.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/teacher/view_notice.php" data-notification-type="school_notice">
-                    <i class="fas fa-fw fa-bell"></i>
-                    <span>View School Notices</span>
+                    <div><i class="fas fa-fw fa-bell"></i>
+                    <span>View School Notices</span></div>
                     <?php if ($unread_teacher_notices > 0): ?>
                         <span class="badge badge-danger badge-counter">
                             <?php echo ($unread_teacher_notices > 5) ? '5+' : $unread_teacher_notices; ?>
@@ -557,8 +597,8 @@ if (isset($conn) && $user_id) {
             <div class="sidebar-heading font-weight-semibold">Library</div>
             <li class="nav-item">
                 <a class="nav-link <?php echo (is_active_page($library_pages_teacher)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseLibraryTeacher">
-                    <i class="fas fa-fw fa-book-reader"></i>
-                    <span>Library Services</span>
+                    <div><i class="fas fa-fw fa-book-reader"></i>
+                    <span>Library Services</span></div>
                     <?php if ($unread_library_status > 0): ?>
                         <span class="badge badge-danger badge-counter"><?php echo $unread_library_status; ?></span>
                     <?php endif; ?>
@@ -589,14 +629,14 @@ if (isset($conn) && $user_id) {
             <div class="sidebar-heading font-weight-semibold">My Academics</div>
             <li class="nav-item <?php echo ($current_page == 'profile.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/user/profile.php">
-                    <i class="fas fa-fw fa-id-card"></i>
-                    <span>My Profile</span>
+                    <div><i class="fas fa-fw fa-id-card"></i>
+                    <span>My Profile</span></div>
                 </a>
             </li>
             <li class="nav-item <?php echo ($current_page == 'view_assignments.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/assignments/view_assignments.php" data-notification-type="new_assignment">
-                    <i class="fas fa-fw fa-clipboard-list"></i>
-                    <span>View Assignments</span>
+                    <div><i class="fas fa-fw fa-clipboard-list"></i>
+                    <span>View Assignments</span></div>
                     <?php if ($unread_assignments > 0): ?>
                         <span class="badge badge-danger badge-counter">
                             <?php echo ($unread_assignments > 9) ? '9+' : $unread_assignments; ?>
@@ -606,14 +646,14 @@ if (isset($conn) && $user_id) {
             </li>
             <li class="nav-item <?php echo ($current_page == 'view_lecture_attendance.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/student/view_lecture_attendance.php">
-                    <i class="fas fa-fw fa-book-open-reader"></i>
-                    <span>View Attendance</span>
+                    <div><i class="fas fa-fw fa-book-open-reader"></i>
+                    <span>View Attendance</span></div>
                 </a>
             </li>
             <li class="nav-item <?php echo ($current_page == 'view_my_marks.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/student/view_my_marks.php" data-notification-type="marks_uploaded">
-                    <i class="fas fa-fw fa-file-lines"></i>
-                    <span>View Results</span>
+                    <div><i class="fas fa-fw fa-file-lines"></i>
+                    <span>View Results</span></div>
                     <?php if ($unread_results > 0): ?>
                         <span class="badge badge-danger badge-counter">
                             <?php echo ($unread_results > 9) ? '9+' : $unread_results; ?>
@@ -623,8 +663,8 @@ if (isset($conn) && $user_id) {
             </li>
             <li class="nav-item <?php echo ($current_page == 'view_notice.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/student/view_notice.php" data-notification-type="school_notice">
-                    <i class="fas fa-fw fa-bell"></i>
-                    <span>View School Notices</span>
+                    <div><i class="fas fa-fw fa-bell"></i>
+                    <span>View School Notices</span></div>
                     <?php if ($unread_student_notices > 0): ?>
                         <span class="badge badge-danger badge-counter">
                             <?php echo ($unread_student_notices > 9) ? '9+' : $unread_student_notices; ?>
@@ -634,8 +674,8 @@ if (isset($conn) && $user_id) {
             </li>
             <li class="nav-item <?php echo ($current_page == 'view_notes.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/student/view_notes.php" data-notification-type="new_notes">
-                    <i class="fas fa-fw fa-eye"></i>
-                    <span>View Notes</span>
+                    <div><i class="fas fa-fw fa-eye"></i>
+                    <span>View Notes</span></div>
                     <?php if ($unread_notes > 0): ?>
                         <span class="badge badge-danger badge-counter">
                             <?php echo ($unread_notes > 9) ? '9+' : $unread_notes; ?>
@@ -644,14 +684,14 @@ if (isset($conn) && $user_id) {
             </li>
             <li class="nav-item <?php echo ($current_page == 'view_timetable.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/student/view_timetable.php">
-                    <i class="fas fa-fw fa-table-list"></i>
-                    <span>View Lecture Timetable</span>
+                    <div><i class="fas fa-fw fa-table-list"></i>
+                    <span>View Lecture Timetable</span></div>
                 </a>
             </li>
             <li class="nav-item <?php echo ($current_page == 'view_exam_timetable.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/student/view_exam_timetable.php" data-notification-type="exam_timetable">
-                    <i class="fas fa-fw fa-calendar-alt"></i>
-                    <span>View Exam Timetable</span>
+                    <div><i class="fas fa-fw fa-calendar-alt"></i>
+                    <span>View Exam Timetable</span></div>
                     <?php if ($unread_exam_timetables > 0): ?>
                         <span class="badge badge-danger badge-counter">
                             <?php echo ($unread_exam_timetables > 9) ? '9+' : $unread_exam_timetables; ?>
@@ -664,8 +704,8 @@ if (isset($conn) && $user_id) {
             <div class="sidebar-heading font-weight-semibold">Library</div>
             <li class="nav-item">
                 <a class="nav-link <?php echo (is_active_page($library_pages_student)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseLibraryStudent">
-                    <i class="fas fa-fw fa-book-reader"></i>
-                    <span>Library Services</span>
+                    <div><i class="fas fa-fw fa-book-reader"></i>
+                    <span>Library Services</span></div>
                     <?php if ($unread_library_status > 0): ?>
                         <span class="badge badge-danger badge-counter"><?php echo $unread_library_status; ?></span>
                     <?php endif; ?>
@@ -696,20 +736,20 @@ if (isset($conn) && $user_id) {
             <div class="sidebar-heading font-weight-semibold">Library Management</div>
             <li class="nav-item <?php echo ($current_page == 'profile.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/user/profile.php">
-                    <i class="fas fa-fw fa-id-card"></i>
-                    <span>My Profile</span>
+                    <div><i class="fas fa-fw fa-id-card"></i>
+                    <span>My Profile</span></div>
                 </a>
             </li>
             <li class="nav-item <?php echo ($current_page == 'view_my_attendance.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/view_my_attendance.php">
-                    <i class="fas fa-fw fa-user-check"></i>
-                    <span>My Attendance</span>
+                    <div><i class="fas fa-fw fa-user-check"></i>
+                    <span>My Attendance</span></div>
                 </a>
             </li>
             <li class="nav-item <?php echo (is_active_page($leave_pages)) ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/my_leave_management.php" data-notification-type="librarian_leave_status">
-                    <i class="fas fa-fw fa-calendar-alt"></i>
-                    <span>Manage Leave</span>
+                    <div><i class="fas fa-fw fa-calendar-alt"></i>
+                    <span>Manage Leave</span></div>
                     <?php
                         $unread_librarian_leave_status = 0;
                         if (isset($conn) && $user_id) {
@@ -731,8 +771,8 @@ if (isset($conn) && $user_id) {
             </li>
             <li class="nav-item">
                 <a class="nav-link <?php echo (is_active_page($books_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseBooks">
-                    <i class="fas fa-fw fa-book-journal-whills"></i>
-                    <span>Manage Books</span>
+                    <div><i class="fas fa-fw fa-book-journal-whills"></i>
+                    <span>Manage Books</span></div>
                 </a>
                 <div id="collapseBooks" class="collapse <?php echo (is_active_page($books_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
@@ -743,8 +783,8 @@ if (isset($conn) && $user_id) {
             </li>
             <li class="nav-item <?php echo ($current_page == 'view_principal_notices.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/view_principal_notices.php" data-notification-type="principal_to_librarian_notice">
-                    <i class="fas fa-fw fa-envelope-open-text"></i>
-                    <span>Principal Notices</span>
+                    <div><i class="fas fa-fw fa-envelope-open-text"></i>
+                    <span>Principal Notices</span></div>
                     <?php if ($unread_principal_to_librarian_notices > 0): ?>
                         <span class="badge badge-danger badge-counter"><?php echo ($unread_principal_to_librarian_notices > 9) ? '9+' : $unread_principal_to_librarian_notices; ?></span>
                     <?php endif; ?>
@@ -752,14 +792,14 @@ if (isset($conn) && $user_id) {
             </li>
             <li class="nav-item <?php echo ($current_page == 'issue_return.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/issue_return.php">
-                    <i class="fas fa-fw fa-right-left"></i>
-                    <span>Issue & Return</span>
+                    <div><i class="fas fa-fw fa-right-left"></i>
+                    <span>Issue & Return</span></div>
                 </a>
             </li>
             <li class="nav-item <?php echo ($current_page == 'borrow_requests.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/borrow_requests.php" data-notification-type="borrow_request">
-                    <i class="fas fa-fw fa-hand-holding-hand"></i>
-                    <span>Borrow Requests</span>
+                    <div><i class="fas fa-fw fa-hand-holding-hand"></i>
+                    <span>Borrow Requests</span></div>
                     <?php if ($unread_borrow_requests > 0): ?>
                         <span class="badge badge-danger badge-counter"><?php echo ($unread_borrow_requests > 9) ? '9+' : $unread_borrow_requests; ?></span>
                     <?php endif; ?>
@@ -767,8 +807,8 @@ if (isset($conn) && $user_id) {
             </li>
             <li class="nav-item <?php echo ($current_page == 'book_requests.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/book_requests.php" data-notification-type="acquisition_request">
-                    <i class="fas fa-fw fa-inbox"></i>
-                    <span>Acquisition Requests</span>
+                    <div><i class="fas fa-fw fa-inbox"></i>
+                    <span>Acquisition Requests</span></div>
                     <?php if ($unread_acquisition_requests > 0): ?>
                         <span class="badge badge-danger badge-counter"><?php echo ($unread_acquisition_requests > 9) ? '9+' : $unread_acquisition_requests; ?></span>
                     <?php endif; ?>
@@ -776,8 +816,8 @@ if (isset($conn) && $user_id) {
             </li>
             <li class="nav-item">
                 <a class="nav-link <?php echo (is_active_page($past_data_librarian)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapsePastDataLibrarian">
-                    <i class="fas fa-fw fa-history"></i>
-                    <span>View Past Data</span>
+                    <div><i class="fas fa-fw fa-history"></i>
+                    <span>View Past Data</span></div>
                 </a>
                 <div id="collapsePastDataLibrarian" class="collapse <?php echo (is_active_page($past_data_librarian)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
