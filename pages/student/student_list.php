@@ -4,6 +4,8 @@ include_once "../../encryption.php";
 
 $role = null;
 $students = [];
+$availableStandards = [];
+$selectedStd = 'all';
 
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
@@ -15,52 +17,90 @@ if (!$role) {
 }
 
 try {
-    // --- START: GET PRINCIPAL'S SCHOOL ID ---
-    $principal_school_id = null;
-    if ($role === 'principal') {
-        $user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
-
-        if ($user_id) {
-            // PDO Change
-            $stmt_school = $conn->prepare("SELECT school_id FROM principal WHERE id = ? LIMIT 1");
-            $stmt_school->execute([$user_id]);
-            $user_data = $stmt_school->fetch(PDO::FETCH_ASSOC);
-            $principal_school_id = $user_data['school_id'] ?? null;
-        }
-
-        if (!$principal_school_id) {
-            die("Error: Could not determine the school for the principal. Please contact support.");
-        }
-    }
-    // --- END: GET PRINCIPAL'S SCHOOL ID ---
-
-    // --- START: MODIFIED QUERY ---
     $query = "SELECT s.id, s.student_name, s.rollno, s.std, s.email, sc.school_name, u.account_status
             FROM student s 
             LEFT JOIN school sc ON s.school_id = sc.id
             LEFT JOIN users u ON s.id = u.id";
 
     $params = [];
+    $where_clauses = [];
+    $school_id = null;
+    
+    if ($role === 'teacher') {
+        $user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+        if ($user_id) {
+            $stmt_teacher_info = $conn->prepare("SELECT school_id, std FROM teacher WHERE id = ? LIMIT 1");
+            $stmt_teacher_info->execute([$user_id]);
+            $teacher_info = $stmt_teacher_info->fetch(PDO::FETCH_ASSOC);
 
-    if ($role === 'principal' && $principal_school_id) {
-        $query .= " WHERE s.school_id = ?";
-        $params[] = $principal_school_id;
+            $school_id = $teacher_info['school_id'] ?? null;
+            if (!empty($teacher_info['std'])) {
+                $std_string_from_db = trim($teacher_info['std'], '{}');
+                if (!empty($std_string_from_db)) {
+                    $availableStandards = explode(',', $std_string_from_db);
+                }
+            }
+        }
+        if ($school_id) {
+            $where_clauses[] = "s.school_id = ?";
+            $params[] = $school_id;
+        }
+
+        $selectedStd = $_GET['std'] ?? 'all';
+        if (!empty($availableStandards)) {
+            if ($selectedStd !== 'all' && in_array($selectedStd, $availableStandards)) {
+                $where_clauses[] = "s.std = ?";
+                $params[] = $selectedStd;
+            } else {
+                $placeholders = implode(',', array_fill(0, count($availableStandards), '?'));
+                $where_clauses[] = "s.std IN ({$placeholders})";
+                $params = array_merge($params, $availableStandards);
+            }
+        }
+    } elseif ($role === 'principal') {
+        $user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+
+        if ($user_id) {
+            $stmt_school = $conn->prepare("SELECT school_id FROM principal WHERE id = ? LIMIT 1");
+            $stmt_school->execute([$user_id]);
+            $user_data = $stmt_school->fetch(PDO::FETCH_ASSOC);
+            $school_id = $user_data['school_id'] ?? null;
+        }
+
+        if ($school_id) {
+            $where_clauses[] = "s.school_id = ?";
+            $params[] = $school_id;
+
+            $stmt_standards = $conn->prepare("SELECT DISTINCT std FROM student WHERE school_id = ? ORDER BY std");
+            $stmt_standards->execute([$school_id]);
+            $all_school_standards = $stmt_standards->fetchAll(PDO::FETCH_COLUMN, 0);
+            $availableStandards = $all_school_standards;
+        }
+        
+        $selectedStd = $_GET['std'] ?? 'all';
+        if ($selectedStd !== 'all' && $school_id) {
+            $where_clauses[] = "s.std = ?";
+            $params[] = $selectedStd;
+        }
     }
 
-    // --- CORRECTED: Use a CASE statement for proper sorting ---
-    // This sorts 'Pre-Primary' first, then numeric standards, and finally anything else.
+    if (!empty($where_clauses)) {
+        $query .= " WHERE " . implode(' AND ', $where_clauses);
+    }
+
     $query .= " ORDER BY
-        CASE 
-            WHEN s.std = 'Pre-Primary' THEN 0
-            WHEN s.std ~ '^[0-9]+$' THEN CAST(s.std AS INTEGER)
-            ELSE 999
+        CASE
+            WHEN s.std = 'Nursery' THEN 1
+            WHEN s.std = 'Junior' THEN 2
+            WHEN s.std = 'Senior' THEN 3
+            WHEN s.std ~ '^[0-9]+$' THEN CAST(s.std AS INTEGER) + 3  -- Adds an offset to place numbers after the custom strings
+            ELSE 999  -- Catches any other standards and places them last
         END, 
         s.rollno ASC";
 
     $stmt = $conn->prepare($query);
     $stmt->execute($params);
     $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    // --- END: MODIFIED QUERY ---
 
 } catch (PDOException $e) {
     error_log("Student List Error: " . $e->getMessage());
@@ -90,7 +130,7 @@ try {
                 <?php include_once '../../includes/header.php'; ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">Student Management</h1>
-                    <p class="mb-4">List of all students in <?php echo ($role === 'principal') ? 'your school' : 'the system'; ?>.</p>
+                    <p class="mb-4">List of all students in <?php echo ($role === 'principal') ? 'your school' : 'your standard'; ?>.</p>
 
                     <?php if (isset($_GET['success'])): ?>
                         <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -200,6 +240,17 @@ try {
             </div>
         </div>
     </div>
+    <?php if (($role === 'principal' || $role === 'teacher') && !empty($availableStandards)): ?>
+        <div id="standardFilterWrapper" class="d-none">
+            <label for="standardFilter" class="form-label font-weight-bold m-0 mr-2">Filter by Standard:</label>
+            <select id="standardFilter" class="form-control form-control-sm">
+                <option value="all">All Standards</option>
+                <?php foreach ($availableStandards as $std): ?>
+                    <option value="<?php echo htmlspecialchars(trim($std)); ?>" <?php echo ($selectedStd == trim($std)) ? 'selected' : ''; ?>>Standard <?php echo htmlspecialchars(trim($std)); ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+    <?php endif; ?>
 
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
@@ -209,9 +260,21 @@ try {
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
     <script>
         $(document).ready(function() {
-            $('#studentListTable').DataTable({
-                "order": [] // Disable initial sorting to respect the PHP order
+            var table = $('#studentListTable').DataTable({
+                "order": []
             });
+
+            var filterContainer = $('.dataTables_filter');
+            var standardFilterWrapper = $('#standardFilterWrapper');
+
+            if (filterContainer.length > 0 && standardFilterWrapper.length > 0) {
+                standardFilterWrapper.removeClass('d-none');
+                filterContainer.prepend(standardFilterWrapper);
+                
+                $('#standardFilter').on('change', function() {
+                    window.location.href = 'student_list.php?std=' + this.value;
+                });
+            }
         });
 
         function confirmAction(url, actionText) {

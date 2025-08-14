@@ -188,6 +188,17 @@ $pageTitle = 'Send Assignment';
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.4.1/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const dueDateInput = document.getElementById('due_date');
+
+            // Get today's date in 'YYYY-MM-DD' format
+            const today = new Date().toISOString().split('T')[0];
+
+            // Set the minimum selectable date for the input field
+            dueDateInput.setAttribute('min', today);
+        });
+    </script>
 </body>
 
 </html>

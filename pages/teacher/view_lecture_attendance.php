@@ -50,7 +50,7 @@ try {
                 "SELECT s.rollno, s.student_name, a.status 
                  FROM attendance a
                  JOIN student s ON a.student_id = s.id
-                 WHERE a.teacher_id = ? AND a.attendance_date = ? AND a.std = ? AND a.period_number = ?
+                 WHERE a.teacher_id = ? AND a.attendance_date = ? AND a.standard = ? AND a.period_number = ?
                  ORDER BY s.rollno ASC"
             );
             $stmt_att->execute([$userId, $view_date, $lecture_details['standard'], $lecture_details['period_number']]);

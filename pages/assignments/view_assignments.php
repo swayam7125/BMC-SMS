@@ -23,7 +23,6 @@ if (!$role || $role !== 'student') {
 }
 
 try {
-    // --- CORRECTED: Using PDO throughout ---
     if ($userId) {
         $stmt_mark_read = $conn->prepare('UPDATE "notifications" SET "is_read" = true WHERE "user_id" = ? AND "type" = \'new_assignment\' AND "is_read" = false');
         $stmt_mark_read->execute([$userId]);
@@ -89,7 +88,29 @@ try {
     $schoolId = $student_info['school_id'] ?? 0;
     $studentStd = $student_info['std'] ?? '';
 
-    $sql = 'SELECT a.id, a.title, a.subject, a.description, a.due_date, a.file_path, a.original_filename, t.teacher_name, ss.status as submission_status, ss.rejection_reason FROM "assignments" a JOIN "teacher" t ON a.teacher_id = t.id LEFT JOIN "assignment_submissions" ss ON a.id = ss.assignment_id AND ss.student_id = ? WHERE a.school_id = ? AND a.standard = ? ORDER BY a.due_date DESC';
+    // --- NEW FILTER LOGIC ---
+    $filter = $_GET['filter'] ?? 'all';
+    $filter_clause = '';
+
+    switch ($filter) {
+        case 'submitted':
+            $filter_clause = ' AND ss.status IN (\'Submitted\', \'Re-submitted\')';
+            break;
+        case 'accepted':
+            $filter_clause = ' AND ss.status = \'Accepted\'';
+            break;
+        case 'rejected':
+            $filter_clause = ' AND ss.status = \'Rejected\'';
+            break;
+        case 'pending':
+            $filter_clause = ' AND ss.status IS NULL';
+            break;
+        default:
+            $filter = 'all';
+            break;
+    }
+    
+    $sql = 'SELECT a.id, a.title, a.subject, a.description, a.due_date, a.file_path, a.original_filename, t.teacher_name, ss.status as submission_status, ss.rejection_reason FROM "assignments" a JOIN "teacher" t ON a.teacher_id = t.id LEFT JOIN "assignment_submissions" ss ON a.id = ss.assignment_id AND ss.student_id = ? WHERE a.school_id = ? AND a.standard = ?' . $filter_clause . ' ORDER BY a.due_date DESC';
     $stmt = $conn->prepare($sql);
     $stmt->execute([$userId, $schoolId, $studentStd]);
     $assignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -106,7 +127,6 @@ try {
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
 
-    <!-- <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css"> -->
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
@@ -123,6 +143,13 @@ try {
                 <?php include '../../includes/header.php'; ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">My Assignments</h1>
+                    <div class="d-flex justify-content-start mb-4">
+                        <a href="view_assignments.php?filter=all" class="btn btn-outline-primary mr-2 <?php echo ($filter == 'all') ? 'active' : ''; ?>">All</a>
+                        <a href="view_assignments.php?filter=pending" class="btn btn-outline-warning mr-2 <?php echo ($filter == 'pending') ? 'active' : ''; ?>">Pending</a>
+                        <a href="view_assignments.php?filter=submitted" class="btn btn-outline-info mr-2 <?php echo ($filter == 'submitted') ? 'active' : ''; ?>">Submitted</a>
+                        <a href="view_assignments.php?filter=accepted" class="btn btn-outline-success mr-2 <?php echo ($filter == 'accepted') ? 'active' : ''; ?>">Accepted</a>
+                        <a href="view_assignments.php?filter=rejected" class="btn btn-outline-danger <?php echo ($filter == 'rejected') ? 'active' : ''; ?>">Rejected</a>
+                    </div>
                     <?php if (isset($_GET['submission']) && $_GET['submission'] == 'success'): ?>
                         <div class="alert alert-success">Assignment submitted successfully!</div>
                     <?php endif; ?>
@@ -235,5 +262,4 @@ try {
 </body>
 
 </html>
-
 <?php $conn = null; ?>

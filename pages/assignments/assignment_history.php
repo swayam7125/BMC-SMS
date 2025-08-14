@@ -22,19 +22,39 @@ if (!$role || $role !== 'teacher') {
 }
 
 try {
-    // --- CORRECTED: Using PDO to fetch assignment history ---
-    // Note: PostgreSQL uses || for string concatenation
-    $stmt = $conn->prepare('
+    // Fetch the standards taught by the teacher
+    $stmt_standards = $conn->prepare('SELECT "std" FROM "teacher" WHERE "id" = ?');
+    $stmt_standards->execute([$userId]);
+    $teacher_standards_str = $stmt_standards->fetchColumn();
+    $availableStandards = [];
+    if (!empty($teacher_standards_str)) {
+        $availableStandards = explode(',', trim($teacher_standards_str, '{}'));
+    }
+
+    // Determine the selected standard from the URL parameter, default to 'all'
+    $selectedStd = $_GET['std'] ?? 'all';
+
+    // Base SQL query
+    $sql = '
         SELECT
             a.id, a.title, a.standard, a.subject, a.created_at, a.due_date,
             (SELECT COUNT(*) FROM "assignment_submissions" s WHERE s.assignment_id = a.id) as submission_count,
             (SELECT COUNT(*) FROM "student" st WHERE st.school_id = a.school_id AND st.std = a.standard) as total_students,
             (SELECT COUNT(*) FROM "notifications" n WHERE n.user_id = a.teacher_id AND n.is_read = false AND n.type = \'assignment_submission\' AND n.link LIKE \'%view_submissions.php?id=\' || a.id) as new_submission_count
         FROM "assignments" a
-        WHERE a.teacher_id = ?
-        ORDER BY a.created_at DESC
-    ');
-    $stmt->execute([$userId]);
+        WHERE a.teacher_id = ?';
+
+    // Add filter condition if a specific standard is selected
+    $params = [$userId];
+    if ($selectedStd !== 'all') {
+        $sql .= ' AND a.standard = ?';
+        $params[] = $selectedStd;
+    }
+
+    $sql .= ' ORDER BY a.created_at DESC';
+    
+    $stmt = $conn->prepare($sql);
+    $stmt->execute($params);
     $assignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Mark all 'assignment_submission' notifications as read
@@ -51,7 +71,6 @@ $pageTitle = 'Teacher - Assignment History';
 ?>
 <!DOCTYPE html>
 <html lang="en">
-<!-- The rest of the HTML remains the same -->
 <head>
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
@@ -71,6 +90,7 @@ $pageTitle = 'Teacher - Assignment History';
                 <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">Sent Assignment History</h1>
                     <p class="mb-4">A record of all assignments you have sent. You can view submission status and details for each.</p>
+                    
                     <?php if (isset($_GET['success'])): ?>
                     <div class="alert alert-success">Assignment sent successfully!</div>
                     <?php endif; ?>
@@ -133,7 +153,31 @@ $pageTitle = 'Teacher - Assignment History';
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
-    <script>$(document).ready(function() { $('#assignmentHistoryTable').DataTable(); });</script>
+    <script>
+    $(document).ready(function() {
+        var table = $('#assignmentHistoryTable').DataTable();
+
+        // Create the filter dropdown dynamically
+        var filterHtml = `
+            <label class="form-label font-weight-bold m-0 mr-2">Filter by Standard:</label>
+            <select class="form-control form-control-sm">
+                <option value="all">All Standards</option>
+                <?php foreach ($availableStandards as $std): ?>
+                    <option value="<?php echo htmlspecialchars(trim($std)); ?>" <?php echo ($selectedStd == trim($std)) ? 'selected' : ''; ?>>Standard <?php echo htmlspecialchars(trim($std)); ?></option>
+                <?php endforeach; ?>
+            </select>`;
+
+        // Find the DataTables filter container and add the dropdown before the search input
+        var filterContainer = $('.dataTables_filter');
+        filterContainer.prepend(filterHtml);
+        
+        // Handle the onchange event for the newly created filter dropdown
+        $('.dataTables_filter select').on('change', function() {
+            window.location.href = 'assignment_history.php?std=' + this.value;
+        });
+
+    });
+    </script>
 </body>
 </html>
 <?php $conn = null; ?>
