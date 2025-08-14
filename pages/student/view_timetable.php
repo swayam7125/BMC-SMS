@@ -46,11 +46,21 @@ try {
             }
 
             if ($schoolId) {
-                // FIX #2: Changed query to use GROUP BY for better compatibility and correctness
-                $standards_stmt = $conn->prepare("SELECT std FROM student WHERE school_id = ? GROUP BY std ORDER BY CAST(std AS INTEGER)");
+                // --- FIX START: Corrected the SQL query to handle non-numeric standards ---
+                $sql_standards = "
+                    SELECT std FROM student 
+                    WHERE school_id = ? 
+                    GROUP BY std 
+                    ORDER BY 
+                        CASE WHEN std ~ '^[0-9]+$' THEN 1 ELSE 2 END, -- Numeric standards first
+                        CASE WHEN std ~ '^[0-9]+$' THEN CAST(std AS INTEGER) ELSE NULL END, -- Sort numeric standards correctly
+                        std -- Sort non-numeric standards alphabetically
+                ";
+                $standards_stmt = $conn->prepare($sql_standards);
+                // --- FIX END ---
+                
                 $standards_stmt->execute([$schoolId]);
                 
-                // FIX #1: Corrected the PHP typo from ='std'] to =$row['std']
                 while ($row = $standards_stmt->fetch(PDO::FETCH_ASSOC)) {
                     $availableStandards[] = $row['std'];
                 }
@@ -97,11 +107,13 @@ $pageTitle = 'View Timetable';
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
 
-    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-
+    
     <style>
         .timetable-table th,
         .timetable-table td {
