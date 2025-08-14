@@ -106,7 +106,7 @@ try {
                                     <button type="submit" class="btn btn-primary ml-2"><i class="fas fa-search fa-sm"></i> View</button>
                                 </form>
                                 <a href="librarian_attendance.php?attendance_date=<?php echo htmlspecialchars($filter_date); ?>" class="btn btn-info">
-                                    <i class="fas fa-edit"></i> Update Today's Attendance
+                                    <i class="fas fa-edit"></i> Update Attendance
                                 </a>
                             </div>
 

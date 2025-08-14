@@ -33,24 +33,48 @@ function formatIndianCurrency($number)
 }
 
 /**
- * NEW: Calculates the number of working days in a given month.
- * Assumes a 6-day work week (Monday to Saturday are working days).
+ * MODIFIED: Calculates the number of effective working days, excluding holidays.
+ * Assumes a 6-day work week (Monday to Saturday) and queries the database for holidays.
  * @param int $year The year (e.g., 2024).
  * @param int $month The month (1-12).
- * @return int The total number of working days.
+ * @param PDO $conn The database connection object.
+ * @param int $schoolId The ID of the school to check for holidays.
+ * @return int The total number of effective working days.
  */
-function getWorkingDays($year, $month)
+function getWorkingDays($year, $month, $conn, $schoolId)
 {
-    $workingDays = 0;
+    // Step 1: Count total weekdays (Mon-Sat)
+    $weekdays = 0;
     $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
     for ($i = 1; $i <= $daysInMonth; $i++) {
         // 'N' returns 1 for Monday through 7 for Sunday
         $dayOfWeek = date('N', strtotime("$year-$month-$i"));
-        if ($dayOfWeek < 7) { // Counts Monday (1) to Saturday (6) as working days
-            $workingDays++;
+        if ($dayOfWeek < 7) { // Counts Monday (1) to Saturday (6)
+            $weekdays++;
         }
     }
-    return $workingDays;
+
+    // Step 2: Count holidays that fall on a weekday
+    $holiday_count = 0;
+    if ($schoolId) {
+        try {
+            // In PostgreSQL, DOW is 0 for Sunday, 6 for Saturday. We exclude Sundays.
+            $sql = "SELECT COUNT(*) FROM holidays 
+                    WHERE school_id = ? 
+                    AND EXTRACT(YEAR FROM holiday_date) = ? 
+                    AND EXTRACT(MONTH FROM holiday_date) = ?
+                    AND EXTRACT(DOW FROM holiday_date) != 0"; // Sunday is 0 in PostgreSQL DOW
+            $stmt = $conn->prepare($sql);
+            $stmt->execute([$schoolId, $year, $month]);
+            $holiday_count = (int)$stmt->fetchColumn();
+        } catch (PDOException $e) {
+            error_log("Error fetching holidays: " . $e->getMessage());
+            return $weekdays; // Fallback to weekday count if query fails
+        }
+    }
+    
+    // Step 3: Calculate effective working days
+    return $weekdays - $holiday_count;
 }
 
 
@@ -147,7 +171,8 @@ try {
 
                 $current_year = date('Y');
                 $current_month = date('m');
-                $total_working_days = getWorkingDays($current_year, $current_month);
+                // MODIFIED: Call the new holiday-aware function
+                $total_working_days = getWorkingDays($current_year, $current_month, $conn, $schoolId);
 
                 // MODIFIED: Calculate payable days (Present = 1, Half Day = 0.5)
                 $payableDaysStmt = $conn->prepare("
@@ -200,7 +225,8 @@ try {
 
                 $current_year = date('Y');
                 $current_month = date('m');
-                $total_working_days = getWorkingDays($current_year, $current_month);
+                // MODIFIED: Call the new holiday-aware function
+                $total_working_days = getWorkingDays($current_year, $current_month, $conn, $schoolId);
 
                 // MODIFIED: Calculate payable days for librarian (Present = 1, Half Day = 0.5)
                 $payableDaysStmt = $conn->prepare("

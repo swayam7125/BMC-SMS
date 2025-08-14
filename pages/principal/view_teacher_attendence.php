@@ -1,5 +1,5 @@
 <?php
-session_start();
+// No longer need session_start() here for success messages
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 
@@ -21,12 +21,6 @@ if (!$role || $role !== 'principal') {
     exit();
 }
 
-$successMessage = '';
-if (isset($_SESSION['success_message'])) {
-    $successMessage = $_SESSION['success_message'];
-    unset($_SESSION['success_message']);
-}
-
 try {
     $stmt = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
     $stmt->execute([$userId]);
@@ -38,8 +32,9 @@ try {
 
     $current_date = date('Y-m-d');
     
-    $attendance_date_display = isset($_GET['date']) ? $_GET['date'] : $current_date;
+    $attendance_date_display = $_GET['date'] ?? $current_date;
 
+    // Server-side check to prevent future dates
     if ($attendance_date_display > $current_date) {
         $attendance_date_display = $current_date;
         $errorMessage = "You cannot view attendance for a future date. The date has been reset to today.";
@@ -84,9 +79,14 @@ try {
                 <?php include_once '../../includes/header.php'; ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">Teacher Attendance History</h1>
-                    <?php if (!empty($successMessage)): ?>
-                        <div class="alert alert-success alert-dismissible fade show" role="alert"><?php echo $successMessage; ?><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
+
+                    <?php if (isset($_GET['success'])): ?>
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <?php echo htmlspecialchars($_GET['success']); ?>
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    </div>
                     <?php endif; ?>
+
                     <?php if (!empty($errorMessage)): ?>
                         <div class="alert alert-danger"><?php echo $errorMessage; ?></div>
                     <?php else: ?>
@@ -96,21 +96,16 @@ try {
                             </div>
                             <div class="card-body">
                                 <div class="d-flex flex-wrap align-items-center justify-content-between mb-4">
-                                    <div class="d-flex align-items-center">
-                                        <form method="GET" action="" class="form-inline">
-                                            <div class="form-group">
-                                                <label for="date" class="mr-2">Date:</label>
-                                                <input type="date" id="date" name="date" class="form-control" value="<?php echo htmlspecialchars($attendance_date_display); ?>" max="<?php echo $current_date; ?>">
-                                            </div>
-                                            <button type="submit" class="btn btn-primary ml-2">View</button>
-                                        </form>
-                                        <div class="form-group ml-3"><label for="batchFilter" class="mr-2">Batch:</label><select id="batchFilter" class="form-control">
-                                                <option value="">All</option>
-                                                <option value="Morning">Morning</option>
-                                                <option value="Evening">Evening</option>
-                                            </select></div>
-                                    </div>
-                                    <a href="teacher_attendence.php?attendance_date=<?php echo htmlspecialchars($attendance_date_display); ?>" class="btn btn-info"><i class="fas fa-edit"></i> Update Attendance</a>
+                                    <form method="GET" action="" class="form-inline">
+                                        <div class="form-group">
+                                            <label for="date" class="mr-2">Date:</label>
+                                            <input type="date" id="date" name="date" class="form-control" value="<?php echo htmlspecialchars($attendance_date_display); ?>" max="<?php echo $current_date; ?>">
+                                        </div>
+                                        <button type="submit" class="btn btn-primary ml-2"><i class="fas fa-search fa-sm"></i> View</button>
+                                    </form>
+                                    <a href="teacher_attendence.php?attendance_date=<?php echo htmlspecialchars($attendance_date_display); ?>" class="btn btn-info">
+                                        <i class="fas fa-edit"></i> Update Attendance
+                                    </a>
                                 </div>
                                 <div class="table-responsive">
                                     <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
@@ -136,12 +131,15 @@ try {
                                                                 if ($status == 'Present') $badge_class = 'badge-success';
                                                                 if ($status == 'Absent') $badge_class = 'badge-danger';
                                                                 if ($status == 'Leave') $badge_class = 'badge-warning';
-                                                                // ADDED: Badge for Half Day
                                                                 if ($status == 'Half Day') $badge_class = 'badge-info';
                                                                 echo "<span class='badge {$badge_class} p-2'>" . htmlspecialchars($status) . "</span>"; 
                                                             ?>
                                                         </td>
-                                                        <td><a href="teacher_attendence.php?attendance_date=<?php echo htmlspecialchars($attendance_date_display); ?>&edit_teacher_id=<?php echo $record['teacher_id']; ?>" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i> Edit</a></td>
+                                                        <td>
+                                                            <a href="teacher_attendence.php?attendance_date=<?php echo htmlspecialchars($attendance_date_display); ?>&edit_teacher_id=<?php echo $record['teacher_id']; ?>" class="btn btn-sm btn-warning">
+                                                                <i class="fas fa-edit"></i> Edit
+                                                            </a>
+                                                        </td>
                                                     </tr>
                                                 <?php endforeach;
                                             else: ?>
@@ -169,9 +167,8 @@ try {
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
     <script>
         $(document).ready(function() {
-            var table = $('#dataTable').DataTable();
-            $('#batchFilter').on('change', function() {
-                table.column(1).search($(this).val()).draw();
+            $('#dataTable').DataTable({
+                "order": [] // Disable initial sorting
             });
         });
     </script>

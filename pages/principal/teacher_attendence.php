@@ -12,8 +12,8 @@ $errorMessage = '';
 $principalDetails = null;
 $teachers_with_details = [];
 $all_missing_dates = []; // To hold ALL dates with incomplete attendance
-
-$edit_teacher_id = isset($_GET['edit_teacher_id']) ? (int)$_GET['edit_teacher_id'] : null;
+$is_holiday = false; // NEW: Holiday flag
+$holiday_description = ''; // NEW: Holiday description
 
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
@@ -38,8 +38,19 @@ try {
     $current_date = date('Y-m-d');
     $attendance_date_display = isset($_GET['attendance_date']) ? $_GET['attendance_date'] : $current_date;
 
-    // --- REVISED: Mandatory Past Attendance Check for ALL missing dates ---
-    if (empty($errorMessage) && !$edit_teacher_id) { // Only check in bulk mode
+    // NEW: Check if the selected date is a holiday
+    if (empty($errorMessage)) {
+        $holiday_stmt = $conn->prepare("SELECT description FROM holidays WHERE holiday_date = ? AND school_id = ?");
+        $holiday_stmt->execute([$attendance_date_display, $principalDetails['school_id']]);
+        $holiday = $holiday_stmt->fetch(PDO::FETCH_ASSOC);
+        if ($holiday) {
+            $is_holiday = true;
+            $holiday_description = $holiday['description'];
+        }
+    }
+
+    // --- REVISED: Mandatory Past Attendance Check for ALL missing dates (only if not a holiday) ---
+    if (empty($errorMessage) && !$is_holiday) { 
         $target_date = new DateTime($attendance_date_display);
         $start_date = new DateTime($target_date->format('Y-m-01'));
         $interval = new DateInterval('P1D');
@@ -52,7 +63,7 @@ try {
         if ($total_teachers > 0) {
             $att_count_stmt = $conn->prepare("SELECT COUNT(teacher_id) FROM teacher_attendance WHERE school_id = ? AND attendance_date = ?");
             foreach ($period as $date) {
-                if ($date->format('N') < 7) { // Mon-Sat
+                if (date('N', $date->getTimestamp()) < 7) { // Mon-Sat
                     $date_to_check = $date->format('Y-m-d');
                     $att_count_stmt->execute([$principalDetails['school_id'], $date_to_check]);
                     $recorded_teachers = $att_count_stmt->fetchColumn();
@@ -65,7 +76,7 @@ try {
     }
     // --- END: Mandatory Past Attendance Check ---
 
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($all_missing_dates)) {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($all_missing_dates) && !$is_holiday) {
         $conn->beginTransaction();
 
         $upsert_sql = "INSERT INTO teacher_attendance (teacher_id, school_id, attendance_date, status, marked_by_user_id) 
@@ -73,35 +84,27 @@ try {
                        ON CONFLICT (teacher_id, attendance_date) 
                        DO UPDATE SET status = EXCLUDED.status, marked_by_user_id = EXCLUDED.marked_by_user_id";
         $stmt_upsert = $conn->prepare($upsert_sql);
-
+        
+        $success_message = '';
         if (isset($_POST['attendance'])) { // Bulk update
             $attendance_data = $_POST['attendance'];
             $attendance_date = $_POST['attendance_date'];
             foreach ($attendance_data as $teacher_id => $status) {
                 $stmt_upsert->execute([$teacher_id, $principalDetails['school_id'], $attendance_date, $status, $userId]);
             }
-            $_SESSION['success_message'] = "Attendance for " . htmlspecialchars($attendance_date) . " has been successfully saved!";
-        } elseif (isset($_POST['teacher_id'])) { // Single update
-            $teacher_id_to_update = $_POST['teacher_id'];
-            $status = $_POST['status'];
-            $attendance_date = $_POST['attendance_date'];
-            $stmt_upsert->execute([$teacher_id_to_update, $principalDetails['school_id'], $attendance_date, $status, $userId]);
-            $_SESSION['success_message'] = "Attendance for the teacher has been updated successfully!";
+            // MODIFIED: Prepare success message for GET parameter
+            $success_message = "Attendance for " . htmlspecialchars($attendance_date) . " has been successfully saved!";
         }
 
         $conn->commit();
-        header("Location: view_teacher_attendence.php?date=" . urlencode($attendance_date_display));
+        // MODIFIED: Redirect with GET parameter instead of SESSION
+        header("Location: view_teacher_attendence.php?date=" . urlencode($attendance_date_display) . "&success=" . urlencode($success_message));
         exit();
     }
 
-    if (empty($errorMessage) && empty($all_missing_dates)) {
-        if ($edit_teacher_id) {
-            $teacher_stmt = $conn->prepare("SELECT id, teacher_name, std, batch FROM teacher WHERE id = ? AND school_id = ?");
-            $teacher_stmt->execute([$edit_teacher_id, $principalDetails['school_id']]);
-        } else {
-            $teacher_stmt = $conn->prepare("SELECT id, teacher_name, std, batch FROM teacher WHERE school_id = ? ORDER BY teacher_name ASC");
-            $teacher_stmt->execute([$principalDetails['school_id']]);
-        }
+    if (empty($errorMessage) && empty($all_missing_dates) && !$is_holiday) {
+        $teacher_stmt = $conn->prepare("SELECT id, teacher_name, std, batch FROM teacher WHERE school_id = ? ORDER BY teacher_name ASC");
+        $teacher_stmt->execute([$principalDetails['school_id']]);
         $teachers_result = $teacher_stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $att_stmt = $conn->prepare("SELECT status FROM teacher_attendance WHERE teacher_id = ? AND attendance_date = ?");
@@ -146,6 +149,19 @@ try {
 
                     <?php if (!empty($errorMessage)): ?>
                         <div class="alert alert-danger"><?php echo $errorMessage; ?></div>
+                    <?php // NEW: Logic to show holiday message or attendance form ?>
+                    <?php elseif ($is_holiday): ?>
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Attendance for <?php echo htmlspecialchars($attendance_date_display); ?></h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-info">
+                                    <h4 class="alert-heading"><i class="fas fa-calendar-check"></i> Public Holiday</h4>
+                                    <p>You cannot mark attendance for this day because it is a public holiday: <strong><?php echo htmlspecialchars($holiday_description); ?></strong>.</p>
+                                </div>
+                            </div>
+                        </div>
                     <?php elseif (!empty($all_missing_dates)): ?>
                          <div class="alert alert-warning">
                             <h4 class="alert-heading">Action Required</h4>
@@ -163,25 +179,21 @@ try {
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
                             <h6 class="m-0 font-weight-bold text-primary">
-                                Attendance for 
-                                <?php echo ($edit_teacher_id && count($teachers_with_details) > 0) ? htmlspecialchars($teachers_with_details[0]['teacher_name']) : 'Teachers'; ?>
-                                on <?php echo htmlspecialchars($attendance_date_display); ?>
+                                Attendance for Teachers on <?php echo htmlspecialchars($attendance_date_display); ?>
                             </h6>
                         </div>
                         <div class="card-body">
-                             <?php if ($edit_teacher_id): ?>
-                                <p class="text-info">Single Edit Mode: Only one teacher is editable.</p>
-                            <?php else: ?>
-                                <p class="text-info">Bulk Edit Mode: All teachers are editable.</p>
-                            <?php endif; ?>
+                            <p class="text-info">Bulk Edit Mode: All teachers are editable.</p>
                             <form method="POST" action="">
-                                <div class="form-group row">
-                                    <label for="attendanceDateInput" class="col-sm-2 col-form-label">Select Date:</label>
-                                    <div class="col-sm-4">
-                                        <input type="date" class="form-control" id="attendanceDateInput" name="attendance_date" value="<?php echo htmlspecialchars($attendance_date_display); ?>" max="<?php echo $current_date; ?>">
+                                <div class="d-flex align-items-center justify-content-between mb-4">
+                                    <div class="form-inline">
+                                        <div class="form-group">
+                                            <label for="attendance_date" class="mr-2">Date:</label>
+                                            <input type="date" id="attendance_date" name="attendance_date" class="form-control" value="<?php echo htmlspecialchars($attendance_date_display); ?>" max="<?php echo $current_date; ?>">
+                                        </div>
                                     </div>
-                                    <div class="col-sm-6">
-                                        <button type="button" id="changeDateBtn" class="btn btn-primary">Change Date</button>
+                                    <div class="form-group">
+                                        <input type="text" id="customSearchBox" class="form-control" placeholder="Search teachers...">
                                     </div>
                                 </div>
                                 <div class="table-responsive">
@@ -248,20 +260,14 @@ try {
                 "info": false,
                 "dom": '<"table-responsive"t>'
             });
+
             $('#customSearchBox').on('keyup', function() {
                 table.search(this.value).draw();
             });
-            $('#batchFilter').on('change', function() {
-                table.column(1).search($(this).val()).draw();
-            });
 
-            $('#changeDateBtn').on('click', function() {
-                var selectedDate = $('#attendanceDateInput').val();
-                var editTeacherId = '<?php echo $edit_teacher_id; ?>';
+            $('#attendance_date').on('change', function() {
+                var selectedDate = $(this).val();
                 var redirectUrl = 'teacher_attendence.php?attendance_date=' + selectedDate;
-                if (editTeacherId) {
-                    redirectUrl += '&edit_teacher_id=' + editTeacherId;
-                }
                 window.location.href = redirectUrl;
             });
         });
