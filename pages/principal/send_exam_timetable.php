@@ -72,12 +72,12 @@ try {
         $stmt_students->execute([$schoolId]);
         $students = $stmt_students->fetchAll(PDO::FETCH_COLUMN, 0);
 
-        $teacher_link = "/BMC-SMS/pages/teacher/view_exam_timetable.php";
+        $teacher_link = "pages/teacher/view_exam_timetable.php";
         foreach ($teachers as $teacher_id) {
             $stmt_notify->execute([$teacher_id, $notification_message, $teacher_link, $notification_type]);
         }
 
-        $student_link = "/BMC-SMS/pages/student/view_exam_timetable.php";
+        $student_link = "pages/student/view_exam_timetable.php";
         foreach ($students as $student_id) {
             $stmt_notify->execute([$student_id, $notification_message, $student_link, $notification_type]);
         }

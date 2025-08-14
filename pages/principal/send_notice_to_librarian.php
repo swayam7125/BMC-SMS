@@ -83,7 +83,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice_to_librari
         // 3. Create a notification for each Librarian in the school
         if (!empty($librarian_user_ids)) {
             $notification_message = "New Notice from Principal " . htmlspecialchars($principalName);
-            $notification_link = "/pages/librarian/view_principal_notices.php";
+            $notification_link = "pages/librarian/view_principal_notices.php";
             $notification_type = "principal_to_librarian_notice";
             
             $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");
