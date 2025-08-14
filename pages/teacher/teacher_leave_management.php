@@ -12,7 +12,8 @@ $leave_history = [];
 try {
     if ($teacher_id) {
         if (isset($_GET['notif_id']) && is_numeric($_GET['notif_id'])) {
-            $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?");
+            // FIX: Change '1' to 'TRUE' for PostgreSQL
+            $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = TRUE WHERE id = ? AND user_id = ?");
             $stmt_mark_read->execute([$_GET['notif_id'], $teacher_id]);
         }
 

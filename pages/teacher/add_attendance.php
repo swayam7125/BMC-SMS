@@ -13,6 +13,8 @@ $errorMessage = '';
 $teacherDetails = null;
 $students = [];
 $all_missing_dates = []; // To hold ALL dates with incomplete attendance
+$is_holiday = false; // NEW: Holiday flag
+$holiday_description = ''; // NEW: Holiday description
 
 // Retrieve and decrypt user role and ID from cookies
 if (isset($_COOKIE['encrypted_user_role'])) {
@@ -40,8 +42,19 @@ try {
 
     $attendance_date_display = $_GET['attendance_date'] ?? date('Y-m-d');
 
-    // --- REVISED: Mandatory Past Attendance Check for ALL missing dates ---
+    // NEW: Check if the selected date is a holiday
     if (empty($errorMessage)) {
+        $holiday_stmt = $conn->prepare("SELECT description FROM holidays WHERE holiday_date = ? AND school_id = ?");
+        $holiday_stmt->execute([$attendance_date_display, $teacherDetails['school_id']]);
+        $holiday = $holiday_stmt->fetch(PDO::FETCH_ASSOC);
+        if ($holiday) {
+            $is_holiday = true;
+            $holiday_description = $holiday['description'];
+        }
+    }
+
+    // --- REVISED: Mandatory Past Attendance Check for ALL missing dates (only if not a holiday) ---
+    if (empty($errorMessage) && !$is_holiday) {
         $target_date = new DateTime($attendance_date_display);
         $start_date = new DateTime($target_date->format('Y-m-01')); // Check from the 1st of the month
         $interval = new DateInterval('P1D');
@@ -70,9 +83,8 @@ try {
     }
     // --- END: Mandatory Past Attendance Check ---
 
-    // Handle form submission to save attendance
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($errorMessage) && empty($all_missing_dates)) {
-        // This part will only run if the mandatory check passes
+    // Handle form submission to save attendance (only if not a holiday)
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($errorMessage) && empty($all_missing_dates) && !$is_holiday) {
         $attendance_date = $_POST['attendance_date'];
         $attendance_data = $_POST['attendance'];
         $class_std = $teacherDetails['class_teacher_std'];
@@ -95,8 +107,8 @@ try {
         $successMessage = "Attendance for " . htmlspecialchars($attendance_date) . " has been saved successfully!";
     }
 
-    // Fetch students for the form, only if no errors and no missing past attendance
-    if (empty($errorMessage) && empty($all_missing_dates)) {
+    // Fetch students for the form (only if not a holiday and no missing past attendance)
+    if (empty($errorMessage) && empty($all_missing_dates) && !$is_holiday) {
         $student_stmt = $conn->prepare("SELECT id, rollno, student_name FROM student WHERE std = ? AND school_id = ? ORDER BY rollno ASC");
         $student_stmt->execute([$teacherDetails['class_teacher_std'], $teacherDetails['school_id']]);
         $students = $student_stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -111,7 +123,7 @@ try {
         }
     }
 } catch (PDOException $e) {
-    if ($conn->inTransaction()) {
+    if (isset($conn) && $conn->inTransaction()) {
         $conn->rollBack();
     }
     $errorMessage = "A database error occurred. Please try again. Details: " . $e->getMessage();
@@ -145,6 +157,20 @@ try {
                     <?php endif; ?>
                     <?php if (!empty($errorMessage)): ?>
                         <div class="alert alert-danger"><?php echo $errorMessage; ?></div>
+                    
+                    <?php // NEW: Logic to show holiday message, missing dates, or attendance form ?>
+                    <?php elseif ($is_holiday): ?>
+                         <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Attendance for <?php echo htmlspecialchars($teacherDetails['class_teacher_std']); ?> on <?php echo htmlspecialchars($attendance_date_display); ?></h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-info">
+                                    <h4 class="alert-heading"><i class="fas fa-calendar-check"></i> Public Holiday</h4>
+                                    <p>You cannot mark attendance for this day because it is a public holiday: <strong><?php echo htmlspecialchars($holiday_description); ?></strong>.</p>
+                                </div>
+                            </div>
+                        </div>
                     <?php elseif (!empty($all_missing_dates)): ?>
                         <div class="alert alert-warning">
                             <h4 class="alert-heading">Action Required</h4>
