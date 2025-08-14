@@ -378,8 +378,8 @@ if (isset($conn) && $user_id) {
                     <span>Passing Criteria</span>
                 </a>
             </li>
-            <li class="nav-item <?php echo ($is_leave_management_active) ? '' : 'collapsed'; ?>">
-                <a class="nav-link <?php echo ($is_leave_management_active) ? 'active' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseLeave">
+            <li class="nav-item <?php echo $is_leave_management_active ? 'active' : ''; ?>">
+                <a class="nav-link <?php echo $is_leave_management_active ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseLeave">
                     <i class="fas fa-fw fa-calendar-alt"></i>
                     <span>Leave Management</span>
                     <?php 
@@ -391,7 +391,7 @@ if (isset($conn) && $user_id) {
                         </span>
                     <?php endif; ?>
                 </a>
-                <div id="collapseLeave" class="collapse <?php echo ($is_leave_management_active) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
+                <div id="collapseLeave" class="collapse <?php echo $is_leave_management_active ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
                         <a class="collapse-item <?php echo ($current_page == 'teacher_leave_management.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/principal/teacher_leave_management.php" data-notification-type="leave_request">
                             Teacher Leave
