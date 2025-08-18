@@ -1,13 +1,14 @@
 <?php
-// Enable all error reporting for debugging
+require_once "./includes/ajax_helpers.php";
+require_once "./includes/connect.php";
+require_once "encryption.php";
+
+// Enable error reporting for debugging
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-include_once "encryption.php";
-include_once "./includes/connect.php"; // Uses the new PDO $conn object
-
 /**
- * CORRECTED: Formats a number into the Indian currency system (lakhs, crores).
+ * Formats a number into the Indian currency system (lakhs, crores).
  * @param float|int $number The number to format.
  * @return string The formatted number as a string with the Rupee symbol (e.g., ₹10,00,000).
  */
