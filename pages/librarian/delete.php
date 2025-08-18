@@ -30,8 +30,7 @@ if ($book_id <= 0) {
 try {
     // Verify the book belongs to the librarian's school
     $stmt = $conn->prepare('
-        SELECT b.* 
-        FROM books b
+        SELECT b.* FROM books b
         JOIN librarian l ON b.school_id = l.school_id
         WHERE b.book_id = ? AND l.id = ?
     ');
@@ -46,10 +45,11 @@ try {
     $conn->beginTransaction();
 
     // Check if book can be deleted
+    // --- FIX 1: Corrected table name from 'book_loans' to 'borrowing_records' and condition to 'is_returned = FALSE' ---
     $stmt = $conn->prepare('
         SELECT COUNT(*) 
-        FROM book_loans 
-        WHERE book_id = ? AND return_date IS NULL
+        FROM borrowing_records 
+        WHERE book_id = ? AND is_returned = FALSE
     ');
     $stmt->execute([$book_id]);
     
@@ -66,6 +66,7 @@ try {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ');
     
+    // --- FIX 2: Correctly handle the boolean value for is_digital ---
     $stmt_archive->execute([
         (int)$book_data['book_id'],
         $book_data['title'],
@@ -73,7 +74,7 @@ try {
         $book_data['isbn'],
         (int)$book_data['quantity_total'],
         (int)$book_data['school_id'],
-        !empty($book_data['is_digital']) ? 'true' : 'false',
+        !empty($book_data['is_digital']), // This now correctly passes a boolean value
         $role
     ]);
 

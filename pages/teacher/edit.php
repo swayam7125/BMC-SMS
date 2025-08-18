@@ -71,8 +71,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $batch = $_POST['batch'];
     $posted_timings = $_POST['timings'] ?? [];
 
-    // --- FIX: Ensure a proper boolean (true/false) is used for the database ---
-// edit.php, line 71 (Corrected)
     $class_teacher = isset($_POST['class_teacher']) ? 1 : 0;
     $class_teacher_std = $class_teacher ? ($_POST['class_teacher_std'] ?? null) : null;
 
@@ -123,7 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $image_path_for_db, $teacher_name, $phone, $school_id, $dob, $gender, 
                 $blood_group, $address, $new_email, $qualification, $subject, 
                 $language_known, $salary, $std_for_db, $experience, $batch, 
-                $class_teacher, // This is now a correct boolean
+                $class_teacher,
                 $class_teacher_std, $teacher_id
             ]);
 
@@ -133,10 +131,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                   DO UPDATE SET opens_at = EXCLUDED.opens_at, closes_at = EXCLUDED.closes_at, is_closed = EXCLUDED.is_closed";
             $stmt_timing_upsert = $conn->prepare($sql_upsert_timing);
             foreach ($posted_timings as $day => $details) {
-            // edit.php, line 143 (Corrected)
                 $is_closed = isset($details['is_closed']) ? 1 : 0;
-                $opens_at = ($is_closed || empty($details['opens_at'])) ? null : $details['opens_at'];
-                $closes_at = ($is_closed || empty($details['closes_at'])) ? null : $details['closes_at'];
+                
+                // --- UPDATE: Convert 12-hour AM/PM time to 24-hour format for DB ---
+                $opens_at = null;
+                if (!$is_closed && !empty($details['opens_at']) && !empty($details['opens_at_ampm'])) {
+                    $opens_at = date("H:i:s", strtotime($details['opens_at'] . ' ' . $details['opens_at_ampm']));
+                }
+
+                $closes_at = null;
+                if (!$is_closed && !empty($details['closes_at']) && !empty($details['closes_at_ampm'])) {
+                    $closes_at = date("H:i:s", strtotime($details['closes_at'] . ' ' . $details['closes_at_ampm']));
+                }
+
                 $stmt_timing_upsert->execute([$teacher_id, $day, $opens_at, $closes_at, $is_closed]);
             }
 
@@ -223,10 +230,10 @@ if (is_string($raw_stds) && !empty($raw_stds)) {
                                                     <option value="Others" <?php echo (($teacher['gender'] ?? '') == 'Others') ? 'selected' : ''; ?>>Others</option>
                                                 </select></div>
                                             <div class="col-md-6 form-group"><label for="blood_group">Blood Group *</label><select class="form-control" id="blood_group" name="blood_group" required><?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-                                                                                                                                                                                                        foreach ($bg_options as $bg) {
-                                                                                                                                                                                                            $selected = (($teacher['blood_group'] ?? '') == $bg) ? 'selected' : '';
-                                                                                                                                                                                                            echo "<option value='{$bg}' {$selected}>{$bg}</option>";
-                                                                                                                                                                                                        } ?></select></div>
+                                                foreach ($bg_options as $bg) {
+                                                    $selected = (($teacher['blood_group'] ?? '') == $bg) ? 'selected' : '';
+                                                    echo "<option value='{$bg}' {$selected}>{$bg}</option>";
+                                                } ?></select></div>
                                         </div>
                                     </div>
                                 </div>
@@ -235,10 +242,10 @@ if (is_string($raw_stds) && !empty($raw_stds)) {
                                 <h6 class="text-primary font-weight-bold">Professional Details</h6>
                                 <div class="row mt-3">
                                     <div class="col-md-6 form-group"><label for="school_id">School *</label><select class="form-control" id="school_id" name="school_id" required><?php
-                                                                                                                                                                                    foreach ($schools_result as $school) {
-                                                                                                                                                                                        $selected = ($school['id'] == ($teacher['school_id'] ?? '')) ? 'selected' : '';
-                                                                                                                                                                                        echo "<option value='{$school['id']}' {$selected}>" . htmlspecialchars($school['school_name']) . "</option>";
-                                                                                                                                                                                    } ?></select></div>
+                                        foreach ($schools_result as $school) {
+                                            $selected = ($school['id'] == ($teacher['school_id'] ?? '')) ? 'selected' : '';
+                                            echo "<option value='{$school['id']}' {$selected}>" . htmlspecialchars($school['school_name']) . "</option>";
+                                        } ?></select></div>
                                     <div class="form-group col-md-6"><label for="batch">Batch *</label><select class="form-control" id="batch" name="batch" required>
                                             <option value="">-- Select Batch --</option>
                                             <option value="Morning" <?php echo (($teacher['batch'] ?? '') == 'Morning') ? 'selected' : ''; ?>>Morning</option>
@@ -249,7 +256,7 @@ if (is_string($raw_stds) && !empty($raw_stds)) {
                                     <div class="col-md-4 form-group"><label for="language_known">Languages Known</label><input type="text" class="form-control" id="language_known" name="language_known" value="<?php echo htmlspecialchars($teacher['language_known'] ?? ''); ?>"></div>
                                     <div class="col-md-4 form-group"><label for="experience">Years of Experience</label><input type="number" class="form-control" id="experience" name="experience" min="0" value="<?php echo htmlspecialchars($teacher['experience'] ?? '0'); ?>"></div>
                                     <div class="col-md-4 form-group"><label for="std">Teaching Standards</label><select class="form-control multi-select" id="std" name="std[]" multiple="multiple"><?php $stds_options = ['Nursery', 'Junior', 'Senior', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
-                                                                                                                                                                                                    foreach ($stds_options as $std_val): ?><option value="<?php echo $std_val; ?>" <?php echo in_array($std_val, $selected_stds) ? 'selected' : ''; ?>><?php echo $std_val; ?></option><?php endforeach; ?></select></div>
+                                        foreach ($stds_options as $std_val): ?><option value="<?php echo $std_val; ?>" <?php echo in_array($std_val, $selected_stds) ? 'selected' : ''; ?>><?php echo $std_val; ?></option><?php endforeach; ?></select></div>
                                     <div class="col-md-4 form-group"><label for="salary">Salary</label><input type="number" class="form-control" id="salary" name="salary" value="<?php echo htmlspecialchars($teacher['salary'] ?? '0.00'); ?>" step="0.01" min="0"></div>
                                 </div>
                                 <div class="form-row">
@@ -258,7 +265,7 @@ if (is_string($raw_stds) && !empty($raw_stds)) {
                                     </div>
                                     <div class="form-group col-md-6" id="classTeacherStdGroup" style="display: <?php echo !empty($teacher['class_teacher']) ? 'block' : 'none'; ?>;"><label for="class_teacher_std">Class Teacher for Standard *</label><select class="form-control" id="class_teacher_std" name="class_teacher_std">
                                             <option value="">-- Select Standard --</option><?php $stds_for_class_teacher = ['Nursery', 'Junior', 'Senior', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
-                                                                                            foreach ($stds_for_class_teacher as $std_val): ?><option value="<?php echo $std_val; ?>" <?php echo (($teacher['class_teacher_std'] ?? '') == $std_val) ? 'selected' : ''; ?>><?php echo $std_val; ?></option><?php endforeach; ?>
+                                                foreach ($stds_for_class_teacher as $std_val): ?><option value="<?php echo $std_val; ?>" <?php echo (($teacher['class_teacher_std'] ?? '') == $std_val) ? 'selected' : ''; ?>><?php echo $std_val; ?></option><?php endforeach; ?>
                                         </select></div>
                                 </div>
 
@@ -270,8 +277,11 @@ if (is_string($raw_stds) && !empty($raw_stds)) {
                                     foreach ($days as $day):
                                         $day_timing = $timings[$day] ?? [];
                                         $is_closed = isset($day_timing['is_closed']) && $day_timing['is_closed'];
-                                        $opens_at = !empty($day_timing['opens_at']) ? date("H:i", strtotime($day_timing['opens_at'])) : '10:00';
-                                        $closes_at = !empty($day_timing['closes_at']) ? date("H:i", strtotime($day_timing['closes_at'])) : '18:00';
+                                        // --- UPDATE: Convert 24-hour DB time back to 12-hour and AM/PM for display ---
+                                        $opens_at = !empty($day_timing['opens_at']) ? date("h:i", strtotime($day_timing['opens_at'])) : '10:00';
+                                        $opens_at_ampm = !empty($day_timing['opens_at']) ? date("A", strtotime($day_timing['opens_at'])) : 'AM';
+                                        $closes_at = !empty($day_timing['closes_at']) ? date("h:i", strtotime($day_timing['closes_at'])) : '06:00';
+                                        $closes_at_ampm = !empty($day_timing['closes_at']) ? date("A", strtotime($day_timing['closes_at'])) : 'PM';
                                     ?>
                                         <div class="form-row align-items-center mb-2 timing-row" data-day="<?php echo $day; ?>">
                                             <div class="col-md-2"><label class="mb-0"><?php echo $day; ?></label></div>
@@ -281,16 +291,28 @@ if (is_string($raw_stds) && !empty($raw_stds)) {
                                                     <label class="custom-control-label" for="closed_<?php echo $day; ?>">Closed</label>
                                                 </div>
                                             </div>
-                                            <div class="col-md-3">
+                                            <div class="col-md-4">
                                                 <div class="input-group">
                                                     <div class="input-group-prepend"><span class="input-group-text small">Opens at</span></div>
-                                                    <input type="time" class="form-control opens-at" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                    <input type="text" class="form-control time-input" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" placeholder="HH:MM" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                    <div class="input-group-append">
+                                                        <select class="form-control ampm-select" name="timings[<?php echo $day; ?>][opens_at_ampm]" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                            <option value="AM" <?php if ($opens_at_ampm == 'AM') echo 'selected'; ?>>AM</option>
+                                                            <option value="PM" <?php if ($opens_at_ampm == 'PM') echo 'selected'; ?>>PM</option>
+                                                        </select>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div class="col-md-3">
+                                            <div class="col-md-4">
                                                 <div class="input-group">
                                                     <div class="input-group-prepend"><span class="input-group-text small">Closes at</span></div>
-                                                    <input type="time" class="form-control closes-at" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                    <input type="text" class="form-control time-input" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" placeholder="HH:MM" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                    <div class="input-group-append">
+                                                        <select class="form-control ampm-select" name="timings[<?php echo $day; ?>][closes_at_ampm]" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                            <option value="AM" <?php if ($closes_at_ampm == 'AM') echo 'selected'; ?>>AM</option>
+                                                            <option value="PM" <?php if ($closes_at_ampm == 'PM') echo 'selected'; ?>>PM</option>
+                                                        </select>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -316,7 +338,6 @@ if (is_string($raw_stds) && !empty($raw_stds)) {
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script>
-        // Scripts remain the same
         $(document).ready(function() {
             $('.multi-select').select2();
 
@@ -332,15 +353,16 @@ if (is_string($raw_stds) && !empty($raw_stds)) {
 
             $('.closed-checkbox').on('change', function() {
                 var row = $(this).closest('.timing-row');
-                var timeInputs = row.find('.opens-at, .closes-at');
+                var timeInputs = row.find('.time-input, .ampm-select');
                 if ($(this).is(':checked')) {
                     timeInputs.prop('disabled', true);
                 } else {
                     timeInputs.prop('disabled', false);
                 }
             });
+            // Trigger the change on page load to set the initial state correctly
+            $('.closed-checkbox').trigger('change');
         });
     </script>
-
 </body>
 </html>

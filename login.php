@@ -147,15 +147,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email']) && isset($_PO
         $response = ['status' => 'error', 'message' => 'A system error occurred. Please try again later.'];
     }
 
-    // Convert response to the Response class format
-    if ($response['status'] === 'success') {
-        Response::success('Login successful', $response['redirect']);
-    } else {
-        Response::send([
-            'success' => false,
-            'message' => $response['message']
-        ], 400);
+    // Set the content type header to signal that we're sending JSON
+    header('Content-Type: application/json');
+
+    // Check the status and set a proper HTTP response code
+    if ($response['status'] === 'error') {
+        // 401 Unauthorized is a good code for failed login
+        http_response_code(401);
     }
+
+    // Echo the final response as a JSON string and stop the script
+    echo json_encode($response);
     
     $conn = null;
     exit();

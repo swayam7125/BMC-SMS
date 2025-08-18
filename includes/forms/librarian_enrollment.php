@@ -47,7 +47,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $address = trim($_POST['address']);
     $qualification = trim($_POST['qualification']);
     $salary = trim($_POST['salary']);
-    $timings = $_POST['timings'] ?? []; // <-- Added timings data
+    $timings = $_POST['timings'] ?? [];
+    $batch = $_POST['batch'] ?? '';
     $school_id = $admin_school_id;
     $image_path_for_db = null;
 
@@ -73,6 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($password)) $errors[] = "Password is required.";
     if (empty($phone)) $errors[] = "Phone number is required.";
     if (empty($school_id)) $errors[] = "School association is missing.";
+    if (empty($batch)) $errors[] = "Batch is required.";
 
     // --- DATABASE INSERTION ---
     if (empty($errors)) {
@@ -81,22 +83,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
             $user_role = 'librarian';
 
-            // 1. Create user record
             $stmt_user = $conn->prepare('INSERT INTO "users" ("role", "email", "password") VALUES (?, ?, ?)');
             $stmt_user->execute([$user_role, $email, $hashed_password]);
             $new_user_id = $conn->lastInsertId();
 
-            // 2. Create librarian record
-            $stmt_librarian = $conn->prepare('INSERT INTO "librarian" (id, librarian_image, librarian_name, school_id, email, password, phone, dob, gender, blood_group, address, qualification, salary) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-            $stmt_librarian->execute([$new_user_id, $image_path_for_db, $librarian_name, $school_id, $email, $hashed_password, $phone, $dob, $gender, $blood_group, $address, $qualification, $salary]);
+            $stmt_librarian = $conn->prepare('INSERT INTO "librarian" (id, librarian_image, librarian_name, school_id, email, password, phone, dob, gender, blood_group, address, qualification, salary, batch) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            $stmt_librarian->execute([$new_user_id, $image_path_for_db, $librarian_name, $school_id, $email, $hashed_password, $phone, $dob, $gender, $blood_group, $address, $qualification, $salary, $batch]);
 
-            // 3. Insert librarian timings (NEWLY ADDED)
-            // Note: Assumes a 'librarian_timings' table exists similar to 'principal_timings'
             $stmt_timing = $conn->prepare('INSERT INTO "librarian_timings" (librarian_id, day_of_week, opens_at, closes_at, is_closed) VALUES (?, ?, ?, ?, ?)');
             foreach ($timings as $day => $details) {
                 $is_closed = isset($details['is_closed']) ? 1 : 0;
-                $opens_at = ($is_closed || empty($details['opens_at'])) ? null : $details['opens_at'];
-                $closes_at = ($is_closed || empty($details['closes_at'])) ? null : $details['closes_at'];
+                
+                // --- UPDATE: Convert 12-hour AM/PM time to 24-hour format for DB ---
+                $opens_at = null;
+                if (!$is_closed && !empty($details['opens_at']) && !empty($details['opens_at_ampm'])) {
+                    $opens_at = date("H:i:s", strtotime($details['opens_at'] . ' ' . $details['opens_at_ampm']));
+                }
+
+                $closes_at = null;
+                if (!$is_closed && !empty($details['closes_at']) && !empty($details['closes_at_ampm'])) {
+                    $closes_at = date("H:i:s", strtotime($details['closes_at'] . ' ' . $details['closes_at_ampm']));
+                }
+
                 $stmt_timing->execute([$new_user_id, $day, $opens_at, $closes_at, $is_closed]);
             }
 
@@ -105,8 +113,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit();
         } catch (PDOException $e) {
             $conn->rollBack();
-            if ($e->getCode() == 23505) { // Unique constraint violation for PostgreSQL
-                $errors[] = "A user with this email or phone number already exists.";
+            if ($e->getCode() == 23505) {
+                if (strpos($e->getMessage(), 'unique_librarian_school_batch') !== false) {
+                    $errors[] = "A librarian is already assigned to this school for the selected batch.";
+                } else {
+                    $errors[] = "A user with this email or phone number already exists.";
+                }
             } else {
                 $errors[] = "Database error: " . $e->getMessage();
             }
@@ -159,15 +171,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     </div>
                                     <div class="col-md-9">
                                         <div class="form-row">
-                                            <div class="form-group col-md-12"><label for="librarian_name">Librarian Name *</label><input type="text" class="form-control" id="librarian_name" name="librarian_name" required></div>
+                                            <div class="form-group col-md-12"><label for="librarian_name">Librarian Name *</label><input type="text" class="form-control" id="librarian_name" name="librarian_name" value="<?php echo htmlspecialchars($_POST['librarian_name'] ?? ''); ?>" required></div>
                                         </div>
                                         <div class="form-row">
-                                            <div class="form-group col-md-6"><label for="email">Email *</label><input type="email" class="form-control" id="email" name="email" required></div>
-                                            <div class="form-group col-md-6"><label for="password">Password *</label><input type="password" class="form-control" id="password" name="password" required></div>
+                                            <div class="form-group col-md-6"><label for="email">Email *</label><input type="email" class="form-control" id="email" name="email" value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>" required></div>
+                                            <div class="form-group col-md-6"><label for="password">Password *</label><input type="password" class="form-control" id="password" name="password" value="<?php echo htmlspecialchars($_POST['password'] ?? ''); ?>" required></div>
                                         </div>
                                     </div>
                                 </div>
                                 
+                                <hr>
+                                <h6 class="text-primary">Professional Information</h6>
+                                <div class="form-row mt-3">
+                                    <div class="form-group col-md-6">
+                                        <label>Assigned School</label>
+                                        <input type="text" class="form-control" value="<?php echo htmlspecialchars($admin_school_name); ?>" disabled>
+                                    </div>
+                                    <div class="form-group col-md-6">
+                                        <label for="batch">Batch *</label>
+                                        <select class="form-control" id="batch" name="batch" required>
+                                            <option value="">-- Select Batch --</option>
+                                            <option value="Morning" <?= (($_POST['batch'] ?? '') == 'Morning') ? 'selected' : '' ?>>Morning</option>
+                                            <option value="Evening" <?= (($_POST['batch'] ?? '') == 'Evening') ? 'selected' : '' ?>>Evening</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group col-md-6"><label for="qualification">Qualification</label><input type="text" class="form-control" id="qualification" name="qualification" value="<?php echo htmlspecialchars($_POST['qualification'] ?? ''); ?>"></div>
+                                    <div class="form-group col-md-6"><label for="salary">Salary</label><input type="number" class="form-control" id="salary" name="salary" step="0.01" min="0" value="<?php echo htmlspecialchars($_POST['salary'] ?? ''); ?>"></div>
+                                </div>
                                 <hr>
                                 <h6 class="font-weight-bold text-primary mb-3">Weekly Timings</h6>
                                 <div id="timings-schedule">
@@ -177,7 +207,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         $posted_day = $_POST['timings'][$day] ?? [];
                                         $is_closed = isset($posted_day['is_closed']);
                                         $opens_at = $posted_day['opens_at'] ?? '09:00';
-                                        $closes_at = $posted_day['closes_at'] ?? '17:00';
+                                        $opens_at_ampm = $posted_day['opens_at_ampm'] ?? 'AM';
+                                        $closes_at = $posted_day['closes_at'] ?? '05:00';
+                                        $closes_at_ampm = $posted_day['closes_at_ampm'] ?? 'PM';
                                     ?>
                                         <div class="form-row align-items-center mb-2 timing-row" data-day="<?php echo $day; ?>">
                                             <div class="col-md-2"><label class="mb-0"><?php echo $day; ?></label></div>
@@ -187,51 +219,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                     <label class="custom-control-label" for="closed_<?php echo $day; ?>">Closed</label>
                                                 </div>
                                             </div>
-                                            <div class="col-md-3">
+                                            <div class="col-md-4">
                                                 <div class="input-group">
                                                     <div class="input-group-prepend"><span class="input-group-text small">Opens at</span></div>
-                                                    <input type="time" class="form-control opens-at" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                    <input type="text" class="form-control time-input" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" placeholder="HH:MM" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                    <div class="input-group-append">
+                                                        <select class="form-control ampm-select" name="timings[<?php echo $day; ?>][opens_at_ampm]" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                            <option value="AM" <?php if ($opens_at_ampm == 'AM') echo 'selected'; ?>>AM</option>
+                                                            <option value="PM" <?php if ($opens_at_ampm == 'PM') echo 'selected'; ?>>PM</option>
+                                                        </select>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div class="col-md-3">
+                                            <div class="col-md-4">
                                                 <div class="input-group">
                                                     <div class="input-group-prepend"><span class="input-group-text small">Closes at</span></div>
-                                                    <input type="time" class="form-control closes-at" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                    <input type="text" class="form-control time-input" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" placeholder="HH:MM" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                    <div class="input-group-append">
+                                                        <select class="form-control ampm-select" name="timings[<?php echo $day; ?>][closes_at_ampm]" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                            <option value="AM" <?php if ($closes_at_ampm == 'AM') echo 'selected'; ?>>AM</option>
+                                                            <option value="PM" <?php if ($closes_at_ampm == 'PM') echo 'selected'; ?>>PM</option>
+                                                        </select>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     <?php endforeach; ?>
                                 </div>
                                 <hr>
-                                <h6 class="text-primary">Professional Information</h6>
-                                <div class="form-row mt-3">
-                                    <div class="form-group col-md-4">
-                                        <label>Assigned School</label>
-                                        <input type="text" class="form-control" value="<?php echo htmlspecialchars($admin_school_name); ?>" disabled>
-                                    </div>
-                                    <div class="form-group col-md-4"><label for="qualification">Qualification</label><input type="text" class="form-control" id="qualification" name="qualification"></div>
-                                    <div class="form-group col-md-4"><label for="salary">Salary</label><input type="number" class="form-control" id="salary" name="salary" step="0.01" min="0"></div>
-                                </div>
-                                
-                                <hr>
                                 <h6 class="text-primary">Personal Information</h6>
                                 <div class="form-row mt-3">
-                                    <div class="form-group col-md-4"><label for="phone">Phone *</label><input type="tel" class="form-control" id="phone" name="phone" maxlength="10" required></div>
-                                    <div class="form-group col-md-4"><label for="dob">Date of Birth</label><input type="date" class="form-control" id="dob" name="dob"></div>
+                                    <div class="form-group col-md-4"><label for="phone">Phone *</label><input type="tel" class="form-control" id="phone" name="phone" maxlength="10" value="<?php echo htmlspecialchars($_POST['phone'] ?? ''); ?>" required></div>
+                                    <div class="form-group col-md-4"><label for="dob">Date of Birth</label><input type="date" class="form-control" id="dob" name="dob" value="<?php echo htmlspecialchars($_POST['dob'] ?? ''); ?>"></div>
                                     <div class="form-group col-md-4"><label for="gender">Gender *</label><select class="form-control" id="gender" name="gender" required>
                                             <option value="">-- Select Gender --</option>
-                                            <option value="Male">Male</option>
-                                            <option value="Female">Female</option>
-                                            <option value="Others">Others</option>
+                                            <option value="Male" <?= (($_POST['gender'] ?? '') == 'Male') ? 'selected' : '' ?>>Male</option>
+                                            <option value="Female" <?= (($_POST['gender'] ?? '') == 'Female') ? 'selected' : '' ?>>Female</option>
+                                            <option value="Others" <?= (($_POST['gender'] ?? '') == 'Others') ? 'selected' : '' ?>>Others</option>
                                         </select></div>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group col-md-6"><label for="blood_group">Blood Group *</label><select class="form-control" id="blood_group" name="blood_group" required>
                                             <option value="">-- Select Blood Group --</option>
                                             <?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-                                            foreach ($bg_options as $bg) echo "<option value='{$bg}'>{$bg}</option>"; ?>
+                                            foreach ($bg_options as $bg) {
+                                                $selected = (($_POST['blood_group'] ?? '') == $bg) ? 'selected' : '';
+                                                echo "<option value='{$bg}' {$selected}>" . $bg . "</option>";
+                                            } ?>
                                         </select></div>
-                                    <div class="form-group col-md-6"><label for="address">Address</label><textarea class="form-control" id="address" name="address" rows="1"></textarea></div>
+                                    <div class="form-group col-md-6"><label for="address">Address</label><textarea class="form-control" id="address" name="address" rows="1"><?php echo htmlspecialchars($_POST['address'] ?? ''); ?></textarea></div>
                                 </div>
                                 <div class="form-group mt-4">
                                     <button type="submit" class="btn btn-primary"><i class="fas fa-user-plus"></i> Enroll Librarian</button>
@@ -245,7 +281,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php include_once '../../includes/footer.php'; ?>
         </div>
     </div>
-        <?php include_once "../../includes/logout_modal.php"?>
+    <?php include_once "../../includes/logout_modal.php"?>
 
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
@@ -266,12 +302,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Timings schedule logic
             $('.closed-checkbox').on('change', function() {
                 const row = $(this).closest('.timing-row');
-                const timeInputs = row.find('input[type="time"]');
+                const timeInputs = row.find('.time-input, .ampm-select');
                 timeInputs.prop('disabled', $(this).is(':checked'));
             });
 
             // Trigger on page load to set initial state
             $('.closed-checkbox').trigger('change');
+            
+            $('button[type="reset"]').on('click', function() {
+                $('#imagePreview').attr('src', '../../assets/images/unisex.png');
+            });
         });
     </script>
 </body>

@@ -1,5 +1,5 @@
 <?php
-include_once '../../includes/connect.php'; // Your PDO connection file
+include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 
 // Check if user is logged in
@@ -62,6 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $qualification = trim($_POST['qualification']);
     $salary = trim($_POST['salary']);
     $posted_timings = $_POST['timings'] ?? [];
+    $batch = trim($_POST['batch']);
     
     $image_path_for_db = $original_image_path;
 
@@ -96,11 +97,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt_users->execute([$new_email, $librarian_id]);
             }
 
-            $sql_update_librarian = "UPDATE librarian SET librarian_image = ?, librarian_name = ?, phone = ?, dob = ?, gender = ?, blood_group = ?, address = ?, email = ?, qualification = ?, salary = ? WHERE id = ?";
+            $sql_update_librarian = "UPDATE librarian SET librarian_image = ?, librarian_name = ?, phone = ?, dob = ?, gender = ?, blood_group = ?, address = ?, email = ?, qualification = ?, salary = ?, batch = ? WHERE id = ?";
             $stmt_update = $conn->prepare($sql_update_librarian);
             $stmt_update->execute([
                 $image_path_for_db, $librarian_name, $phone, $dob, $gender, 
-                $blood_group, $address, $new_email, $qualification, $salary, $librarian_id
+                $blood_group, $address, $new_email, $qualification, $salary, $batch, $librarian_id
             ]);
 
             $sql_upsert_timing = "INSERT INTO librarian_timings (librarian_id, day_of_week, opens_at, closes_at, is_closed) 
@@ -109,23 +110,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                   DO UPDATE SET opens_at = EXCLUDED.opens_at, closes_at = EXCLUDED.closes_at, is_closed = EXCLUDED.is_closed";
             $stmt_timing_upsert = $conn->prepare($sql_upsert_timing);
             foreach ($posted_timings as $day => $details) {
-            // FIX: Convert PHP boolean to an integer (0 or 1) for PostgreSQL's boolean type.
                 $is_closed_db = isset($details['is_closed']) ? 1 : 0;
-                $opens_at = ($is_closed_db || empty($details['opens_at'])) ? null : $details['opens_at'];
-                $closes_at = ($is_closed_db || empty($details['closes_at'])) ? null : $details['closes_at'];
+                
+                // --- UPDATE: Convert 12-hour AM/PM time to 24-hour format for DB ---
+                $opens_at = null;
+                if (!$is_closed_db && !empty($details['opens_at']) && !empty($details['opens_at_ampm'])) {
+                    $opens_at = date("H:i:s", strtotime($details['opens_at'] . ' ' . $details['opens_at_ampm']));
+                }
+
+                $closes_at = null;
+                if (!$is_closed_db && !empty($details['closes_at']) && !empty($details['closes_at_ampm'])) {
+                    $closes_at = date("H:i:s", strtotime($details['closes_at'] . ' ' . $details['closes_at_ampm']));
+                }
+
                 $stmt_timing_upsert->execute([$librarian_id, $day, $opens_at, $closes_at, $is_closed_db]);
             }
 
             $conn->commit();
-            header("Location: librarian_list.php?success=Librarian updated successfully");
+            header("Location: view.php?id=" . $librarian_id . "&success=1");
             exit;
         } catch (Exception $e) {
             if ($conn->inTransaction()) {
                 $conn->rollBack();
             }
-            $errors[] = "Database update failed: " . $e->getMessage();
+            if ($e->getCode() == 23505 && strpos($e->getMessage(), 'unique_librarian_school_batch') !== false) {
+                 $errors[] = "A librarian is already assigned to this school for the selected batch.";
+            } else {
+                $errors[] = "Database update failed: " . $e->getMessage();
+            }
         }
     }
+    // Repopulate librarian array with POST data on error
+    $librarian = $_POST;
+    $librarian['librarian_image'] = $image_path_for_db ?? $original_image_path;
 }
 ?>
 <!DOCTYPE html>
@@ -188,9 +205,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                             $selected = (($librarian['blood_group'] ?? '') == $bg) ? 'selected' : '';
                                             echo "<option value='{$bg}' {$selected}>{$bg}</option>";
                                         } ?></select></div>
+                                    <div class="col-md-4 form-group">
+                                        <label for="batch">Batch *</label>
+                                        <select class="form-control" id="batch" name="batch" required>
+                                            <option value="Morning" <?php echo (($librarian['batch'] ?? '') == 'Morning') ? 'selected' : ''; ?>>Morning</option>
+                                            <option value="Evening" <?php echo (($librarian['batch'] ?? '') == 'Evening') ? 'selected' : ''; ?>>Evening</option>
+                                        </select>
+                                    </div>
                                     <div class="col-md-4 form-group"><label for="qualification">Qualification</label><input type="text" class="form-control" id="qualification" name="qualification" value="<?php echo htmlspecialchars($librarian['qualification'] ?? ''); ?>"></div>
-                                    <div class="col-md-8 form-group"><label for="address">Address</label><textarea class="form-control" id="address" name="address" rows="1"><?php echo htmlspecialchars($librarian['address'] ?? ''); ?></textarea></div>
                                     <div class="col-md-4 form-group"><label for="salary">Salary</label><input type="number" class="form-control" id="salary" name="salary" value="<?php echo htmlspecialchars($librarian['salary'] ?? '0.00'); ?>" step="0.01" min="0"></div>
+                                    <div class="col-md-4 form-group"><label for="address">Address</label><textarea class="form-control" id="address" name="address" rows="1"><?php echo htmlspecialchars($librarian['address'] ?? ''); ?></textarea></div>
                                 </div>
                                 <hr>
                                 
@@ -201,8 +225,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     foreach ($days as $day):
                                         $day_timing = $timings[$day] ?? [];
                                         $is_closed = isset($day_timing['is_closed']) && $day_timing['is_closed'];
-                                        $opens_at = !empty($day_timing['opens_at']) ? date("H:i", strtotime($day_timing['opens_at'])) : '09:00';
-                                        $closes_at = !empty($day_timing['closes_at']) ? date("H:i", strtotime($day_timing['closes_at'])) : '17:00';
+                                        // --- UPDATE: Convert 24-hour DB time back to 12-hour and AM/PM for display ---
+                                        $opens_at = !empty($day_timing['opens_at']) ? date("h:i", strtotime($day_timing['opens_at'])) : '09:00';
+                                        $opens_at_ampm = !empty($day_timing['opens_at']) ? date("A", strtotime($day_timing['opens_at'])) : 'AM';
+                                        $closes_at = !empty($day_timing['closes_at']) ? date("h:i", strtotime($day_timing['closes_at'])) : '05:00';
+                                        $closes_at_ampm = !empty($day_timing['closes_at']) ? date("A", strtotime($day_timing['closes_at'])) : 'PM';
                                     ?>
                                         <div class="form-row align-items-center mb-2 timing-row" data-day="<?php echo $day; ?>">
                                             <div class="col-md-2"><label class="mb-0"><?php echo $day; ?></label></div>
@@ -212,16 +239,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                     <label class="custom-control-label" for="closed_<?php echo $day; ?>">Closed</label>
                                                 </div>
                                             </div>
-                                            <div class="col-md-3">
+                                            <div class="col-md-4">
                                                 <div class="input-group">
                                                     <div class="input-group-prepend"><span class="input-group-text small">Opens at</span></div>
-                                                    <input type="time" class="form-control opens-at" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                    <input type="text" class="form-control time-input" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" placeholder="HH:MM" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                    <div class="input-group-append">
+                                                        <select class="form-control ampm-select" name="timings[<?php echo $day; ?>][opens_at_ampm]" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                            <option value="AM" <?php if ($opens_at_ampm == 'AM') echo 'selected'; ?>>AM</option>
+                                                            <option value="PM" <?php if ($opens_at_ampm == 'PM') echo 'selected'; ?>>PM</option>
+                                                        </select>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div class="col-md-3">
+                                            <div class="col-md-4">
                                                 <div class="input-group">
                                                     <div class="input-group-prepend"><span class="input-group-text small">Closes at</span></div>
-                                                    <input type="time" class="form-control closes-at" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                    <input type="text" class="form-control time-input" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" placeholder="HH:MM" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                    <div class="input-group-append">
+                                                        <select class="form-control ampm-select" name="timings[<?php echo $day; ?>][closes_at_ampm]" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                            <option value="AM" <?php if ($closes_at_ampm == 'AM') echo 'selected'; ?>>AM</option>
+                                                            <option value="PM" <?php if ($closes_at_ampm == 'PM') echo 'selected'; ?>>PM</option>
+                                                        </select>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -247,7 +286,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $(document).ready(function() {
             $('.closed-checkbox').on('change', function() {
                 var row = $(this).closest('.timing-row');
-                var timeInputs = row.find('.opens-at, .closes-at');
+                var timeInputs = row.find('.time-input, .ampm-select');
                 if ($(this).is(':checked')) {
                     timeInputs.prop('disabled', true);
                 } else {

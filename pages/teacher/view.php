@@ -47,23 +47,17 @@ try {
     die("A database error occurred.");
 }
 
-// --- START: CORRECTED PHOTO PATH LOGIC ---
 $photo_path = $teacher['teacher_image'];
 $default_photo = "../../assets/images/unisex.png";
 
 if (!empty($photo_path)) {
-    // Build the correct, absolute filesystem path to check if the file exists
     $filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $photo_path;
-
-    // If the file doesn't exist at that path, fall back to the default photo
     if (!file_exists($filesystem_path) || !is_file($filesystem_path)) {
         $photo_path = $default_photo;
     }
 } else {
-    // If no photo path is set in the database, use the default photo
     $photo_path = $default_photo;
 }
-// --- END: CORRECTED PHOTO PATH LOGIC ---
 ?>
 <!DOCTYPE html>
 <html lang="en">

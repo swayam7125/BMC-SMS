@@ -163,38 +163,32 @@ try {
                         <div class="col-lg-6 mb-4">
                             <div class="card shadow h-100">
                                 <div class="card-header py-3">
-                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-briefcase"></i>
-                                        Professional Information</h6>
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-briefcase"></i> Professional Information</h6>
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-sm-4 info-label">School Name:</div>
-                                        <div class="col-sm-8 info-value">
-                                            <?php echo htmlspecialchars($librarian['school_name']); ?></div>
+                                        <div class="col-sm-5 info-label">School Name:</div>
+                                        <div class="col-sm-7 info-value"><?php echo htmlspecialchars($librarian['school_name']); ?></div>
                                     </div>
                                     <hr>
                                     <div class="row">
-                                        <div class="col-sm-4 info-label">School Email:</div>
-                                        <div class="col-sm-8 info-value">
-                                            <?php echo htmlspecialchars($librarian['school_email']); ?></div>
+                                        <div class="col-sm-5 info-label">School Email:</div>
+                                        <div class="col-sm-7 info-value"><?php echo htmlspecialchars($librarian['school_email']); ?></div>
                                     </div>
                                     <hr>
                                     <div class="row">
-                                        <div class="col-sm-4 info-label">School Phone:</div>
-                                        <div class="col-sm-8 info-value">
-                                            <?php echo htmlspecialchars($librarian['school_phone']); ?></div>
+                                        <div class="col-sm-5 info-label">School Phone:</div>
+                                        <div class="col-sm-7 info-value"><?php echo htmlspecialchars($librarian['school_phone']); ?></div>
                                     </div>
                                     <hr>
                                     <div class="row">
-                                        <div class="col-sm-4 info-label">Qualification:</div>
-                                        <div class="col-sm-8 info-value">
-                                            <?php echo htmlspecialchars($librarian['qualification']); ?></div>
+                                        <div class="col-sm-5 info-label">Qualification:</div>
+                                        <div class="col-sm-7 info-value"><?php echo htmlspecialchars($librarian['qualification']); ?></div>
                                     </div>
                                     <hr>
                                     <div class="row">
-                                        <div class="col-sm-4 info-label">Salary:</div>
-                                        <div class="col-sm-8 info-value font-weight-bold text-success">
-                                            ₹<?php echo number_format($librarian['salary'], 2); ?></div>
+                                        <div class="col-sm-5 info-label">Salary:</div>
+                                        <div class="col-sm-7 info-value font-weight-bold text-success">₹<?php echo number_format($librarian['salary'], 2); ?></div>
                                     </div>
                                 </div>
                             </div>
@@ -202,29 +196,38 @@ try {
                         <div class="col-lg-6 mb-4">
                             <div class="card shadow h-100">
                                 <div class="card-header py-3">
-                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-clock"></i> Weekly
-                                        Schedule</h6>
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-clock"></i> Batch & Timings</h6>
                                 </div>
                                 <div class="card-body">
-                                    <?php
-                                    $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-                                    foreach ($days as $day):
-                                        $timing = $timings[$day] ?? null;
-                                    ?>
-                                    <div class="row align-items-center">
-                                        <div class="col-sm-4 info-label"><?php echo $day; ?>:</div>
-                                        <div class="col-sm-8 info-value">
-                                            <?php if ($timing && $timing['is_closed']): ?>
-                                            <span class="badge badge-secondary">Closed</span>
-                                            <?php elseif ($timing && !empty($timing['opens_at']) && !empty($timing['closes_at'])): ?>
-                                            <?php echo date('g:i A', strtotime($timing['opens_at'])) . ' - ' . date('g:i A', strtotime($timing['closes_at'])); ?>
-                                            <?php else: ?>
-                                            N/A
-                                            <?php endif; ?>
-                                        </div>
+                                    <div class="row mb-3">
+                                        <div class="col-sm-4 info-label">Assigned Batch:</div>
+                                        <div class="col-sm-8 info-value"><span class="badge badge-<?php echo ($librarian['batch'] == 'Morning') ? 'primary' : 'warning'; ?> p-2"><?php echo htmlspecialchars($librarian['batch'] ?? 'N/A'); ?></span></div>
                                     </div>
-                                    <?php if ($day !== 'Sunday') echo '<hr class="my-2">'; ?>
-                                    <?php endforeach; ?>
+                                    <hr class="mt-0">
+                                    <h6 class="info-label mb-2">Weekly Schedule:</h6>
+                                    <?php if (!empty($timings)): ?>
+                                        <table class="table table-sm table-bordered table-striped table-timings">
+                                            <tbody>
+                                                <?php $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                                                foreach ($days as $day): $day_timing = $timings[$day] ?? null; ?>
+                                                    <tr>
+                                                        <th><?php echo $day; ?></th>
+                                                        <td>
+                                                            <?php if ($day_timing && !empty($day_timing['is_closed'])): ?>
+                                                                <span class="badge badge-secondary">Closed</span>
+                                                            <?php elseif ($day_timing && !empty($day_timing['opens_at'])): ?>
+                                                                <?php echo date("g:i A", strtotime($day_timing['opens_at'])); ?> - <?php echo date("g:i A", strtotime($day_timing['closes_at'])); ?>
+                                                            <?php else: ?>
+                                                                <span class="text-muted">Not Set</span>
+                                                            <?php endif; ?>
+                                                        </td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    <?php else: ?>
+                                        <div class="alert alert-warning small">No weekly schedule has been set for this librarian.</div>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
