@@ -1,23 +1,17 @@
 <?php
-/*
-// DEBUGGING: If the page is blank, uncomment these lines to see errors.
+require_once "./includes/connect.php";
+require_once "./includes/ajax_helpers.php";
+require_once "encryption.php";
+
+// Enable error reporting for debugging
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
-*/
 
-include_once "./includes/connect.php";
-include_once "encryption.php";
-
-// This function is database-agnostic and remains the same.
-function haversine_distance($lat1, $lon1, $lat2, $lon2)
-{
-    $earth_radius = 6371;
-    $dLat = deg2rad($lat2 - $lat1);
-    $dLon = deg2rad($lon2 - $lon1);
-    $a = sin($dLat / 2) * sin($dLat / 2) + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLon / 2) * sin($dLon / 2);
-    $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-    return $earth_radius * $c * 1000;
+// Handle login POST request
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $username = mysqli_real_escape_string($conn, $_POST['username']);
+    $password = $_POST['password'];
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email']) && isset($_POST['password'])) {
