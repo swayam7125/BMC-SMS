@@ -76,25 +76,37 @@ try {
     $filter_year = $_GET['year'] ?? $default_year;
 
     if (isset($_GET['month'])) {
-        $teacher_stmt = $conn->prepare("SELECT id, teacher_name, salary FROM teacher WHERE school_id = ? ORDER BY teacher_name");
-        $teacher_stmt->execute([$school_id]);
-        $teachers = $teacher_stmt->fetchAll(PDO::FETCH_ASSOC);
+        $librarian_stmt = $conn->prepare("SELECT id, librarian_name, salary FROM librarian WHERE school_id = ? ORDER BY librarian_name");
+        $librarian_stmt->execute([$school_id]);
+        $librarians = $librarian_stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $paid_stmt = $conn->prepare("SELECT teacher_id, payment_date FROM payroll_records WHERE school_id = ? AND salary_month = ? AND salary_year = ?");
+        $paid_stmt = $conn->prepare("SELECT librarian_id, payment_date FROM librarian_payroll_records WHERE school_id = ? AND salary_month = ? AND salary_year = ?");
         $paid_stmt->execute([$school_id, $filter_month, $filter_year]);
-        $paid_teachers = $paid_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+        $paid_librarians = $paid_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
-        foreach ($teachers as $teacher) {
-            $base_salary = $teacher['salary'];
+        foreach ($librarians as $librarian) {
+            $base_salary = $librarian['salary'];
             // MODIFIED: Pass DB connection and school_id to the function
             $total_working_days = getWorkingDays($filter_year, $filter_month, $conn, $school_id);
+            
+            $payableDaysStmt = $conn->prepare("
+                SELECT SUM(
+                    CASE 
+                        WHEN status = 'Present' THEN 1.0
+                        WHEN status = 'Half Day' THEN 0.5
+                        ELSE 0 
+                    END
+                ) as payable_days 
+                FROM librarian_attendance 
+                WHERE librarian_id = ? 
+                AND EXTRACT(YEAR FROM attendance_date) = ? 
+                AND EXTRACT(MONTH FROM attendance_date) = ?
+            ");
+            $payableDaysStmt->execute([$librarian['id'], $filter_year, $filter_month]);
+            $present_days = (float)$payableDaysStmt->fetchColumn();
 
-            $presentStmt = $conn->prepare('SELECT COUNT(*) FROM teacher_attendance WHERE teacher_id = ? AND status = \'Present\' AND EXTRACT(YEAR FROM attendance_date) = ? AND EXTRACT(MONTH FROM attendance_date) = ?');
-            $presentStmt->execute([$teacher['id'], $filter_year, $filter_month]);
-            $present_days = $presentStmt->fetchColumn();
-
-            $absentStmt = $conn->prepare('SELECT COUNT(*) FROM teacher_attendance WHERE teacher_id = ? AND status = \'Absent\' AND EXTRACT(YEAR FROM attendance_date) = ? AND EXTRACT(MONTH FROM attendance_date) = ?');
-            $absentStmt->execute([$teacher['id'], $filter_year, $filter_month]);
+            $absentStmt = $conn->prepare('SELECT COUNT(*) FROM librarian_attendance WHERE librarian_id = ? AND status = \'Absent\' AND EXTRACT(YEAR FROM attendance_date) = ? AND EXTRACT(MONTH FROM attendance_date) = ?');
+            $absentStmt->execute([$librarian['id'], $filter_year, $filter_month]);
             $absent_days = $absentStmt->fetchColumn();
 
             $per_day_salary = ($total_working_days > 0 && $base_salary > 0) ? ($base_salary / $total_working_days) : 0;
@@ -102,16 +114,16 @@ try {
             $deduction_amount = $per_day_salary * $absent_days;
 
             $payroll_data[] = [
-                'teacher_id' => $teacher['id'],
-                'teacher_name' => $teacher['teacher_name'],
+                'librarian_id' => $librarian['id'],
+                'librarian_name' => $librarian['librarian_name'],
                 'base_salary' => $base_salary,
                 'total_working_days' => $total_working_days,
                 'present_days' => $present_days,
                 'absent_days' => $absent_days,
                 'deduction_amount' => $deduction_amount,
                 'net_salary_paid' => $net_salary,
-                'status' => isset($paid_teachers[$teacher['id']]) ? 'Paid' : 'Pending',
-                'payment_date' => $paid_teachers[$teacher['id']] ?? null
+                'status' => isset($paid_librarians[$librarian['id']]) ? 'Paid' : 'Pending',
+                'payment_date' => $paid_librarians[$librarian['id']] ?? null
             ];
         }
     }
@@ -123,7 +135,7 @@ try {
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Process Teacher Payroll</title>
+    <title>Process Librarian Payroll</title>
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
@@ -138,7 +150,7 @@ try {
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
                 <div class="container-fluid">
-                    <h1 class="h3 mb-4 text-gray-800">Process Teacher Payroll</h1>
+                    <h1 class="h3 mb-4 text-gray-800">Process Librarian Payroll</h1>
 
                     <?php if (isset($_GET['success'])): ?>
                         <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -193,7 +205,7 @@ try {
                                 <table class="table table-bordered">
                                     <thead>
                                         <tr>
-                                            <th>Teacher Name</th>
+                                            <th>Librarian Name</th>
                                             <th>Net Salary</th>
                                             <th>Status</th>
                                             <th>Action</th>
@@ -202,7 +214,7 @@ try {
                                     <tbody>
                                         <?php foreach($payroll_data as $row): ?>
                                         <tr>
-                                            <td><?php echo htmlspecialchars($row['teacher_name']); ?></td>
+                                            <td><?php echo htmlspecialchars($row['librarian_name']); ?></td>
                                             <td><?php echo formatIndianCurrency($row['net_salary_paid']); ?></td>
                                             <td>
                                                 <?php if($row['status'] == 'Paid'): ?>
@@ -215,8 +227,8 @@ try {
                                                 <?php if($row['status'] == 'Paid'): ?>
                                                     <small>Paid on <?php echo date('d M, Y', strtotime($row['payment_date'])); ?></small>
                                                 <?php else: ?>
-                                                    <form action="process_payment.php" method="POST">
-                                                        <input type="hidden" name="teacher_id" value="<?php echo $row['teacher_id']; ?>">
+                                                    <form action="process_librarian_payment.php" method="POST">
+                                                        <input type="hidden" name="librarian_id" value="<?php echo $row['librarian_id']; ?>">
                                                         <input type="hidden" name="principal_id" value="<?php echo $userId; ?>">
                                                         <input type="hidden" name="school_id" value="<?php echo $school_id; ?>">
                                                         <input type="hidden" name="salary_month" value="<?php echo $filter_month; ?>">

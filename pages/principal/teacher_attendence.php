@@ -1,9 +1,8 @@
 <?php
-session_start();
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 
-// IMPROVEMENT: Set a consistent timezone for all date operations
+// Set a consistent timezone for all date operations
 date_default_timezone_set('Asia/Kolkata');
 
 $role = null;
@@ -12,8 +11,8 @@ $errorMessage = '';
 $principalDetails = null;
 $teachers_with_details = [];
 $all_missing_dates = []; // To hold ALL dates with incomplete attendance
-$is_holiday = false; // NEW: Holiday flag
-$holiday_description = ''; // NEW: Holiday description
+$is_holiday = false; 
+$holiday_description = ''; 
 
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
@@ -38,7 +37,7 @@ try {
     $current_date = date('Y-m-d');
     $attendance_date_display = isset($_GET['attendance_date']) ? $_GET['attendance_date'] : $current_date;
 
-    // NEW: Check if the selected date is a holiday
+    // Check if the selected date is a holiday
     if (empty($errorMessage)) {
         $holiday_stmt = $conn->prepare("SELECT description FROM holidays WHERE holiday_date = ? AND school_id = ?");
         $holiday_stmt->execute([$attendance_date_display, $principalDetails['school_id']]);
@@ -49,7 +48,7 @@ try {
         }
     }
 
-    // --- REVISED: Mandatory Past Attendance Check for ALL missing dates (only if not a holiday) ---
+    // --- MODIFIED: Mandatory Past Attendance Check (now skips holidays) ---
     if (empty($errorMessage) && !$is_holiday) { 
         $target_date = new DateTime($attendance_date_display);
         $start_date = new DateTime($target_date->format('Y-m-01'));
@@ -62,9 +61,19 @@ try {
 
         if ($total_teachers > 0) {
             $att_count_stmt = $conn->prepare("SELECT COUNT(teacher_id) FROM teacher_attendance WHERE school_id = ? AND attendance_date = ?");
+            // Prepare statement to check for holidays
+            $holiday_check_stmt = $conn->prepare("SELECT COUNT(*) FROM holidays WHERE school_id = ? AND holiday_date = ?"); 
+
             foreach ($period as $date) {
                 if (date('N', $date->getTimestamp()) < 7) { // Mon-Sat
                     $date_to_check = $date->format('Y-m-d');
+
+                    // Check if the date is a holiday
+                    $holiday_check_stmt->execute([$principalDetails['school_id'], $date_to_check]);
+                    if ($holiday_check_stmt->fetchColumn() > 0) {
+                        continue; // Skip this date as it's a holiday
+                    }
+
                     $att_count_stmt->execute([$principalDetails['school_id'], $date_to_check]);
                     $recorded_teachers = $att_count_stmt->fetchColumn();
                     if ($recorded_teachers < $total_teachers) {
@@ -74,7 +83,7 @@ try {
             }
         }
     }
-    // --- END: Mandatory Past Attendance Check ---
+    // --- END of Modification ---
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($all_missing_dates) && !$is_holiday) {
         $conn->beginTransaction();
@@ -92,12 +101,10 @@ try {
             foreach ($attendance_data as $teacher_id => $status) {
                 $stmt_upsert->execute([$teacher_id, $principalDetails['school_id'], $attendance_date, $status, $userId]);
             }
-            // MODIFIED: Prepare success message for GET parameter
             $success_message = "Attendance for " . htmlspecialchars($attendance_date) . " has been successfully saved!";
         }
 
         $conn->commit();
-        // MODIFIED: Redirect with GET parameter instead of SESSION
         header("Location: view_teacher_attendence.php?date=" . urlencode($attendance_date_display) . "&success=" . urlencode($success_message));
         exit();
     }

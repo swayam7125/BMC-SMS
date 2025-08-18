@@ -1,23 +1,18 @@
 <?php
-session_start();
-// Include necessary files
-include_once '../../includes/connect.php'; // This must create a PDO object $conn
+include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 
-// IMPROVEMENT: Set a consistent timezone for all date operations
 date_default_timezone_set('Asia/Kolkata');
 
-// Initialize variables
 $role = null;
 $userId = null;
 $errorMessage = '';
 $principalDetails = null;
 $school_id = null;
-$all_missing_dates = []; // To hold ALL dates with incomplete attendance
-$is_holiday = false; // NEW: Holiday flag
-$holiday_description = ''; // NEW: Holiday description
+$all_missing_dates = [];
+$is_holiday = false;
+$holiday_description = '';
 
-// Cookie and Authorization
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
@@ -30,7 +25,6 @@ if (!$role || $role !== 'principal' || !$userId) {
 }
 
 try {
-    // Fetch principal's school_id
     $stmt = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
     $stmt->execute([$userId]);
     $principalDetails = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -48,7 +42,6 @@ try {
         $errorMessage = "You cannot mark attendance for a future date. The date has been reset to today.";
     }
 
-    // NEW: Check if the selected date is a holiday
     if(empty($errorMessage)){
         $holiday_stmt = $conn->prepare("SELECT description FROM holidays WHERE holiday_date = ? AND school_id = ?");
         $holiday_stmt->execute([$attendance_date_display, $school_id]);
@@ -59,7 +52,7 @@ try {
         }
     }
 
-    // --- REVISED: Mandatory Past Attendance Check for ALL missing dates (only if not a holiday) ---
+    // --- MODIFIED: Mandatory Past Attendance Check (skips holidays) ---
     if (empty($errorMessage) && !$is_holiday) {
         $target_date = new DateTime($attendance_date_display);
         $start_date = new DateTime($target_date->format('Y-m-01'));
@@ -72,9 +65,19 @@ try {
 
         if ($total_librarians > 0) {
             $att_count_stmt = $conn->prepare("SELECT COUNT(librarian_id) FROM librarian_attendance WHERE school_id = ? AND attendance_date = ?");
+            // Prepare statement to check for holidays
+            $holiday_check_stmt = $conn->prepare("SELECT COUNT(*) FROM holidays WHERE school_id = ? AND holiday_date = ?");
+
             foreach ($period as $date) {
                 if (date('N', $date->getTimestamp()) < 7) { // Mon-Sat
                     $date_to_check = $date->format('Y-m-d');
+                    
+                    // Check if the date is a holiday
+                    $holiday_check_stmt->execute([$school_id, $date_to_check]);
+                    if ($holiday_check_stmt->fetchColumn() > 0) {
+                        continue; // Skip this date if it's a holiday
+                    }
+                    
                     $att_count_stmt->execute([$school_id, $date_to_check]);
                     $recorded_librarians = $att_count_stmt->fetchColumn();
                     if ($recorded_librarians < $total_librarians) {
@@ -84,7 +87,7 @@ try {
             }
         }
     }
-    // --- END: Mandatory Past Attendance Check ---
+    // --- END of Modification ---
     
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($all_missing_dates) && $school_id && !$is_holiday) {
         $attendance_date = $_POST['attendance_date'];
@@ -99,16 +102,14 @@ try {
             $stmt_upsert = $conn->prepare($upsert_sql);
 
             $success_message = '';
-            if (isset($_POST['attendance'])) { // Bulk update
+            if (isset($_POST['attendance'])) {
                 foreach ($_POST['attendance'] as $librarian_id => $status) {
                     $stmt_upsert->execute([$librarian_id, $school_id, $attendance_date, $status, $userId]);
                 }
-                // MODIFIED: Prepare success message for GET parameter
                 $success_message = "Bulk attendance for " . htmlspecialchars($attendance_date) . " saved!";
             }
             
             $conn->commit();
-            // MODIFIED: Redirect with GET parameter instead of SESSION
             header("Location: view_librarian_attendance.php?date=" . urlencode($attendance_date) . "&success=" . urlencode($success_message));
             exit();
         } catch (Exception $e) {

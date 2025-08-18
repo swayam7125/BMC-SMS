@@ -1,5 +1,4 @@
 <?php
-// No longer need session_start() here for success messages
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 

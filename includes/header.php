@@ -108,6 +108,8 @@ if (!function_exists('getNotificationIcon')) {
             case 'result_published': return 'fas fa-poll-h text-white';
             case 'acquisition_request': return 'fas fa-inbox text-white';
             case 'acquisition_status': return 'fas fa-check-circle text-white';
+            case 'teacher_salary': return 'fas fa-receipt text-white'; 
+            case 'librarian_salary': return 'fas fa-receipt text-white'; 
             default: return 'fas fa-bell text-white';
         }
     }

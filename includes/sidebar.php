@@ -43,7 +43,8 @@ $unread_borrow_requests = 0;
 $unread_acquisition_requests = 0;
 $unread_library_status = 0;
 $unread_principal_to_librarian_notices = 0;
-$unread_librarian_requests = 0; // NEW: Initialize new counter for librarian leave requests
+$unread_librarian_requests = 0; 
+$unread_salary_notifications = 0; // NEW: For librarian salary history
 $is_class_teacher = false; // Initialize teacher-specific flag
 
 // Fetch counts based on the user's role if a valid user ID and connection exist
@@ -140,11 +141,11 @@ if (isset($conn) && $user_id) {
                 break;
 
             case 'librarian':
-                // FIX: Added the acquisition_request to the query
                 $sql_counts = "SELECT
                                     COUNT(*) FILTER (WHERE type = 'borrow_request' AND is_read = false) AS borrow_reqs,
                                     COUNT(*) FILTER (WHERE type = 'acquisition_request' AND is_read = false) AS acq_reqs,
-                                    COUNT(*) FILTER (WHERE type = 'principal_to_librarian_notice' AND is_read = false) AS p_to_l_notices
+                                    COUNT(*) FILTER (WHERE type = 'principal_to_librarian_notice' AND is_read = false) AS p_to_l_notices,
+                                    COUNT(*) FILTER (WHERE type = 'librarian_salary' AND is_read = false) AS salary_notifs
                                 FROM notifications WHERE user_id = ?";
                 $stmt_counts = $conn->prepare($sql_counts);
                 $stmt_counts->execute([$user_id]);
@@ -153,6 +154,7 @@ if (isset($conn) && $user_id) {
                     $unread_borrow_requests = (int) ($result['borrow_reqs'] ?? 0);
                     $unread_acquisition_requests = (int) ($result['acq_reqs'] ?? 0);
                     $unread_principal_to_librarian_notices = (int) ($result['p_to_l_notices'] ?? 0);
+                    $unread_salary_notifications = (int) ($result['salary_notifs'] ?? 0); // NEW
                 }
                 break;
 
@@ -309,9 +311,9 @@ if (isset($conn) && $user_id) {
             $librarian_pages = ['librarian_enrollment.php', 'librarian_list.php', 'librarian_attendance.php', 'view_librarian_attendance.php'];
             $student_pages = ['student_enrollment.php', 'student_list.php', 'generate_lc.php'];
             $notice_pages = ['send_notice.php', 'send_notice_to_bmc.php', 'send_notice_to_librarian.php', 'view_notice.php'];
-            // MODIFIED: Added manage_holidays.php to the list for active state highlighting
             $academics_pages = ['manage_subjects.php', 'manage_timetable.php', 'send_exam_timetable.php', 'manage_holidays.php'];
-            $salary_pages = ['generate_payroll.php', 'generate_librarian_payroll.php']; // ADDED
+            // NEW: Added librarian payroll page to salary pages
+            $salary_pages = ['generate_payroll.php', 'generate_librarian_payroll.php']; 
             $past_data_pages_principal = ['past_teacher.php', 'past_librarian.php', 'past_student.php'];
             $leave_management_pages = ['teacher_leave_management.php', 'librarian_leave_management.php'];
             $is_leave_management_active = in_array($current_page, $leave_management_pages);
@@ -746,6 +748,15 @@ if (isset($conn) && $user_id) {
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/view_my_attendance.php">
                     <div><i class="fas fa-fw fa-user-check"></i>
                     <span>My Attendance</span></div>
+                </a>
+            </li>
+             <li class="nav-item <?php echo ($current_page == 'view_salary_history.php') ? 'active' : ''; ?>">
+                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/view_salary_history.php" data-notification-type="librarian_salary">
+                    <div><i class="fas fa-fw fa-receipt"></i>
+                    <span>My Salary History</span></div>
+                    <?php if ($unread_salary_notifications > 0): ?>
+                        <span class="badge badge-danger badge-counter"><?php echo ($unread_salary_notifications > 9) ? '9+' : $unread_salary_notifications; ?></span>
+                    <?php endif; ?>
                 </a>
             </li>
             <li class="nav-item <?php echo (is_active_page($leave_pages)) ? 'active' : ''; ?>">
