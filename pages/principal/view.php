@@ -6,27 +6,14 @@ if (!defined('BASE_URL')) {
     define('BASE_URL', '/BMC-SMS/');
 }
 
-// --- FIX: Replaced the complex and buggy function with a simple, reliable one. ---
-/**
- * Converts a relative path from the database into a full, web-accessible URL.
- * It also verifies that the file physically exists on the server.
- *
- * @param string|null $relative_path The path stored in the DB (e.g., "uploads/principal_photos/file.png").
- * @param string $base_url The base URL of the application (e.g., "/BMC-SMS/").
- * @return string|null The full, web-accessible path if the file exists, otherwise null.
- */
 function getWebAccessibleImagePath($relative_path, $base_url)
 {
     if (empty($relative_path)) {
         return null;
     }
-    // Build the full web path for the <img> src attribute.
     $full_web_path = $base_url . ltrim($relative_path, '/');
-    
-    // Build the corresponding physical path on the server to check if the file exists.
     $physical_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $full_web_path;
     
-    // If the file exists, return the web path. Otherwise, return null.
     if (file_exists($physical_path) && is_file($physical_path)) {
         return htmlspecialchars($full_web_path);
     }
@@ -80,7 +67,6 @@ try {
     die("A database error occurred.");
 }
 
-// --- FIX: Call the new, simplified function. ---
 $photo_path = getWebAccessibleImagePath($principal['principal_image'], BASE_URL);
 $default_photo = getDefaultImagePath(BASE_URL);
 ?>
@@ -118,28 +104,32 @@ $default_photo = getDefaultImagePath(BASE_URL);
                                 <div class="card-header py-3">
                                     <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-camera"></i> Principal Photo</h6>
                                 </div>
-                                <div class="card-body text-center"><img src="<?php echo htmlspecialchars($photo_path ?? $default_photo); ?>" alt="<?php echo htmlspecialchars($principal['principal_name']); ?>" class="principal-photo" onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($default_photo); ?>';"></div>
+                                <div class="card-body text-center">
+                                    <img src="<?php echo htmlspecialchars($photo_path ?? $default_photo); ?>" alt="<?php echo htmlspecialchars($principal['principal_name']); ?>" class="principal-photo" onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($default_photo); ?>';">
+                                    <h4 class="font-weight-bold text-gray-800"><?php echo htmlspecialchars($principal['principal_name']); ?></h4>
+                                    <p class="text-muted"><?php echo htmlspecialchars($principal['school_name']); ?></p>
+                                </div>
                             </div>
                         </div>
                         <div class="col-lg-8 mb-4">
                             <div class="card shadow h-100">
                                 <div class="card-header py-3">
-                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-user-tie"></i> Basic Information</h6>
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-info-circle"></i> Basic Information</h6>
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-sm-4 info-label">Name:</div>
+                                        <div class="col-sm-4 info-label">Full Name:</div>
                                         <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['principal_name'] ?? 'N/A'); ?></div>
                                     </div>
                                     <hr>
                                     <div class="row">
                                         <div class="col-sm-4 info-label">Email:</div>
-                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['email']); ?></div>
+                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['email'] ?? 'N/A'); ?></div>
                                     </div>
                                     <hr>
                                     <div class="row">
                                         <div class="col-sm-4 info-label">Phone:</div>
-                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['phone']); ?></div>
+                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['phone'] ?? 'N/A'); ?></div>
                                     </div>
                                     <hr>
                                     <div class="row">
@@ -149,27 +139,17 @@ $default_photo = getDefaultImagePath(BASE_URL);
                                     <hr>
                                     <div class="row">
                                         <div class="col-sm-4 info-label">Gender:</div>
-                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['gender']); ?></div>
+                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['gender'] ?? 'N/A'); ?></div>
                                     </div>
                                     <hr>
                                     <div class="row">
                                         <div class="col-sm-4 info-label">Blood Group:</div>
-                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['blood_group']); ?></div>
-                                    </div>
-                                    <hr>
-                                    <div class="row">
-                                        <div class="col-sm-4 info-label">Qualification:</div>
-                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['qualification']); ?></div>
-                                    </div>
-                                    <hr>
-                                    <div class="row">
-                                        <div class="col-sm-4 info-label">Salary:</div>
-                                        <div class="col-sm-8 info-value font-weight-bold text-success">₹<?php echo number_format($principal['salary'], 2); ?></div>
+                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['blood_group'] ?? 'N/A'); ?></div>
                                     </div>
                                     <hr>
                                     <div class="row">
                                         <div class="col-sm-4 info-label">Address:</div>
-                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['address']); ?></div>
+                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['address'] ?? 'N/A'); ?></div>
                                     </div>
                                 </div>
                             </div>
@@ -177,27 +157,22 @@ $default_photo = getDefaultImagePath(BASE_URL);
                         <div class="col-lg-6 mb-4">
                             <div class="card shadow h-100">
                                 <div class="card-header py-3">
-                                    <h6 class="m-0 font-weight-bold text-info"><i class="fas fa-school"></i> School Information</h6>
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-briefcase"></i> Professional Information</h6>
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-sm-4 info-label">School Name:</div>
-                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['school_name']); ?></div>
+                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['school_name'] ?? 'N/A'); ?></div>
                                     </div>
                                     <hr>
                                     <div class="row">
-                                        <div class="col-sm-4 info-label">School Email:</div>
-                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['school_email']); ?></div>
+                                        <div class="col-sm-4 info-label">Qualification:</div>
+                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['qualification'] ?? 'N/A'); ?></div>
                                     </div>
                                     <hr>
                                     <div class="row">
-                                        <div class="col-sm-4 info-label">School Phone:</div>
-                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['school_phone']); ?></div>
-                                    </div>
-                                    <hr>
-                                    <div class="row">
-                                        <div class="col-sm-4 info-label">School Address:</div>
-                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['school_address']); ?></div>
+                                        <div class="col-sm-4 info-label">Salary:</div>
+                                        <div class="col-sm-8 info-value font-weight-bold text-success">₹<?php echo number_format($principal['salary'] ?? 0, 2); ?></div>
                                     </div>
                                 </div>
                             </div>
@@ -205,7 +180,35 @@ $default_photo = getDefaultImagePath(BASE_URL);
                         <div class="col-lg-6 mb-4">
                             <div class="card shadow h-100">
                                 <div class="card-header py-3">
-                                    <h6 class="m-0 font-weight-bold text-success"><i class="fas fa-clock"></i> Batch & Timings</h6>
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-school"></i> School Information</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-sm-4 info-label">School Name:</div>
+                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['school_name'] ?? 'N/A'); ?></div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-sm-4 info-label">School Email:</div>
+                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['school_email'] ?? 'N/A'); ?></div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-sm-4 info-label">School Phone:</div>
+                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['school_phone'] ?? 'N/A'); ?></div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-sm-4 info-label">School Address:</div>
+                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['school_address'] ?? 'N/A'); ?></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-12 mb-4">
+                            <div class="card shadow">
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-clock"></i> Batch & Timings</h6>
                                 </div>
                                 <div class="card-body">
                                     <div class="row mb-3">

@@ -215,7 +215,7 @@ $default_photo = getDefaultImagePath('student', BASE_WEB_PATH);
                             <div class="card shadow">
                                 <div class="card-header py-3">
                                     <h6 class="m-0 font-weight-bold text-primary">
-                                        <i class="fas fa-user"></i> Basic Information
+                                        <i class="fas fa-info-circle"></i> Basic Information
                                     </h6>
                                 </div>
                                 <div class="card-body">
@@ -265,7 +265,7 @@ $default_photo = getDefaultImagePath('student', BASE_WEB_PATH);
                         </div>
 
                         <div class="col-lg-6 mb-4">
-                            <div class="card shadow">
+                            <div class="card shadow h-100">
                                 <div class="card-header py-3">
                                     <h6 class="m-0 font-weight-bold text-primary">
                                         <i class="fas fa-id-card"></i> Personal Information

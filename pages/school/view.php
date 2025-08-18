@@ -2,90 +2,62 @@
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
-// Define the base web path for your project if not already defined.
 if (!defined('BASE_WEB_PATH')) {
     define('BASE_WEB_PATH', '/BMC-SMS/');
 }
 
-// --- FIX: Define the base physical path for reliable file checking ---
 define('BASE_PHYSICAL_PATH', rtrim($_SERVER['DOCUMENT_ROOT'], '/') . BASE_WEB_PATH);
 
-// Authenticate user role from cookie. Redirect to login if not found.
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 if (!$role) {
     header("Location: ../../login.php");
     exit;
 }
 
-// Validate that a numeric school ID is provided.
 $school_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 if ($school_id <= 0) {
     header("Location: school_list.php?error=Invalid school ID");
     exit;
 }
 
-// --- FIX: Re-engineered Image Path Function for Maximum Reliability ---
-/**
- * Converts any DB image path into a full, web-accessible URL and confirms the file exists.
- * This single function normalizes different path formats to prevent errors.
- *
- * @param string|null $db_path The path stored in the database (e.g., 'uploads/...' or '/BMC-SMS/uploads/...').
- * @return string|null The full, verified web path or null.
- */
 function getWebAccessibleImagePath($db_path) {
     if (empty($db_path)) {
         return null;
     }
 
-    // Normalize the path: ensure it's relative to the project root.
     $relative_path = $db_path;
     if (strpos($db_path, BASE_WEB_PATH) === 0) {
-        // If it's an absolute web path, strip the base part to make it relative.
         $relative_path = substr($db_path, strlen(BASE_WEB_PATH));
     }
 
-    // Build the full physical path for checking if the file exists on the server.
     $physical_path_to_check = BASE_PHYSICAL_PATH . ltrim($relative_path, '/');
-    // Build the full web path that will be used in the <img> src attribute.
     $web_path_to_return = BASE_WEB_PATH . ltrim($relative_path, '/');
 
     if (file_exists($physical_path_to_check) && is_file($physical_path_to_check)) {
         return htmlspecialchars($web_path_to_return);
     }
     
-    // Return null if the file doesn't exist at the calculated path.
     return null;
 }
 
-/**
- * Returns the path for a default placeholder image.
- */
 function getDefaultImagePath($type = 'school') {
     return BASE_WEB_PATH . 'assets/images/' . ($type === 'school' ? 'default-school.png' : 'unisex.png');
 }
 
-
-// --- NEW: Helper function to correctly format the PostgreSQL array for display ---
 function cleanPgArray($pg_array_string) {
-    // Remove the leading and trailing curly braces
     $trimmed_string = trim($pg_array_string, '{}');
-    
-    // Split the string by commas, which correctly handles quoted and unquoted items
     $items = preg_split('/,(?=(?:(?:[^"]*"){2})*[^"]*$)/', $trimmed_string);
-    
-    // Trim each item, removing any leading/trailing quotes and whitespace
     $cleaned_items = array_map(function($item) {
         return trim($item, ' "');
     }, $items);
-    
-    // Join them back into a clean string for display
     return implode(', ', $cleaned_items);
 }
 
-
 try {
-    // Fetch school details and join with the principal table to get principal info.
-    $query = "SELECT s.*, p.id as principal_user_id, p.principal_name, p.principal_image 
+    $query = "SELECT s.*, 
+                     p.id AS principal_user_id, p.principal_name, p.principal_image, p.email AS principal_email, 
+                     p.phone AS principal_phone, p.batch AS principal_batch, p.qualification AS principal_qualification,
+                     p.salary AS principal_salary, p.address AS principal_address
               FROM school s 
               LEFT JOIN principal p ON s.id = p.school_id 
               WHERE s.id = :id";
@@ -101,7 +73,6 @@ try {
     die("Database query failed: " . $e->getMessage());
 }
 
-// Generate the final, safe paths for the images using the new universal function.
 $school_logo_web_path = getWebAccessibleImagePath($school['school_logo']);
 $default_school_logo = getDefaultImagePath('school');
 
@@ -190,7 +161,7 @@ $default_principal_photo = getDefaultImagePath('principal');
                         <div class="col-lg-6 mb-4">
                             <div class="card shadow h-100">
                                 <div class="card-header py-3">
-                                    <h6 class="m-0 font-weight-bold text-info"><i class="fas fa-university"></i> Academic Details</h6>
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-university"></i> Academic Details</h6>
                                 </div>
                                 <div class="card-body">
                                     <div class="row info-row">
@@ -215,7 +186,7 @@ $default_principal_photo = getDefaultImagePath('principal');
                         <div class="col-lg-6 mb-4">
                             <div class="card shadow h-100">
                                 <div class="card-header py-3">
-                                    <h6 class="m-0 font-weight-bold text-success"><i class="fas fa-user-tie"></i> Principal Information</h6>
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-user-tie"></i> Principal Information</h6>
                                 </div>
                                 <div class="card-body text-center d-flex flex-column justify-content-center">
                                     <?php if (!empty($school['principal_user_id'])): ?>
@@ -231,6 +202,40 @@ $default_principal_photo = getDefaultImagePath('principal');
                                             </a>
                                         </h5>
                                         <p class="text-muted mb-0">Assigned Principal</p>
+                                        <hr>
+                                        <div class="row info-row">
+                                            <div class="col-sm-5 font-weight-bold">Email:</div>
+                                            <div class="col-sm-7"><?php echo htmlspecialchars($school['principal_email'] ?? 'N/A'); ?></div>
+                                        </div>
+                                        <hr>
+                                        <div class="row info-row">
+                                            <div class="col-sm-5 font-weight-bold">Phone:</div>
+                                            <div class="col-sm-7"><?php echo htmlspecialchars($school['principal_phone'] ?? 'N/A'); ?></div>
+                                        </div>
+                                        <hr>
+                                        <div class="row info-row">
+                                            <div class="col-sm-5 font-weight-bold">Qualification:</div>
+                                            <div class="col-sm-7"><?php echo htmlspecialchars($school['principal_qualification'] ?? 'N/A'); ?></div>
+                                        </div>
+                                        <hr>
+                                        <div class="row info-row">
+                                            <div class="col-sm-5 font-weight-bold">Batch:</div>
+                                            <div class="col-sm-7">
+                                                <span class="badge badge-<?php echo ($school['principal_batch'] ?? '') === 'Morning' ? 'primary' : 'warning'; ?> p-2">
+                                                    <?php echo htmlspecialchars($school['principal_batch'] ?? 'N/A'); ?>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <hr>
+                                        <div class="row info-row">
+                                            <div class="col-sm-5 font-weight-bold">Salary:</div>
+                                            <div class="col-sm-7 salary-display">₹<?php echo number_format($school['principal_salary'] ?? 0, 2); ?></div>
+                                        </div>
+                                        <hr>
+                                        <div class="row info-row">
+                                            <div class="col-sm-5 font-weight-bold">Address:</div>
+                                            <div class="col-sm-7 info-value"><?php echo nl2br(htmlspecialchars($school['principal_address'] ?? 'N/A')); ?></div>
+                                        </div>
                                     <?php else: ?>
                                         <div class="text-center my-3">
                                             <i class="fas fa-user-slash fa-3x text-gray-400 mb-3"></i>

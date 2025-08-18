@@ -296,8 +296,8 @@ if (isset($conn) && $user_id) {
                 </a>
                 <div id="collapsePastData" class="collapse <?php echo (is_active_page($past_data_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item <?php echo ($current_page == 'past_school.php') ? 'active' : ''; ?>" href="/BMC-SMS/pages/past_record/past_school.php">Past school List</a>
-                        <a class="collapse-item <?php echo ($current_page == 'past_principal.php') ? 'active' : ''; ?>" href="/BMC-SMS/pages/past_record/past_principal.php">Past principal List</a>
+                        <a class="collapse-item <?php echo ($current_page == 'past_school.php') ? 'active' : ''; ?>" href="/BMC-SMS/pages/past_record/past_school.php">Past School List</a>
+                        <a class="collapse-item <?php echo ($current_page == 'past_principal.php') ? 'active' : ''; ?>" href="/BMC-SMS/pages/past_record/past_principal.php">Past Principal List</a>
                     </div>
                 </div>
             </li>
@@ -320,6 +320,12 @@ if (isset($conn) && $user_id) {
             
         ?>
             <div class="sidebar-heading font-weight-semibold">School Management</div>
+            <li class="nav-item <?php echo ($current_page == 'profile.php') ? 'active' : ''; ?>">
+                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/user/profile.php">
+                    <div><i class="fas fa-fw fa-id-card"></i>
+                    <span>My Profile</span></div>
+                </a>
+            </li>
             <li class="nav-item">
                 <a class="nav-link <?php echo (is_active_page($teacher_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseTeacher">
                     <div><i class="fas fa-fw fa-person-chalkboard"></i>
@@ -477,6 +483,12 @@ if (isset($conn) && $user_id) {
             $library_pages_teacher = ['browse_books.php', 'my_library_record.php', 'request_new_book.php'];
         ?>
             <div class="sidebar-heading font-weight-semibold">Classroom & Actions</div>
+            <li class="nav-item <?php echo ($current_page == 'profile.php') ? 'active' : ''; ?>">
+                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/user/profile.php">
+                    <div><i class="fas fa-fw fa-id-card"></i>
+                    <span>My Profile</span></div>
+                </a>
+            </li>
             <li class="nav-item <?php echo ($current_page == 'student_list.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/student/student_list.php">
                     <div><i class="fas fa-fw fa-children"></i>

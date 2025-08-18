@@ -96,7 +96,7 @@ try {
                             <div class="card shadow h-100">
                                 <div class="card-header py-3">
                                     <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-camera"></i>
-                                        Librarian Profile</h6>
+                                        Librarian Photo</h6>
                                 </div>
                                 <div class="card-body text-center">
                                     <img src="<?php echo htmlspecialchars($photo_path); ?>"
@@ -111,7 +111,7 @@ try {
                         <div class="col-lg-8 mb-4">
                             <div class="card shadow h-100">
                                 <div class="card-header py-3">
-                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-user-tie"></i> Basic
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-info-circle"></i> Basic
                                         Information</h6>
                                 </div>
                                 <div class="card-body">
@@ -163,8 +163,8 @@ try {
                         <div class="col-lg-6 mb-4">
                             <div class="card shadow h-100">
                                 <div class="card-header py-3">
-                                    <h6 class="m-0 font-weight-bold text-info"><i class="fas fa-briefcase"></i>
-                                        Professional Details</h6>
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-briefcase"></i>
+                                        Professional Information</h6>
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
@@ -202,8 +202,8 @@ try {
                         <div class="col-lg-6 mb-4">
                             <div class="card shadow h-100">
                                 <div class="card-header py-3">
-                                    <h6 class="m-0 font-weight-bold text-warning"><i class="fas fa-clock"></i> Weekly
-                                        Timings</h6>
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-clock"></i> Weekly
+                                        Schedule</h6>
                                 </div>
                                 <div class="card-body">
                                     <?php

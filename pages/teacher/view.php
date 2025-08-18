@@ -98,7 +98,7 @@ if (!empty($photo_path)) {
                         <div class="col-lg-4 mb-4">
                             <div class="card shadow h-100">
                                 <div class="card-header py-3">
-                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-user-circle"></i> Teacher Profile</h6>
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-camera"></i> Teacher Photo</h6>
                                 </div>
                                 <div class="card-body text-center">
                                     <img src="<?php echo htmlspecialchars($photo_path); ?>" alt="<?php echo htmlspecialchars($teacher['teacher_name']); ?>" class="view-photo mb-3">
@@ -153,7 +153,7 @@ if (!empty($photo_path)) {
                         <div class="col-lg-6 mb-4">
                             <div class="card shadow h-100">
                                 <div class="card-header py-3">
-                                    <h6 class="m-0 font-weight-bold text-info"><i class="fas fa-briefcase"></i> Professional Details</h6>
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-briefcase"></i> Professional Information</h6>
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
@@ -196,7 +196,7 @@ if (!empty($photo_path)) {
                         <div class="col-lg-6 mb-4">
                             <div class="card shadow h-100">
                                 <div class="card-header py-3">
-                                    <h6 class="m-0 font-weight-bold text-success"><i class="fas fa-clock"></i> Batch & Timings</h6>
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-clock"></i> Batch & Timings</h6>
                                 </div>
                                 <div class="card-body">
                                     <div class="row mb-3">
