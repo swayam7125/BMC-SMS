@@ -1,27 +1,55 @@
 <?php
 require_once '../../includes/connect.php';
 require_once '../../includes/ajax_helpers.php';
+require_once '../../includes/layout.php';
 require_once '../../encryption.php';
 
-// Check authentication
-check_auth();
+// Start session if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Check authentication and role
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'school') {
+    Response::send([
+        'success' => false,
+        'message' => 'Unauthorized access',
+        'redirect' => '../../login.php'
+    ], 403);
+    exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    if (is_ajax_request()) {
-        echo get_json_response(false, 'Invalid request method');
-    } else {
-        header('Location: student_enrollment.php');
-    }
+    Response::send([
+        'success' => false,
+        'message' => 'Invalid request method',
+        'redirect' => 'student_enrollment.php'
+    ], 405);
     exit;
 }
 
 try {
+    // Start transaction
+    $conn->beginTransaction();
+
     // Validate required fields
-    $required_fields = ['name', 'roll_number', 'class', 'school_id'];
+    $required_fields = ['name', 'roll_number', 'class', 'school_id', 'email'];
     foreach ($required_fields as $field) {
         if (empty($_POST[$field])) {
             throw new Exception("$field is required");
         }
+    }
+
+    // Validate email
+    if (!filter_var($_POST['email'], FILTER_VALIDATE_EMAIL)) {
+        throw new Exception("Invalid email format");
+    }
+
+    // Check if email already exists
+    $stmt = $conn->prepare("SELECT id FROM users WHERE email = ?");
+    $stmt->execute([$_POST['email']]);
+    if ($stmt->fetch()) {
+        throw new Exception("Email already registered");
     }
 
     // Handle file upload
@@ -61,45 +89,73 @@ try {
     // Decrypt school_id
     $school_id = decrypt_id($_POST['school_id']);
 
-    // Prepare and execute SQL
+    // Generate temporary password
+    $temp_password = bin2hex(random_bytes(8));
+    $hashed_password = password_hash($temp_password, PASSWORD_DEFAULT);
+
+    // Create user account
     $stmt = $conn->prepare("
-        INSERT INTO students (
-            name, roll_number, class, school_id, contact_number, 
-            email, address, photo, created_at
+        INSERT INTO users (email, password, role, account_status, created_at)
+        VALUES (?, ?, 'student', 'active', NOW())
+    ");
+    $stmt->execute([$_POST['email'], $hashed_password]);
+    $user_id = $conn->lastInsertId();
+
+    // Create student record
+    $stmt = $conn->prepare("
+        INSERT INTO student (
+            id, student_name, roll_number, class, school_id, 
+            contact_number, email, address, student_image, 
+            created_at
         ) VALUES (
             ?, ?, ?, ?, ?, 
-            ?, ?, ?, NOW()
+            ?, ?, ?, ?, 
+            NOW()
         )
     ");
 
     $stmt->execute([
+        $user_id,
         $_POST['name'],
         $_POST['roll_number'],
         $_POST['class'],
         $school_id,
         $_POST['contact_number'] ?? null,
-        $_POST['email'] ?? null,
+        $_POST['email'],
         $_POST['address'] ?? null,
-        $photo_path
+        $photo_path,
     ]);
 
+    // Commit transaction
+    $conn->commit();
+
+    // TODO: Send email with temporary password
+    // For now, we'll include it in the response
+    $response_data = ['temp_password' => $temp_password];
+
     // Send success response
-    if (is_ajax_request()) {
-        echo get_json_response(true, 'Student enrolled successfully', [], '../student/student_list.php');
-    } else {
-        header('Location: ../student/student_list.php');
-    }
+    Response::send([
+        'success' => true,
+        'message' => 'Student enrolled successfully',
+        'data' => $response_data,
+        'redirect' => '../student/student_list.php'
+    ]);
 
 } catch (Exception $e) {
+    // Rollback transaction
+    if ($conn->inTransaction()) {
+        $conn->rollBack();
+    }
+
     // If file was uploaded, delete it
     if (isset($upload_path) && file_exists($upload_path)) {
         unlink($upload_path);
     }
 
-    if (is_ajax_request()) {
-        echo get_json_response(false, $e->getMessage());
-    } else {
-        header('Location: student_enrollment.php?error=' . urlencode($e->getMessage()));
-    }
+    Response::send([
+        'success' => false,
+        'message' => $e->getMessage(),
+        'redirect' => 'student_enrollment.php'
+    ], 400);
 }
 ?>

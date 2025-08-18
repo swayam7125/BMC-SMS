@@ -1,24 +1,39 @@
 <?php
 require_once "./includes/connect.php";
 require_once "./includes/ajax_helpers.php";
+require_once "./includes/response.php";
 require_once "encryption.php";
+
+// Start session if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // Enable error reporting for debugging
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// Handle login POST request
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = mysqli_real_escape_string($conn, $_POST['username']);
-    $password = $_POST['password'];
-}
-
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email']) && isset($_POST['password'])) {
-    header('Content-Type: application/json');
-    $response = [];
+    // Validate CSRF token
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+        Response::send([
+            'success' => false,
+            'message' => 'Invalid request verification.'
+        ], 403);
+        exit;
+    }
 
-    $email = trim($_POST['email']);
+    // Validate and sanitize input
+    $email = filter_var(trim($_POST['email']), FILTER_SANITIZE_EMAIL);
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        Response::send([
+            'success' => false,
+            'message' => 'Invalid email format.'
+        ], 400);
+        exit;
+    }
+    
     $password = trim($_POST['password']);
     $user_lat = !empty($_POST['latitude']) ? $_POST['latitude'] : null;
     $user_lon = !empty($_POST['longitude']) ? $_POST['longitude'] : null;
@@ -95,12 +110,30 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email']) && isset($_PO
                     }
                 }
 
-                // Set all necessary cookies
-                setcookie("encrypted_user_id", encrypt_id($user['id']), time() + 86400, "/");
-                setcookie("encrypted_user_role", encrypt_id($user['role']), time() + 86400, "/");
-                // Use the newly corrected and formatted path for the image cookie
-                setcookie("encrypted_profile_image", encrypt_id($profile_image_for_cookie), time() + 86400, "/");
-                setcookie("encrypted_user_name", encrypt_id($user_name), time() + 86400, "/");
+                // Set session variables
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['user_role'] = $user['role'];
+                $_SESSION['user_name'] = $user_name;
+                
+                // Set secure cookies with proper flags
+                $cookie_options = [
+                    'expires' => time() + 86400,
+                    'path' => '/',
+                    'domain' => '',
+                    'secure' => true,     // Only send over HTTPS
+                    'httponly' => true,   // Not accessible via JavaScript
+                    'samesite' => 'Lax'   // CSRF protection
+                ];
+
+                try {
+                    setcookie("encrypted_user_id", encrypt_id($user['id']), $cookie_options);
+                    setcookie("encrypted_user_role", encrypt_id($user['role']), $cookie_options);
+                    setcookie("encrypted_profile_image", encrypt_id($profile_image_for_cookie), $cookie_options);
+                    setcookie("encrypted_user_name", encrypt_id($user_name), $cookie_options);
+                } catch (Exception $e) {
+                    error_log("Cookie encryption failed: " . $e->getMessage());
+                    // Continue without cookies, session is still set
+                }
                 
                 // --- END OF THE FIX ---
 
@@ -114,10 +147,44 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email']) && isset($_PO
         $response = ['status' => 'error', 'message' => 'A system error occurred. Please try again later.'];
     }
 
-    echo json_encode($response);
-    $conn = null;
+    // Convert response to the Response class format
+    if ($response['status'] === 'success') {
+        Response::success('Login successful', $response['redirect']);
+    } else {
+        Response::send([
+            'success' => false,
+            'message' => $response['message']
+        ], 400);
+    }
+    
     $conn = null;
     exit();
+}
+
+/**
+ * Calculate the distance between two points using the Haversine formula
+ * 
+ * @param float $lat1 Latitude of first point
+ * @param float $lon1 Longitude of first point
+ * @param float $lat2 Latitude of second point
+ * @param float $lon2 Longitude of second point
+ * @return float Distance in meters
+ */
+function haversine_distance($lat1, $lon1, $lat2, $lon2) {
+    $earth_radius = 6371000; // Earth's radius in meters
+
+    $lat1 = deg2rad($lat1);
+    $lon1 = deg2rad($lon1);
+    $lat2 = deg2rad($lat2);
+    $lon2 = deg2rad($lon2);
+
+    $dlat = $lat2 - $lat1;
+    $dlon = $lon2 - $lon1;
+
+    $a = sin($dlat/2) * sin($dlat/2) + cos($lat1) * cos($lat2) * sin($dlon/2) * sin($dlon/2);
+    $c = 2 * atan2(sqrt($a), sqrt(1-$a));
+
+    return $earth_radius * $c;
 }
 
 // --- PHP LOGIC ENDS HERE ---
@@ -150,12 +217,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email']) && isset($_PO
                     <p class="subtitle">Please enter your credentials to proceed.</p>
                     <div id="login-alert-placeholder"></div>
                     <form id="loginForm" method="POST" action="login.php" novalidate>
+                        <?php
+                        // Generate CSRF token if not exists
+                        if (empty($_SESSION['csrf_token'])) {
+                            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+                        }
+                        ?>
+                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                        
                         <div class="form-group">
-                            <input type="email" class="form-control form-control-custom" id="email" name="email" placeholder="Email Address" required>
+                            <input type="email" class="form-control form-control-custom" 
+                                   id="email" name="email" placeholder="Email Address" 
+                                   required autocomplete="email">
                             <i class="fas fa-envelope form-icon"></i>
                         </div>
                         <div class="form-group">
-                            <input type="password" class="form-control form-control-custom" name="password" id="password" placeholder="Password" required>
+                            <input type="password" class="form-control form-control-custom" 
+                                   name="password" id="password" placeholder="Password" 
+                                   required autocomplete="current-password">
                             <i class="fas fa-lock form-icon"></i>
                             <i class="fas fa-eye password-toggle" id="togglePassword"></i>
                         </div>
