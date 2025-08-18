@@ -1,78 +1,114 @@
 <?php
-include_once "../../includes/connect.php";
-include_once "../../encryption.php";
+require_once '../../includes/connect.php';
+require_once '../../includes/functions.php';
+require_once '../../includes/ajax_helpers.php';
+require_once '../../encryption.php';
 
-$role = null;
-if (isset($_COOKIE['encrypted_user_role'])) {
-    $role = decrypt_id($_COOKIE['encrypted_user_role']);
+// Authentication
+$role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
+$user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+
+if ($role !== 'librarian') {
+    Response::error('Access denied', url('login.php'));
 }
 
-if (!$role || $role !== 'librarian') {
-    header("Location: ../../login.php");
-    exit;
+// Get book ID from either POST (AJAX) or GET (direct)
+$book_id = 0;
+if (is_ajax_request()) {
+    if (!isset($_POST['csrf_token']) || !validate_csrf_token($_POST['csrf_token'])) {
+        Response::error('Invalid request');
+    }
+    $book_id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+} else {
+    $book_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 }
 
-if (!isset($_GET['id']) || empty($_GET['id'])) {
-    header("Location: book_list.php?error=Invalid book ID provided.");
-    exit;
+if ($book_id <= 0) {
+    Response::error('Invalid book ID provided', url('pages/librarian/book_list.php'));
 }
-$book_id = intval($_GET['id']);
 
 try {
-    // Using a PDO Transaction to ensure data integrity
-    $conn->beginTransaction();
-
-    // Step 1: Fetch the full record of the book to be deleted
-    $stmt_fetch = $conn->prepare('SELECT * FROM "books" WHERE "book_id" = ?');
-    $stmt_fetch->execute([$book_id]);
-    $book_data = $stmt_fetch->fetch(PDO::FETCH_ASSOC);
-
+    // Verify the book belongs to the librarian's school
+    $stmt = $conn->prepare('
+        SELECT b.* 
+        FROM books b
+        JOIN librarian l ON b.school_id = l.school_id
+        WHERE b.book_id = ? AND l.id = ?
+    ');
+    $stmt->execute([$book_id, $user_id]);
+    $book_data = $stmt->fetch(PDO::FETCH_ASSOC);
+    
     if (!$book_data) {
-        throw new Exception("Book with ID $book_id not found.");
+        Response::error('Book not found or access denied', url('pages/librarian/book_list.php'));
     }
 
-    // === FIXES APPLIED HERE ===
-    // 1. Explicitly cast IDs to integers to match the 'deleted_books' table schema.
-    $original_book_id_int = (int)$book_data['book_id'];
-    $school_id_int = (int)$book_data['school_id'];
-    // 2. Explicitly convert the PHP boolean to a PostgreSQL-compatible string ('true'/'false').
-    $is_digital_pg = !empty($book_data['is_digital']) ? 'true' : 'false';
+    // Begin transaction
+    $conn->beginTransaction();
 
+    // Check if book can be deleted
+    $stmt = $conn->prepare('
+        SELECT COUNT(*) 
+        FROM book_loans 
+        WHERE book_id = ? AND return_date IS NULL
+    ');
+    $stmt->execute([$book_id]);
+    
+    if ($stmt->fetchColumn() > 0) {
+        throw new Exception('Cannot delete: Book is currently loaned out');
+    }
 
-    // Step 2: Archive the book's data into the 'deleted_books' table
-    $query_archive_book = 'INSERT INTO "deleted_books" (original_book_id, title, author, isbn, quantity_total, school_id, is_digital, deleted_by_role) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
-    $stmt_archive = $conn->prepare($query_archive_book);
+    // Archive the book data
+    $stmt_archive = $conn->prepare('
+        INSERT INTO "deleted_books" (
+            original_book_id, title, author, isbn, 
+            quantity_total, school_id, is_digital, 
+            deleted_by_role
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ');
+    
     $stmt_archive->execute([
-        $original_book_id_int,
+        (int)$book_data['book_id'],
         $book_data['title'],
         $book_data['author'],
         $book_data['isbn'],
-        $book_data['quantity_total'],
-        $school_id_int,
-        $is_digital_pg,
+        (int)$book_data['quantity_total'],
+        (int)$book_data['school_id'],
+        !empty($book_data['is_digital']) ? 'true' : 'false',
         $role
     ]);
 
-    // Step 3: Delete the book from the main 'books' table
-    $stmt_delete = $conn->prepare('DELETE FROM "books" WHERE "book_id" = ?');
-    $stmt_delete->execute([$book_id]);
+    // Delete the book
+    $stmt = $conn->prepare('DELETE FROM "books" WHERE "book_id" = ?');
+    $stmt->execute([$book_id]);
 
-    if ($stmt_delete->rowCount() === 0) {
+    // Verify deletion
+    if ($stmt->rowCount() === 0) {
         throw new Exception("Book could not be deleted (it may have already been removed).");
     }
 
-    // Step 4: If all steps succeeded, commit the changes
+    // Commit transaction
     $conn->commit();
-    header("Location: book_list.php?success=Book was successfully deleted and archived.");
-    exit;
+
+    // Send response based on request type
+    if (is_ajax_request()) {
+        Response::success('Book deleted successfully', url('pages/librarian/book_list.php'));
+    } else {
+        header('Location: ' . url('pages/librarian/book_list.php') . '?success=Book deleted successfully');
+        exit;
+    }
 
 } catch (Exception $e) {
-    // If any step failed, roll back all changes
+    // Rollback on error
     if ($conn->inTransaction()) {
         $conn->rollBack();
     }
-    header("Location: book_list.php?error=" . urlencode($e->getMessage()));
-    exit;
+
+    if (is_ajax_request()) {
+        Response::error($e->getMessage());
+    } else {
+        header('Location: ' . url('pages/librarian/book_list.php') . '?error=' . urlencode($e->getMessage()));
+        exit;
+    }
 } finally {
     $conn = null;
 }

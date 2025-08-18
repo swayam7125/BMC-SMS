@@ -30,7 +30,6 @@ if ($role === 'principal' && $userId) {
 
 $errors = [];
 $schools = [];
-// The standards array is no longer populated statically here.
 $standards = [];
 
 try {
@@ -41,6 +40,7 @@ try {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // --- Step 1: Gather all form data ---
     $student_name = trim($_POST['student_name']);
     $rollno = trim($_POST['rollno']);
     $std = trim($_POST['std']);
@@ -58,44 +58,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mother_phone = trim($_POST['mother_phone']);
     $image_path_for_db = null;
 
-    // --- START: ADDED FILE UPLOAD LOGIC ---
+    // --- Step 2: Perform all validations together ---
+
+    // File upload validation
     if (isset($_FILES['student_image']) && $_FILES['student_image']['error'] === UPLOAD_ERR_OK) {
         $file = $_FILES['student_image'];
         $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         $allowed_exts = ['jpg', 'jpeg', 'png', 'gif'];
 
-        if (in_array($file_ext, $allowed_exts)) {
-            $upload_dir = $_SERVER['DOCUMENT_ROOT'] . 'pages/student/uploads/';
-            if (!is_dir($upload_dir)) {
-                mkdir($upload_dir, 0777, true);
-            }
-            $new_filename = 'student_' . uniqid() . '.' . $file_ext;
-            $destination = $upload_dir . $new_filename;
-
-            if (move_uploaded_file($file['tmp_name'], $destination)) {
-                $image_path_for_db = 'pages/student/uploads/' . $new_filename;
-            } else {
-                $errors[] = "Failed to move uploaded file. Check directory permissions.";
-            }
-        } else {
+        if (!in_array($file_ext, $allowed_exts)) {
             $errors[] = "Invalid file type. Only JPG, JPEG, PNG, and GIF are allowed.";
         }
     }
-    // --- END: ADDED FILE UPLOAD LOGIC ---
 
+    // Form field validation
     if (empty($student_name)) $errors[] = "Student name is required.";
     if (empty($school_id)) $errors[] = "A school must be selected.";
+    if (empty($std)) $errors[] = "Standard / Class is required.";
+    if (empty($rollno)) $errors[] = "Roll number is required.";
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "A valid email is required.";
     if (empty($password)) $errors[] = "Password is required.";
 
-    // --- NEW: Check for duplicate roll number in the same standard/school ---
+    // Duplicate roll number validation (only if other validations have passed so far)
     if (empty($errors)) {
         try {
             $stmt_check_rollno = $conn->prepare('SELECT COUNT(*) FROM "student" WHERE "school_id" = ? AND "std" = ? AND "rollno" = ?');
             $stmt_check_rollno->execute([$school_id, $std, $rollno]);
-            $count = $stmt_check_rollno->fetchColumn();
-
-            if ($count > 0) {
+            if ($stmt_check_rollno->fetchColumn() > 0) {
                 $errors[] = "Roll number '{$rollno}' already exists for this standard and school.";
             }
         } catch (PDOException $e) {
@@ -103,28 +92,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // --- Step 3: If there are NO errors, process file and save to database ---
     if (empty($errors)) {
-        try {
-            $conn->beginTransaction();
-            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-            $user_role = 'student';
+        // Handle the file move now that we know all data is valid
+        if (isset($_FILES['student_image']) && $_FILES['student_image']['error'] === UPLOAD_ERR_OK) {
+            $target_dir = "../../pages/student/uploads/";
+            if (!file_exists($target_dir)) {
+                mkdir($target_dir, 0777, true);
+            }
+            $new_filename = 'student_' . uniqid('', true) . '.' . strtolower(pathinfo($_FILES['student_image']['name'], PATHINFO_EXTENSION));
+            $destination = $target_dir . $new_filename;
 
-            $stmt_user = $conn->prepare('INSERT INTO "users" ("role", "email", "password") VALUES (?, ?, ?)');
-            $stmt_user->execute([$user_role, $email, $hashed_password]);
-            $new_user_id = $conn->lastInsertId();
-
-            $stmt_student = $conn->prepare('INSERT INTO "student" (id, student_image, student_name, rollno, std, email, password, academic_year, school_id, dob, gender, blood_group, address, father_name, father_phone, mother_name, mother_phone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-            $stmt_student->execute([$new_user_id, $image_path_for_db, $student_name, $rollno, $std, $email, $hashed_password, $academic_year, $school_id, $dob, $gender, $blood_group, $address, $father_name, $father_phone, $mother_name, $mother_phone]);
-
-            $conn->commit();
-            header("Location: ../../pages/student/student_list.php?success=Student enrolled successfully");
-            exit();
-        } catch (PDOException $e) {
-            $conn->rollBack();
-            if ($e->getCode() == 23505) {
-                $errors[] = "A student with this email already exists.";
+            if (move_uploaded_file($_FILES['student_image']['tmp_name'], $destination)) {
+                $image_path_for_db = "pages/student/uploads/" . $new_filename;
             } else {
-                $errors[] = "Database error: " . $e->getMessage();
+                // This is a final safeguard in case moving the file fails
+                $errors[] = "Critical error: Could not move uploaded file. Check directory permissions.";
+            }
+        }
+
+        // Final check for the critical file move error before committing to DB
+        if (empty($errors)) {
+            try {
+                $conn->beginTransaction();
+                $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+                $user_role = 'student';
+
+                // Insert into 'users' table
+                $stmt_user = $conn->prepare('INSERT INTO "users" ("role", "email", "password") VALUES (?, ?, ?)');
+                $stmt_user->execute([$user_role, $email, $hashed_password]);
+                $new_user_id = $conn->lastInsertId();
+
+                // Insert into 'student' table
+                $stmt_student = $conn->prepare('INSERT INTO "student" (id, student_image, student_name, rollno, std, email, password, academic_year, school_id, dob, gender, blood_group, address, father_name, father_phone, mother_name, mother_phone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+                $stmt_student->execute([$new_user_id, $image_path_for_db, $student_name, $rollno, $std, $email, $hashed_password, $academic_year, $school_id, $dob, $gender, $blood_group, $address, $father_name, $father_phone, $mother_name, $mother_phone]);
+
+                $conn->commit();
+                header("Location: ../../pages/student/student_list.php?success=Student enrolled successfully");
+                exit();
+            } catch (PDOException $e) {
+                $conn->rollBack();
+                if ($e->getCode() == 23505) { // Unique constraint violation
+                    $errors[] = "A student with this email already exists.";
+                } else {
+                    $errors[] = "Database error: " . $e->getMessage();
+                }
             }
         }
     }
@@ -226,7 +238,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <div class="form-row">
                                     <div class="form-group col-md-6">
                                         <label for="std">Standard / Class *</label>
-                                        <!-- This select is now empty and will be populated dynamically by JavaScript -->
                                         <select class="form-control" id="std" name="std" required>
                                             <option value="">-- Select a school first --</option>
                                         </select>
@@ -277,7 +288,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
 
-    <?php include_once "../logout_modal.php" ?>
+    <?php include_once "../../includes/logout_modal.php"; ?>
 
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
@@ -332,14 +343,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
-            // Check for a pre-selected school ID on page load.
-            // This handles the case where a principal is logged in.
             const preselectedSchoolInput = document.querySelector('input[name="school_id"][type="hidden"]');
             if (preselectedSchoolInput && preselectedSchoolInput.value) {
                 fetchStandards(preselectedSchoolInput.value);
             }
 
-            // Add event listener for manual selection (for superadmin).
             if (schoolSelect) {
                 schoolSelect.addEventListener('change', function() {
                     fetchStandards(this.value);

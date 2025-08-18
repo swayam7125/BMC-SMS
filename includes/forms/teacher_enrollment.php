@@ -105,8 +105,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt_timing = $conn->prepare('INSERT INTO "teacher_timings" (teacher_id, day_of_week, opens_at, closes_at, is_closed) VALUES (?, ?, ?, ?, ?)');
             foreach ($timings as $day => $details) {
                 $is_closed = isset($details['is_closed']) ? 1 : 0;
-                $opens_at = ($is_closed || empty($details['opens_at'])) ? null : $details['opens_at'];
-                $closes_at = ($is_closed || empty($details['closes_at'])) ? null : $details['closes_at'];
+                
+                // MODIFIED: Convert 12-hour time with AM/PM to 24-hour format for the database
+                $opens_at = null;
+                if (!$is_closed && !empty($details['opens_at']) && !empty($details['opens_at_ampm'])) {
+                    $opens_at = date("H:i:s", strtotime($details['opens_at'] . ' ' . $details['opens_at_ampm']));
+                }
+
+                $closes_at = null;
+                if (!$is_closed && !empty($details['closes_at']) && !empty($details['closes_at_ampm'])) {
+                    $closes_at = date("H:i:s", strtotime($details['closes_at'] . ' ' . $details['closes_at_ampm']));
+                }
+
                 $stmt_timing->execute([$new_user_id, $day, $opens_at, $closes_at, $is_closed]);
             }
 
@@ -250,7 +260,9 @@ $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
                                         $posted_day = $_POST['timings'][$day] ?? [];
                                         $is_closed = isset($posted_day['is_closed']);
                                         $opens_at = $posted_day['opens_at'] ?? '10:00';
-                                        $closes_at = $posted_day['closes_at'] ?? '18:00';
+                                        $opens_at_ampm = $posted_day['opens_at_ampm'] ?? 'AM';
+                                        $closes_at = $posted_day['closes_at'] ?? '06:00';
+                                        $closes_at_ampm = $posted_day['closes_at_ampm'] ?? 'PM';
                                     ?>
                                         <div class="form-row align-items-center mb-2 timing-row" data-day="<?php echo $day; ?>">
                                             <div class="col-md-2"><label class="mb-0"><?php echo $day; ?></label></div>
@@ -260,16 +272,28 @@ $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
                                                     <label class="custom-control-label" for="closed_<?php echo $day; ?>">Closed</label>
                                                 </div>
                                             </div>
-                                            <div class="col-md-3">
+                                            <div class="col-md-4">
                                                 <div class="input-group">
                                                     <div class="input-group-prepend"><span class="input-group-text small">Opens at</span></div>
-                                                    <input type="time" class="form-control opens-at" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                    <input type="text" class="form-control time-input" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" placeholder="HH:MM" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                    <div class="input-group-append">
+                                                        <select class="form-control ampm-select" name="timings[<?php echo $day; ?>][opens_at_ampm]" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                            <option value="AM" <?php if ($opens_at_ampm == 'AM') echo 'selected'; ?>>AM</option>
+                                                            <option value="PM" <?php if ($opens_at_ampm == 'PM') echo 'selected'; ?>>PM</option>
+                                                        </select>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div class="col-md-3">
+                                            <div class="col-md-4">
                                                 <div class="input-group">
                                                     <div class="input-group-prepend"><span class="input-group-text small">Closes at</span></div>
-                                                    <input type="time" class="form-control closes-at" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                    <input type="text" class="form-control time-input" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" placeholder="HH:MM" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                    <div class="input-group-append">
+                                                        <select class="form-control ampm-select" name="timings[<?php echo $day; ?>][closes_at_ampm]" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                            <option value="AM" <?php if ($closes_at_ampm == 'AM') echo 'selected'; ?>>AM</option>
+                                                            <option value="PM" <?php if ($closes_at_ampm == 'PM') echo 'selected'; ?>>PM</option>
+                                                        </select>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -349,7 +373,8 @@ $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
             // Timings schedule logic
             $('.closed-checkbox').on('change', function() {
                 const row = $(this).closest('.timing-row');
-                const timeInputs = row.find('input[type="time"]');
+                // MODIFIED: Select the new text inputs and AM/PM dropdowns
+                const timeInputs = row.find('.time-input, .ampm-select');
                 timeInputs.prop('disabled', $(this).is(':checked'));
             });
 
