@@ -234,3 +234,4 @@ if (!is_ajax_request()) {
 </body>
 
 </html> 
+<?php } ?>
