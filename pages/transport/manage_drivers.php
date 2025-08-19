@@ -11,7 +11,7 @@ if ($role !== 'principal') {
 }
 
 $school_id = null;
-if($userId) {
+if ($userId) {
     $stmt = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
     $stmt->execute([$userId]);
     $school_id = $stmt->fetchColumn();
@@ -20,10 +20,33 @@ if (!$school_id) die("Error: Could not determine your school.");
 
 $errors = [];
 $success = '';
+$edit_driver = null;
+
+// Handle Delete Request
+if (isset($_GET['delete_id'])) {
+    $delete_id = (int)$_GET['delete_id'];
+    try {
+        $stmt = $conn->prepare("DELETE FROM drivers WHERE id = ? AND school_id = ?");
+        $stmt->execute([$delete_id, $school_id]);
+        $success = "Driver deleted successfully!";
+    } catch (PDOException $e) {
+        $errors[] = "Error deleting driver: " . $e->getMessage();
+    }
+    header("Location: manage_drivers.php?success=" . urlencode($success));
+    exit;
+}
+
+// Handle Edit Request
+if (isset($_GET['edit_id'])) {
+    $edit_id = (int)$_GET['edit_id'];
+    $stmt = $conn->prepare("SELECT * FROM drivers WHERE id = ? AND school_id = ?");
+    $stmt->execute([$edit_id, $school_id]);
+    $edit_driver = $stmt->fetch(PDO::FETCH_ASSOC);
+}
 
 // Handle Add/Edit Driver
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_driver'])) {
-    $driver_id = $_POST['driver_id'] ? (int)$_POST['driver_id'] : null;
+    $driver_id = !empty($_POST['driver_id']) ? (int)$_POST['driver_id'] : null;
     $driver_name = trim($_POST['driver_name']);
     $phone_number = trim($_POST['phone_number']);
     $license_number = trim($_POST['license_number']);
@@ -45,10 +68,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_driver'])) {
                 $stmt->execute([$school_id, $driver_name, $phone_number, $license_number]);
                 $success = "Driver added successfully!";
             }
+            header("Location: manage_drivers.php?success=" . urlencode($success));
+            exit;
         } catch (PDOException $e) {
             $errors[] = "Database error: " . $e->getMessage();
         }
     }
+}
+
+if (isset($_GET['success'])) {
+    $success = htmlspecialchars($_GET['success']);
 }
 
 // Fetch all drivers for the school
@@ -69,8 +98,6 @@ try {
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../../assets/css/sidebar.css">
-    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
 <body id="page-top">
     <div id="wrapper">
@@ -80,21 +107,27 @@ try {
                 <?php include_once '../../includes/header.php'; ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Manage Drivers</h1>
-                     <?php if (!empty($errors)): ?>
+                    <?php if (!empty($errors)): ?>
                         <div class="alert alert-danger"><?php foreach ($errors as $error): ?><p class="mb-0"><?php echo htmlspecialchars($error); ?></p><?php endforeach; ?></div>
                     <?php endif; ?>
-                    <?php if ($success): ?><div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div><?php endif; ?>
+                    <?php if ($success): ?><div class="alert alert-success"><?php echo $success; ?></div><?php endif; ?>
 
                     <div class="card shadow mb-4">
-                        <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-plus-circle"></i> Add New Driver</h6></div>
+                        <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-plus-circle"></i> <?php echo $edit_driver ? 'Edit Driver' : 'Add New Driver'; ?></h6></div>
                         <div class="card-body">
-                            <form method="POST">
+                            <form method="POST" action="manage_drivers.php">
+                                <?php if ($edit_driver): ?>
+                                    <input type="hidden" name="driver_id" value="<?php echo $edit_driver['id']; ?>">
+                                <?php endif; ?>
                                 <div class="form-row">
-                                    <div class="form-group col-md-4"><label for="driver_name">Driver Name *</label><input type="text" class="form-control" name="driver_name" required></div>
-                                    <div class="form-group col-md-4"><label for="phone_number">Phone Number *</label><input type="text" class="form-control" name="phone_number" required></div>
-                                    <div class="form-group col-md-4"><label for="license_number">License Number *</label><input type="text" class="form-control" name="license_number" required></div>
+                                    <div class="form-group col-md-4"><label for="driver_name">Driver Name *</label><input type="text" class="form-control" name="driver_name" value="<?php echo htmlspecialchars($edit_driver['driver_name'] ?? ''); ?>" required></div>
+                                    <div class="form-group col-md-4"><label for="phone_number">Phone Number *</label><input type="text" class="form-control" name="phone_number" value="<?php echo htmlspecialchars($edit_driver['phone_number'] ?? ''); ?>" required></div>
+                                    <div class="form-group col-md-4"><label for="license_number">License Number *</label><input type="text" class="form-control" name="license_number" value="<?php echo htmlspecialchars($edit_driver['license_number'] ?? ''); ?>" required></div>
                                 </div>
-                                <button type="submit" name="save_driver" class="btn btn-primary">Save Driver</button>
+                                <button type="submit" name="save_driver" class="btn btn-primary"><?php echo $edit_driver ? 'Update Driver' : 'Save Driver'; ?></button>
+                                <?php if ($edit_driver): ?>
+                                    <a href="manage_drivers.php" class="btn btn-secondary">Cancel Edit</a>
+                                <?php endif; ?>
                             </form>
                         </div>
                     </div>
@@ -112,8 +145,8 @@ try {
                                                 <td><?php echo htmlspecialchars($driver['phone_number']); ?></td>
                                                 <td><?php echo htmlspecialchars($driver['license_number']); ?></td>
                                                 <td>
-                                                    <a href="#" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i></a>
-                                                    <a href="#" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></a>
+                                                    <a href="?edit_id=<?php echo $driver['id']; ?>" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i></a>
+                                                    <a href="#" data-toggle="modal" data-target="#deleteModal" data-url="?delete_id=<?php echo $driver['id']; ?>" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></a>
                                                 </td>
                                             </tr>
                                         <?php endforeach; ?>
@@ -127,8 +160,40 @@ try {
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
+
+    <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteModalLabel">Confirm Deletion</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to delete this item? This action cannot be undone.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <a href="#" id="confirmDeleteBtn" class="btn btn-danger">Delete</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
+
+    <script>
+    $(document).ready(function() {
+        $('#deleteModal').on('show.bs.modal', function (event) {
+            var button = $(event.relatedTarget);
+            var url = button.data('url');
+            var modal = $(this);
+            modal.find('#confirmDeleteBtn').attr('href', url);
+        });
+    });
+    </script>
 </body>
 </html>
