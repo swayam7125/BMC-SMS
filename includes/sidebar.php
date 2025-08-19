@@ -44,7 +44,8 @@ $unread_acquisition_requests = 0;
 $unread_library_status = 0;
 $unread_principal_to_librarian_notices = 0;
 $unread_librarian_requests = 0;
-$unread_salary_notifications = 0; // NEW: For librarian salary history
+$unread_salary_notifications = 0; // For librarian salary history
+$unread_teacher_salary = 0; // For teacher salary history
 $is_class_teacher = false; // Initialize teacher-specific flag
 
 // Fetch counts based on the user's role if a valid user ID and connection exist
@@ -120,13 +121,14 @@ if (isset($conn) && $user_id) {
                     $is_class_teacher = true;
                 }
 
-                // UPDATED QUERY FOR TEACHER
+                // ** CORRECTED QUERY FOR TEACHER **
                 $sql_counts = "SELECT
                                   COUNT(*) FILTER (WHERE type = 'school_notice' AND is_read = false) AS teacher_notices,
                                   COUNT(*) FILTER (WHERE type = 'assignment_submission' AND is_read = false) AS submissions,
                                   COUNT(*) FILTER (WHERE type = 'leave_status' AND is_read = false) AS leave_status,
                                   COUNT(*) FILTER (WHERE type = 'exam_timetable' AND is_read = false) AS exam_timetables,
-                                  COUNT(*) FILTER (WHERE type = 'borrow_status' AND is_read = false) AS library_status
+                                  COUNT(*) FILTER (WHERE type = 'borrow_status' AND is_read = false) AS library_status,
+                                  COUNT(*) FILTER (WHERE type = 'salary' AND is_read = false) AS salary_notifs
                                FROM notifications WHERE user_id = ?";
                 $stmt_counts = $conn->prepare($sql_counts);
                 $stmt_counts->execute([$user_id]);
@@ -137,6 +139,7 @@ if (isset($conn) && $user_id) {
                     $unread_leave_status = (int) ($result['leave_status'] ?? 0);
                     $unread_exam_timetables = (int) ($result['exam_timetables'] ?? 0);
                     $unread_library_status = (int) ($result['library_status'] ?? 0);
+                    $unread_teacher_salary = (int) ($result['salary_notifs'] ?? 0); 
                 }
                 break;
 
@@ -154,7 +157,7 @@ if (isset($conn) && $user_id) {
                     $unread_borrow_requests = (int) ($result['borrow_reqs'] ?? 0);
                     $unread_acquisition_requests = (int) ($result['acq_reqs'] ?? 0);
                     $unread_principal_to_librarian_notices = (int) ($result['p_to_l_notices'] ?? 0);
-                    $unread_salary_notifications = (int) ($result['salary_notifs'] ?? 0); // NEW
+                    $unread_salary_notifications = (int) ($result['salary_notifs'] ?? 0);
                 }
                 break;
 
@@ -311,7 +314,6 @@ if (isset($conn) && $user_id) {
             $student_pages = ['student_enrollment.php', 'student_list.php', 'generate_lc.php'];
             $notice_pages = ['send_notice.php', 'send_notice_to_bmc.php', 'send_notice_to_librarian.php', 'view_notice.php'];
             $academics_pages = ['manage_subjects.php', 'manage_timetable.php', 'send_exam_timetable.php', 'manage_holidays.php'];
-            // NEW: Added librarian payroll page to salary pages
             $salary_pages = ['generate_payroll.php', 'generate_librarian_payroll.php']; 
             $past_data_pages_principal = ['past_teacher.php', 'past_librarian.php', 'past_student.php'];
             $leave_management_pages = ['teacher_leave_management.php', 'librarian_leave_management.php'];
@@ -506,9 +508,16 @@ if (isset($conn) && $user_id) {
             </li>
 
             <li class="nav-item <?php echo ($current_page == 'view_salary_history.php') ? 'active' : ''; ?>">
-                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/view_salary_history.php">
-                    <div><i class="fas fa-fw fa-receipt"></i>
-                    <span>My Salary History</span></div>
+                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/view_salary_history.php" data-notification-type="salary">
+                    <div>
+                        <i class="fas fa-fw fa-receipt"></i>
+                        <span>My Salary History</span>
+                        <?php if ($unread_teacher_salary > 0): ?>
+                            <span class="badge badge-danger badge-counter">
+                                <?php echo ($unread_teacher_salary > 9) ? '9+' : $unread_teacher_salary; ?>
+                            </span>
+                        <?php endif; ?>
+                    </div>
                 </a>
             </li>
 

@@ -13,7 +13,8 @@ date_default_timezone_set('Asia/Kolkata');
  * @param int $school_id The ID of the school.
  * @return int The total number of working days.
  */
-function getWorkingDays($year, $month, $conn, $school_id) {
+function getWorkingDays($year, $month, $conn, $school_id)
+{
     // 1. Get total number of weekdays (Mon-Sat)
     $weekdays = 0;
     $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
@@ -39,8 +40,20 @@ function getWorkingDays($year, $month, $conn, $school_id) {
     return $weekdays - $holiday_count;
 }
 
-function formatIndianCurrency($number) {
-    $number = (string)round($number, 2); $parts = explode('.', $number); $integer_part = $parts[0]; $decimal_part = isset($parts[1]) ? '.' . str_pad($parts[1], 2, '0', STR_PAD_RIGHT) : ''; $len = strlen($integer_part); if ($len <= 3) { return '₹' . $integer_part . $decimal_part; } $last_three = substr($integer_part, -3); $rest_units = substr($integer_part, 0, -3); $rest_formatted = strrev(implode(',', str_split(strrev($rest_units), 2))); return '₹' . $rest_formatted . ',' . $last_three . $decimal_part;
+function formatIndianCurrency($number)
+{
+    $number = (string) round($number, 2);
+    $parts = explode('.', $number);
+    $integer_part = $parts[0];
+    $decimal_part = isset($parts[1]) ? '.' . str_pad($parts[1], 2, '0', STR_PAD_RIGHT) : '';
+    $len = strlen($integer_part);
+    if ($len <= 3) {
+        return '₹' . $integer_part . $decimal_part;
+    }
+    $last_three = substr($integer_part, -3);
+    $rest_units = substr($integer_part, 0, -3);
+    $rest_formatted = strrev(implode(',', str_split(strrev($rest_units), 2)));
+    return '₹' . $rest_formatted . ',' . $last_three . $decimal_part;
 }
 
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
@@ -64,13 +77,9 @@ try {
     $current_month = date('n');
     $current_year = date('Y');
 
-    if ($current_month == 1) {
-        $default_month = 12;
-        $default_year = $current_year - 1;
-    } else {
-        $default_month = $current_month - 1;
-        $default_year = $current_year;
-    }
+    $default_month = $current_month;
+    $default_year = $current_year;
+
 
     $filter_month = $_GET['month'] ?? $default_month;
     $filter_year = $_GET['year'] ?? $default_year;
@@ -121,6 +130,7 @@ try {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Process Teacher Payroll</title>
@@ -131,6 +141,7 @@ try {
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -143,13 +154,15 @@ try {
                     <?php if (isset($_GET['success'])): ?>
                         <div class="alert alert-success alert-dismissible fade show" role="alert">
                             <?php echo htmlspecialchars($_GET['success']); ?>
-                            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span
+                                    aria-hidden="true">&times;</span></button>
                         </div>
                     <?php endif; ?>
-                     <?php if (isset($_GET['error'])): ?>
+                    <?php if (isset($_GET['error'])): ?>
                         <div class="alert alert-danger alert-dismissible fade show" role="alert">
                             <?php echo htmlspecialchars($_GET['error']); ?>
-                            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span
+                                    aria-hidden="true">&times;</span></button>
                         </div>
                     <?php endif; ?>
                     <?php if ($errorMessage): ?>
@@ -166,7 +179,8 @@ try {
                                     <label for="month" class="mr-2">Month:</label>
                                     <select name="month" id="month" class="form-control">
                                         <?php for ($m = 1; $m <= 12; $m++): ?>
-                                            <option value="<?php echo $m; ?>" <?php if ($m == $filter_month) echo 'selected'; ?>><?php echo date('F', mktime(0, 0, 0, $m, 10)); ?></option>
+                                            <option value="<?php echo $m; ?>" <?php if ($m == $filter_month)
+                                                   echo 'selected'; ?>><?php echo date('F', mktime(0, 0, 0, $m, 10)); ?></option>
                                         <?php endfor; ?>
                                     </select>
                                 </div>
@@ -174,70 +188,86 @@ try {
                                     <label for="year" class="mr-2">Year:</label>
                                     <select name="year" id="year" class="form-control">
                                         <?php for ($y = date('Y'); $y >= date('Y') - 5; $y--): ?>
-                                            <option value="<?php echo $y; ?>" <?php if ($y == $filter_year) echo 'selected'; ?>><?php echo $y; ?></option>
+                                            <option value="<?php echo $y; ?>" <?php if ($y == $filter_year)
+                                                   echo 'selected'; ?>><?php echo $y; ?></option>
                                         <?php endfor; ?>
                                     </select>
                                 </div>
-                                <button type="submit" class="btn btn-primary"><i class="fas fa-cogs"></i> Generate Preview</button>
+                                <button type="submit" class="btn btn-primary"><i class="fas fa-cogs"></i> Generate
+                                    Preview</button>
                             </form>
                         </div>
                     </div>
 
                     <?php if (!empty($payroll_data)): ?>
-                    <div class="card shadow mb-4">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">Payroll Preview for <?php echo date('F', mktime(0,0,0,$filter_month,10)) . ' ' . $filter_year; ?></h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-bordered">
-                                    <thead>
-                                        <tr>
-                                            <th>Teacher Name</th>
-                                            <th>Net Salary</th>
-                                            <th>Status</th>
-                                            <th>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach($payroll_data as $row): ?>
-                                        <tr>
-                                            <td><?php echo htmlspecialchars($row['teacher_name']); ?></td>
-                                            <td><?php echo formatIndianCurrency($row['net_salary_paid']); ?></td>
-                                            <td>
-                                                <?php if($row['status'] == 'Paid'): ?>
-                                                    <span class="badge badge-success">Paid</span>
-                                                <?php else: ?>
-                                                    <span class="badge badge-warning">Pending</span>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td>
-                                                <?php if($row['status'] == 'Paid'): ?>
-                                                    <small>Paid on <?php echo date('d M, Y', strtotime($row['payment_date'])); ?></small>
-                                                <?php else: ?>
-                                                    <form action="process_payment.php" method="POST">
-                                                        <input type="hidden" name="teacher_id" value="<?php echo $row['teacher_id']; ?>">
-                                                        <input type="hidden" name="principal_id" value="<?php echo $userId; ?>">
-                                                        <input type="hidden" name="school_id" value="<?php echo $school_id; ?>">
-                                                        <input type="hidden" name="salary_month" value="<?php echo $filter_month; ?>">
-                                                        <input type="hidden" name="salary_year" value="<?php echo $filter_year; ?>">
-                                                        <input type="hidden" name="base_salary" value="<?php echo $row['base_salary']; ?>">
-                                                        <input type="hidden" name="total_working_days" value="<?php echo $row['total_working_days']; ?>">
-                                                        <input type="hidden" name="present_days" value="<?php echo $row['present_days']; ?>">
-                                                        <input type="hidden" name="absent_days" value="<?php echo $row['absent_days']; ?>">
-                                                        <input type="hidden" name="deduction_amount" value="<?php echo $row['deduction_amount']; ?>">
-                                                        <input type="hidden" name="net_salary_paid" value="<?php echo $row['net_salary_paid']; ?>">
-                                                        <button type="submit" class="btn btn-sm btn-success"><i class="fas fa-check"></i> Pay Now</button>
-                                                    </form>
-                                                <?php endif; ?>
-                                            </td>
-                                        </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Payroll Preview for
+                                    <?php echo date('F', mktime(0, 0, 0, $filter_month, 10)) . ' ' . $filter_year; ?></h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered">
+                                        <thead>
+                                            <tr>
+                                                <th>Teacher Name</th>
+                                                <th>Net Salary</th>
+                                                <th>Status</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($payroll_data as $row): ?>
+                                                <tr>
+                                                    <td><?php echo htmlspecialchars($row['teacher_name']); ?></td>
+                                                    <td><?php echo formatIndianCurrency($row['net_salary_paid']); ?></td>
+                                                    <td>
+                                                        <?php if ($row['status'] == 'Paid'): ?>
+                                                            <span class="badge badge-success">Paid</span>
+                                                        <?php else: ?>
+                                                            <span class="badge badge-warning">Pending</span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                    <td>
+                                                        <?php if ($row['status'] == 'Paid'): ?>
+                                                            <small>Paid on
+                                                                <?php echo date('d M, Y', strtotime($row['payment_date'])); ?></small>
+                                                        <?php else: ?>
+                                                            <form action="process_payment.php" method="POST">
+                                                                <input type="hidden" name="teacher_id"
+                                                                    value="<?php echo $row['teacher_id']; ?>">
+                                                                <input type="hidden" name="principal_id"
+                                                                    value="<?php echo $userId; ?>">
+                                                                <input type="hidden" name="school_id"
+                                                                    value="<?php echo $school_id; ?>">
+                                                                <input type="hidden" name="salary_month"
+                                                                    value="<?php echo $filter_month; ?>">
+                                                                <input type="hidden" name="salary_year"
+                                                                    value="<?php echo $filter_year; ?>">
+                                                                <input type="hidden" name="base_salary"
+                                                                    value="<?php echo $row['base_salary']; ?>">
+                                                                <input type="hidden" name="total_working_days"
+                                                                    value="<?php echo $row['total_working_days']; ?>">
+                                                                <input type="hidden" name="present_days"
+                                                                    value="<?php echo $row['present_days']; ?>">
+                                                                <input type="hidden" name="absent_days"
+                                                                    value="<?php echo $row['absent_days']; ?>">
+                                                                <input type="hidden" name="deduction_amount"
+                                                                    value="<?php echo $row['deduction_amount']; ?>">
+                                                                <input type="hidden" name="net_salary_paid"
+                                                                    value="<?php echo $row['net_salary_paid']; ?>">
+                                                                <button type="submit" class="btn btn-sm btn-success"><i
+                                                                        class="fas fa-check"></i> Pay Now</button>
+                                                            </form>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
-                    </div>
                     <?php endif; ?>
 
                 </div>
@@ -252,4 +282,5 @@ try {
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
+
 </html>

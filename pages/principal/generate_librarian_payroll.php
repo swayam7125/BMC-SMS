@@ -64,13 +64,9 @@ try {
     $current_month = date('n');
     $current_year = date('Y');
 
-    if ($current_month == 1) {
-        $default_month = 12;
-        $default_year = $current_year - 1;
-    } else {
-        $default_month = $current_month - 1;
-        $default_year = $current_year;
-    }
+    $default_month = $current_month;
+    $default_year = $current_year;
+
 
     $filter_month = $_GET['month'] ?? $default_month;
     $filter_year = $_GET['year'] ?? $default_year;
