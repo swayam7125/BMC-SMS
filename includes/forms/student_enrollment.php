@@ -57,7 +57,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $father_phone = trim($_POST['father_phone']);
     $mother_name = trim($_POST['mother_name']);
     $mother_phone = trim($_POST['mother_phone']);
-    $stop_id = !empty($_POST['stop_id']) ? (int)$_POST['stop_id'] : null; // ADDED: Transport Stop ID
+    
+    // NEW: Handle transport mode and stop ID
+    $transport_mode = $_POST['transport_mode'] ?? 'Self';
+    $stop_id = ($transport_mode === 'School Transport' && !empty($_POST['stop_id'])) ? (int)$_POST['stop_id'] : null;
+    
     $image_path_for_db = null;
 
     // --- Step 2: Perform all validations together ---
@@ -81,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "A valid email is required.";
     if (empty($password)) $errors[] = "Password is required.";
 
-    // Duplicate roll number validation (only if other validations have passed so far)
+    // Duplicate roll number validation
     if (empty($errors)) {
         try {
             $stmt_check_rollno = $conn->prepare('SELECT COUNT(*) FROM "student" WHERE "school_id" = ? AND "std" = ? AND "rollno" = ?');
@@ -96,9 +100,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // --- Step 3: If there are NO errors, process file and save to database ---
     if (empty($errors)) {
-        // Handle the file move now that we know all data is valid
         if (isset($_FILES['student_image']) && $_FILES['student_image']['error'] === UPLOAD_ERR_OK) {
-            $target_dir = "../../pages/student/uploads/";
+            $target_dir = "/BMC-SMS/pages/student/uploads/";
             if (!file_exists($target_dir)) {
                 mkdir($target_dir, 0777, true);
             }
@@ -106,35 +109,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $destination = $target_dir . $new_filename;
 
             if (move_uploaded_file($_FILES['student_image']['tmp_name'], $destination)) {
-                $image_path_for_db = "pages/student/uploads/" . $new_filename;
+                $image_path_for_db = "/BMC-SMS/pages/student/uploads/" . $new_filename;
             } else {
-                // This is a final safeguard in case moving the file fails
                 $errors[] = "Critical error: Could not move uploaded file. Check directory permissions.";
             }
         }
 
-        // Final check for the critical file move error before committing to DB
         if (empty($errors)) {
             try {
                 $conn->beginTransaction();
                 $hashed_password = password_hash($password, PASSWORD_DEFAULT);
                 $user_role = 'student';
 
-                // Insert into 'users' table
                 $stmt_user = $conn->prepare('INSERT INTO "users" ("role", "email", "password") VALUES (?, ?, ?)');
                 $stmt_user->execute([$user_role, $email, $hashed_password]);
                 $new_user_id = $conn->lastInsertId();
 
-                // Insert into 'student' table
-                $stmt_student = $conn->prepare('INSERT INTO "student" (id, student_image, student_name, rollno, std, email, password, academic_year, school_id, dob, gender, blood_group, address, father_name, father_phone, mother_name, mother_phone, stop_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-                $stmt_student->execute([$new_user_id, $image_path_for_db, $student_name, $rollno, $std, $email, $hashed_password, $academic_year, $school_id, $dob, $gender, $blood_group, $address, $father_name, $father_phone, $mother_name, $mother_phone, $stop_id]);
+                // MODIFIED: Added transport_mode and stop_id to the INSERT statement
+                $stmt_student = $conn->prepare('INSERT INTO "student" (id, student_image, student_name, rollno, std, email, password, academic_year, school_id, dob, gender, blood_group, address, father_name, father_phone, mother_name, mother_phone, transport_mode, stop_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+                $stmt_student->execute([$new_user_id, $image_path_for_db, $student_name, $rollno, $std, $email, $hashed_password, $academic_year, $school_id, $dob, $gender, $blood_group, $address, $father_name, $father_phone, $mother_name, $mother_phone, $transport_mode, $stop_id]);
 
                 $conn->commit();
                 header("Location: ../../pages/student/student_list.php?success=Student enrolled successfully");
                 exit();
             } catch (PDOException $e) {
                 $conn->rollBack();
-                if ($e->getCode() == 23505) { // Unique constraint violation
+                if ($e->getCode() == 23505) {
                     $errors[] = "A student with this email already exists.";
                 } else {
                     $errors[] = "Database error: " . $e->getMessage();
@@ -144,7 +144,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -166,9 +165,6 @@ if (!is_ajax_request()) {
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
-<?php
-}
-?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Enroll New Student</h1>
@@ -245,7 +241,18 @@ if (!is_ajax_request()) {
                                         </select>
                                     </div>
                                     <div class="form-group col-md-4"><label for="rollno">Roll Number *</label><input type="text" class="form-control" id="rollno" name="rollno" value="<?php echo htmlspecialchars($_POST['rollno'] ?? ''); ?>" required></div>
-                                    <div class="form-group col-md-4">
+                                </div>
+                                <hr>
+                                <h6 class="text-primary">Transport Details</h6>
+                                 <div class="form-row mt-3">
+                                     <div class="form-group col-md-6">
+                                        <label for="transport_mode">Mode of Transport *</label>
+                                        <select class="form-control" id="transport_mode" name="transport_mode" required>
+                                            <option value="Self" <?php echo (isset($_POST['transport_mode']) && $_POST['transport_mode'] == 'Self') ? 'selected' : ''; ?>>Self (Own Vehicle/Walking)</option>
+                                            <option value="School Transport" <?php echo (isset($_POST['transport_mode']) && $_POST['transport_mode'] == 'School Transport') ? 'selected' : ''; ?>>School Transport (Bus/Van)</option>
+                                        </select>
+                                     </div>
+                                     <div class="form-group col-md-6" id="transport-stop-div" style="display: <?php echo (isset($_POST['transport_mode']) && $_POST['transport_mode'] == 'School Transport') ? 'block' : 'none'; ?>;">
                                         <label for="stop_id">Assign Transport Stop (Optional)</label>
                                         <select class="form-control" id="stop_id" name="stop_id">
                                             <option value="">-- No Transport --</option>
@@ -309,12 +316,12 @@ if (!is_ajax_request()) {
                         </div>
                     </div>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
             </div>
             <?php include_once '../../includes/footer.php'; ?>
         </div>
+        <?php
+            if (!is_ajax_request()) {
+        ?>
     </div>
 
     <?php include_once "../../includes/logout_modal.php"; ?>
@@ -382,11 +389,25 @@ if (!is_ajax_request()) {
                     fetchStandards(this.value);
                 });
             }
+
+            // JavaScript to show/hide the stop dropdown
+            const transportModeSelect = document.getElementById('transport_mode');
+            const stopDiv = document.getElementById('transport-stop-div');
+            
+            function toggleStopField() {
+                if (transportModeSelect.value === 'School Transport') {
+                    stopDiv.style.display = 'block';
+                } else {
+                    stopDiv.style.display = 'none';
+                    document.getElementById('stop_id').value = ''; // Clear selection when hidden
+                }
+            }
+            toggleStopField(); // Check on page load
+            transportModeSelect.addEventListener('change', toggleStopField); // Add event listener
         });
     </script>
 </body>
-
 </html>
-<?php
-}
+<?php 
+} 
 ?>

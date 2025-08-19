@@ -49,14 +49,14 @@ try {
 
 $photo_path = $teacher['teacher_image'];
 $default_photo = "../../assets/images/unisex.png";
+$final_photo_path = $default_photo;
 
+// Correctly check if the file exists on the server based on the database path
 if (!empty($photo_path)) {
-    $filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $photo_path;
-    if (!file_exists($filesystem_path) || !is_file($filesystem_path)) {
-        $photo_path = $default_photo;
+    $full_filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $photo_path;
+    if (file_exists($full_filesystem_path) && is_file($full_filesystem_path)) {
+        $final_photo_path = $photo_path;
     }
-} else {
-    $photo_path = $default_photo;
 }
 ?>
 <!DOCTYPE html>
@@ -95,7 +95,7 @@ if (!empty($photo_path)) {
                                     <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-camera"></i> Teacher Photo</h6>
                                 </div>
                                 <div class="card-body text-center">
-                                    <img src="<?php echo htmlspecialchars($photo_path); ?>" alt="<?php echo htmlspecialchars($teacher['teacher_name']); ?>" class="view-photo mb-3">
+                                    <img src="<?php echo htmlspecialchars($final_photo_path); ?>" alt="<?php echo htmlspecialchars($teacher['teacher_name']); ?>" class="view-photo mb-3">
                                     <h4 class="font-weight-bold text-gray-800"><?php echo htmlspecialchars($teacher['teacher_name']); ?></h4>
                                     <p class="text-muted"><?php echo htmlspecialchars($teacher['subject']); ?> Specialist</p>
                                 </div>
@@ -240,4 +240,4 @@ if (!empty($photo_path)) {
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
 
-</html>
+</html> 

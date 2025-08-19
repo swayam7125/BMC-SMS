@@ -279,6 +279,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
+
+    <?php include_once "../../includes/logout_modal.php" ?>
+    
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>

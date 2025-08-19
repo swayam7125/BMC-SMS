@@ -19,7 +19,7 @@ $errors = []; $success = '';
 
 // Handle updating student transport
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_transport'])) {
-    $student_transport_data = $_POST['student_transport'];
+    $student_transport_data = $_POST['student_transport'] ?? [];
     try {
         $conn->beginTransaction();
         $stmt = $conn->prepare("UPDATE student SET stop_id = ? WHERE id = ? AND school_id = ?");
@@ -35,13 +35,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_transport'])) 
     }
 }
 
-
 // Fetch Data for Display
 $stops_query = $conn->prepare("SELECT s.id, s.stop_name, r.route_name FROM stops s JOIN routes r ON s.route_id = r.id WHERE r.school_id = ? ORDER BY r.route_name, s.stop_name");
 $stops_query->execute([$school_id]);
 $all_stops = $stops_query->fetchAll(PDO::FETCH_ASSOC);
 
-$students_query = $conn->prepare("SELECT id, student_name, rollno, std, stop_id FROM student WHERE school_id = ? ORDER BY std, rollno");
+// MODIFIED: Added "AND transport_mode = 'School Transport'" to filter the list
+$students_query = $conn->prepare("SELECT id, student_name, rollno, std, stop_id FROM student WHERE school_id = ? AND transport_mode = 'School Transport' ORDER BY std, rollno");
 $students_query->execute([$school_id]);
 $students = $students_query->fetchAll(PDO::FETCH_ASSOC);
 
@@ -71,40 +71,49 @@ $students = $students_query->fetchAll(PDO::FETCH_ASSOC);
                     <div class="card shadow mb-4">
                         <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Assign Students to Transport Stops</h6></div>
                         <div class="card-body">
+                            <p class="text-muted small">Only students who have opted for 'School Transport' are shown here. To change a student's transport mode, please edit their profile from the main student list.</p>
                             <form method="POST">
                                 <div class="table-responsive">
                                     <table class="table table-bordered" width="100%" cellspacing="0">
                                         <thead><tr><th>Student Name</th><th>Roll No</th><th>Standard</th><th>Assigned Stop</th></tr></thead>
                                         <tbody>
-                                            <?php foreach ($students as $student): ?>
-                                                <tr>
-                                                    <td><?php echo htmlspecialchars($student['student_name']); ?></td>
-                                                    <td><?php echo htmlspecialchars($student['rollno']); ?></td>
-                                                    <td><?php echo htmlspecialchars($student['std']); ?></td>
-                                                    <td>
-                                                        <select class="form-control form-control-sm" name="student_transport[<?php echo $student['id']; ?>]">
-                                                            <option value="">-- No Transport --</option>
-                                                            <?php 
-                                                                $current_route = '';
-                                                                foreach($all_stops as $stop) {
-                                                                    if ($stop['route_name'] !== $current_route) {
-                                                                        if($current_route !== '') echo '</optgroup>';
-                                                                        $current_route = $stop['route_name'];
-                                                                        echo '<optgroup label="' . htmlspecialchars($current_route) . '">';
+                                            <?php if (!empty($students)): ?>
+                                                <?php foreach ($students as $student): ?>
+                                                    <tr>
+                                                        <td><?php echo htmlspecialchars($student['student_name']); ?></td>
+                                                        <td><?php echo htmlspecialchars($student['rollno']); ?></td>
+                                                        <td><?php echo htmlspecialchars($student['std']); ?></td>
+                                                        <td>
+                                                            <select class="form-control form-control-sm" name="student_transport[<?php echo $student['id']; ?>]">
+                                                                <option value="">-- No Stop --</option>
+                                                                <?php 
+                                                                    $current_route = '';
+                                                                    foreach($all_stops as $stop) {
+                                                                        if ($stop['route_name'] !== $current_route) {
+                                                                            if($current_route !== '') echo '</optgroup>';
+                                                                            $current_route = $stop['route_name'];
+                                                                            echo '<optgroup label="' . htmlspecialchars($current_route) . '">';
+                                                                        }
+                                                                        $selected = ($student['stop_id'] == $stop['id']) ? 'selected' : '';
+                                                                        echo "<option value='{$stop['id']}' {$selected}>" . htmlspecialchars($stop['stop_name']) . "</option>";
                                                                     }
-                                                                    $selected = ($student['stop_id'] == $stop['id']) ? 'selected' : '';
-                                                                    echo "<option value='{$stop['id']}' {$selected}>" . htmlspecialchars($stop['stop_name']) . "</option>";
-                                                                }
-                                                                if($current_route !== '') echo '</optgroup>';
-                                                            ?>
-                                                        </select>
-                                                    </td>
+                                                                    if($current_route !== '') echo '</optgroup>';
+                                                                ?>
+                                                            </select>
+                                                        </td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            <?php else: ?>
+                                                <tr>
+                                                    <td colspan="4" class="text-center">No students have opted for school transport.</td>
                                                 </tr>
-                                            <?php endforeach; ?>
+                                            <?php endif; ?>
                                         </tbody>
                                     </table>
                                 </div>
-                                <button type="submit" name="update_transport" class="btn btn-primary mt-3">Save Changes</button>
+                                <?php if (!empty($students)): ?>
+                                    <button type="submit" name="update_transport" class="btn btn-primary mt-3">Save Changes</button>
+                                <?php endif; ?>
                             </form>
                         </div>
                     </div>
