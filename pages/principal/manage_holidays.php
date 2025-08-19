@@ -158,7 +158,7 @@ try {
                                             <th>Action</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
+                                     <tbody>
                                         <?php if (empty($holidays)): ?>
                                             <tr><td colspan="3" class="text-center">No holidays found for the selected year.</td></tr>
                                         <?php else: ?>
@@ -175,7 +175,12 @@ try {
                                                 <tr>
                                                     <td><?php echo date('d M, Y', strtotime($holiday['holiday_date'])); ?></td>
                                                     <td><?php echo htmlspecialchars($holiday['description']); ?></td>
-                                                    <td><a href="manage_holidays.php?action=delete&id=<?php echo $holiday['id']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure?');"><i class="fas fa-trash"></i></a></td>
+                                                    <td>
+                                                        <a href="manage_holidays.php?action=delete&id=<?php echo $holiday['id']; ?>" class="btn btn-danger btn-sm"
+                                                            onclick="return confirm('Are you sure to delete the holiday : <?php echo htmlspecialchars($holiday['description'], ENT_QUOTES, 'UTF-8'); ?>?');">
+                                                            <i class="fas fa-trash"></i>
+                                                        </a>
+                                                    </td>
                                                 </tr>
                                             <?php endforeach; ?>
                                         <?php endif; ?>
