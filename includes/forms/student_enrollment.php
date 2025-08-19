@@ -56,6 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $father_phone = trim($_POST['father_phone']);
     $mother_name = trim($_POST['mother_name']);
     $mother_phone = trim($_POST['mother_phone']);
+    $stop_id = !empty($_POST['stop_id']) ? (int)$_POST['stop_id'] : null; // ADDED: Transport Stop ID
     $image_path_for_db = null;
 
     // --- Step 2: Perform all validations together ---
@@ -124,8 +125,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $new_user_id = $conn->lastInsertId();
 
                 // Insert into 'student' table
-                $stmt_student = $conn->prepare('INSERT INTO "student" (id, student_image, student_name, rollno, std, email, password, academic_year, school_id, dob, gender, blood_group, address, father_name, father_phone, mother_name, mother_phone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-                $stmt_student->execute([$new_user_id, $image_path_for_db, $student_name, $rollno, $std, $email, $hashed_password, $academic_year, $school_id, $dob, $gender, $blood_group, $address, $father_name, $father_phone, $mother_name, $mother_phone]);
+                $stmt_student = $conn->prepare('INSERT INTO "student" (id, student_image, student_name, rollno, std, email, password, academic_year, school_id, dob, gender, blood_group, address, father_name, father_phone, mother_name, mother_phone, stop_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+                $stmt_student->execute([$new_user_id, $image_path_for_db, $student_name, $rollno, $std, $email, $hashed_password, $academic_year, $school_id, $dob, $gender, $blood_group, $address, $father_name, $father_phone, $mother_name, $mother_phone, $stop_id]);
 
                 $conn->commit();
                 header("Location: ../../pages/student/student_list.php?success=Student enrolled successfully");
@@ -144,7 +145,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -156,9 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
-
 </head>
-
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -205,7 +203,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <div class="form-row mt-3">
                                     <div class="form-group col-md-6">
                                         <label for="school_id">School *</label>
-
                                         <?php if ($role === 'principal'): ?>
                                             <select class="form-control" name="school_id_disabled" disabled>
                                                 <option value="<?php echo $admin_school_id; ?>" selected><?php echo htmlspecialchars($admin_school_name); ?></option>
@@ -224,7 +221,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                 ?>
                                             </select>
                                         <?php endif; ?>
-
                                     </div>
                                     <div class="form-group col-md-6"><label for="academic_year">Academic Year *</label><select class="form-control" id="academic_year" name="academic_year" required>
                                             <option value="">-- Select Year --</option><?php for ($i = -1; $i < 3; $i++) {
@@ -236,13 +232,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         </select></div>
                                 </div>
                                 <div class="form-row">
-                                    <div class="form-group col-md-6">
+                                    <div class="form-group col-md-4">
                                         <label for="std">Standard / Class *</label>
                                         <select class="form-control" id="std" name="std" required>
                                             <option value="">-- Select a school first --</option>
                                         </select>
                                     </div>
-                                    <div class="form-group col-md-6"><label for="rollno">Roll Number *</label><input type="text" class="form-control" id="rollno" name="rollno" value="<?php echo htmlspecialchars($_POST['rollno'] ?? ''); ?>" required></div>
+                                    <div class="form-group col-md-4"><label for="rollno">Roll Number *</label><input type="text" class="form-control" id="rollno" name="rollno" value="<?php echo htmlspecialchars($_POST['rollno'] ?? ''); ?>" required></div>
+                                    <div class="form-group col-md-4">
+                                        <label for="stop_id">Assign Transport Stop (Optional)</label>
+                                        <select class="form-control" id="stop_id" name="stop_id">
+                                            <option value="">-- No Transport --</option>
+                                            <?php
+                                            $school_to_check = ($role === 'principal') ? $admin_school_id : ($_POST['school_id'] ?? null);
+                                            if ($school_to_check) {
+                                                $stmt_routes = $conn->prepare('SELECT r.route_name, s.id as stop_id, s.stop_name FROM routes r JOIN stops s ON r.id = s.route_id WHERE r.school_id = ? ORDER BY r.route_name, s.stop_name');
+                                                $stmt_routes->execute([$school_to_check]);
+                                                $current_route = '';
+                                                while($row = $stmt_routes->fetch(PDO::FETCH_ASSOC)) {
+                                                    if ($row['route_name'] !== $current_route) {
+                                                        if ($current_route !== '') echo '</optgroup>';
+                                                        $current_route = $row['route_name'];
+                                                        echo '<optgroup label="' . htmlspecialchars($current_route) . '">';
+                                                    }
+                                                    $selected = (isset($_POST['stop_id']) && $_POST['stop_id'] == $row['stop_id']) ? 'selected' : '';
+                                                    echo "<option value='" . $row['stop_id'] . "' {$selected}>" . htmlspecialchars($row['stop_name']) . "</option>";
+                                                }
+                                                if ($current_route !== '') echo '</optgroup>';
+                                            }
+                                            ?>
+                                        </select>
+                                    </div>
                                 </div>
                                 <hr>
                                 <h6 class="text-primary">Personal Information</h6>

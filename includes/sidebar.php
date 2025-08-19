@@ -368,6 +368,29 @@ if (isset($conn) && $user_id) {
                     </div>
                 </div>
             </li>
+
+            <?php
+                // Define pages for the new transport panel to make the menu active
+                $transport_pages = ['manage_vehicles.php', 'manage_drivers.php', 'manage_routes.php', 'student_transport.php'];
+            ?>
+            <li class="nav-item">
+                <a class="nav-link <?php echo (is_active_page($transport_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseTransport">
+                    <div><i class="fas fa-fw fa-bus"></i>
+                    <span>Transport Management</span></div>
+                </a>
+                <div id="collapseTransport" class="collapse <?php echo (is_active_page($transport_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <h6 class="collapse-header">Core Management:</h6>
+                        <a class="collapse-item <?php echo ($current_page == 'manage_vehicles.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/transport/manage_vehicles.php">Manage Vehicles</a>
+                        <a class="collapse-item <?php echo ($current_page == 'manage_drivers.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/transport/manage_drivers.php">Manage Drivers</a>
+                        <a class="collapse-item <?php echo ($current_page == 'manage_routes.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/transport/manage_routes.php">Manage Routes & Stops</a>
+                        <hr class="collapse-divider">
+                        <h6 class="collapse-header">Student Allocation:</h6>
+                        <a class="collapse-item <?php echo ($current_page == 'student_transport.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/transport/student_transport.php">Student Transport</a>
+                    </div>
+                </div>
+            </li>
+
             <li class="nav-item <?php echo ($current_page == 'view_my_attendance.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_my_attendance.php">
                     <div><i class="fas fa-fw fa-user-check"></i>

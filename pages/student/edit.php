@@ -55,6 +55,10 @@ try {
         $father_phone = trim($_POST['father_phone']);
         $mother_name = trim($_POST['mother_name']);
         $mother_phone = trim($_POST['mother_phone']);
+        
+        // --- UPDATED LOGIC FOR SIMPLIFIED TRANSPORT ---
+        $transport_mode = $_POST['transport_mode'] ?? 'Self';
+        $stop_id = ($transport_mode === 'School Transport' && !empty($_POST['stop_id'])) ? (int)$_POST['stop_id'] : null;
 
         $image_path_for_db = $original_image_path;
 
@@ -63,7 +67,6 @@ try {
         if (empty($new_email) || !filter_var($new_email, FILTER_VALIDATE_EMAIL)) $errors[] = "A valid email is required.";
         if (empty($rollno)) $errors[] = "Roll Number is required.";
 
-        // Check if new email already exists for another user
         if ($new_email !== $original_email) {
             $stmt_check = $conn->prepare("SELECT id FROM users WHERE email = ? AND id != ?");
             $stmt_check->execute([$new_email, $student_id]);
@@ -86,9 +89,7 @@ try {
                 $destination = $target_dir . $new_filename;
 
                 if (move_uploaded_file($file['tmp_name'], $destination)) {
-                    // Use a relative path for the database
                     $image_path_for_db = "pages/student/uploads/" . $new_filename;
-                    // Delete old photo if it exists and is different
                     if (!empty($original_image_path) && file_exists("../../" . $original_image_path) && $original_image_path !== $image_path_for_db) {
                         unlink("../../" . $original_image_path);
                     }
@@ -103,58 +104,40 @@ try {
         if (empty($errors)) {
             $conn->beginTransaction();
 
-            // Update the 'users' table if email changed
             if ($new_email !== $original_email) {
                 $stmt_users = $conn->prepare("UPDATE users SET email = ? WHERE id = ? AND role = 'student'");
                 $stmt_users->execute([$new_email, $student_id]);
             }
 
-            // Update the 'student' table
+            // --- UPDATED SQL QUERY ---
             $update_student_sql = "UPDATE student SET
                                   student_image = ?, student_name = ?, rollno = ?, std = ?, email = ?, academic_year = ?,
                                   school_id = ?, dob = ?, gender = ?, blood_group = ?, address = ?,
-                                  father_name = ?, father_phone = ?, mother_name = ?, mother_phone = ?
+                                  father_name = ?, father_phone = ?, mother_name = ?, mother_phone = ?, 
+                                  stop_id = ?, transport_mode = ?
                                   WHERE id = ?";
 
             $stmt_update = $conn->prepare($update_student_sql);
             $stmt_update->execute([
-                $image_path_for_db,
-                $student_name,
-                $rollno,
-                $std,
-                $new_email,
-                $academic_year,
-                $school_id,
-                $dob,
-                $gender,
-                $blood_group,
-                $address,
-                $father_name,
-                $father_phone,
-                $mother_name,
-                $mother_phone,
-                $student_id
+                $image_path_for_db, $student_name, $rollno, $std, $new_email, $academic_year,
+                $school_id, $dob, $gender, $blood_group, $address, $father_name, 
+                $father_phone, $mother_name, $mother_phone, $stop_id, $transport_mode, $student_id
             ]);
 
             $conn->commit();
             header("Location: student_list.php?success=Student updated successfully");
             exit;
         }
-        // Repopulate form fields in case of error
         $student = $_POST;
         $student['id'] = $student_id;
         $student['student_image'] = $image_path_for_db;
     }
 
-    // Fetch schools for dropdown
     $schools_result = $conn->query("SELECT id, school_name FROM school ORDER BY school_name");
 } catch (Exception $e) {
-    if ($conn->inTransaction()) {
-        $conn->rollBack();
-    }
+    if ($conn->inTransaction()) $conn->rollBack();
     $errors[] = "Database update failed: " . $e->getMessage();
     error_log("Edit student error: " . $e->getMessage());
-    // Fetch schools again for dropdown if transaction failed
     $schools_result = $conn->query("SELECT id, school_name FROM school ORDER BY school_name");
 }
 
@@ -245,7 +228,7 @@ try {
                                                     Group</label><select class="form-control" id="blood_group"
                                                     name="blood_group"><?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
                                                                                                                                                                                             foreach ($bg_options as $bg) {
-                                                                                                                                                                                                $selected = ($student['blood_group'] ?? '' == $bg) ? 'selected' : '';
+                                                                                                                                                                                                $selected = (($student['blood_group'] ?? '') == $bg) ? 'selected' : '';
                                                                                                                                                                                                 echo "<option value='{$bg}' {$selected}>" . strtoupper($bg) . "</option>";
                                                                                                                                                                                             } ?></select>
                                             </div>
@@ -283,6 +266,41 @@ try {
                                             name="academic_year"
                                             value="<?php echo htmlspecialchars($student['academic_year'] ?? ''); ?>"
                                             required></div>
+                                </div>
+                                
+                                <hr>
+                                <h6 class="text-primary font-weight-bold">Transport Details</h6>
+                                <div class="row">
+                                     <div class="col-md-6 form-group">
+                                        <label for="transport_mode">Mode of Transport *</label>
+                                        <select class="form-control" id="transport_mode" name="transport_mode" required>
+                                            <option value="Self" <?php echo (isset($student['transport_mode']) && $student['transport_mode'] == 'Self') ? 'selected' : ''; ?>>Self (Own Vehicle/Walking)</option>
+                                            <option value="School Transport" <?php echo (isset($student['transport_mode']) && $student['transport_mode'] == 'School Transport') ? 'selected' : ''; ?>>School Transport (Bus/Van)</option>
+                                        </select>
+                                     </div>
+                                     <div class="col-md-6 form-group" id="transport-stop-div" style="display: <?php echo (isset($student['transport_mode']) && $student['transport_mode'] == 'School Transport') ? 'block' : 'none'; ?>;">
+                                        <label for="stop_id">Assign School Transport Stop</label>
+                                        <select class="form-control" id="stop_id" name="stop_id">
+                                            <option value="">-- No Stop Selected --</option>
+                                            <?php
+                                            if ($student['school_id']) {
+                                                $stmt_routes = $conn->prepare('SELECT r.route_name, s.id as stop_id, s.stop_name FROM routes r JOIN stops s ON r.id = s.route_id WHERE r.school_id = ? ORDER BY r.route_name, s.stop_name');
+                                                $stmt_routes->execute([$student['school_id']]);
+                                                $current_route = '';
+                                                while($row = $stmt_routes->fetch(PDO::FETCH_ASSOC)) {
+                                                    if ($row['route_name'] !== $current_route) {
+                                                        if ($current_route !== '') echo '</optgroup>';
+                                                        $current_route = $row['route_name'];
+                                                        echo '<optgroup label="' . htmlspecialchars($current_route) . '">';
+                                                    }
+                                                    $selected = (isset($student['stop_id']) && $student['stop_id'] == $row['stop_id']) ? 'selected' : '';
+                                                    echo "<option value='" . $row['stop_id'] . "' {$selected}>" . htmlspecialchars($row['stop_name']) . "</option>";
+                                                }
+                                                if ($current_route !== '') echo '</optgroup>';
+                                            }
+                                            ?>
+                                        </select>
+                                    </div>
                                 </div>
                                 <hr>
                                 <h6 class="text-primary font-weight-bold">Parent Details</h6>
@@ -329,12 +347,23 @@ try {
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script>
-    document.getElementById('student_image').onchange = function(evt) {
-        const [file] = this.files
-        if (file) {
-            document.getElementById('imagePreview').src = URL.createObjectURL(file)
-        }
-    }
+        document.getElementById('student_image').onchange = function(evt) {
+            const [file] = this.files
+            if (file) {
+                document.getElementById('imagePreview').src = URL.createObjectURL(file)
+            }
+        };
+
+        // Script to show/hide the stop dropdown
+        document.getElementById('transport_mode').addEventListener('change', function() {
+            var stopDiv = document.getElementById('transport-stop-div');
+            if (this.value === 'School Transport') {
+                stopDiv.style.display = 'block';
+            } else {
+                stopDiv.style.display = 'none';
+                document.getElementById('stop_id').value = ''; // Clear selection
+            }
+        });
     </script>
 </body>
 
