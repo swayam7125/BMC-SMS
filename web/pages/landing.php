@@ -136,12 +136,12 @@ try {
 
 <body>
 
-    <div class="container-fluid p-4">
+    <div class="container-fluid p-3 p-md-4">
 
         <!-- Section 1: Stat Cards -->
-        <div class="row mb-4">
+        <div class="row">
             <!-- Number of Schools Card -->
-            <div class="col-xl-3 col-md-6 mb-4">
+            <div class="col-lg-3 col-md-6 mb-4">
                 <div class="card stat-card border-start-primary shadow h-100 py-2">
                     <div class="card-body">
                         <div class="row g-0 align-items-center">
@@ -158,7 +158,7 @@ try {
             </div>
 
             <!-- Number of Teachers Card -->
-            <div class="col-xl-3 col-md-6 mb-4">
+            <div class="col-lg-3 col-md-6 mb-4">
                 <div class="card stat-card border-start-success shadow h-100 py-2">
                     <div class="card-body">
                         <div class="row g-0 align-items-center">
@@ -175,7 +175,7 @@ try {
             </div>
 
             <!-- Number of Students Card -->
-            <div class="col-xl-3 col-md-6 mb-4">
+            <div class="col-lg-3 col-md-6 mb-4">
                 <div class="card stat-card border-start-info shadow h-100 py-2">
                     <div class="card-body">
                         <div class="row g-0 align-items-center">
@@ -192,7 +192,7 @@ try {
             </div>
 
             <!-- Enrollment Rate Card -->
-            <div class="col-xl-3 col-md-6 mb-4">
+            <div class="col-lg-3 col-md-6 mb-4">
                 <div class="card stat-card border-start-warning shadow h-100 py-2">
                     <div class="card-body">
                         <div class="row g-0 align-items-center">
@@ -237,8 +237,8 @@ try {
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card shadow">
-                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                        <h6 class="m-0 font-weight-bold text-primary">Featured Schools</h6>
+                    <div class="card-header py-3 d-flex flex-wrap justify-content-between align-items-center">
+                        <h6 class="m-0 font-weight-bold text-primary mb-2 mb-md-0">Featured Schools</h6>
                         <a href="school-list.php" class="btn btn-primary btn-sm">View All Schools &rarr;</a>
                     </div>
                     <div class="card-body">
@@ -267,9 +267,9 @@ try {
                                                     <?php echo htmlspecialchars($school['location']); ?>
                                                 </p>
                                                 <p class="card-text text-gray-700 flex-grow-1">
-                                                    <?php echo htmlspecialchars($school['description']); ?>
+                                                    <?php echo htmlspecialchars(substr($school['description'], 0, 100)) . (strlen($school['description']) > 100 ? '...' : ''); ?>
                                                 </p>
-                                                <a href="school-detail.php?id=<?php echo $school['id']; ?>"
+                                                <a href="school-detail.php?id=<?php echo encrypt_id($school['id']); ?>"
                                                     class="btn btn-primary mt-auto align-self-start">
                                                     View Details
                                                 </a>
