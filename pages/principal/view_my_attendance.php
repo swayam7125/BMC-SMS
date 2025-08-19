@@ -1,6 +1,7 @@
 <?php
 include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/connect.php';
 include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/encryption.php';
+include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/ajax_helpers.php';
 
 $role = decrypt_id($_COOKIE['encrypted_user_role'] ?? '');
 if ($role !== 'principal') {
@@ -41,6 +42,8 @@ try {
 }
 
 $page_title = "My Attendance Report";
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -62,6 +65,9 @@ $page_title = "My Attendance Report";
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800"><?php echo htmlspecialchars($page_title); ?></h1>
                     <div class="card shadow mb-4">
@@ -123,6 +129,9 @@ $page_title = "My Attendance Report";
                         </div>
                     </div>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/footer.php'; ?>
         </div>
@@ -145,3 +154,6 @@ $page_title = "My Attendance Report";
 </body>
 
 </html>
+<?php
+}
+?>

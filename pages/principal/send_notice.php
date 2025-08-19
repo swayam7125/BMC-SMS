@@ -3,6 +3,7 @@
 include_once "../../encryption.php";
 include_once "../../includes/connect.php"; // Your PDO connection file
 include_once "../../includes/email_functions.php"; // Email functions
+include_once "../../includes/ajax_helpers.php";
 
 // Initialize variables
 $role = null;
@@ -176,6 +177,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
 }
 
 $pageTitle = 'Send School Notice';
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -205,6 +208,9 @@ $pageTitle = 'Send School Notice';
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Send a Notice</h1>
                     <?php if (isset($_GET['success'])): ?>
@@ -265,6 +271,9 @@ $pageTitle = 'Send School Notice';
                         </div>
                     </div>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include '../../includes/footer.php'; ?>
         </div>
@@ -296,3 +305,6 @@ $pageTitle = 'Send School Notice';
 </body>
 
 </html>
+<?php
+}
+?>

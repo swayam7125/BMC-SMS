@@ -4,6 +4,7 @@ ini_set('display_errors', 1);
 
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
+include_once "../../includes/ajax_helpers.php";
 
 $role = null;
 $userId = null;
@@ -35,7 +36,7 @@ try {
     $selectedStd = $_GET['std'] ?? 'all';
 
     // Base SQL query
-    $sql = '
+    $sql = ' 
         SELECT
             a.id, a.title, a.standard, a.subject, a.created_at, a.due_date,
             (SELECT COUNT(*) FROM "assignment_submissions" s WHERE s.assignment_id = a.id) as submission_count,
@@ -68,6 +69,8 @@ try {
 }
 
 $pageTitle = 'Teacher - Assignment History';
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -87,12 +90,15 @@ $pageTitle = 'Teacher - Assignment History';
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">Sent Assignment History</h1>
                     <p class="mb-4">A record of all assignments you have sent. You can view submission status and details for each.</p>
                     
-                    <?php if (isset($_GET['success'])): ?>
-                    <div class="alert alert-success">Assignment sent successfully!</div>
+                    <?php if (isset($_GET['success'])):
+                    ?><div class="alert alert-success">Assignment sent successfully!</div>
                     <?php endif; ?>
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
@@ -114,8 +120,8 @@ $pageTitle = 'Teacher - Assignment History';
                                     </thead>
                                     <tbody>
                                         <?php if (!empty($assignments)): ?>
-                                        <?php foreach ($assignments as $assignment): ?>
-                                        <tr>
+                                        <?php foreach ($assignments as $assignment):
+                                        ?>                                        <tr>
                                             <td><?php echo htmlspecialchars($assignment['title']); ?></td>
                                             <td>Standard <?php echo htmlspecialchars($assignment['standard']); ?></td>
                                             <td><?php echo htmlspecialchars($assignment['subject']); ?></td>
@@ -125,15 +131,15 @@ $pageTitle = 'Teacher - Assignment History';
                                             <td>
                                                 <a href="view_submissions.php?id=<?php echo $assignment['id']; ?>" class="btn btn-primary btn-sm" title="View Submissions">
                                                     <i class="fas fa-eye"></i> View
-                                                    <?php if ($assignment['new_submission_count'] > 0): ?>
-                                                        <span class="badge badge-danger ml-2"><?php echo $assignment['new_submission_count']; ?></span>
+                                                    <?php if ($assignment['new_submission_count'] > 0):
+                                                    ?><span class="badge badge-danger ml-2"><?php echo $assignment['new_submission_count']; ?></span>
                                                     <?php endif; ?>
                                                 </a>
                                             </td>
                                         </tr>
                                         <?php endforeach; ?>
-                                        <?php else: ?>
-                                        <tr><td colspan="7" class="text-center">You have not sent any assignments yet.</td></tr>
+                                        <?php else:
+                                        ?>                                        <tr><td colspan="7" class="text-center">You have not sent any assignments yet.</td></tr>
                                         <?php endif; ?>
                                     </tbody>
                                 </table>
@@ -141,6 +147,9 @@ $pageTitle = 'Teacher - Assignment History';
                         </div>
                     </div>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include '../../includes/footer.php'; ?>
         </div>
@@ -162,8 +171,8 @@ $pageTitle = 'Teacher - Assignment History';
             <label class="form-label font-weight-bold m-0 mr-2">Filter by Standard:</label>
             <select class="form-control form-control-sm">
                 <option value="all">All Standards</option>
-                <?php foreach ($availableStandards as $std): ?>
-                    <option value="<?php echo htmlspecialchars(trim($std)); ?>" <?php echo ($selectedStd == trim($std)) ? 'selected' : ''; ?>>Standard <?php echo htmlspecialchars(trim($std)); ?></option>
+                <?php foreach ($availableStandards as $std):
+                ?>                    <option value="<?php echo htmlspecialchars(trim($std)); ?>" <?php echo ($selectedStd == trim($std)) ? 'selected' : ''; ?>>Standard <?php echo htmlspecialchars(trim($std)); ?></option>
                 <?php endforeach; ?>
             </select>`;
 
@@ -180,4 +189,7 @@ $pageTitle = 'Teacher - Assignment History';
     </script>
 </body>
 </html>
-<?php $conn = null; ?>
+<?php
+}
+$conn = null; 
+?>

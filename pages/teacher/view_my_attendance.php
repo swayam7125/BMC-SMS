@@ -1,6 +1,7 @@
 <?php
 include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/connect.php';
 include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/encryption.php';
+include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/ajax_helpers.php';
 
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 $userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
@@ -26,6 +27,8 @@ try {
     // Log the error or show a friendly message
     die("Error fetching attendance records: " . $e->getMessage());
 }
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -45,6 +48,9 @@ try {
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">My Attendance Report</h1>
                     <div class="card shadow mb-4">
@@ -83,6 +89,9 @@ try {
                         </div>
                     </div>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/footer.php'; ?>
         </div>
@@ -96,3 +105,6 @@ try {
     <script>$(document).ready(function() { $('#dataTable').DataTable({"order": []}); });</script>
 </body>
 </html>
+<?php
+}
+?>

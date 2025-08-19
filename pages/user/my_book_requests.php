@@ -1,6 +1,7 @@
 <?php
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
+include_once '../../includes/ajax_helpers.php';
 
 $role = null;
 $user_id = null;
@@ -39,8 +40,9 @@ function getStatusBadge($status) {
             return 'badge-warning';
     }
 }
-?>
 
+if (!is_ajax_request()) {
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -59,6 +61,9 @@ function getStatusBadge($status) {
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">My Book Request History</h1>
                     <div class="card shadow mb-4">
@@ -99,6 +104,9 @@ function getStatusBadge($status) {
                         </div>
                     </div>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include_once '../../includes/footer.php'; ?>
         </div>
@@ -110,3 +118,6 @@ function getStatusBadge($status) {
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
 </html>
+<?php
+}
+?>

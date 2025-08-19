@@ -1,6 +1,7 @@
 <?php
 include_once '../../includes/connect.php'; // Assumes this file now provides a PDO connection object, e.g., $conn
 include_once '../../encryption.php';
+include_once '../../includes/ajax_helpers.php';
 
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 $userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
@@ -63,6 +64,7 @@ try {
     // Let the page render with an empty table instead of crashing
 }
 
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -82,6 +84,9 @@ try {
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">Librarian Attendance History</h1>
 
@@ -154,6 +159,9 @@ try {
                         </div>
                     </div>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include_once '../../includes/footer.php'; ?>
         </div>
@@ -174,3 +182,6 @@ try {
     </script>
 </body>
 </html>
+<?php
+}
+?>

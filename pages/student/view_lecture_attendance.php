@@ -1,6 +1,7 @@
 <?php
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
+include_once '../../includes/ajax_helpers.php';
 
 // Decrypt user role and ID from cookies, handle cases where they might not be set.
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : '';
@@ -45,6 +46,8 @@ foreach ($attendance_records as $record) {
     }
 }
 $attendance_percentage = ($total_lectures > 0) ? round(($present_count / $total_lectures) * 100, 2) : 0;
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -69,6 +72,9 @@ $attendance_percentage = ($total_lectures > 0) ? round(($present_count / $total_
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">My Lecture Attendance</h1>
 
@@ -148,6 +154,9 @@ $attendance_percentage = ($total_lectures > 0) ? round(($present_count / $total_
                         </div>
                     </div>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include '../../includes/footer.php'; ?>
         </div>
@@ -176,3 +185,6 @@ $attendance_percentage = ($total_lectures > 0) ? round(($present_count / $total_
 </body>
 
 </html>
+<?php
+}
+?>

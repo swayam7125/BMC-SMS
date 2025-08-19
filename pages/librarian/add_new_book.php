@@ -1,6 +1,7 @@
 <?php
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
+include_once '../../includes/ajax_helpers.php';
 
 $role = null;
 $user_id = null;
@@ -56,8 +57,9 @@ try {
 } catch (PDOException $e) {
     $errors[] = "Database Error: " . $e->getMessage();
 }
-?>
 
+if (!is_ajax_request()) {
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -77,6 +79,9 @@ try {
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Add New Book</h1>
                     <?php if (!empty($errors)): ?>
@@ -108,6 +113,9 @@ try {
                         </div>
                     </div>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include_once '../../includes/footer.php'; ?>
         </div>
@@ -119,5 +127,7 @@ try {
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
 </html>
-
-<?php $conn = null; ?>
+<?php
+}
+$conn = null; 
+?>

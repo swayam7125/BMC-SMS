@@ -1,6 +1,7 @@
 <?php
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
+include_once "../../includes/ajax_helpers.php";
 
 $role = null;
 $userId = null;
@@ -142,6 +143,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -163,6 +166,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Enroll New Student</h1>
@@ -303,6 +309,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                     </div>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include_once '../../includes/footer.php'; ?>
         </div>
@@ -378,3 +387,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </body>
 
 </html>
+<?php
+}
+?>

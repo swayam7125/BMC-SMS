@@ -1,6 +1,7 @@
 <?php
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
+include_once "../../includes/ajax_helpers.php";
 // include_once "../../includes/email_functions.php"; // Uncomment if email is set up
 
 $role = null;
@@ -105,6 +106,8 @@ try {
 }
 
 $pageTitle = 'Send Notes';
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -126,6 +129,9 @@ $pageTitle = 'Send Notes';
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Send a Note</h1>
                     <?php if (isset($_GET['success'])): ?>
@@ -179,7 +185,7 @@ $pageTitle = 'Send Notes';
                                                         <tr>
                                                             <td><?php echo htmlspecialchars($note['title']); ?></td>
                                                             <td><?php echo htmlspecialchars($note['target_standard']); ?></td>
-                                                            <td><?php echo date('d-m-Y H:i', strtotime($note['created_at'])); ?></td>
+                                                            <td><?php echo date('d-m-Y H:i', strtotime($note['created_at'])); ?></td>
                                                         </tr>
                                                     <?php endforeach;
                                                 else: ?>
@@ -195,6 +201,9 @@ $pageTitle = 'Send Notes';
                         </div>
                     </div>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include '../../includes/footer.php'; ?>
         </div>
@@ -206,3 +215,6 @@ $pageTitle = 'Send Notes';
 </body>
 
 </html>
+<?php
+}
+?>

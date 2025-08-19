@@ -2,6 +2,7 @@
 // Assuming 'session_start()' is in 'connect.php' or another global include.
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
+include_once '../../includes/ajax_helpers.php';
 
 date_default_timezone_set('Asia/Kolkata');
 
@@ -93,6 +94,8 @@ try {
 } catch (Exception $e) {
     $errorMessage = "An error occurred: " . $e->getMessage();
 }
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -111,6 +114,9 @@ try {
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Holiday Management</h1>
 
@@ -158,7 +164,7 @@ try {
                                             <th>Action</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
+                                     <tbody>
                                         <?php if (empty($holidays)): ?>
                                             <tr><td colspan="3" class="text-center">No holidays found for the selected year.</td></tr>
                                         <?php else: ?>
@@ -175,7 +181,12 @@ try {
                                                 <tr>
                                                     <td><?php echo date('d M, Y', strtotime($holiday['holiday_date'])); ?></td>
                                                     <td><?php echo htmlspecialchars($holiday['description']); ?></td>
-                                                    <td><a href="manage_holidays.php?action=delete&id=<?php echo $holiday['id']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure?');"><i class="fas fa-trash"></i></a></td>
+                                                    <td>
+                                                        <a href="manage_holidays.php?action=delete&id=<?php echo $holiday['id']; ?>" class="btn btn-danger btn-sm"
+                                                            onclick="return confirm('Are you sure to delete the holiday : <?php echo htmlspecialchars($holiday['description'], ENT_QUOTES, 'UTF-8'); ?>?');">
+                                                            <i class="fas fa-trash"></i>
+                                                        </a>
+                                                    </td>
                                                 </tr>
                                             <?php endforeach; ?>
                                         <?php endif; ?>
@@ -186,6 +197,9 @@ try {
                     </div>
 
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include_once '../../includes/footer.php'; ?>
         </div>
@@ -199,3 +213,6 @@ try {
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
 </html>
+<?php
+}
+?>
