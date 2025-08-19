@@ -65,18 +65,13 @@ try {
     $current_month = date('n');
     $current_year = date('Y');
 
-    if ($current_month == 1) {
-        $default_month = 12;
-        $default_year = $current_year - 1;
-    } else {
-        $default_month = $current_month - 1;
-        $default_year = $current_year;
-    }
+    $default_month = $current_month;
+    $default_year = $current_year;
+
 
     $filter_month = $_GET['month'] ?? $default_month;
     $filter_year = $_GET['year'] ?? $default_year;
 
-    if (isset($_GET['month'])) {
         $librarian_stmt = $conn->prepare("SELECT id, librarian_name, salary FROM librarian WHERE school_id = ? ORDER BY librarian_name");
         $librarian_stmt->execute([$school_id]);
         $librarians = $librarian_stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -127,8 +122,7 @@ try {
                 'payment_date' => $paid_librarians[$librarian['id']] ?? null
             ];
         }
-    }
-} catch (Exception $e) {
+    } catch (Exception $e) {
     $errorMessage = "An error occurred: " . $e->getMessage();
 }
 
