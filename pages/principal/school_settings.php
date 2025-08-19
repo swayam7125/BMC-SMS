@@ -2,6 +2,7 @@
 session_start();
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
+include_once '../../includes/ajax_helpers.php';
 
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 $userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
@@ -39,6 +40,8 @@ try {
     $errorMessage = "A database error occurred: " . $e->getMessage();
     error_log("School Settings Error: " . $e->getMessage());
 }
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -59,6 +62,9 @@ try {
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">School Settings</h1>
                     <?php if (isset($successMessage)): ?>
@@ -87,6 +93,9 @@ try {
                         </div>
                     </form>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include_once '../../includes/footer.php'; ?>
         </div>
@@ -98,3 +107,6 @@ try {
 </body>
 
 </html>
+<?php
+}
+?>

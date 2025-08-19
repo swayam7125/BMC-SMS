@@ -1,6 +1,7 @@
 <?php
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
+include_once '../../includes/ajax_helpers.php';
 
 $role = null;
 $userId = null;
@@ -55,6 +56,8 @@ try {
     $errorMessage = "A database error occurred.";
     error_log("View Teacher Attendance (Principal) Error: " . $e->getMessage());
 }
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -76,6 +79,9 @@ try {
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">Teacher Attendance History</h1>
 
@@ -153,6 +159,9 @@ try {
                         </div>
                     <?php endif; ?>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include_once '../../includes/footer.php'; ?>
         </div>
@@ -173,3 +182,6 @@ try {
     </script>
 </body>
 </html>
+<?php
+}
+?>

@@ -1,6 +1,7 @@
 <?php
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
+include_once '../../includes/ajax_helpers.php';
 session_start();
 
 $role = null;
@@ -39,13 +40,13 @@ try {
 } catch (PDOException $e) {
     die("Database Error: " . $e->getMessage());
 }
-?>
 
+if (!is_ajax_request()) {
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="utf-8">
     <title>Past Book Records - School Management System</title>
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800,900" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
@@ -62,6 +63,9 @@ try {
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Past Book Records</h1>
                     <div class="card shadow mb-4">
@@ -102,6 +106,9 @@ try {
                         </div>
                     </div>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include_once '../../includes/footer.php'; ?>
         </div>
@@ -109,8 +116,18 @@ try {
     <?php include_once "../../includes/logout_modal.php"?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
+    <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
+    <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#dataTable').DataTable({ "order": [[ 4, "desc" ]] });
+        });
+    </script>
 </body>
 </html>
-
-<?php $conn = null; ?>
+<?php
+}
+$conn = null; 
+?>

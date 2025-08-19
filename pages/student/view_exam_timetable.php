@@ -4,6 +4,7 @@ ini_set('display_errors', 1);
 
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
+include_once "../../includes/ajax_helpers.php";
 
 // FIX #2: Define the base path constant, consistent with your other files.
 if (!defined('BASE_WEB_PATH')) {
@@ -53,6 +54,8 @@ try {
 }
 
 $pageTitle = 'Exam Timetables';
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -76,6 +79,9 @@ $pageTitle = 'Exam Timetables';
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Exam Timetables</h1>
 
@@ -93,13 +99,16 @@ $pageTitle = 'Exam Timetables';
                                     <p class="small text-muted">Published on: <?php echo date('d F, Y', strtotime($tt['created_at'])); ?></p>
 
                                     <a href="<?php echo htmlspecialchars(BASE_WEB_PATH . ltrim($tt['file_path'], '/')); ?>" class="btn btn-primary" download="<?php echo htmlspecialchars($tt['original_filename']); ?>">
-                                        <i class="fas fa-download fa-sm"></i> Download Timetable
+                                        <i class="fas fa-download"></i> Download Timetable
                                     </a>
                                 </div>
                             </div>
                     <?php endforeach;
                     endif; ?>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include '../../includes/footer.php'; ?>
         </div>
@@ -111,3 +120,6 @@ $pageTitle = 'Exam Timetables';
 </body>
 
 </html>
+<?php
+}
+?>

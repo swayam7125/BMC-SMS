@@ -4,6 +4,7 @@ ini_set('display_errors', 1);
 
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
+include_once "../../includes/ajax_helpers.php";
 
 $role = null;
 $userId = null;
@@ -78,6 +79,8 @@ try {
 }
 
 $pageTitle = 'Send Notice to BMC';
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -101,6 +104,9 @@ $pageTitle = 'Send Notice to BMC';
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Send Notice to BMC</h1>
                     <?php if (isset($_GET['success'])): ?>
@@ -120,6 +126,9 @@ $pageTitle = 'Send Notice to BMC';
                         </div>
                     </div>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include '../../includes/footer.php'; ?>
         </div>
@@ -131,3 +140,6 @@ $pageTitle = 'Send Notice to BMC';
 </body>
 
 </html>
+<?php
+}
+?>

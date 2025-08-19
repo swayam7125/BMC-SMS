@@ -2,6 +2,7 @@
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
 include_once "../../includes/email_functions.php";
+include_once "../../includes/ajax_helpers.php";
 
 $role = null;
 $userId = null;
@@ -102,6 +103,8 @@ try {
 }
 
 $pageTitle = 'Send Assignment';
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -123,6 +126,9 @@ $pageTitle = 'Send Assignment';
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Send New Assignment</h1>
                     <div class="card shadow mb-4">
@@ -178,6 +184,9 @@ $pageTitle = 'Send Assignment';
                         </div>
                     </div>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include '../../includes/footer.php'; ?>
         </div>
@@ -202,4 +211,7 @@ $pageTitle = 'Send Assignment';
 </body>
 
 </html>
-<?php $conn = null; ?>
+<?php
+}
+$conn = null; 
+?>

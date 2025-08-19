@@ -1,6 +1,7 @@
 <?php
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
+include_once '../../includes/ajax_helpers.php';
 
 date_default_timezone_set('Asia/Kolkata');
 
@@ -143,6 +144,8 @@ try {
 } catch (Exception $e) {
     $errorMessage = "An error occurred: " . $e->getMessage();
 }
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -162,6 +165,9 @@ try {
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Update Librarian Attendance</h1>
@@ -252,6 +258,9 @@ try {
                         </div>
                     <?php endif; ?>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include_once '../../includes/footer.php'; ?>
         </div>
@@ -283,3 +292,6 @@ try {
     </script>
 </body>
 </html>
+<?php
+}
+?>

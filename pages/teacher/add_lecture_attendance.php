@@ -1,6 +1,7 @@
 <?php
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
+include_once '../../includes/ajax_helpers.php';
 
 date_default_timezone_set('Asia/Kolkata');
 
@@ -96,6 +97,8 @@ try {
     $errorMessage = "A database error occurred: " . $e->getMessage();
     error_log("Add Lecture Attendance Error: " . $e->getMessage());
 }
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -120,6 +123,9 @@ try {
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">My Lectures for Today (<?php echo $today_day_name; ?>)</h1>
 
@@ -210,6 +216,9 @@ try {
                         <?php endif; ?>
                     <?php endif; ?>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include '../../includes/footer.php'; ?>
         </div>
@@ -217,6 +226,10 @@ try {
     <?php include_once "../../includes/logout_modal.php" ?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
 
 </html>
+<?php
+}
+?>

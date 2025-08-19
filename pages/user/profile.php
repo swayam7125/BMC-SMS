@@ -2,6 +2,7 @@
 // Includes and session start
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
+include_once "../../includes/ajax_helpers.php";
 
 if (!defined('BASE_URL')) {
     define('BASE_URL', '/BMC-SMS/');
@@ -120,6 +121,8 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
     header("Location: ../../login.php");
     exit;
 }
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -145,6 +148,9 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">User Profile</h1>
@@ -598,6 +604,9 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                         </div>
                     <?php endif; ?>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include_once '../../includes/footer.php'; ?>
         </div>
@@ -641,3 +650,6 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
 </body>
 
 </html>
+<?php
+}
+?>

@@ -1,6 +1,7 @@
 <?php
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
+include_once '../../includes/ajax_helpers.php';
 
 $role = null;
 $user_id = null;
@@ -55,6 +56,8 @@ try {
     error_log("DB Error in browse_books.php (teacher): " . $e->getMessage());
     die("An error occurred while fetching books. Please try again later.");
 }
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -74,6 +77,9 @@ try {
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Browse & Request Books</h1>
 
@@ -130,6 +136,9 @@ try {
                         </div>
                     </div>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include_once '../../includes/footer.php'; ?>
         </div>
@@ -171,3 +180,6 @@ try {
 </body>
 
 </html>
+<?php
+}
+?>

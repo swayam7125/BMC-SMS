@@ -1,6 +1,7 @@
 <?php
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
+include_once "../../includes/ajax_helpers.php";
 
 $role = null;
 $userId = null;
@@ -138,6 +139,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $schools = [];
 $stmt_schools = $conn->query('SELECT "id", "school_name" FROM "school" ORDER BY "school_name"');
 $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -161,6 +164,9 @@ $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Enroll New Teacher</h1>
@@ -330,6 +336,9 @@ $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
                         </div>
                     </div>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include_once '../../includes/footer.php'; ?>
         </div>
@@ -385,3 +394,6 @@ $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
 </body>
 
 </html>
+<?php
+}
+?>
