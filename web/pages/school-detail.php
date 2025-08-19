@@ -76,7 +76,7 @@ function generate_stars($rating)
 
 <body>
 
-    <div class="container-fluid p-4">
+    <div class="container-fluid p-3 p-md-4">
 
         <!-- Search & Filter Bar (Consistent across pages) -->
         <div class="search-filter-bar card shadow mb-4 p-3">
@@ -103,12 +103,12 @@ function generate_stars($rating)
         </div>
 
         <!-- School Detail Header -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
+        <div class="d-flex flex-column flex-md-row justify-content-md-between align-items-md-center mb-4">
+            <div class="text-center text-md-start mb-3 mb-md-0">
                 <a href="school-list.php" class="btn btn-outline-secondary btn-sm mb-2"><i class="fas fa-arrow-left me-2"></i>Back to List</a>
                 <h1 class="h3 mb-0 text-gray-800 font-weight-bold"><?php echo htmlspecialchars($school_details['name']); ?></h1>
             </div>
-            <div class="ratings h4">
+            <div class="ratings h4 text-center text-md-end">
                 <?php echo generate_stars($school_details['rating']); ?>
             </div>
         </div>

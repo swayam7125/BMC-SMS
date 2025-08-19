@@ -126,7 +126,8 @@ if (!function_exists('getNotificationIcon')) {
         border: 1px solid #e3e6f0;
         border-radius: 0.35rem;
         box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-        max-height: 300px;
+        max-height: 50vh; /* Allow to scale on smaller screens */
+        min-height: 100px; /* Ensure a minimum height */
         overflow-y: auto;
         display: none;
     }

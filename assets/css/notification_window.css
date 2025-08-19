@@ -47,7 +47,8 @@
 
 .notification-body {
     /* ** EDIT: Set a fixed height and ensure scrollbar is visible ** */
-    height: 420px; /* This fixed height constrains the card size */
+    max-height: 80vh; /* Allow to scale on smaller screens */
+    min-height: 200px; /* Ensure a minimum height */
     overflow-y: auto; /* This will show a scrollbar ONLY when content overflows */
     padding-right: 10px; /* Add some padding so the scrollbar doesn't overlap content */
 }

@@ -75,7 +75,7 @@ try {
 
 <body>
 
-    <div class="container-fluid p-4">
+    <div class="container-fluid p-3 p-md-4">
 
         <!-- Search & Filter Bar -->
         <div class="search-filter-bar card shadow mb-4 p-3">
