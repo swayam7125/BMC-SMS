@@ -1,6 +1,7 @@
 <?php
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
+include_once "../../includes/ajax_helpers.php";
 
 if (!isset($_COOKIE['encrypted_user_role']) || decrypt_id($_COOKIE['encrypted_user_role']) !== 'principal') {
     header("Location: ../../login.php");
@@ -10,6 +11,8 @@ if (!isset($_COOKIE['encrypted_user_role']) || decrypt_id($_COOKIE['encrypted_us
 if (!defined('BASE_URL')) {
     define('BASE_URL', '/BMC-SMS/');
 }
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -30,6 +33,9 @@ if (!defined('BASE_URL')) {
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Generate Leaving Certificate</h1>
 
@@ -54,6 +60,9 @@ if (!defined('BASE_URL')) {
                         </div>
                     </div>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include_once '../../includes/footer.php'; ?>
         </div>
@@ -81,3 +90,6 @@ if (!defined('BASE_URL')) {
 </body>
 
 </html>
+<?php
+}
+?>

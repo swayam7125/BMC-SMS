@@ -1,6 +1,7 @@
 <?php
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
+include_once "../../includes/ajax_helpers.php";
 
 $role = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
@@ -68,6 +69,8 @@ try {
 }
 
 $standards = ['Nursery', 'Junior', 'Senior', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -94,6 +97,9 @@ $standards = ['Nursery', 'Junior', 'Senior', '1', '2', '3', '4', '5', '6', '7', 
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Manage Standard Subjects</h1>
 
@@ -177,6 +183,9 @@ $standards = ['Nursery', 'Junior', 'Senior', '1', '2', '3', '4', '5', '6', '7', 
                         </div>
                     </div>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include '../../includes/footer.php'; ?>
         </div>
@@ -278,4 +287,7 @@ $standards = ['Nursery', 'Junior', 'Senior', '1', '2', '3', '4', '5', '6', '7', 
     </script>
 </body>
 </html>
-<?php $conn = null; ?>
+<?php
+}
+$conn = null; 
+?>

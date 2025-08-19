@@ -5,6 +5,7 @@ ini_set('display_errors', 1);
 // Use absolute paths for includes
 include_once __DIR__ . "/../../encryption.php";
 include_once __DIR__ . "/../../includes/connect.php";
+include_once __DIR__ . "/../../includes/ajax_helpers.php";
 
 $role = null;
 $userId = null;
@@ -104,6 +105,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice_to_librari
 }
 
 $pageTitle = 'Send Notice to Librarian';
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -125,6 +128,9 @@ $pageTitle = 'Send Notice to Librarian';
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Send Notice to Librarian</h1>
                     <?php if (isset($_GET['success'])): ?>
@@ -155,6 +161,9 @@ $pageTitle = 'Send Notice to Librarian';
                         </div>
                     </div>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include '../../includes/footer.php'; ?>
         </div>
@@ -165,3 +174,6 @@ $pageTitle = 'Send Notice to Librarian';
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
 </html>
+<?php
+}
+?>

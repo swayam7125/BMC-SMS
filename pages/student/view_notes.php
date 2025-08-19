@@ -1,6 +1,7 @@
 <?php
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
+include_once "../../includes/ajax_helpers.php";
 
 $role = null;
 $userId = null;
@@ -132,6 +133,8 @@ try {
 }
 
 $pageTitle = 'View Notes';
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -154,6 +157,9 @@ $pageTitle = 'View Notes';
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Received Notes</h1>
                     <div class="card shadow mb-4">
@@ -210,6 +216,9 @@ $pageTitle = 'View Notes';
                         </div>
                     </div>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include '../../includes/footer.php'; ?>
         </div>
@@ -220,7 +229,6 @@ $pageTitle = 'View Notes';
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.4.1/jquery.easing.min.js"></script>
     <script src="https://cdn.datatables.net/1.10.21/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.10.21/js/dataTables.bootstrap4.min.js"></script>
-    <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script>
         $(document).ready(function() {
             $('#notesTable').DataTable({
@@ -233,3 +241,6 @@ $pageTitle = 'View Notes';
 </body>
 
 </html>
+<?php
+}
+?>

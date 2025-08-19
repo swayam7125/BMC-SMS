@@ -1,6 +1,7 @@
 <?php
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
+include_once "../../includes/ajax_helpers.php";
 
 // --- USER AUTHENTICATION & DATA FETCHING ---
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
@@ -100,6 +101,8 @@ try {
 
 $days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 $pageTitle = 'View Timetable';
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -148,6 +151,9 @@ $pageTitle = 'View Timetable';
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Class Timetable</h1>
 
@@ -190,7 +196,9 @@ $pageTitle = 'View Timetable';
                                             <?php for ($p = 1; $p <= $total_periods; $p++): ?>
                                                 <tr>
                                                     <td class="period-cell">Period <?php echo $p; ?></td>
-                                                    <?php foreach ($days_of_week as $day): ?>
+                                                    <?php foreach ($days_of_week as $day): 
+                                                        $entry = $timetable_grid[$p][$day];
+                                                    ?>
                                                         <td>
                                                             <?php if (isset($timetable_grid[$p][$day])):
                                                                 $lecture = $timetable_grid[$p][$day];
@@ -224,6 +232,9 @@ $pageTitle = 'View Timetable';
                         <div class="alert alert-warning">The timetable has not been set for your class yet.</div>
                     <?php endif; ?>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include '../../includes/footer.php'; ?>
         </div>
@@ -238,3 +249,6 @@ $pageTitle = 'View Timetable';
 </body>
 
 </html>
+<?php
+}
+?>

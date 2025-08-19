@@ -5,6 +5,7 @@ ini_set('display_errors', 1);
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
 include_once "../../includes/email_functions.php";
+include_once "../../includes/ajax_helpers.php";
 
 $role = null;
 $userId = null;
@@ -117,6 +118,8 @@ try {
 } catch (PDOException $e) {
     die("Database error: " . $e->getMessage());
 }
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -139,6 +142,9 @@ try {
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">My Assignments</h1>
                     <div class="d-flex justify-content-start mb-4">
@@ -198,13 +204,17 @@ try {
                                     </div>
                                 </div>
                             <?php endforeach; ?>
-                        <?php else: ?>
+                        <?php else:
+                        ?>
                             <div class="text-center">
                                 <p>No assignments found.</p>
                             </div>
                         <?php endif; ?>
                     </div>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include '../../includes/footer.php'; ?>
         </div>
@@ -260,4 +270,6 @@ try {
 </body>
 
 </html>
-<?php $conn = null; ?>
+<?php
+}
+?>

@@ -1,6 +1,7 @@
 <?php
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
+include_once '../../includes/ajax_helpers.php';
 
 $role = decrypt_id($_COOKIE['encrypted_user_role'] ?? '');
 $userId = decrypt_id($_COOKIE['encrypted_user_id'] ?? '');
@@ -24,7 +25,7 @@ try {
     }
 
     if (!$school_id) {
-        throw new Exception("Could not determine school for teacher.");
+        throw new Exception("Could not determine school for the teacher.");
     }
 
     $view_date = $_GET['view_date'] ?? date('Y-m-d');
@@ -61,6 +62,8 @@ try {
     $errorMessage = "A database error occurred: " . $e->getMessage();
     error_log("View Lecture Attendance Error: " . $e->getMessage());
 }
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -81,6 +84,9 @@ try {
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">View Lecture Attendance</h1>
                     <?php if ($errorMessage): ?>
@@ -158,6 +164,9 @@ try {
                         </div>
                     <?php endif; ?>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include '../../includes/footer.php'; ?>
         </div>
@@ -175,3 +184,6 @@ try {
 </body>
 
 </html>
+<?php
+}
+?>

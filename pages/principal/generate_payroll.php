@@ -1,6 +1,7 @@
 <?php
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
+include_once '../../includes/ajax_helpers.php';
 
 date_default_timezone_set('Asia/Kolkata');
 
@@ -118,6 +119,8 @@ try {
 } catch (Exception $e) {
     $errorMessage = "An error occurred: " . $e->getMessage();
 }
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -137,22 +140,28 @@ try {
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Process Teacher Payroll</h1>
 
-                    <?php if (isset($_GET['success'])): ?>
+                    <?php if (isset($_GET['success'])):
+                        ?>
                         <div class="alert alert-success alert-dismissible fade show" role="alert">
                             <?php echo htmlspecialchars($_GET['success']); ?>
                             <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                         </div>
                     <?php endif; ?>
-                     <?php if (isset($_GET['error'])): ?>
+                     <?php if (isset($_GET['error'])):
+                        ?>
                         <div class="alert alert-danger alert-dismissible fade show" role="alert">
                             <?php echo htmlspecialchars($_GET['error']); ?>
                             <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                         </div>
                     <?php endif; ?>
-                    <?php if ($errorMessage): ?>
+                    <?php if ($errorMessage):
+                        ?>
                         <div class="alert alert-danger"><?php echo $errorMessage; ?></div>
                     <?php endif; ?>
 
@@ -165,7 +174,8 @@ try {
                                 <div class="form-group mr-2">
                                     <label for="month" class="mr-2">Month:</label>
                                     <select name="month" id="month" class="form-control">
-                                        <?php for ($m = 1; $m <= 12; $m++): ?>
+                                        <?php for ($m = 1; $m <= 12; $m++):
+                                            ?>
                                             <option value="<?php echo $m; ?>" <?php if ($m == $filter_month) echo 'selected'; ?>><?php echo date('F', mktime(0, 0, 0, $m, 10)); ?></option>
                                         <?php endfor; ?>
                                     </select>
@@ -173,7 +183,8 @@ try {
                                 <div class="form-group mr-2">
                                     <label for="year" class="mr-2">Year:</label>
                                     <select name="year" id="year" class="form-control">
-                                        <?php for ($y = date('Y'); $y >= date('Y') - 5; $y--): ?>
+                                        <?php for ($y = date('Y'); $y >= date('Y') - 5; $y--):
+                                            ?>
                                             <option value="<?php echo $y; ?>" <?php if ($y == $filter_year) echo 'selected'; ?>><?php echo $y; ?></option>
                                         <?php endfor; ?>
                                     </select>
@@ -183,7 +194,8 @@ try {
                         </div>
                     </div>
 
-                    <?php if (!empty($payroll_data)): ?>
+                    <?php if (!empty($payroll_data)):
+                        ?>
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
                             <h6 class="m-0 font-weight-bold text-primary">Payroll Preview for <?php echo date('F', mktime(0,0,0,$filter_month,10)) . ' ' . $filter_year; ?></h6>
@@ -200,21 +212,24 @@ try {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php foreach($payroll_data as $row): ?>
+                                        <?php foreach($payroll_data as $row):
+                                            ?>
                                         <tr>
                                             <td><?php echo htmlspecialchars($row['teacher_name']); ?></td>
                                             <td><?php echo formatIndianCurrency($row['net_salary_paid']); ?></td>
                                             <td>
                                                 <?php if($row['status'] == 'Paid'): ?>
                                                     <span class="badge badge-success">Paid</span>
-                                                <?php else: ?>
+                                                <?php else:
+                                                    ?>
                                                     <span class="badge badge-warning">Pending</span>
                                                 <?php endif; ?>
                                             </td>
                                             <td>
                                                 <?php if($row['status'] == 'Paid'): ?>
                                                     <small>Paid on <?php echo date('d M, Y', strtotime($row['payment_date'])); ?></small>
-                                                <?php else: ?>
+                                                <?php else:
+                                                    ?>
                                                     <form action="process_payment.php" method="POST">
                                                         <input type="hidden" name="teacher_id" value="<?php echo $row['teacher_id']; ?>">
                                                         <input type="hidden" name="principal_id" value="<?php echo $userId; ?>">
@@ -241,6 +256,9 @@ try {
                     <?php endif; ?>
 
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include_once '../../includes/footer.php'; ?>
         </div>
@@ -253,3 +271,6 @@ try {
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
 </html>
+<?php
+}
+?>
