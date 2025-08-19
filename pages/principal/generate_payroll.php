@@ -84,7 +84,6 @@ try {
     $filter_month = $_GET['month'] ?? $default_month;
     $filter_year = $_GET['year'] ?? $default_year;
 
-    if (isset($_GET['month'])) {
         $teacher_stmt = $conn->prepare("SELECT id, teacher_name, salary FROM teacher WHERE school_id = ? ORDER BY teacher_name");
         $teacher_stmt->execute([$school_id]);
         $teachers = $teacher_stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -123,8 +122,7 @@ try {
                 'payment_date' => $paid_teachers[$teacher['id']] ?? null
             ];
         }
-    }
-} catch (Exception $e) {
+    } catch (Exception $e) {
     $errorMessage = "An error occurred: " . $e->getMessage();
 }
 ?>
