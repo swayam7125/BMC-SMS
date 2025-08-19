@@ -34,8 +34,8 @@ try {
         header("Location: teacher_list.php?error=Teacher not found");
         exit;
     }
-    $original_email = $teacher['email'];
-    $original_image_path = $teacher['teacher_image'];
+    $original_email = $teacher['email'] ?? '';
+    $original_image_path = $teacher['teacher_image'] ?? '';
 
     $sql_timings = "SELECT * FROM teacher_timings WHERE teacher_id = ?";
     $stmt_timings_fetch = $conn->prepare($sql_timings);
@@ -51,24 +51,24 @@ try {
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // --- Form Data Retrieval ---
-    $teacher_name = trim($_POST['teacher_name']);
-    $new_email = trim($_POST['email']);
-    $phone = trim($_POST['phone']);
-    $school_id = (int)$_POST['school_id'];
-    $dob = $_POST['dob'];
-    $gender = $_POST['gender'];
-    $blood_group = $_POST['blood_group'];
-    $address = trim($_POST['address']);
-    $qualification = trim($_POST['qualification']);
-    $subject = trim($_POST['subject']);
-    $language_known = trim($_POST['language_known']);
-    $salary = trim($_POST['salary']);
+    $teacher_name = trim($_POST['teacher_name'] ?? '');
+    $new_email = trim($_POST['email'] ?? '');
+    $phone = trim($_POST['phone'] ?? '');
+    $school_id = (int)($_POST['school_id'] ?? 0);
+    $dob = $_POST['dob'] ?? '';
+    $gender = $_POST['gender'] ?? '';
+    $blood_group = $_POST['blood_group'] ?? '';
+    $address = trim($_POST['address'] ?? '');
+    $qualification = trim($_POST['qualification'] ?? '');
+    $subject = trim($_POST['subject'] ?? '');
+    $language_known = trim($_POST['language_known'] ?? '');
+    $salary = trim($_POST['salary'] ?? '');
     
     $std_array = isset($_POST['std']) ? $_POST['std'] : [];
     $std_for_db = '{' . implode(',', $std_array) . '}';
     
-    $experience = trim($_POST['experience']);
-    $batch = $_POST['batch'];
+    $experience = trim($_POST['experience'] ?? '');
+    $batch = $_POST['batch'] ?? '';
     $posted_timings = $_POST['timings'] ?? [];
 
     $class_teacher = isset($_POST['class_teacher']) ? 1 : 0;
@@ -87,6 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // --- Handle Photo Upload ---
     if (isset($_FILES['teacher_image']) && $_FILES['teacher_image']['error'] === UPLOAD_ERR_OK) {
         $file = $_FILES['teacher_image'];
+        // Corrected upload path
         $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/teacher/uploads/';
         if (!is_dir($upload_dir)) {
             mkdir($upload_dir, 0777, true);
@@ -96,6 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $destination = $upload_dir . $new_filename;
         
         if (move_uploaded_file($file['tmp_name'], $destination)) {
+            // Corrected image path for database
             $image_path_for_db = '/BMC-SMS/pages/teacher/uploads/' . $new_filename;
             if (!empty($original_image_path) && file_exists($_SERVER['DOCUMENT_ROOT'] . $original_image_path)) {
                 @unlink($_SERVER['DOCUMENT_ROOT'] . $original_image_path);
@@ -215,7 +217,17 @@ if (is_string($raw_stds) && !empty($raw_stds)) {
                             <form method="POST" enctype="multipart/form-data">
                                 <div class="row">
                                     <div class="col-md-3 text-center">
-                                        <img src="<?php echo htmlspecialchars(!empty($teacher['teacher_image']) && file_exists($_SERVER['DOCUMENT_ROOT'] . $teacher['teacher_image']) ? $teacher['teacher_image'] : '../../assets/images/unisex.png'); ?>" alt="Teacher Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
+                                        <?php
+                                        // Correctly handle the image path for display
+                                        $image_path = $teacher['teacher_image'] ?? '';
+                                        $full_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $image_path;
+                                        if (!empty($image_path) && file_exists($full_path)) {
+                                            $display_path = $image_path;
+                                        } else {
+                                            $display_path = '../../assets/images/unisex.png';
+                                        }
+                                        ?>
+                                        <img src="<?php echo htmlspecialchars($display_path); ?>" alt="Teacher Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
                                         <div class="form-group"><label for="teacher_image" class="small btn btn-sm btn-info"><i class="fas fa-upload fa-sm"></i> Change Photo</label><input type="file" class="d-none" id="teacher_image" name="teacher_image" onchange="document.getElementById('imagePreview').src = window.URL.createObjectURL(this.files[0])"></div>
                                     </div>
                                     <div class="col-md-9">
@@ -331,6 +343,7 @@ if (is_string($raw_stds) && !empty($raw_stds)) {
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
+    
     <?php include_once "../../includes/logout_modal.php" ?>
 
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
@@ -365,4 +378,5 @@ if (is_string($raw_stds) && !empty($raw_stds)) {
         });
     </script>
 </body>
+
 </html>

@@ -34,32 +34,30 @@ $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Form data retrieval remains the same
-    $teacher_name = trim($_POST['teacher_name']);
-    $email = trim($_POST['email']);
-    $phone = trim($_POST['phone']);
-    $dob = $_POST['dob'];
-    $gender = $_POST['gender'];
-    $blood_group = $_POST['blood_group'];
-    $address = trim($_POST['address']);
-    $qualification = trim($_POST['qualification']);
-    $subject = trim($_POST['subject']);
-    $language_known = trim($_POST['language_known']);
-    $salary = trim($_POST['salary']);
+    $teacher_name = trim($_POST['teacher_name'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $phone = trim($_POST['phone'] ?? '');
+    $dob = $_POST['dob'] ?? '';
+    $gender = $_POST['gender'] ?? '';
+    $blood_group = $_POST['blood_group'] ?? '';
+    $address = trim($_POST['address'] ?? '');
+    $qualification = trim($_POST['qualification'] ?? '');
+    $subject = trim($_POST['subject'] ?? '');
+    $language_known = trim($_POST['language_known'] ?? '');
+    $salary = trim($_POST['salary'] ?? '');
     $std = isset($_POST['std']) ? $_POST['std'] : [];
-    $experience = trim($_POST['experience']);
-    $password = $_POST['password'];
-    $batch = $_POST['batch'];
+    $experience = trim($_POST['experience'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $batch = $_POST['batch'] ?? '';
     $timings = $_POST['timings'] ?? [];
     $class_teacher = isset($_POST['class_teacher']) ? 1 : 0;
     
-    // This is the corrected logic to handle the class_teacher_std field.
-    // It will be null unless the checkbox is checked AND a standard is selected.
     $class_teacher_std = null;
     if ($class_teacher && !empty($_POST['class_teacher_std'])) {
         $class_teacher_std = $_POST['class_teacher_std'];
     }
     
-    $school_id = ($role === 'principal') ? $admin_school_id : $_POST['school_id'];
+    $school_id = ($role === 'principal') ? $admin_school_id : ($_POST['school_id'] ?? null);
     $image_path_for_db = null;
 
     // --- START: ADDED FILE UPLOAD LOGIC ---
@@ -85,7 +83,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($school_id)) $errors[] = "A school must be selected.";
     if (empty($teacher_name)) $errors[] = "Teacher name is required.";
     if (empty($batch)) $errors[] = "Batch selection is required.";
+    if (empty($password)) $errors[] = "Password is required.";
     if ($class_teacher && empty($_POST['class_teacher_std'])) $errors[] = "Please select a standard for the class teacher.";
+    if(empty($phone)) $errors[] = "Phone is required.";
+    if(empty($gender)) $errors[] = "Gender is required.";
+    if(empty($blood_group)) $errors[] = "Blood group is required.";
+    if(empty($subject)) $errors[] = "Subject is required.";
 
     if (empty($errors)) {
         try {
@@ -216,9 +219,8 @@ if (!is_ajax_request()) {
                                             <select class="form-control" id="school_id" name="school_id" required>
                                                 <option value="">-- Select School --</option>
                                                 <?php
-                                                if ($school_result) {
-                                                    mysqli_data_seek($school_result, 0);
-                                                    while ($school = mysqli_fetch_assoc($school_result)) {
+                                                if ($schools) {
+                                                    foreach ($schools as $school) {
                                                         $selected = (isset($_POST['school_id']) && $_POST['school_id'] == $school['id']) ? 'selected' : '';
                                                         echo "<option value='{$school['id']}' {$selected}>" . htmlspecialchars($school['school_name']) . "</option>";
                                                     }
@@ -295,8 +297,7 @@ if (!is_ajax_request()) {
                                                     <div class="input-group-prepend"><span class="input-group-text small">Closes at</span></div>
                                                     <input type="text" class="form-control time-input" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" placeholder="HH:MM" <?php if ($is_closed) echo 'disabled'; ?>>
                                                     <div class="input-group-append">
-                                                        <select class="form-control ampm-select" name="timings[<?php echo $day; ?>][closes_at_ampm]" <?php if ($is_closed) echo 'disabled'; ?>>
-                                                            <option value="AM" <?php if ($closes_at_ampm == 'AM') echo 'selected'; ?>>AM</option>
+                                                        <select class="form-control ampm-select" name="timings[<?php echo $day; ?>][closes_at_ampm]" <?php if ($closes_at_ampm == 'AM') echo 'selected'; ?>>AM</option>
                                                             <option value="PM" <?php if ($closes_at_ampm == 'PM') echo 'selected'; ?>>PM</option>
                                                         </select>
                                                     </div>
@@ -344,7 +345,7 @@ if (!is_ajax_request()) {
         </div>
     </div>
     
-    <?php include_once "../logout_modal.php" ?>
+    <?php include_once "../../includes/logout_modal.php" ?>
 
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>

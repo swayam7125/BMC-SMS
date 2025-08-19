@@ -98,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($errors)) {
         // Handle the file move now that we know all data is valid
         if (isset($_FILES['student_image']) && $_FILES['student_image']['error'] === UPLOAD_ERR_OK) {
-            $target_dir = "../../pages/student/uploads/";
+            $target_dir = "/BMC-SMS/pages/student/uploads/";
             if (!file_exists($target_dir)) {
                 mkdir($target_dir, 0777, true);
             }
@@ -106,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $destination = $target_dir . $new_filename;
 
             if (move_uploaded_file($_FILES['student_image']['tmp_name'], $destination)) {
-                $image_path_for_db = "pages/student/uploads/" . $new_filename;
+                $image_path_for_db = "/BMC-SMS/pages/student/uploads/" . $new_filename;
             } else {
                 // This is a final safeguard in case moving the file fails
                 $errors[] = "Critical error: Could not move uploaded file. Check directory permissions.";

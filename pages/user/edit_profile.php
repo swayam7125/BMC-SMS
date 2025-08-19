@@ -27,14 +27,19 @@ function getWebAccessibleImagePath($db_image_path, $base_web_path, $default_sub_
     }
 
     // 1. Check the exact path stored in the DB
-    $full_web_path = $base_web_path . ltrim($db_image_path, '/');
+    // Correctly handle paths that are already absolute from the web root
+    if (strpos($db_image_path, '/') === 0) {
+        $full_web_path = $db_image_path;
+    } else {
+        $full_web_path = $base_web_path . ltrim($db_image_path, '/');
+    }
+    
     $filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $full_web_path;
-    // The '@' suppresses warnings if the file doesn't exist, which is expected behavior here.
     if (@file_exists($filesystem_path) && @is_file($filesystem_path)) {
         return $full_web_path;
     }
-
-    // 2. Check common alternative locations if the primary path fails
+    
+    // 2. Fallback check (This part is less critical if paths are stored consistently)
     $possible_locations = [
         "pages/{$default_sub_folder}/uploads/",
         "uploads/{$default_sub_folder}s/",
@@ -58,10 +63,8 @@ $success_message = '';
 if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'])) {
     $user_id = decrypt_id($_COOKIE['encrypted_user_id']);
     $user_role = decrypt_id($_COOKIE['encrypted_user_role']);
-    // Define a path-safe role name for directory creation
     $path_role = ($user_role === 'principal' || $user_role === 'librarian') ? $user_role : $user_role;
 
-    // Determine table and field names based on user role
     $table_name = '';
     $image_field = '';
     $name_field = '';
@@ -88,13 +91,11 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
             $name_field = 'librarian_name';
             break;
         default:
-            // Redirect if the role is invalid
             header("Location: profile.php?error=Invalid user role for editing.");
             exit;
     }
 
     try {
-        // Fetch current user data
         $stmt_fetch = $conn->prepare("SELECT * FROM {$table_name} WHERE id = ?");
         $stmt_fetch->execute([$user_id]);
         if ($stmt_fetch->rowCount() > 0) {
@@ -104,9 +105,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
             exit;
         }
 
-        // Handle form submission
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            // Sanitize and retrieve POST data
             $name = trim($_POST['name']);
             $email = trim($_POST['email']);
             $phone = trim($_POST['phone'] ?? '');
@@ -117,7 +116,6 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
             $current_image_path = $_POST['current_image_path'];
             $new_image_path = $current_image_path;
 
-            // --- VALIDATION ---
             if ($email !== $user_data['email']) {
                 $stmt_check = $conn->prepare("SELECT id FROM users WHERE email = ? AND id != ?");
                 $stmt_check->execute([$email, $user_id]);
@@ -126,7 +124,6 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                 }
             }
 
-            // --- FIX: Add length validation for fields that might cause 'value too long' error ---
             if (strlen($blood_group) > 10) {
                 $errors[] = "The Blood Group value is too long. Please use a standard format (e.g., 'A+', 'O-').";
             }
@@ -142,29 +139,28 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                 }
             }
 
-
-            // --- FILE UPLOAD HANDLING ---
             if (empty($errors) && isset($_FILES['profile_image']) && $_FILES['profile_image']['error'] === UPLOAD_ERR_OK) {
                 $file = $_FILES['profile_image'];
                 $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
                 $allowed_exts = ['jpg', 'jpeg', 'png', 'gif'];
 
                 if (in_array($file_ext, $allowed_exts)) {
-                    $target_dir = "pages/{$path_role}/uploads/";
-                    $full_target_dir = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . BASE_URL . $target_dir;
-
-                    if (!file_exists($full_target_dir)) {
-                        if (!mkdir($full_target_dir, 0775, true)) {
+                    // Corrected target directory path
+                    $target_dir = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . BASE_URL . "pages/{$path_role}/uploads/";
+                    
+                    if (!file_exists($target_dir)) {
+                        if (!mkdir($target_dir, 0775, true)) {
                             $errors[] = "Failed to create upload directory. Please check server permissions for the 'pages/{$path_role}/' folder.";
                         }
                     }
 
-                    if (is_dir($full_target_dir)) {
+                    if (is_dir($target_dir)) {
                         $new_filename = uniqid($path_role . '_', true) . '.' . $file_ext;
-                        $destination = $full_target_dir . $new_filename;
+                        $destination = $target_dir . $new_filename;
 
                         if (move_uploaded_file($file['tmp_name'], $destination)) {
-                            $new_image_path = $target_dir . $new_filename;
+                            // Corrected path to be stored in the database
+                            $new_image_path = BASE_URL . "pages/{$path_role}/uploads/" . $new_filename;
                         } else {
                             $errors[] = "Failed to move uploaded file. Check server permissions.";
                         }
@@ -174,7 +170,6 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                 }
             }
 
-            // --- DATABASE UPDATE ---
             if (empty($errors)) {
                 $conn->beginTransaction();
 
@@ -264,6 +259,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                                 <div class="row">
                                     <div class="col-md-4 text-center">
                                         <?php
+                                        // The getWebAccessibleImagePath function is now more robust.
                                         $default_image_path = BASE_URL . 'assets/images/unisex.png';
                                         $imagePathFromDB = $user_data[$image_field] ?? '';
                                         $current_image_web_path = getWebAccessibleImagePath($imagePathFromDB, BASE_URL, $path_role) ?? $default_image_path;
@@ -350,7 +346,6 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
             const file = event.target.files[0];
             if (file) {
                 imagePreview.src = URL.createObjectURL(file);
-                // Optional: Revoke the object URL on load to free up memory
                 imagePreview.onload = function() {
                     URL.revokeObjectURL(imagePreview.src)
                 }
