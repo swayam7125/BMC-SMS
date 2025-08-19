@@ -13,11 +13,11 @@ function getWebAccessibleImagePath($relative_path, $base_url)
     }
     $full_web_path = $base_url . ltrim($relative_path, '/');
     $physical_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $full_web_path;
-    
+
     if (file_exists($physical_path) && is_file($physical_path)) {
         return htmlspecialchars($full_web_path);
     }
-    
+
     return null;
 }
 
@@ -102,11 +102,11 @@ $default_photo = getDefaultImagePath(BASE_URL);
                         <div class="col-lg-4 mb-4">
                             <div class="card shadow h-100">
                                 <div class="card-header py-3">
-                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-camera"></i> Principal Photo</h6>
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-camera"></i>Principal Photo</h6>
                                 </div>
                                 <div class="card-body text-center">
                                     <img src="<?php echo htmlspecialchars($photo_path ?? $default_photo); ?>" alt="<?php echo htmlspecialchars($principal['principal_name']); ?>" class="principal-photo" onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($default_photo); ?>';">
-                                    <h4 class="font-weight-bold text-gray-800"><?php echo htmlspecialchars($principal['principal_name']); ?></h4>
+                                    <h4 class="mt-3 font-weight-bold text-gray-800"><?php echo htmlspecialchars($principal['principal_name']); ?></h4>
                                     <p class="text-muted"><?php echo htmlspecialchars($principal['school_name']); ?></p>
                                 </div>
                             </div>
