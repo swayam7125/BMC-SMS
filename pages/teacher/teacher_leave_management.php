@@ -2,6 +2,7 @@
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/email_functions.php';
+include_once '../../includes/ajax_helpers.php';
 
 $message = '';
 $teacher_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
@@ -69,6 +70,8 @@ try {
     $message = '<div class="alert alert-danger">An error occurred: ' . $e->getMessage() . '</div>';
     error_log("Leave Management Error: " . $e->getMessage());
 }
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -89,6 +92,9 @@ try {
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Leave Management</h1>
                     <?php echo $message; ?>
@@ -163,6 +169,9 @@ try {
                         </div>
                     </div>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include '../../includes/footer.php'; ?>
         </div>
@@ -202,3 +211,6 @@ try {
 </body>
 
 </html>
+<?php
+}
+?>

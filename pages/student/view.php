@@ -22,12 +22,15 @@ if ($student_id <= 0) {
     exit;
 }
 
-// Fetch student data with school information
-// PDO Change: Switched from mysqli_prepare to PDO prepare/execute
-$query = "SELECT s.*, sc.school_name, sc.address as school_address, sc.email as school_email, sc.phone as school_phone
-          FROM student s 
-          LEFT JOIN school sc ON s.school_id = sc.id
-          WHERE s.id = ?";
+// Fetch student data with school and TRANSPORT information
+$query = "SELECT s.*, sc.school_name, sc.address as school_address, sc.email as school_email, sc.phone as school_phone,
+                st.stop_name, r.route_name, v.vehicle_number
+        FROM student s 
+        LEFT JOIN school sc ON s.school_id = sc.id
+        LEFT JOIN stops st ON s.stop_id = st.id
+        LEFT JOIN routes r ON st.route_id = r.id
+        LEFT JOIN vehicles v ON r.vehicle_id = v.id
+        WHERE s.id = ?";
 
 try {
     $stmt = $conn->prepare($query);
@@ -201,11 +204,8 @@ $default_photo = getDefaultImagePath('student', BASE_WEB_PATH);
                                         <?php endif; ?>
                                     </div>
                                     <div class="text-center">
-                                        <small class="text-muted">
-                                            <!-- <?php echo ($photo_path) ? 'Student Photo' : 'Default Avatar'; ?> -->
-                                            <h4 class="font-weight-bold text-gray-800"><?php echo htmlspecialchars($student['student_name']); ?></h4>
-                                    <p class="text-muted">Roll No : <?php echo htmlspecialchars($student['rollno']); ?></p>
-                                        </small>
+                                        <h4 class="font-weight-bold text-gray-800 mt-3"><?php echo htmlspecialchars($student['student_name']); ?></h4>
+                                        <p class="text-muted">Roll No : <?php echo htmlspecialchars($student['rollno']); ?></p>
                                     </div>
                                 </div>
                             </div>
@@ -400,7 +400,52 @@ $default_photo = getDefaultImagePath('student', BASE_WEB_PATH);
                             </div>
                         </div>
 
-                    </div>
+                        <div class="col-lg-12 mb-4">
+                            <div class="card shadow">
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-bus"></i> Transport Information</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="row">
+                                                <div class="col-sm-5 font-weight-bold">Mode of Transport:</div>
+                                                <div class="col-sm-7"><?php echo htmlspecialchars($student['transport_mode'] ?? 'N/A'); ?></div>
+                                            </div>
+                                        </div>
+                                        <?php if (isset($student['transport_mode']) && $student['transport_mode'] === 'School Transport'): ?>
+                                            <div class="col-md-8">
+                                                <div class="row">
+                                                    <div class="col-lg-4">
+                                                        <div class="row">
+                                                            <div class="col-sm-5 font-weight-bold">Route:</div>
+                                                            <div class="col-sm-7"><?php echo htmlspecialchars($student['route_name'] ?? 'N/A'); ?></div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-lg-4">
+                                                        <div class="row">
+                                                            <div class="col-sm-5 font-weight-bold">Stop:</div>
+                                                            <div class="col-sm-7"><?php echo htmlspecialchars($student['stop_name'] ?? 'N/A'); ?></div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-lg-4">
+                                                        <div class="row">
+                                                            <div class="col-sm-5 font-weight-bold">Vehicle:</div>
+                                                            <div class="col-sm-7"><?php echo htmlspecialchars($student['vehicle_number'] ?? 'N/A'); ?></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        <?php elseif (isset($student['transport_mode']) && $student['transport_mode'] === 'Self'): ?>
+                                            <div class="col-md-8">
+                                                <div class="text-muted">Student uses their own transport.</div>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        </div>
 
                 </div>
             </div>

@@ -1,6 +1,7 @@
 <?php
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
+include_once '../../includes/ajax_helpers.php';
 
 $role = decrypt_id($_COOKIE['encrypted_user_role'] ?? '');
 $userId = decrypt_id($_COOKIE['encrypted_user_id'] ?? '');
@@ -26,14 +27,14 @@ try {
     if ($school_id) {
         // This query is now moved inside the if ($selected_std) block below
         
-        $standards_stmt = $conn->prepare("
+        $standards_stmt = $conn->prepare(" 
             SELECT \"std\" FROM \"student\" 
             WHERE \"school_id\" = ? 
             GROUP BY \"std\"
             ORDER BY 
                 CASE
                     WHEN \"std\" = 'Pre-Primary' THEN 0
-                    WHEN \"std\" ~ '^[0-9]+$' THEN CAST(\"std\" AS INTEGER)
+                    WHEN \"std\" ~ '^\\d+$' THEN CAST(\"std\" AS INTEGER)
                     ELSE 999
                 END,
             \"std\"
@@ -95,6 +96,8 @@ try {
 }
 
 $days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -120,6 +123,9 @@ $days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturd
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Manage School Timetable</h1>
                     <?php if (!empty($successMessage)): ?>
@@ -227,6 +233,9 @@ $days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturd
                     </div>
                     <?php endif; ?>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include '../../includes/footer.php'; ?>
         </div>
@@ -300,4 +309,7 @@ $days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturd
 </body>
 
 </html>
-<?php $conn = null; ?>
+<?php
+}
+$conn = null; 
+?>

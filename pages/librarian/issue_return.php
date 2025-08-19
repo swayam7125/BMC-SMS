@@ -1,6 +1,7 @@
 <?php
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
+include_once '../../includes/ajax_helpers.php';
 
 // Messages are now read from URL parameters instead of sessions
 $success_message = isset($_GET['success']) ? htmlspecialchars($_GET['success']) : null;
@@ -66,6 +67,8 @@ try {
     // If there's a DB error, we can still display it
     $error_message = "Database Error: " . $e->getMessage();
 }
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -86,6 +89,9 @@ try {
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
             <?php include_once '../../includes/header.php'; ?>
+<?php
+}
+?>
             <div class="container-fluid">
                 <h1 class="h3 mb-4 text-gray-800">Issue & Return Books</h1>
                 
@@ -204,6 +210,9 @@ try {
         <?php include_once '../../includes/footer.php'; ?>
     </div>
 </div>
+<?php
+if (!is_ajax_request()) {
+?>
 <?php include_once "../../includes/logout_modal.php"?>
 <script src="../../assets/vendor/jquery/jquery.min.js"></script>
 <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
@@ -243,5 +252,7 @@ $(document).ready(function() {
 </script>
 </body>
 </html>
-
-<?php $conn = null; ?>
+<?php
+}
+$conn = null; 
+?>

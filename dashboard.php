@@ -340,10 +340,11 @@ if ($userId && isset($conn)) {
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include './includes/header.php'; ?>
-                <div class="container-fluid">
-                    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                        <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
-                    </div>
+                <div id="main-content">
+                    <div class="container-fluid">
+                        <div class="d-sm-flex align-items-center justify-content-between mb-4">
+                            <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
+                        </div>
                     <div class="row">
                         <?php if ($role == 'superadmin') : ?>
                             <div class="col-xl-3 col-md-6 mb-4">
@@ -715,6 +716,7 @@ if ($userId && isset($conn)) {
     <script src="/BMC-SMS/assets/js/dynamic_chart.js"></script>
     <script src="/BMC-SMS/assets/js/notification.js"></script>
     <script src="/BMC-SMS/assets/js/sidebar.js"></script>
+    <script src="/BMC-SMS/assets/js/ajax-navigation.js"></script>
     
     <script>
     // New script block to handle notification clicks on the dashboard

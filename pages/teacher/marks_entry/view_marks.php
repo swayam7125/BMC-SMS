@@ -1,6 +1,7 @@
 <?php
 include_once "../../../includes/connect.php";
 include_once "../../../encryption.php";
+include_once "../../../includes/ajax_helpers.php";
 
 $role = null;
 $teacher_id = null;
@@ -34,6 +35,8 @@ try {
 
 $current_year = date('Y');
 $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -53,6 +56,9 @@ $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">View Marks Report for Class: <?php echo htmlspecialchars($class_teacher_std); ?></h1>
@@ -82,6 +88,9 @@ $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
                         </div>
                     </div>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include '../../../includes/footer.php'; ?>
         </div>
@@ -94,3 +103,6 @@ $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
 </body>
 
 </html>
+<?php
+}
+?>

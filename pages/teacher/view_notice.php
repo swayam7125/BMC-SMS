@@ -1,6 +1,7 @@
 <?php
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
+include_once "../../includes/ajax_helpers.php";
 
 $role = null;
 $userId = null;
@@ -76,6 +77,8 @@ try {
 }
 
 $pageTitle = 'View School Notices';
+
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -97,6 +100,9 @@ $pageTitle = 'View School Notices';
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include '../../includes/header.php'; ?>
+<?php
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">School Notices</h1>
                     <div class="card shadow mb-4">
@@ -127,6 +133,9 @@ $pageTitle = 'View School Notices';
                         </div>
                     </div>
                 </div>
+<?php
+if (!is_ajax_request()) {
+?>
             </div>
             <?php include '../../includes/footer.php'; ?>
         </div>
@@ -138,3 +147,6 @@ $pageTitle = 'View School Notices';
 </body>
 
 </html>
+<?php
+}
+?>

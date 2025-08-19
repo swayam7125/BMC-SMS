@@ -1,112 +1,156 @@
 <?php
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
+include_once '../../includes/ajax_helpers.php';
 
 $role = null;
-$librarian_user_id = null;
+$user_id = null;
 
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
 if (isset($_COOKIE['encrypted_user_id'])) {
-    $librarian_user_id = decrypt_id($_COOKIE['encrypted_user_id']);
+    $user_id = decrypt_id($_COOKIE['encrypted_user_id']);
 }
 
-if ($role !== 'librarian' || !$librarian_user_id) {
+if ($role !== 'teacher') {
     header("Location: ../../login.php");
     exit;
 }
 
-$redirect_url = 'borrow_requests.php';
+$borrowing_records = [];
+$error_message = '';
 
 try {
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'reject') {
-        $request_id = filter_var($_POST['request_id'], FILTER_VALIDATE_INT);
-        $rejection_reason = trim($_POST['rejection_reason']);
+    // Mark notifications as read
+    $stmt_mark_all_read = $conn->prepare("UPDATE notifications SET is_read = TRUE WHERE user_id = ? AND type = 'borrow_status' AND is_read = FALSE");
+    $stmt_mark_all_read->execute([$user_id]);
 
-        if (!$request_id || empty($rejection_reason)) {
-            $error_message = "Invalid data. Rejection reason is required.";
-            header("Location: $redirect_url?error=" . urlencode($error_message));
-            exit;
-        }
+    $query = "SELECT br.record_id, b.title, b.author, br.checkout_date, br.due_date, br.return_date, br.is_returned, br.fine_amount, br.fine_status
+              FROM borrowing_records br
+              JOIN books b ON br.book_id = b.book_id
+              WHERE br.borrower_id = ? AND br.borrower_role = ?
+              ORDER BY br.checkout_date DESC";
+    $stmt = $conn->prepare($query);
+    $stmt->execute([$user_id, $role]);
+    $borrowing_records = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $stmt_info = $conn->prepare('SELECT br.borrower_id, br.borrower_role, b.title FROM "borrow_requests" br JOIN "books" b ON br.book_id = b.book_id WHERE br.request_id = ?');
-        $stmt_info->execute([$request_id]);
-        $info = $stmt_info->fetch(PDO::FETCH_ASSOC);
-
-        $stmt_reject = $conn->prepare("UPDATE \"borrow_requests\" SET status = 'Rejected', librarian_id = ?, action_date = CURRENT_TIMESTAMP, rejection_reason = ? WHERE request_id = ? AND status = 'Pending'");
-        if ($stmt_reject->execute([$librarian_user_id, $rejection_reason, $request_id]) && $stmt_reject->rowCount() > 0) {
-            if ($info) {
-                $message = "Your request for '" . htmlspecialchars($info['title']) . "' was rejected. Reason: " . htmlspecialchars($rejection_reason);
-                // FIX: Corrected the notification link based on the borrower role
-                $link = ($info['borrower_role'] === 'student') ? '/pages/student/my_library_record.php' : '/pages/teacher/my_library_record.php';
-                $type = "borrow_status";
-                $stmt_notify = $conn->prepare('INSERT INTO "notifications" (user_id, message, link, type) VALUES (?, ?, ?, ?)');
-                $stmt_notify->execute([$info['borrower_id'], $message, $link, $type]);
-            }
-            $success_message = "Request has been successfully rejected.";
-            header("Location: $redirect_url?success=" . urlencode($success_message));
-            exit;
-        } else {
-            $error_message = "Failed to reject request. It might have been already processed.";
-            header("Location: $redirect_url?error=" . urlencode($error_message));
-            exit;
-        }
-    } elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'approve') {
-        $request_id = filter_var($_GET['id'], FILTER_VALIDATE_INT);
-        if (!$request_id) {
-            $error_message = "Invalid request ID.";
-            header("Location: $redirect_url?error=" . urlencode($error_message));
-            exit;
-        }
-
-        $conn->beginTransaction();
-        
-        $stmt_req = $conn->prepare('SELECT * FROM "borrow_requests" WHERE "request_id" = ? FOR UPDATE');
-        $stmt_req->execute([$request_id]);
-        $request = $stmt_req->fetch(PDO::FETCH_ASSOC);
-
-        if (!$request) throw new Exception("This request does not exist.");
-        if ($request['status'] !== 'Pending') throw new Exception("This request has already been processed.");
-
-        $stmt_book = $conn->prepare('SELECT "title", "quantity_available" FROM "books" WHERE "book_id" = ? FOR UPDATE');
-        $stmt_book->execute([$request['book_id']]);
-        $book = $stmt_book->fetch(PDO::FETCH_ASSOC);
-
-        if (!$book || $book['quantity_available'] < 1) throw new Exception("Approval failed: This book is no longer available.");
-
-        $stmt_update_book = $conn->prepare('UPDATE "books" SET "quantity_available" = "quantity_available" - 1 WHERE "book_id" = ?');
-        $stmt_update_book->execute([$request['book_id']]);
-
-        // FIX: Use the 'requested_due_date' from the original request
-        $due_date = $request['requested_due_date'];
-        
-        $stmt_update_req = $conn->prepare("UPDATE \"borrow_requests\" SET status = 'Approved', librarian_id = ?, action_date = CURRENT_TIMESTAMP, due_date = ? WHERE request_id = ?");
-        $stmt_update_req->execute([$librarian_user_id, $due_date, $request_id]);
-
-        $stmt_insert_br = $conn->prepare('INSERT INTO "borrowing_records" (book_id, borrower_id, borrower_role, checkout_date, due_date) VALUES (?, ?, ?, CURRENT_DATE, ?)');
-        $stmt_insert_br->execute([$request['book_id'], $request['borrower_id'], $request['borrower_role'], $due_date]);
-        
-        $message = "Your request for '" . htmlspecialchars($book['title']) . "' has been approved. Please collect it from the library.";
-        $link = ($request['borrower_role'] === 'student') ? '/pages/student/my_library_record.php' : '/pages/teacher/my_library_record.php';
-        $type = "borrow_status";
-        $stmt_notify = $conn->prepare('INSERT INTO "notifications" (user_id, message, link, type) VALUES (?, ?, ?, ?)');
-        $stmt_notify->execute([$request['borrower_id'], $message, $link, $type]);
-
-        $conn->commit();
-        $success_message = "Request approved successfully. The book has been issued.";
-        header("Location: $redirect_url?success=" . urlencode($success_message));
-        exit;
-    }
-} catch (Exception $e) {
-    if ($conn->inTransaction()) {
-        $conn->rollBack();
-    }
-    $error_message = $e->getMessage();
-    header("Location: $redirect_url?error=" . urlencode($error_message));
-    exit;
+} catch (PDOException $e) {
+    $error_message = "Database Error: " . $e->getMessage();
+    error_log("Teacher My Library Record Error: " . $e->getMessage());
 }
 
-header("Location: $redirect_url");
-exit;
+$pageTitle = 'My Library Record';
+
+if (!is_ajax_request()) {
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title><?php echo htmlspecialchars($pageTitle); ?></title>
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800,900" rel="stylesheet">
+    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+</head>
+<body id="page-top">
+    <div id="wrapper">
+        <?php include '../../includes/sidebar.php'; ?>
+        <div id="content-wrapper" class="d-flex flex-column">
+            <div id="content">
+                <?php include_once '../../includes/header.php'; ?>
+<?php
+}
+?>
+                <div class="container-fluid">
+                    <h1 class="h3 mb-4 text-gray-800">My Library Borrowing Record</h1>
+
+                    <?php if (!empty($error_message)): ?>
+                        <div class="alert alert-danger"><?php echo htmlspecialchars($error_message); ?></div>
+                    <?php endif; ?>
+
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">Borrowing History</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                    <thead>
+                                        <tr>
+                                            <th>Book Title</th>
+                                            <th>Author</th>
+                                            <th>Checkout Date</th>
+                                            <th>Due Date</th>
+                                            <th>Return Date</th>
+                                            <th>Status</th>
+                                            <th>Fine</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if (!empty($borrowing_records)): foreach ($borrowing_records as $record): ?>
+                                                <tr>
+                                                    <td><?php echo htmlspecialchars($record['title']); ?></td>
+                                                    <td><?php echo htmlspecialchars($record['author']); ?></td>
+                                                    <td><?php echo date('d M, Y', strtotime($record['checkout_date'])); ?></td>
+                                                    <td><?php echo date('d M, Y', strtotime($record['due_date'])); ?></td>
+                                                    <td><?php echo $record['return_date'] ? date('d M, Y', strtotime($record['return_date'])) : '-'; ?></td>
+                                                    <td>
+                                                        <?php if ($record['is_returned']): ?>
+                                                            <span class="badge badge-success">Returned</span>
+                                                        <?php elseif (strtotime($record['due_date']) < time()): ?>
+                                                            <span class="badge badge-danger">Overdue</span>
+                                                        <?php else: ?>
+                                                            <span class="badge badge-warning">Borrowed</span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                    <td>
+                                                        <?php if ($record['fine_amount'] > 0): ?>
+                                                            <span class="badge badge-danger">₹<?php echo number_format($record['fine_amount'], 2); ?> (<?php echo htmlspecialchars($record['fine_status']); ?>)</span>
+                                                        <?php else: ?>
+                                                            No Fine
+                                                        <?php endif; ?>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach;
+                                        else: ?>
+                                            <tr>
+                                                <td colspan="7" class="text-center">No borrowing records found.</td>
+                                            </tr>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+<?php
+if (!is_ajax_request()) {
+?>
+            </div>
+            <?php include_once '../../includes/footer.php'; ?>
+        </div>
+    </div>
+    <?php include_once "../../includes/logout_modal.php" ?>
+    <script src="../../assets/vendor/jquery/jquery.min.js"></script>
+    <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
+    <script src="../../assets/js/sb-admin-2.min.js"></script>
+    <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
+    <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#dataTable').DataTable({
+                "order": [[2, "desc"]] // Order by Checkout Date Descending
+            });
+        });
+    </script>
+</body>
+
+</html>
+<?php
+}
 ?>
