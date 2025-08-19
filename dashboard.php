@@ -492,13 +492,11 @@ if ($userId && isset($conn)) {
                                                 <div class="col mr-2">
                                                     <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Monthly Salary</div>
                                                     <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo formatIndianCurrency($salary); ?></div>
-
                                                     <?php if ($totalAbsent > 0) : ?>
-                                                        <small class="d-block mt-1 absent-salary-cal">
+                                                        <small class="d-block absent-salary-cal">
                                                             (-<?php echo formatIndianCurrency($deduction_amount); ?> for <?php echo $totalAbsent; ?> absent day/s)
                                                         </small>
                                                     <?php endif; ?>
-
                                                 </div>
                                                 <div class="col-auto"><i class="fas fa-indian-rupee-sign fa-2x text-gray-300"></i></div>
                                             </div>

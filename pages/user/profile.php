@@ -91,7 +91,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                         $timings[$row['day_of_week']] = $row;
                     }
                 }
-                
+
                 if ($user_role === 'librarian') {
                     $query_timings = "SELECT * FROM librarian_timings WHERE librarian_id = ?";
                     $stmt_timings = $conn->prepare($query_timings);
@@ -124,33 +124,38 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
 
 if (!is_ajax_request()) {
 ?>
-<!DOCTYPE html>
-<html lang="en">
+    <!DOCTYPE html>
+    <html lang="en">
 
-<head>
-    <meta charset="utf-8">
-    <title>User Profile - School Management System</title>
-    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
-    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-    <link rel="stylesheet" href="../../assets/css/sidebar.css">
-    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-    <link rel="stylesheet" href="../../assets/css/profile.css">
-    <style>
-        .table-timings th { width: 30%; }
-        .table-timings td { width: 70%; }
-    </style>
-</head>
+    <head>
+        <meta charset="utf-8">
+        <title>User Profile - School Management System</title>
+        <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
+        <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+        <link rel="stylesheet" href="../../assets/css/sidebar.css">
+        <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+        <link rel="stylesheet" href="../../assets/css/profile.css">
+        <style>
+            .table-timings th {
+                width: 30%;
+            }
 
-<body id="page-top">
-    <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
-        <div id="content-wrapper" class="d-flex flex-column">
-            <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
-<?php
-}
-?>
+            .table-timings td {
+                width: 70%;
+            }
+        </style>
+    </head>
+
+    <body id="page-top">
+        <div id="wrapper">
+            <?php include '../../includes/sidebar.php'; ?>
+            <div id="content-wrapper" class="d-flex flex-column">
+                <div id="content">
+                    <?php include_once '../../includes/header.php'; ?>
+                <?php
+            }
+                ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">User Profile</h1>
@@ -242,7 +247,7 @@ if (!is_ajax_request()) {
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <?php if ($user_role === 'student'): ?>
                                 <div class="col-lg-6 mb-4">
                                     <div class="card shadow h-100">
@@ -354,48 +359,56 @@ if (!is_ajax_request()) {
                                                         <div class="col-sm-5 info-label">School:</div>
                                                         <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['school_name'] ?? 'N/A'); ?></div>
                                                     </div>
+                                                    <hr>
                                                 </div>
                                                 <div class="col-md-6">
                                                     <div class="row info-row">
                                                         <div class="col-sm-5 info-label">Qualification:</div>
                                                         <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['qualification'] ?? 'N/A'); ?></div>
                                                     </div>
+                                                    <hr>
                                                 </div>
                                                 <div class="col-md-6">
                                                     <div class="row info-row">
                                                         <div class="col-sm-5 info-label">Subject:</div>
                                                         <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['subject'] ?? 'N/A'); ?></div>
                                                     </div>
+                                                    <hr>
                                                 </div>
                                                 <div class="col-md-6">
                                                     <div class="row info-row">
                                                         <div class="col-sm-5 info-label">Languages Known:</div>
                                                         <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['language_known'] ?? 'N/A'); ?></div>
                                                     </div>
+                                                    <hr>
                                                 </div>
                                                 <div class="col-md-6">
                                                     <div class="row info-row">
                                                         <div class="col-sm-5 info-label">Experience:</div>
                                                         <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['experience'] ?? '0'); ?> years</div>
                                                     </div>
+                                                    <hr>
                                                 </div>
                                                 <div class="col-md-6">
                                                     <div class="row info-row">
                                                         <div class="col-sm-5 info-label">Assigned Standards:</div>
                                                         <div class="col-sm-7 info-value"><?php echo htmlspecialchars(str_replace(['{', '}'], '', $user_data['std'] ?? 'N/A')); ?></div>
                                                     </div>
+                                                    <hr>
                                                 </div>
                                                 <div class="col-md-6">
                                                     <div class="row info-row">
                                                         <div class="col-sm-5 info-label">Is Class Teacher:</div>
                                                         <div class="col-sm-7 info-value"><?php if ($user_data['class_teacher']): ?><span class="badge badge-success">Yes</span><small class="text-muted"> (Std: <?php echo htmlspecialchars($user_data['class_teacher_std']); ?>)</small><?php else: ?><span class="badge badge-secondary">No</span><?php endif; ?></div>
                                                     </div>
+                                                    <hr>
                                                 </div>
                                                 <div class="col-md-6">
                                                     <div class="row info-row">
                                                         <div class="col-sm-5 info-label">Salary:</div>
                                                         <div class="col-sm-7 info-value salary-display">₹<?php echo number_format($user_data['salary'] ?? 0, 2); ?></div>
                                                     </div>
+                                                    <hr>
                                                 </div>
                                                 <div class="col-md-6">
                                                     <div class="row info-row">
@@ -409,7 +422,7 @@ if (!is_ajax_request()) {
                                         </div>
                                     </div>
                                 </div>
-                                <div class="col-12 mb-4">
+                                <!-- <div class="col-12 mb-4">
                                     <div class="card shadow">
                                         <div class="card-header py-3">
                                             <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-clock"></i> Weekly Schedule</h6>
@@ -443,7 +456,7 @@ if (!is_ajax_request()) {
                                             <?php endif; ?>
                                         </div>
                                     </div>
-                                </div>
+                                </div> -->
                             <?php elseif ($user_role === 'librarian'): ?>
                                 <div class="col-lg-6 mb-4">
                                     <div class="card shadow h-100">
@@ -506,7 +519,7 @@ if (!is_ajax_request()) {
                                     </div>
                                 </div>
                             <?php elseif ($user_role === 'principal'): ?>
-                                <div class="col-lg-6 mb-4">
+                                <div class="col-lg-12 mb-4">
                                     <div class="card shadow h-100">
                                         <div class="card-header py-3">
                                             <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-briefcase"></i> Professional Information</h6>
@@ -572,7 +585,7 @@ if (!is_ajax_request()) {
                                         </div>
                                     </div>
                                 </div>
-                                <div class="col-lg-12 mb-4">
+                                <div class="col-lg-6 mb-4">
                                     <div class="card shadow h-100">
                                         <div class="card-header py-3">
                                             <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-school"></i> School Information</h6>
@@ -604,52 +617,52 @@ if (!is_ajax_request()) {
                         </div>
                     <?php endif; ?>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
-            </div>
-            <?php include_once '../../includes/footer.php'; ?>
-        </div>
-    </div>
-    <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
-    <?php include_once "../../includes/logout_modal.php" ?>
-    <div class="modal fade" id="changePasswordModal" tabindex="-1" role="dialog" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="changePasswordModalLabel">Change Password</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <?php
+                if (!is_ajax_request()) {
+                ?>
                 </div>
-                <div class="modal-body">
-                    <form id="changePasswordForm" action="process_password_change.php" method="POST">
-                        <div class="form-group"><label for="current_password">Current Password</label><input type="password" class="form-control" id="current_password" name="current_password" required></div>
-                        <div class="form-group"><label for="new_password">New Password</label><input type="password" class="form-control" id="new_password" name="new_password" required></div>
-                        <div class="form-group"><label for="confirm_password">Confirm New Password</label><input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
-                            <div id="password_match_error" class="text-danger mt-2" style="display: none;">Passwords do not match.</div>
-                        </div>
-                        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button><button type="submit" class="btn btn-primary">Save changes</button></div>
-                    </form>
-                </div>
+                <?php include_once '../../includes/footer.php'; ?>
             </div>
         </div>
-    </div>
-    <script src="../../assets/vendor/jquery/jquery.min.js"></script>
-    <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="../../assets/js/sb-admin-2.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            $('#changePasswordForm').on('submit', function(e) {
-                if ($('#new_password').val() !== $('#confirm_password').val()) {
-                    e.preventDefault();
-                    $('#password_match_error').show();
-                } else {
-                    $('#password_match_error').hide();
-                }
+        <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
+        <?php include_once "../../includes/logout_modal.php" ?>
+        <div class="modal fade" id="changePasswordModal" tabindex="-1" role="dialog" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="changePasswordModalLabel">Change Password</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="changePasswordForm" action="process_password_change.php" method="POST">
+                            <div class="form-group"><label for="current_password">Current Password</label><input type="password" class="form-control" id="current_password" name="current_password" required></div>
+                            <div class="form-group"><label for="new_password">New Password</label><input type="password" class="form-control" id="new_password" name="new_password" required></div>
+                            <div class="form-group"><label for="confirm_password">Confirm New Password</label><input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                                <div id="password_match_error" class="text-danger mt-2" style="display: none;">Passwords do not match.</div>
+                            </div>
+                            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button><button type="submit" class="btn btn-primary">Save changes</button></div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script src="../../assets/vendor/jquery/jquery.min.js"></script>
+        <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+        <script src="../../assets/js/sb-admin-2.min.js"></script>
+        <script>
+            $(document).ready(function() {
+                $('#changePasswordForm').on('submit', function(e) {
+                    if ($('#new_password').val() !== $('#confirm_password').val()) {
+                        e.preventDefault();
+                        $('#password_match_error').show();
+                    } else {
+                        $('#password_match_error').hide();
+                    }
+                });
             });
-        });
-    </script>
-</body>
+        </script>
+    </body>
 
-</html>
+    </html>
 <?php
-}
+                }
 ?>
