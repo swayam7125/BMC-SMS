@@ -20,7 +20,8 @@ if ($school_id <= 0) {
     exit;
 }
 
-function getWebAccessibleImagePath($db_path) {
+function getWebAccessibleImagePath($db_path)
+{
     if (empty($db_path)) {
         return null;
     }
@@ -36,18 +37,20 @@ function getWebAccessibleImagePath($db_path) {
     if (file_exists($physical_path_to_check) && is_file($physical_path_to_check)) {
         return htmlspecialchars($web_path_to_return);
     }
-    
+
     return null;
 }
 
-function getDefaultImagePath($type = 'school') {
+function getDefaultImagePath($type = 'school')
+{
     return BASE_WEB_PATH . 'assets/images/' . ($type === 'school' ? 'default-school.png' : 'unisex.png');
 }
 
-function cleanPgArray($pg_array_string) {
+function cleanPgArray($pg_array_string)
+{
     $trimmed_string = trim($pg_array_string, '{}');
     $items = preg_split('/,(?=(?:(?:[^"]*"){2})*[^"]*$)/', $trimmed_string);
-    $cleaned_items = array_map(function($item) {
+    $cleaned_items = array_map(function ($item) {
         return trim($item, ' "');
     }, $items);
     return implode(', ', $cleaned_items);
@@ -82,6 +85,7 @@ $default_principal_photo = getDefaultImagePath('principal');
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>View School - <?php echo htmlspecialchars($school['school_name']); ?></title>
@@ -92,6 +96,7 @@ $default_principal_photo = getDefaultImagePath('principal');
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -114,10 +119,10 @@ $default_principal_photo = getDefaultImagePath('principal');
                                 </div>
                                 <div class="card-body text-center">
                                     <div class="photo-container">
-                                        <img src="<?php echo $school_logo_web_path ?? $default_school_logo; ?>" 
-                                             alt="School Logo" 
-                                             class="view-image view-logo" 
-                                             onerror="this.onerror=null; this.src='<?php echo $default_school_logo; ?>';">
+                                        <img src="<?php echo $school_logo_web_path ?? $default_school_logo; ?>"
+                                            alt="School Logo"
+                                            class="view-image view-logo"
+                                            onerror="this.onerror=null; this.src='<?php echo $default_school_logo; ?>';">
                                     </div>
                                     <div class="text-center">
                                         <small class="text-muted"><?php echo $school_logo_web_path ? 'School Logo' : 'Default Logo'; ?></small>
@@ -158,7 +163,7 @@ $default_principal_photo = getDefaultImagePath('principal');
                                 </div>
                             </div>
                         </div>
-                        <div class="col-lg-6 mb-4">
+                        <div class="col-lg-12 mb-4">
                             <div class="card shadow h-100">
                                 <div class="card-header py-3">
                                     <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-university"></i> Academic Details</h6>
@@ -183,41 +188,27 @@ $default_principal_photo = getDefaultImagePath('principal');
                                 </div>
                             </div>
                         </div>
-                        <div class="col-lg-6 mb-4">
+
+                        <div class="col-lg-8 mb-4">
                             <div class="card shadow h-100">
                                 <div class="card-header py-3">
-                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-user-tie"></i> Principal Information</h6>
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-info-circle"></i> Principal Information</h6>
                                 </div>
-                                <div class="card-body text-center d-flex flex-column justify-content-center">
+                                <div class="card-body">
                                     <?php if (!empty($school['principal_user_id'])): ?>
-                                        <div class="photo-container">
-                                            <img src="<?php echo $principal_photo_web_path ?? $default_principal_photo; ?>" 
-                                                 alt="Principal Photo" 
-                                                 class="view-image view-photo" 
-                                                 onerror="this.onerror=null; this.src='<?php echo $default_principal_photo; ?>';">
-                                        </div>
-                                        <h5 class="font-weight-bold text-gray-800 mt-2">
-                                            <a href="../principal/view.php?id=<?php echo $school['principal_user_id']; ?>">
-                                                <?php echo htmlspecialchars($school['principal_name']); ?>
-                                            </a>
-                                        </h5>
-                                        <p class="text-muted mb-0">Assigned Principal</p>
-                                        <hr>
+
                                         <div class="row info-row">
                                             <div class="col-sm-5 font-weight-bold">Email:</div>
                                             <div class="col-sm-7"><?php echo htmlspecialchars($school['principal_email'] ?? 'N/A'); ?></div>
                                         </div>
-                                        <hr>
                                         <div class="row info-row">
                                             <div class="col-sm-5 font-weight-bold">Phone:</div>
                                             <div class="col-sm-7"><?php echo htmlspecialchars($school['principal_phone'] ?? 'N/A'); ?></div>
                                         </div>
-                                        <hr>
                                         <div class="row info-row">
                                             <div class="col-sm-5 font-weight-bold">Qualification:</div>
                                             <div class="col-sm-7"><?php echo htmlspecialchars($school['principal_qualification'] ?? 'N/A'); ?></div>
                                         </div>
-                                        <hr>
                                         <div class="row info-row">
                                             <div class="col-sm-5 font-weight-bold">Batch:</div>
                                             <div class="col-sm-7">
@@ -226,12 +217,10 @@ $default_principal_photo = getDefaultImagePath('principal');
                                                 </span>
                                             </div>
                                         </div>
-                                        <hr>
                                         <div class="row info-row">
                                             <div class="col-sm-5 font-weight-bold">Salary:</div>
                                             <div class="col-sm-7 salary-display">₹<?php echo number_format($school['principal_salary'] ?? 0, 2); ?></div>
                                         </div>
-                                        <hr>
                                         <div class="row info-row">
                                             <div class="col-sm-5 font-weight-bold">Address:</div>
                                             <div class="col-sm-7 info-value"><?php echo nl2br(htmlspecialchars($school['principal_address'] ?? 'N/A')); ?></div>
@@ -245,15 +234,34 @@ $default_principal_photo = getDefaultImagePath('principal');
                                 </div>
                             </div>
                         </div>
+                        <div class="col-lg-4 mb-4">
+                            <div class="card shadow h-100">
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-image"></i> Principal Image</h6>
+                                </div>
+                                
+                                <div class="card-body text-center">
+                                    <img src="<?php echo $principal_photo_web_path ?? $default_principal_photo; ?>"
+                                        alt="Principal Photo"
+                                        class="view-image view-photo"
+                                        onerror="this.onerror=null; this.src='<?php echo $default_principal_photo; ?>';" />
+                                    <h4 class="mt-3 font-weight-bold text-gray-800"><a href="../principal/view.php?id=<?php echo $school['principal_user_id']; ?>">
+                                            <?php echo htmlspecialchars($school['principal_name']); ?>
+                                        </a></h4>
+                                    <p class="text-muted">Assigned Principal</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
-    <?php include_once "../../includes/logout_modal.php"?>
+    <?php include_once "../../includes/logout_modal.php" ?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
+
 </html>
