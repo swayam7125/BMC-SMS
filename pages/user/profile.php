@@ -252,29 +252,32 @@ if (!is_ajax_request()) {
                                 <div class="col-lg-6 mb-4">
                                     <div class="card shadow h-100">
                                         <div class="card-header py-3">
-                                            <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-briefcase mr-2"></i>Professional Information</h6>
+                                            <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-briefcase mr-2"></i>Class Information</h6>
                                         </div>
                                         <div class="card-body">
                                             <div class="row">
-                                                <div class="col-md-6">
+                                                <div class="col-md-12">
                                                     <div class="row info-row">
                                                         <div class="col-sm-5 info-label">School:</div>
                                                         <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['school_name'] ?? 'N/A'); ?></div>
                                                     </div>
+                                                    <hr>
                                                 </div>
-                                                <div class="col-md-6">
+                                                <div class="col-md-12">
                                                     <div class="row info-row">
                                                         <div class="col-sm-5 info-label">Standard:</div>
                                                         <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['std'] ?? 'N/A'); ?></div>
                                                     </div>
+                                                    <hr>
                                                 </div>
-                                                <div class="col-md-6">
+                                                <div class="col-md-12">
                                                     <div class="row info-row">
                                                         <div class="col-sm-5 info-label">Roll No:</div>
                                                         <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['rollno'] ?? 'N/A'); ?></div>
                                                     </div>
+                                                    <hr>
                                                 </div>
-                                                <div class="col-md-6">
+                                                <div class="col-md-12">
                                                     <div class="row info-row">
                                                         <div class="col-sm-5 info-label">Academic Year:</div>
                                                         <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['academic_year'] ?? 'N/A'); ?></div>
