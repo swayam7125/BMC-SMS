@@ -18,10 +18,14 @@ $availableStandards = [];
 $selected_std = null;
 $timetable_grid = [];
 $total_periods = 0;
-$teacher_timings = []; // <-- Variable to hold the teacher's personal schedule
+$teacher_timings = [];
+
+// NEW VARIABLES FOR TEACHER ROLE
+$is_class_teacher = false;
+$class_teacher_std = null;
+$teacher_id = null;
 
 try {
-    // --- START: MARK AS READ LOGIC ---
     if (isset($_GET['notif_id']) && is_numeric($_GET['notif_id'])) {
         $notification_id = $_GET['notif_id'];
         $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = TRUE WHERE id = ? AND user_id = ?");
@@ -35,20 +39,25 @@ try {
             if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $schoolId = $row['school_id'];
                 $studentStd = $row['std'];
-                $selected_std = $studentStd; // For student, standard is fixed
+                $selected_std = $studentStd;
             }
             break;
+
         case 'teacher':
-            // --- START: ADDED LOGIC TO FETCH THE TEACHER'S PERSONAL WEEKLY SCHEDULE ---
+            $stmt = $conn->prepare("SELECT school_id, class_teacher, class_teacher_std FROM teacher WHERE id = ?");
+            $stmt->execute([$userId]);
+            if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $schoolId = $row['school_id'];
+                $is_class_teacher = (bool)$row['class_teacher'];
+                $class_teacher_std = $row['class_teacher_std'];
+                $teacher_id = $userId;
+            }
             $query_timings = "SELECT * FROM teacher_timings WHERE teacher_id = ?";
             $stmt_timings = $conn->prepare($query_timings);
             $stmt_timings->execute([$userId]);
-            while ($row = $stmt_timings->fetch(PDO::FETCH_ASSOC)) {
-                $teacher_timings[$row['day_of_week']] = $row;
+            while ($row_timing = $stmt_timings->fetch(PDO::FETCH_ASSOC)) {
+                $teacher_timings[$row_timing['day_of_week']] = $row_timing;
             }
-            // --- END: ADDED LOGIC ---
-
-            // Fallthrough to principal logic is intentional as they share functionality
         case 'principal':
             $tableName = ($role === 'teacher') ? 'teacher' : 'principal';
             $stmt = $conn->prepare("SELECT school_id FROM $tableName WHERE id = ?");
@@ -69,20 +78,26 @@ try {
                 ";
                 $standards_stmt = $conn->prepare($sql_standards);
                 $standards_stmt->execute([$schoolId]);
-
                 while ($row = $standards_stmt->fetch(PDO::FETCH_ASSOC)) {
                     $availableStandards[] = $row['std'];
                 }
             }
-            $selected_std = $_GET['standard'] ?? null;
+            
+            if (isset($_GET['standard'])) {
+                $selected_std = $_GET['standard'];
+            } elseif ($role === 'teacher' && $is_class_teacher && $class_teacher_std) {
+                $selected_std = $class_teacher_std;
+            } else {
+                $selected_std = $_GET['standard'] ?? null;
+            }
+
             break;
     }
 
-    // --- FETCH TIMETABLE DATA ---
     if ($schoolId && $selected_std) {
         $query = "
             SELECT 
-                stt.day_of_week, stt.period_number, stt.subject_name, stt.start_time, stt.end_time, t.teacher_name
+                stt.day_of_week, stt.period_number, stt.subject_name, stt.start_time, stt.end_time, t.teacher_name, stt.teacher_id
             FROM school_timetable stt
             JOIN teacher t ON stt.teacher_id = t.id
             WHERE stt.school_id = ? AND stt.standard = ?
@@ -112,67 +127,65 @@ $pageTitle = 'View Timetable';
 
 if (!is_ajax_request()) {
 ?>
-    <!DOCTYPE html>
-    <html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 
-    <head>
-        <meta charset="utf-8">
-        <title><?php echo htmlspecialchars($pageTitle); ?></title>
+<head>
+    <meta charset="utf-8">
+    <title><?php echo htmlspecialchars($pageTitle); ?></title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <style>
+        .timetable-table th,
+        .timetable-table td {
+            vertical-align: middle;
+            text-align: center;
+            min-width: 150px;
+        }
 
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-        <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
-        <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-        <link rel="stylesheet" href="../../assets/css/sidebar.css">
-        <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+        .timetable-table .period-cell {
+            font-weight: bold;
+            background-color: #f8f9fc;
+        }
 
-        <style>
-            .timetable-table th,
-            .timetable-table td {
-                vertical-align: middle;
-                text-align: center;
-                min-width: 150px;
-            }
+        .timetable-table .lecture-block {
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #e9f5ff;
+            border: 1px solid #bde0ff;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
 
-            .timetable-table .period-cell {
-                font-weight: bold;
-                background-color: #f8f9fc;
-            }
+        .timetable-table .lecture-block .subject {
+            font-weight: bold;
+            color: #0056b3;
+        }
 
-            .timetable-table .lecture-block {
-                padding: 10px;
-                border-radius: 5px;
-                background-color: #e9f5ff;
-                border: 1px solid #bde0ff;
-                min-height: 80px;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-            }
+        .table-timings th {
+            width: 30%;
+        }
 
-            .timetable-table .lecture-block .subject {
-                font-weight: bold;
-                color: #0056b3;
-            }
+        .table-timings td {
+            width: 70%;
+        }
+    </style>
+</head>
 
-            .table-timings th {
-                width: 30%;
-            }
-
-            .table-timings td {
-                width: 70%;
-            }
-        </style>
-    </head>
-
-    <body id="page-top">
-        <div id="wrapper">
-            <?php include '../../includes/sidebar.php'; ?>
-            <div id="content-wrapper" class="d-flex flex-column">
-                <div id="content">
-                    <?php include '../../includes/header.php'; ?>
+<body id="page-top">
+    <div id="wrapper">
+        <?php include '../../includes/sidebar.php'; ?>
+        <div id="content-wrapper" class="d-flex flex-column">
+            <div id="content">
+                <?php include '../../includes/header.php'; ?>
                 <?php
-            }
+                }
                 ?>
                 <div class="container-fluid">
                     <?php if (in_array($role, ['teacher', 'principal'])): ?>
@@ -214,22 +227,36 @@ if (!is_ajax_request()) {
                                             <?php for ($p = 1; $p <= $total_periods; $p++): ?>
                                                 <tr>
                                                     <td class="period-cell">Period <?php echo $p; ?></td>
-                                                    <?php foreach ($days_of_week as $day):
-                                                        $entry = $timetable_grid[$p][$day];
-                                                    ?>
+                                                    <?php foreach ($days_of_week as $day): ?>
                                                         <td>
                                                             <?php if (isset($timetable_grid[$p][$day])):
                                                                 $lecture = $timetable_grid[$p][$day];
-                                                            ?>
-                                                                <div class="lecture-block">
-                                                                    <div class="subject">
-                                                                        <?php echo htmlspecialchars($lecture['subject_name']); ?></div>
-                                                                    <div class="teacher small text-muted">
-                                                                        <?php echo htmlspecialchars($lecture['teacher_name']); ?></div>
-                                                                    <div class="time small font-italic mt-1">
-                                                                        <?php echo date('h:i A', strtotime($lecture['start_time'])) . ' - ' . date('h:i A', strtotime($lecture['end_time'])); ?>
+
+                                                                if ($role === 'teacher'):
+                                                                    if (($is_class_teacher && $selected_std == $class_teacher_std) || ($lecture['teacher_id'] == $teacher_id)): ?>
+                                                                        <div class="lecture-block">
+                                                                            <div class="subject">
+                                                                                <?php echo htmlspecialchars($lecture['subject_name']); ?></div>
+                                                                            <div class="teacher small text-muted">
+                                                                                <?php echo htmlspecialchars($lecture['teacher_name']); ?></div>
+                                                                            <div class="time small font-italic mt-1">
+                                                                                <?php echo date('h:i A', strtotime($lecture['start_time'])) . ' - ' . date('h:i A', strtotime($lecture['end_time'])); ?>
+                                                                            </div>
+                                                                        </div>
+                                                                    <?php else: ?>
+                                                                        -
+                                                                    <?php endif; ?>
+                                                                <?php else: ?>
+                                                                    <div class="lecture-block">
+                                                                        <div class="subject">
+                                                                            <?php echo htmlspecialchars($lecture['subject_name']); ?></div>
+                                                                        <div class="teacher small text-muted">
+                                                                            <?php echo htmlspecialchars($lecture['teacher_name']); ?></div>
+                                                                        <div class="time small font-italic mt-1">
+                                                                            <?php echo date('h:i A', strtotime($lecture['start_time'])) . ' - ' . date('h:i A', strtotime($lecture['end_time'])); ?>
+                                                                        </div>
                                                                     </div>
-                                                                </div>
+                                                                <?php endif; ?>
                                                             <?php else: ?>
                                                                 -
                                                             <?php endif; ?>
@@ -242,9 +269,9 @@ if (!is_ajax_request()) {
                                 </div>
                             </div>
                         </div>
-                    <?php elseif ($selected_std): ?>
-                        <div class="alert alert-warning">The timetable has not been set for Standard <?php echo htmlspecialchars($selected_std); ?> yet.</div>
-                    <?php elseif ($role !== 'student'): ?>
+                    <?php endif; ?>
+                    
+                    <?php if ($role === 'teacher' && !isset($_GET['standard'])): ?>
                         <div class="alert alert-info">Please select a standard to view its class timetable.</div>
                         <h1 class="h3 mb-4 text-gray-800">Timetable</h1>
                         <div class="card shadow mb-4">
@@ -263,7 +290,7 @@ if (!is_ajax_request()) {
                                                 <th><?php echo $day; ?></th>
                                                 <td>
                                                     <?php if ($day_timing && !empty($day_timing['is_closed'])): ?>
-                                                        <span class="badge badge-secondary">Closed</span>
+                                                        <span class="badge badge-danger">Closed</span>
                                                     <?php elseif ($day_timing && !empty($day_timing['opens_at'])): ?>
                                                         <?php echo date("g:i A", strtotime($day_timing['opens_at'])); ?> - <?php echo date("g:i A", strtotime($day_timing['closes_at'])); ?>
                                                     <?php else: ?>
@@ -276,7 +303,9 @@ if (!is_ajax_request()) {
                                 </table>
                             </div>
                         </div>
-                    <?php else: ?>
+                    <?php elseif ($role === 'principal' && !$selected_std): ?>
+                         <div class="alert alert-info">Please select a standard to view its class timetable.</div>
+                    <?php elseif (!$selected_std): ?>
                         <div class="alert alert-warning">The timetable has not been set for your class yet.</div>
                     <?php endif; ?>
                 </div>
@@ -296,7 +325,7 @@ if (!is_ajax_request()) {
         <script src="../../assets/js/custom_student_scripts.js"></script>
     </body>
 
-    </html>
+</html>
 <?php
                 }
 ?>
