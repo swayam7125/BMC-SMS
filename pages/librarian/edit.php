@@ -63,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $salary = trim($_POST['salary']);
     $posted_timings = $_POST['timings'] ?? [];
     $batch = trim($_POST['batch']);
-    
+
     $image_path_for_db = $original_image_path;
 
     // --- Handle Photo Upload ---
@@ -76,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         $new_filename = 'librarian_' . $librarian_id . '_' . uniqid() . '.' . $file_ext;
         $destination = $upload_dir . $new_filename;
-        
+
         if (move_uploaded_file($file['tmp_name'], $destination)) {
             $image_path_for_db = '/BMC-SMS/pages/librarian/uploads/' . $new_filename;
             if (!empty($original_image_path) && file_exists($_SERVER['DOCUMENT_ROOT'] . $original_image_path)) {
@@ -100,8 +100,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sql_update_librarian = "UPDATE librarian SET librarian_image = ?, librarian_name = ?, phone = ?, dob = ?, gender = ?, blood_group = ?, address = ?, email = ?, qualification = ?, salary = ?, batch = ? WHERE id = ?";
             $stmt_update = $conn->prepare($sql_update_librarian);
             $stmt_update->execute([
-                $image_path_for_db, $librarian_name, $phone, $dob, $gender, 
-                $blood_group, $address, $new_email, $qualification, $salary, $batch, $librarian_id
+                $image_path_for_db,
+                $librarian_name,
+                $phone,
+                $dob,
+                $gender,
+                $blood_group,
+                $address,
+                $new_email,
+                $qualification,
+                $salary,
+                $batch,
+                $librarian_id
             ]);
 
             $sql_upsert_timing = "INSERT INTO librarian_timings (librarian_id, day_of_week, opens_at, closes_at, is_closed) 
@@ -111,7 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt_timing_upsert = $conn->prepare($sql_upsert_timing);
             foreach ($posted_timings as $day => $details) {
                 $is_closed_db = isset($details['is_closed']) ? 1 : 0;
-                
+
                 // --- UPDATE: Convert 12-hour AM/PM time to 24-hour format for DB ---
                 $opens_at = null;
                 if (!$is_closed_db && !empty($details['opens_at']) && !empty($details['opens_at_ampm'])) {
@@ -134,7 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $conn->rollBack();
             }
             if ($e->getCode() == 23505 && strpos($e->getMessage(), 'unique_librarian_school_batch') !== false) {
-                 $errors[] = "A librarian is already assigned to this school for the selected batch.";
+                $errors[] = "A librarian is already assigned to this school for the selected batch.";
             } else {
                 $errors[] = "Database update failed: " . $e->getMessage();
             }
@@ -147,6 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Edit Librarian - School Management System</title>
@@ -156,6 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -177,11 +189,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <form method="POST" enctype="multipart/form-data">
                                 <div class="row">
                                     <div class="col-md-3 text-center">
-                                        <img src="<?php echo htmlspecialchars(!empty($librarian['librarian_image'] ?? null) && file_exists($_SERVER['DOCUMENT_ROOT'] . $librarian['librarian_image']) ? $librarian['librarian_image'] : '../../assets/images/unisex.png'); ?>" alt="Librarian Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
-                                        <div class="form-group">
-                                            <label for="librarian_image" class="small btn btn-sm btn-info"><i class="fas fa-upload fa-sm"></i> Change Photo</label>
-                                            <input type="file" class="d-none" id="librarian_image" name="librarian_image" onchange="document.getElementById('imagePreview').src = window.URL.createObjectURL(this.files[0])">
-                                        </div>
+                                        <img src="<?php echo htmlspecialchars(!empty($librarian['librarian_image'] ?? null) && file_exists($_SERVER['DOCUMENT_ROOT'] . $librarian['librarian_image']) ? $librarian['librarian_image'] : '../../assets/images/unisex.png'); ?>" alt="Librarian Photo" id="imagePreview" class="img-thumbnail mb-2 mt-3 h-50 w-50" style="width: 150px; height: 150px; object-fit: cover;">
+                                        <div class="form-group mt-3"><label for="librarian_image" class="small btn btn-sm btn-primary"><i class="fas fa-upload fa-sm"></i> Change Photo</label><input type="file" class="d-none" id="librarian_image" name="librarian_image" onchange="document.getElementById('imagePreview').src = window.URL.createObjectURL(this.files[0])"></div>
                                     </div>
                                     <div class="col-md-9">
                                         <div class="row">
@@ -201,10 +210,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                             <option value="Others" <?php echo (($librarian['gender'] ?? '') == 'Others') ? 'selected' : ''; ?>>Others</option>
                                         </select></div>
                                     <div class="col-md-4 form-group"><label for="blood_group">Blood Group *</label><select class="form-control" id="blood_group" name="blood_group" required><?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-                                        foreach ($bg_options as $bg) {
-                                            $selected = (($librarian['blood_group'] ?? '') == $bg) ? 'selected' : '';
-                                            echo "<option value='{$bg}' {$selected}>{$bg}</option>";
-                                        } ?></select></div>
+                                                                                                                                                                                                foreach ($bg_options as $bg) {
+                                                                                                                                                                                                    $selected = (($librarian['blood_group'] ?? '') == $bg) ? 'selected' : '';
+                                                                                                                                                                                                    echo "<option value='{$bg}' {$selected}>{$bg}</option>";
+                                                                                                                                                                                                } ?></select></div>
                                     <div class="col-md-4 form-group">
                                         <label for="batch">Batch *</label>
                                         <select class="form-control" id="batch" name="batch" required>
@@ -217,7 +226,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <div class="col-md-4 form-group"><label for="address">Address</label><textarea class="form-control" id="address" name="address" rows="1"><?php echo htmlspecialchars($librarian['address'] ?? ''); ?></textarea></div>
                                 </div>
                                 <hr>
-                                
+
                                 <h6 class="font-weight-bold text-primary mb-3">Weekly Timings</h6>
                                 <div id="timings-schedule">
                                     <?php
@@ -281,7 +290,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <?php include_once "../../includes/logout_modal.php" ?>
-    
+
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
@@ -296,9 +305,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     timeInputs.prop('disabled', false);
                 }
             });
-             // Trigger change on page load to set initial state
+            // Trigger change on page load to set initial state
             $('.closed-checkbox').trigger('change');
         });
     </script>
 </body>
+
 </html>

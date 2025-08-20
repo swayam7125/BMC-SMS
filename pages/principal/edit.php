@@ -7,21 +7,22 @@ if (!defined('BASE_URL')) {
     define('BASE_URL', '/BMC-SMS/');
 }
 
-function getWebAccessibleImagePath($db_image_path) {
+function getWebAccessibleImagePath($db_image_path)
+{
     if (empty($db_image_path)) {
         return null;
     }
-    
+
     // The path from the database is already the correct full web path.
-    $full_web_path = $db_image_path; 
-    
+    $full_web_path = $db_image_path;
+
     // Construct the physical path to check if the file actually exists.
     $physical_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $full_web_path;
 
     if (file_exists($physical_path) && is_file($physical_path)) {
         return htmlspecialchars($full_web_path);
     }
-    
+
     return null; // Return null if the file doesn't exist.
 }
 
@@ -75,7 +76,7 @@ try {
         $school_id = intval($_POST['school_id']);
         $new_batch = $_POST['batch'];
         $posted_timings = $_POST['timings'] ?? [];
-        
+
         $image_path_for_db = $original_image_path;
         $new_image_was_uploaded = false; // Flag to check if a new image was uploaded
 
@@ -93,7 +94,7 @@ try {
                 if (move_uploaded_file($file['tmp_name'], $destination)) {
                     // If the file moves successfully, update the path and set our flag
                     $image_path_for_db = BASE_URL . $target_dir_relative . $new_filename;
-                    $new_image_was_uploaded = true; 
+                    $new_image_was_uploaded = true;
                 } else {
                     $errors[] = "Failed to move uploaded file.";
                 }
@@ -130,7 +131,7 @@ try {
                 $details = $posted_timings[$day] ?? [];
                 $is_closed_bool = isset($details['is_closed']);
                 $is_closed_for_db = $is_closed_bool ? 1 : 0;
-                
+
                 $opens_at = null;
                 if (!$is_closed_bool && !empty($details['opens_at']) && !empty($details['opens_at_ampm'])) {
                     $opens_at = date("h:i A", strtotime($details['opens_at'] . ' ' . $details['opens_at_ampm']));
@@ -140,7 +141,7 @@ try {
                 if (!$is_closed_bool && !empty($details['closes_at']) && !empty($details['closes_at_ampm'])) {
                     $closes_at = date("h:i A", strtotime($details['closes_at'] . ' ' . $details['closes_at_ampm']));
                 }
-                
+
                 $stmt_timing_upsert->execute([$principal_id, $day, $opens_at, $closes_at, $is_closed_for_db]);
             }
 
@@ -151,7 +152,7 @@ try {
                 $encrypted_image_path = encrypt_id($image_path_for_db);
                 setcookie('encrypted_profile_image', $encrypted_image_path, time() + 86400, "/");
             }
-            
+
             header("Location: principal_list.php?success=Principal updated successfully.");
             exit;
         }
@@ -163,6 +164,7 @@ try {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Edit Principal - School Management System</title>
@@ -172,6 +174,7 @@ try {
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -200,8 +203,8 @@ try {
                                         $default_image_path = BASE_URL . 'assets/images/unisex.png';
                                         $current_image_web_path = getWebAccessibleImagePath($principal['principal_image']) ?? $default_image_path;
                                         ?>
-                                        <img src="<?php echo htmlspecialchars($current_image_web_path); ?>" alt="Principal Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;" onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($default_image_path); ?>';">
-                                        <div class="form-group"><label for="principal_image" class="small btn btn-sm btn-info"><i class="fas fa-upload fa-sm"></i> Change Photo</label><input type="file" class="d-none" id="principal_image" name="principal_image" onchange="document.getElementById('imagePreview').src = window.URL.createObjectURL(this.files[0])"></div>
+                                        <img src="<?php echo htmlspecialchars($current_image_web_path); ?>" alt="Principal Photo" id="imagePreview" class="img-thumbnail mb-2 mt-3 h-50 w-50" style="width: 150px; height: 150px; object-fit: cover;" onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($default_image_path); ?>';">
+                                        <div class="form-group mt-3"><label for="principal_image" class="small btn btn-sm btn-primary"><i class="fas fa-upload fa-sm"></i> Change Photo</label><input type="file" class="d-none" id="principal_image" name="principal_image" onchange="document.getElementById('imagePreview').src = window.URL.createObjectURL(this.files[0])"></div>
                                     </div>
                                     <div class="col-md-9">
                                         <div class="form-row">
@@ -231,12 +234,12 @@ try {
                                 <hr>
                                 <h6 class="font-weight-bold text-primary mb-3">Weekly Timings</h6>
                                 <div id="timings-schedule">
-                                    <?php 
+                                    <?php
                                     $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
                                     foreach ($days as $day):
                                         $day_timing = $timings[$day] ?? [];
                                         $is_closed = !empty($day_timing['is_closed']);
-                                        
+
                                         if (!empty($day_timing['opens_at'])) {
                                             $opens_at_time = date("h:i", strtotime($day_timing['opens_at']));
                                             $opens_at_ampm = date("A", strtotime($day_timing['opens_at']));
@@ -244,7 +247,7 @@ try {
                                             $opens_at_time = '10:00';
                                             $opens_at_ampm = 'AM';
                                         }
-                                    
+
                                         if (!empty($day_timing['closes_at'])) {
                                             $closes_at_time = date("h:i", strtotime($day_timing['closes_at']));
                                             $closes_at_ampm = date("A", strtotime($day_timing['closes_at']));
@@ -252,7 +255,7 @@ try {
                                             $closes_at_time = '06:00';
                                             $closes_at_ampm = 'PM';
                                         }
-                                        ?>
+                                    ?>
                                         <div class="form-row align-items-center mb-2 timing-row">
                                             <div class="col-md-2"><label class="mb-0"><?php echo $day; ?></label></div>
                                             <div class="col-md-2">
@@ -296,14 +299,14 @@ try {
                                         </select></div>
                                 </div>
                                 <div class="form-row">
-                                    <div class="form-group col-md-6"><label for="blood_group">Blood Group</label><select class="form-control" id="blood_group" name="blood_group"><?php 
-                                        $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-                                        echo "<option value=''>-- Select Blood Group --</option>";
-                                        foreach ($bg_options as $bg) {
-                                            $selected = ($principal['blood_group'] == $bg) ? 'selected' : '';
-                                            echo "<option value='{$bg}' {$selected}>" . strtoupper($bg) . "</option>";
-                                        } 
-                                        ?></select></div>
+                                    <div class="form-group col-md-6"><label for="blood_group">Blood Group</label><select class="form-control" id="blood_group" name="blood_group"><?php
+                                                                                                                                                                                    $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+                                                                                                                                                                                    echo "<option value=''>-- Select Blood Group --</option>";
+                                                                                                                                                                                    foreach ($bg_options as $bg) {
+                                                                                                                                                                                        $selected = ($principal['blood_group'] == $bg) ? 'selected' : '';
+                                                                                                                                                                                        echo "<option value='{$bg}' {$selected}>" . strtoupper($bg) . "</option>";
+                                                                                                                                                                                    }
+                                                                                                                                                                                    ?></select></div>
                                     <div class="form-group col-md-6"><label for="qualification">Qualification</label><input type="text" class="form-control" id="qualification" name="qualification" value="<?php echo htmlspecialchars($principal['qualification']); ?>"></div>
                                 </div>
                                 <div class="form-row">
@@ -331,6 +334,7 @@ try {
             document.querySelectorAll('.timing-row .custom-control-input').forEach(function(checkbox) {
                 const row = checkbox.closest('.timing-row');
                 const timeInputs = row.querySelectorAll('.time-input, .ampm-select');
+
                 function toggle() {
                     timeInputs.forEach(input => input.disabled = checkbox.checked);
                 }
@@ -340,4 +344,5 @@ try {
         });
     </script>
 </body>
+
 </html>

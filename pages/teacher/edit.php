@@ -63,10 +63,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $subject = trim($_POST['subject'] ?? '');
     $language_known = trim($_POST['language_known'] ?? '');
     $salary = trim($_POST['salary'] ?? '');
-    
+
     $std_array = isset($_POST['std']) ? $_POST['std'] : [];
     $std_for_db = '{' . implode(',', $std_array) . '}';
-    
+
     $experience = trim($_POST['experience'] ?? '');
     $batch = $_POST['batch'] ?? '';
     $posted_timings = $_POST['timings'] ?? [];
@@ -95,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         $new_filename = 'teacher_' . $teacher_id . '_' . uniqid() . '.' . $file_ext;
         $destination = $upload_dir . $new_filename;
-        
+
         if (move_uploaded_file($file['tmp_name'], $destination)) {
             // Corrected image path for database
             $image_path_for_db = '/BMC-SMS/pages/teacher/uploads/' . $new_filename;
@@ -120,11 +120,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sql_update_teacher = "UPDATE teacher SET teacher_image = ?, teacher_name = ?, phone = ?, school_id = ?, dob = ?, gender = ?, blood_group = ?, address = ?, email = ?, qualification = ?, subject = ?, language_known = ?, salary = ?, std = ?, experience = ?, batch = ?, class_teacher = ?, class_teacher_std = ? WHERE id = ?";
             $stmt_update = $conn->prepare($sql_update_teacher);
             $stmt_update->execute([
-                $image_path_for_db, $teacher_name, $phone, $school_id, $dob, $gender, 
-                $blood_group, $address, $new_email, $qualification, $subject, 
-                $language_known, $salary, $std_for_db, $experience, $batch, 
+                $image_path_for_db,
+                $teacher_name,
+                $phone,
+                $school_id,
+                $dob,
+                $gender,
+                $blood_group,
+                $address,
+                $new_email,
+                $qualification,
+                $subject,
+                $language_known,
+                $salary,
+                $std_for_db,
+                $experience,
+                $batch,
                 $class_teacher,
-                $class_teacher_std, $teacher_id
+                $class_teacher_std,
+                $teacher_id
             ]);
 
             $sql_upsert_timing = "INSERT INTO teacher_timings (teacher_id, day_of_week, opens_at, closes_at, is_closed) 
@@ -134,7 +148,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt_timing_upsert = $conn->prepare($sql_upsert_timing);
             foreach ($posted_timings as $day => $details) {
                 $is_closed = isset($details['is_closed']) ? 1 : 0;
-                
+
                 // --- UPDATE: Convert 12-hour AM/PM time to 24-hour format for DB ---
                 $opens_at = null;
                 if (!$is_closed && !empty($details['opens_at']) && !empty($details['opens_at_ampm'])) {
@@ -227,8 +241,8 @@ if (is_string($raw_stds) && !empty($raw_stds)) {
                                             $display_path = '../../assets/images/unisex.png';
                                         }
                                         ?>
-                                        <img src="<?php echo htmlspecialchars($display_path); ?>" alt="Teacher Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
-                                        <div class="form-group"><label for="teacher_image" class="small btn btn-sm btn-info"><i class="fas fa-upload fa-sm"></i> Change Photo</label><input type="file" class="d-none" id="teacher_image" name="teacher_image" onchange="document.getElementById('imagePreview').src = window.URL.createObjectURL(this.files[0])"></div>
+                                        <img src="<?php echo htmlspecialchars($display_path); ?>" alt="Teacher Photo" id="imagePreview" class="img-thumbnail mb-2 mt-3 h-50 w-50" style="width: 150px; height: 150px; object-fit: cover;">
+                                        <div class="form-group mt-3"><label for="teacher_image" class="small btn btn-sm btn-primary"><i class="fas fa-upload fa-sm"></i> Change Photo</label><input type="file" class="d-none" id="teacher_image" name="teacher_image" onchange="document.getElementById('imagePreview').src = window.URL.createObjectURL(this.files[0])"></div>
                                     </div>
                                     <div class="col-md-9">
                                         <div class="row">
@@ -242,10 +256,10 @@ if (is_string($raw_stds) && !empty($raw_stds)) {
                                                     <option value="Others" <?php echo (($teacher['gender'] ?? '') == 'Others') ? 'selected' : ''; ?>>Others</option>
                                                 </select></div>
                                             <div class="col-md-6 form-group"><label for="blood_group">Blood Group *</label><select class="form-control" id="blood_group" name="blood_group" required><?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-                                                foreach ($bg_options as $bg) {
-                                                    $selected = (($teacher['blood_group'] ?? '') == $bg) ? 'selected' : '';
-                                                    echo "<option value='{$bg}' {$selected}>{$bg}</option>";
-                                                } ?></select></div>
+                                                                                                                                                                                                        foreach ($bg_options as $bg) {
+                                                                                                                                                                                                            $selected = (($teacher['blood_group'] ?? '') == $bg) ? 'selected' : '';
+                                                                                                                                                                                                            echo "<option value='{$bg}' {$selected}>{$bg}</option>";
+                                                                                                                                                                                                        } ?></select></div>
                                         </div>
                                     </div>
                                 </div>
@@ -254,10 +268,10 @@ if (is_string($raw_stds) && !empty($raw_stds)) {
                                 <h6 class="text-primary font-weight-bold">Professional Details</h6>
                                 <div class="row mt-3">
                                     <div class="col-md-6 form-group"><label for="school_id">School *</label><select class="form-control" id="school_id" name="school_id" required><?php
-                                        foreach ($schools_result as $school) {
-                                            $selected = ($school['id'] == ($teacher['school_id'] ?? '')) ? 'selected' : '';
-                                            echo "<option value='{$school['id']}' {$selected}>" . htmlspecialchars($school['school_name']) . "</option>";
-                                        } ?></select></div>
+                                                                                                                                                                                    foreach ($schools_result as $school) {
+                                                                                                                                                                                        $selected = ($school['id'] == ($teacher['school_id'] ?? '')) ? 'selected' : '';
+                                                                                                                                                                                        echo "<option value='{$school['id']}' {$selected}>" . htmlspecialchars($school['school_name']) . "</option>";
+                                                                                                                                                                                    } ?></select></div>
                                     <div class="form-group col-md-6"><label for="batch">Batch *</label><select class="form-control" id="batch" name="batch" required>
                                             <option value="">-- Select Batch --</option>
                                             <option value="Morning" <?php echo (($teacher['batch'] ?? '') == 'Morning') ? 'selected' : ''; ?>>Morning</option>
@@ -268,7 +282,7 @@ if (is_string($raw_stds) && !empty($raw_stds)) {
                                     <div class="col-md-4 form-group"><label for="language_known">Languages Known</label><input type="text" class="form-control" id="language_known" name="language_known" value="<?php echo htmlspecialchars($teacher['language_known'] ?? ''); ?>"></div>
                                     <div class="col-md-4 form-group"><label for="experience">Years of Experience</label><input type="number" class="form-control" id="experience" name="experience" min="0" value="<?php echo htmlspecialchars($teacher['experience'] ?? '0'); ?>"></div>
                                     <div class="col-md-4 form-group"><label for="std">Teaching Standards</label><select class="form-control multi-select" id="std" name="std[]" multiple="multiple"><?php $stds_options = ['Nursery', 'Junior', 'Senior', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
-                                        foreach ($stds_options as $std_val): ?><option value="<?php echo $std_val; ?>" <?php echo in_array($std_val, $selected_stds) ? 'selected' : ''; ?>><?php echo $std_val; ?></option><?php endforeach; ?></select></div>
+                                                                                                                                                                                                    foreach ($stds_options as $std_val): ?><option value="<?php echo $std_val; ?>" <?php echo in_array($std_val, $selected_stds) ? 'selected' : ''; ?>><?php echo $std_val; ?></option><?php endforeach; ?></select></div>
                                     <div class="col-md-4 form-group"><label for="salary">Salary</label><input type="number" class="form-control" id="salary" name="salary" value="<?php echo htmlspecialchars($teacher['salary'] ?? '0.00'); ?>" step="0.01" min="0"></div>
                                 </div>
                                 <div class="form-row">
@@ -277,7 +291,7 @@ if (is_string($raw_stds) && !empty($raw_stds)) {
                                     </div>
                                     <div class="form-group col-md-6" id="classTeacherStdGroup" style="display: <?php echo !empty($teacher['class_teacher']) ? 'block' : 'none'; ?>;"><label for="class_teacher_std">Class Teacher for Standard *</label><select class="form-control" id="class_teacher_std" name="class_teacher_std">
                                             <option value="">-- Select Standard --</option><?php $stds_for_class_teacher = ['Nursery', 'Junior', 'Senior', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
-                                                foreach ($stds_for_class_teacher as $std_val): ?><option value="<?php echo $std_val; ?>" <?php echo (($teacher['class_teacher_std'] ?? '') == $std_val) ? 'selected' : ''; ?>><?php echo $std_val; ?></option><?php endforeach; ?>
+                                                                                            foreach ($stds_for_class_teacher as $std_val): ?><option value="<?php echo $std_val; ?>" <?php echo (($teacher['class_teacher_std'] ?? '') == $std_val) ? 'selected' : ''; ?>><?php echo $std_val; ?></option><?php endforeach; ?>
                                         </select></div>
                                 </div>
 
@@ -343,7 +357,7 @@ if (is_string($raw_stds) && !empty($raw_stds)) {
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
-    
+
     <?php include_once "../../includes/logout_modal.php" ?>
 
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
