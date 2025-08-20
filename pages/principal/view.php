@@ -207,7 +207,7 @@ $default_photo = getDefaultImagePath(BASE_URL);
                                 <div class="card-body">
                                     <div class="row mb-3">
                                         <div class="col-sm-4 info-label">Assigned Batch:</div>
-                                        <div class="col-sm-8 info-value"><span class="badge badge-<?php echo ($principal['batch'] == 'Morning') ? 'primary' : 'warning'; ?> p-2"><?php echo htmlspecialchars($principal['batch'] ?? 'N/A'); ?></span></div>
+                                        <div class="col-sm-8 info-value"><span class="col-sm-8 info-value<?php echo ($principal['batch'] == 'Morning')?> p-2"><?php echo htmlspecialchars($principal['batch'] ?? 'N/A'); ?></span></div>
                                     </div>
                                     <hr>
                                     <h6 class="info-label mb-2">Weekly Schedule:</h6>

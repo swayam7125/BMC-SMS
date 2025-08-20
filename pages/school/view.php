@@ -20,16 +20,15 @@ if ($school_id <= 0) {
     exit;
 }
 
-function getWebAccessibleImagePath($db_path) {
+function getWebAccessibleImagePath($db_path)
+{
     if (empty($db_path)) return null;
 
-    // Case 1: The path is already a full web path (e.g., /BMC-SMS/uploads/...)
     $physical_path_full = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $db_path;
     if (strpos($db_path, BASE_WEB_PATH) === 0 && file_exists($physical_path_full)) {
         return htmlspecialchars($db_path);
     }
 
-    // Case 2: The path is a relative path (e.g., uploads/...) - for old data
     $physical_path_relative = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . BASE_WEB_PATH . ltrim($db_path, '/');
     if (file_exists($physical_path_relative)) {
         return htmlspecialchars(BASE_WEB_PATH . ltrim($db_path, '/'));
@@ -53,31 +52,32 @@ function cleanPgArray($pg_array_string)
     return implode(', ', $cleaned_items);
 }
 
+$school = null;
+$principals = [];
 try {
-    $query = "SELECT s.*, 
-                     p.id AS principal_user_id, p.principal_name, p.principal_image, p.email AS principal_email, 
-                     p.phone AS principal_phone, p.batch AS principal_batch, p.qualification AS principal_qualification,
-                     p.salary AS principal_salary, p.address AS principal_address
-              FROM school s 
-              LEFT JOIN principal p ON s.id = p.school_id 
-              WHERE s.id = :id";
-    $stmt = $conn->prepare($query);
-    $stmt->execute(['id' => $school_id]);
-    $school = $stmt->fetch(PDO::FETCH_ASSOC);
+    // Query 1: Fetch school details
+    $query_school = "SELECT * FROM school WHERE id = :id";
+    $stmt_school = $conn->prepare($query_school);
+    $stmt_school->execute(['id' => $school_id]);
+    $school = $stmt_school->fetch(PDO::FETCH_ASSOC);
 
     if (!$school) {
         header("Location: school_list.php?error=School not found");
         exit;
     }
+
+    // Query 2: Fetch all principals for the school
+    $query_principals = "SELECT p.* FROM principal p WHERE p.school_id = :school_id";
+    $stmt_principals = $conn->prepare($query_principals);
+    $stmt_principals->execute(['school_id' => $school_id]);
+    $principals = $stmt_principals->fetchAll(PDO::FETCH_ASSOC);
+
 } catch (PDOException $e) {
     die("Database query failed: " . $e->getMessage());
 }
 
 $school_logo_web_path = getWebAccessibleImagePath($school['school_logo']);
 $default_school_logo = getDefaultImagePath('school');
-
-$principal_photo_web_path = getWebAccessibleImagePath($school['principal_image']);
-$default_principal_photo = getDefaultImagePath('principal');
 
 ?>
 <!DOCTYPE html>
@@ -186,41 +186,67 @@ $default_principal_photo = getDefaultImagePath('principal');
                             </div>
                         </div>
 
-                        <div class="col-lg-8 mb-4">
+                        <div class="col-lg-12 mb-4">
                             <div class="card shadow h-100">
                                 <div class="card-header py-3">
-                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-info-circle"></i> Principal Information</h6>
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-user-tie"></i> Principal(s) Information</h6>
                                 </div>
                                 <div class="card-body">
-                                    <?php if (!empty($school['principal_user_id'])): ?>
-
-                                        <div class="row info-row">
-                                            <div class="col-sm-5 font-weight-bold">Email:</div>
-                                            <div class="col-sm-7"><?php echo htmlspecialchars($school['principal_email'] ?? 'N/A'); ?></div>
-                                        </div>
-                                        <div class="row info-row">
-                                            <div class="col-sm-5 font-weight-bold">Phone:</div>
-                                            <div class="col-sm-7"><?php echo htmlspecialchars($school['principal_phone'] ?? 'N/A'); ?></div>
-                                        </div>
-                                        <div class="row info-row">
-                                            <div class="col-sm-5 font-weight-bold">Qualification:</div>
-                                            <div class="col-sm-7"><?php echo htmlspecialchars($school['principal_qualification'] ?? 'N/A'); ?></div>
-                                        </div>
-                                        <div class="row info-row">
-                                            <div class="col-sm-5 font-weight-bold">Batch:</div>
-                                            <div class="col-sm-7">
-                                                <span class="badge badge-<?php echo ($school['principal_batch'] ?? '') === 'Morning' ? 'primary' : 'warning'; ?> p-2">
-                                                    <?php echo htmlspecialchars($school['principal_batch'] ?? 'N/A'); ?>
-                                                </span>
+                                    <?php if (!empty($principals)): ?>
+                                        <div class="row">
+                                            <?php foreach ($principals as $principal):
+                                                $principal_photo_web_path = getWebAccessibleImagePath($principal['principal_image']);
+                                                $default_principal_photo = getDefaultImagePath('principal');
+                                                
+                                                // Dynamic column classes based on the number of principals
+                                                $col_classes = (count($principals) === 1) ? 'col-lg-6 offset-lg-3' : 'col-md-6';
+                                            ?>
+                                            <div class="<?php echo $col_classes; ?> mb-4">
+                                                <div class="card shadow h-100">
+                                                    <div class="card-body text-center">
+                                                        <img src="<?php echo $principal_photo_web_path ?? $default_principal_photo; ?>"
+                                                            alt="Principal Photo"
+                                                            class="view-image view-photo"
+                                                            onerror="this.onerror=null; this.src='<?php echo $default_principal_photo; ?>';" />
+                                                        <h4 class="mt-3 font-weight-bold text-gray-800">
+                                                            <a href="../principal/view.php?id=<?php echo $principal['id']; ?>">
+                                                                <?php echo htmlspecialchars($principal['principal_name']); ?>
+                                                            </a>
+                                                        </h4>
+                                                        <p class="text-muted">Assigned Principal (<?php echo htmlspecialchars($principal['batch']); ?> Batch)</p>
+                                                        <hr>
+                                                        <div class="row info-row">
+                                                            <div class="col-sm-5 font-weight-bold">Email:</div>
+                                                            <div class="col-sm-7"><?php echo htmlspecialchars($principal['email'] ?? 'N/A'); ?></div>
+                                                        </div>
+                                                        <div class="row info-row">
+                                                            <div class="col-sm-5 font-weight-bold">Phone:</div>
+                                                            <div class="col-sm-7"><?php echo htmlspecialchars($principal['phone'] ?? 'N/A'); ?></div>
+                                                        </div>
+                                                        <div class="row info-row">
+                                                            <div class="col-sm-5 font-weight-bold">Qualification:</div>
+                                                            <div class="col-sm-7"><?php echo htmlspecialchars($principal['qualification'] ?? 'N/A'); ?></div>
+                                                        </div>
+                                                        <div class="row info-row">
+                                                            <div class="col-sm-5 font-weight-bold">Batch:</div>
+                                                            <div class="col-sm-7">
+                                                                <span class="col-sm-7<?php echo ($principal['batch'] ?? '')  ?>">
+                                                                    <?php echo htmlspecialchars($principal['batch'] ?? 'N/A'); ?>
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="row info-row">
+                                                            <div class="col-sm-5 font-weight-bold">Salary:</div>
+                                                            <div class="col-sm-7 salary-display">₹<?php echo number_format($principal['salary'] ?? 0, 2); ?></div>
+                                                        </div>
+                                                        <div class="row info-row">
+                                                            <div class="col-sm-5 font-weight-bold">Address:</div>
+                                                            <div class="col-sm-7 info-value"><?php echo nl2br(htmlspecialchars($principal['address'] ?? 'N/A')); ?></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div class="row info-row">
-                                            <div class="col-sm-5 font-weight-bold">Salary:</div>
-                                            <div class="col-sm-7 salary-display">₹<?php echo number_format($school['principal_salary'] ?? 0, 2); ?></div>
-                                        </div>
-                                        <div class="row info-row">
-                                            <div class="col-sm-5 font-weight-bold">Address:</div>
-                                            <div class="col-sm-7 info-value"><?php echo nl2br(htmlspecialchars($school['principal_address'] ?? 'N/A')); ?></div>
+                                            <?php endforeach; ?>
                                         </div>
                                     <?php else: ?>
                                         <div class="text-center my-3">
@@ -231,25 +257,7 @@ $default_principal_photo = getDefaultImagePath('principal');
                                 </div>
                             </div>
                         </div>
-                        <div class="col-lg-4 mb-4">
-                            <div class="card shadow h-100">
-                                <div class="card-header py-3">
-                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-image"></i> Principal Image</h6>
-                                </div>
-                                
-                                <div class="card-body text-center">
-                                    <img src="<?php echo $principal_photo_web_path ?? $default_principal_photo; ?>"
-                                        alt="Principal Photo"
-                                        class="view-image view-photo"
-                                        onerror="this.onerror=null; this.src='<?php echo $default_principal_photo; ?>';" />
-                                    <h4 class="mt-3 font-weight-bold text-gray-800"><a href="../principal/view.php?id=<?php echo $school['principal_user_id']; ?>">
-                                            <?php echo htmlspecialchars($school['principal_name']); ?>
-                                        </a></h4>
-                                    <p class="text-muted">Assigned Principal</p>
-                                </div>
-                            </div>
                         </div>
-                    </div>
                 </div>
             </div>
             <?php include '../../includes/footer.php'; ?>
