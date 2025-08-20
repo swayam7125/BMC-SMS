@@ -20,12 +20,12 @@ function getWebAccessibleImagePath($db_image_path, $base_web_path, $default_sub_
     } else {
         $full_web_path = $base_web_path . ltrim($db_image_path, '/');
     }
-    
+
     $filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $full_web_path;
     if (@file_exists($filesystem_path) && @is_file($filesystem_path)) {
         return $full_web_path;
     }
-    
+
     // 2. Fallback check for other possible locations
     $possible_locations = [
         "pages/{$default_sub_folder}/uploads/",
@@ -266,7 +266,7 @@ if (!is_ajax_request()) {
                                 <div class="col-lg-6 mb-4">
                                     <div class="card shadow h-100">
                                         <div class="card-header py-3">
-                                            <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-briefcase mr-2"></i>Class Information</h6>
+                                            <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-briefcase mr-2"></i>Academics Information</h6>
                                         </div>
                                         <div class="card-body">
                                             <div class="row">
@@ -439,7 +439,7 @@ if (!is_ajax_request()) {
                                         </div>
                                     </div>
                                 </div>
-                                
+
                             <?php elseif ($user_role === 'librarian'): ?>
                                 <div class="col-lg-6 mb-4">
                                     <div class="card shadow h-100">

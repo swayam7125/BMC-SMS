@@ -47,18 +47,55 @@ if (isset($_COOKIE['encrypted_user_role'])) {
         if (isset($_COOKIE['encrypted_user_name'])) {
             $userName = decrypt_id($_COOKIE['encrypted_user_name']);
         }
-        if (isset($_COOKIE['encrypted_profile_image'])) {
-            // The cookie stores the full web path, e.g., /BMC-SMS/pages/principal/uploads/...
-            $decrypted_full_path = decrypt_id($_COOKIE['encrypted_profile_image']);
-            
-            // Construct the absolute physical path on the server's hard drive to check if the file exists.
-            $filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $decrypted_full_path;
-            
-            // If the decrypted path is not empty and the file physically exists, set it as the profile image.
-            if (!empty($decrypted_full_path) && file_exists($filesystem_path)) {
-                $userProfileImage = $decrypted_full_path;
+
+        // --- START: MODIFIED LOGIC - Fetch latest profile image directly from the database ---
+        $user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+        $table_name = '';
+        $image_field = '';
+
+        if ($user_id && isset($conn)) {
+            // Determine the correct table and field based on the user's role
+            switch ($user_role) {
+                case 'teacher':
+                    $table_name = 'teacher';
+                    $image_field = 'teacher_image';
+                    break;
+                case 'student':
+                    $table_name = 'student';
+                    $image_field = 'student_image';
+                    break;
+                case 'principal':
+                    $table_name = 'principal';
+                    $image_field = 'principal_image';
+                    break;
+                case 'librarian':
+                    $table_name = 'librarian';
+                    $image_field = 'librarian_image';
+                    break;
+            }
+
+            if (!empty($table_name)) {
+                try {
+                    // Prepare and execute the query to get the image path
+                    $stmt_image = $conn->prepare("SELECT {$image_field} FROM {$table_name} WHERE id = ?");
+                    $stmt_image->execute([$user_id]);
+                    $db_image_path = $stmt_image->fetchColumn();
+
+                    if (!empty($db_image_path)) {
+                        // The path from the DB is already the full web path (e.g., /BMC-SMS/pages/teacher/uploads/...)
+                        // We just need to verify the file exists on the server's filesystem.
+                        $filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $db_image_path;
+                        if (file_exists($filesystem_path) && is_file($filesystem_path)) {
+                            $userProfileImage = $db_image_path;
+                        }
+                    }
+                } catch (PDOException $e) {
+                    error_log("Failed to fetch profile image for user ID {$user_id}: " . $e->getMessage());
+                    // If there's an error, the default image will be used.
+                }
             }
         }
+        // --- END: MODIFIED LOGIC ---
     }
 }
 
@@ -283,14 +320,6 @@ if (!function_exists('getNotificationIcon')) {
                 </a>
                 <?php endif; ?>
 
-                <!-- <a class="dropdown-item" href="#">
-                    <i class="fas fa-cogs fa-sm fa-fw mr-2 text-gray-400"></i>
-                    Settings
-                </a>
-                <a class="dropdown-item" href="#">
-                    <i class="fas fa-list fa-sm fa-fw mr-2 text-gray-400"></i>
-                    Activity Log
-                </a> -->
                 <div class="dropdown-divider"></div>
                 <a class="dropdown-item" href="#" data-toggle="modal" data-target="#logoutModal">
                     <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>

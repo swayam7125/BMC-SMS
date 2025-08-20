@@ -6,7 +6,8 @@ if (!defined('BASE_URL')) {
     define('BASE_URL', '/BMC-SMS/');
 }
 
-function getWebAccessibleImagePath($relative_path, $base_url) {
+function getWebAccessibleImagePath($relative_path, $base_url)
+{
     if (empty($relative_path)) {
         return null;
     }
@@ -19,7 +20,8 @@ function getWebAccessibleImagePath($relative_path, $base_url) {
     return null;
 }
 
-function getDefaultImagePath($base_web_path) {
+function getDefaultImagePath($base_web_path)
+{
     return $base_web_path . 'assets/images/unisex.png';
 }
 
@@ -68,6 +70,7 @@ $default_photo = getDefaultImagePath(BASE_URL);
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>View Principal - <?php echo htmlspecialchars($principal['principal_name']); ?></title>
@@ -78,6 +81,7 @@ $default_photo = getDefaultImagePath(BASE_URL);
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -99,8 +103,8 @@ $default_photo = getDefaultImagePath(BASE_URL);
                                     <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-camera"></i>Principal Photo</h6>
                                 </div>
                                 <div class="card-body text-center">
-                                    <img src="<?php echo htmlspecialchars($photo_path ?? $default_photo); ?>" alt="<?php echo htmlspecialchars($principal['principal_name']); ?>" class="principal-photo" onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($default_photo); ?>';">
-                                    <h4 class="mt-3 font-weight-bold text-gray-800"><?php echo htmlspecialchars($principal['principal_name']); ?></h4>
+                                    <img src="<?php echo htmlspecialchars($photo_path ?? $default_photo); ?>" alt="<?php echo htmlspecialchars($principal['principal_name']); ?>" class="profile-photo mb-3 mt-3 h-50 w-50" onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($default_photo); ?>';">
+                                    <h4 class="mt-2 font-weight-bold text-gray-800"><?php echo htmlspecialchars($principal['principal_name']); ?></h4>
                                     <p class="text-muted"><?php echo htmlspecialchars($principal['school_name']); ?></p>
                                 </div>
                             </div>
@@ -207,7 +211,7 @@ $default_photo = getDefaultImagePath(BASE_URL);
                                 <div class="card-body">
                                     <div class="row mb-3">
                                         <div class="col-sm-4 info-label">Assigned Batch:</div>
-                                        <div class="col-sm-8 info-value"><span class="col-sm-8 info-value<?php echo ($principal['batch'] == 'Morning')?> p-2"><?php echo htmlspecialchars($principal['batch'] ?? 'N/A'); ?></span></div>
+                                        <div class="col-sm-8 info-value"><span class="col-sm-8 info-value<?php echo ($principal['batch'] == 'Morning') ?> p-2"><?php echo htmlspecialchars($principal['batch'] ?? 'N/A'); ?></span></div>
                                     </div>
                                     <hr>
                                     <h6 class="info-label mb-2">Weekly Schedule:</h6>
@@ -250,4 +254,5 @@ $default_photo = getDefaultImagePath(BASE_URL);
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
+
 </html>

@@ -196,7 +196,7 @@ $default_photo = getDefaultImagePath('student', BASE_WEB_PATH);
                                         ?>
                                             <img src="<?php echo htmlspecialchars($photo_path); ?>"
                                                 alt="<?php echo htmlspecialchars($student['student_name']); ?>"
-                                                class="student-photo"
+                                                class="profile-photo mb-3 mt-3 h-50 w-50"
                                                 onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($default_photo); ?>';">
                                         <?php else: ?>
                                             <img src="<?php echo htmlspecialchars($default_photo); ?>"
@@ -204,7 +204,7 @@ $default_photo = getDefaultImagePath('student', BASE_WEB_PATH);
                                         <?php endif; ?>
                                     </div>
                                     <div class="text-center">
-                                        <h4 class="font-weight-bold text-gray-800 mt-3"><?php echo htmlspecialchars($student['student_name']); ?></h4>
+                                        <h4 class="font-weight-bold text-gray-800 mt-2"><?php echo htmlspecialchars($student['student_name']); ?></h4>
                                         <p class="text-muted">Roll No : <?php echo htmlspecialchars($student['rollno']); ?></p>
                                     </div>
                                 </div>
@@ -445,7 +445,7 @@ $default_photo = getDefaultImagePath('student', BASE_WEB_PATH);
                                 </div>
                             </div>
                         </div>
-                        </div>
+                    </div>
 
                 </div>
             </div>

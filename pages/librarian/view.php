@@ -35,12 +35,12 @@ try {
         header("Location: librarian_list.php?error=Librarian not found");
         exit;
     }
-    
+
     // Fetch librarian timings and key by day_of_week for easy access
     $stmt_timings = $conn->prepare('SELECT * FROM "librarian_timings" WHERE "librarian_id" = ?');
     $stmt_timings->execute([$librarian_id]);
     $timings_result = $stmt_timings->fetchAll(PDO::FETCH_ASSOC);
-    foreach($timings_result as $row){
+    foreach ($timings_result as $row) {
         $timings[$row['day_of_week']] = $row;
     }
 
@@ -51,7 +51,6 @@ try {
     if (empty($photo_path) || !file_exists($server_photo_path)) {
         $photo_path = $default_photo;
     }
-
 } catch (PDOException $e) {
     die("Database Error: " . $e->getMessage());
 }
@@ -66,6 +65,7 @@ try {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/librarian_view.css">
+    <link rel="stylesheet" href="../../assets/css/profile.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
@@ -89,7 +89,7 @@ try {
                         </div>
                     </div>
                     <?php if (isset($_GET['success'])): ?>
-                    <div class="alert alert-success">Librarian details updated successfully!</div>
+                        <div class="alert alert-success">Librarian details updated successfully!</div>
                     <?php endif; ?>
                     <div class="row">
                         <div class="col-lg-4 mb-4">
@@ -101,8 +101,8 @@ try {
                                 <div class="card-body text-center">
                                     <img src="<?php echo htmlspecialchars($photo_path); ?>"
                                         alt="<?php echo htmlspecialchars($librarian['librarian_name']); ?>"
-                                        class="view-photo">
-                                    <h4 class="font-weight-bold text-gray-800">
+                                        class="profile-photo mb-3 mt-3 h-50 w-50">
+                                    <h4 class="font-weight-bold text-gray-800 mt-2">
                                         <?php echo htmlspecialchars($librarian['librarian_name']); ?></h4>
                                     <p class="text-muted"><?php echo htmlspecialchars($librarian['email']); ?></p>
                                 </div>
@@ -201,7 +201,7 @@ try {
                                 <div class="card-body">
                                     <div class="row mb-3">
                                         <div class="col-sm-4 info-label">Assigned Batch:</div>
-                                        <div class="col-sm-8 info-value"><span class="col-sm-8 info-value<?php echo ($librarian['batch'] == 'Morning')?>"><?php echo htmlspecialchars($librarian['batch'] ?? 'N/A'); ?></span></div>
+                                        <div class="col-sm-8 info-value"><span class="col-sm-8 info-value<?php echo ($librarian['batch'] == 'Morning') ?>"><?php echo htmlspecialchars($librarian['batch'] ?? 'N/A'); ?></span></div>
                                     </div>
                                     <hr class="mt-0">
                                     <h6 class="info-label mb-2">Weekly Schedule:</h6>
@@ -237,7 +237,7 @@ try {
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
-    <?php include_once "../../includes/logout_modal.php"?>
+    <?php include_once "../../includes/logout_modal.php" ?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>

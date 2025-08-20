@@ -55,7 +55,7 @@ try {
         $father_phone = trim($_POST['father_phone']);
         $mother_name = trim($_POST['mother_name']);
         $mother_phone = trim($_POST['mother_phone']);
-        
+
         // --- UPDATED LOGIC FOR SIMPLIFIED TRANSPORT ---
         $transport_mode = $_POST['transport_mode'] ?? 'Self';
         $stop_id = ($transport_mode === 'School Transport' && !empty($_POST['stop_id'])) ? (int)$_POST['stop_id'] : null;
@@ -119,9 +119,24 @@ try {
 
             $stmt_update = $conn->prepare($update_student_sql);
             $stmt_update->execute([
-                $image_path_for_db, $student_name, $rollno, $std, $new_email, $academic_year,
-                $school_id, $dob, $gender, $blood_group, $address, $father_name, 
-                $father_phone, $mother_name, $mother_phone, $stop_id, $transport_mode, $student_id
+                $image_path_for_db,
+                $student_name,
+                $rollno,
+                $std,
+                $new_email,
+                $academic_year,
+                $school_id,
+                $dob,
+                $gender,
+                $blood_group,
+                $address,
+                $father_name,
+                $father_phone,
+                $mother_name,
+                $mother_phone,
+                $stop_id,
+                $transport_mode,
+                $student_id
             ]);
 
             $conn->commit();
@@ -171,10 +186,10 @@ try {
                     </div>
 
                     <?php if (!empty($errors)): ?>
-                    <div class="alert alert-danger">
-                        <ul class="mb-0"><?php foreach ($errors as $error): ?><li>
-                                <?php echo htmlspecialchars($error); ?></li><?php endforeach; ?></ul>
-                    </div>
+                        <div class="alert alert-danger">
+                            <ul class="mb-0"><?php foreach ($errors as $error): ?><li>
+                                        <?php echo htmlspecialchars($error); ?></li><?php endforeach; ?></ul>
+                        </div>
                     <?php endif; ?>
 
                     <div class="card shadow mb-4">
@@ -186,13 +201,9 @@ try {
                                 <div class="row">
                                     <div class="col-md-3 text-center">
                                         <img src="<?php echo htmlspecialchars(!empty($student['student_image']) && file_exists('../../' . $student['student_image']) ? '../../' . $student['student_image'] : '../../assets/images/unisex.png'); ?>"
-                                            alt="Student Photo" id="imagePreview" class="img-thumbnail mb-2"
+                                            alt="Student Photo" id="imagePreview" class="img-thumbnail mb-2 mt-3 h-50 w-50"
                                             style="width: 150px; height: 150px; object-fit: cover;">
-                                        <div class="form-group">
-                                            <label for="student_image" class="small">Change Photo</label>
-                                            <input type="file" class="form-control-file" id="student_image"
-                                                name="student_image">
-                                        </div>
+                                        <div class="form-group mt-3"><label for="student_image" class="small btn btn-sm btn-primary"><i class="fas fa-upload fa-sm"></i> Change Photo</label><input type="file" class="d-none" id="student_image" name="student_image" onchange="document.getElementById('imagePreview').src = window.URL.createObjectURL(this.files[0])"></div>
                                     </div>
                                     <div class="col-md-9">
                                         <div class="row">
@@ -227,10 +238,10 @@ try {
                                             <div class="col-md-6 form-group"><label for="blood_group">Blood
                                                     Group</label><select class="form-control" id="blood_group"
                                                     name="blood_group"><?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-                                                                                                                                                                                            foreach ($bg_options as $bg) {
-                                                                                                                                                                                                $selected = (($student['blood_group'] ?? '') == $bg) ? 'selected' : '';
-                                                                                                                                                                                                echo "<option value='{$bg}' {$selected}>" . strtoupper($bg) . "</option>";
-                                                                                                                                                                                            } ?></select>
+                                                                        foreach ($bg_options as $bg) {
+                                                                            $selected = (($student['blood_group'] ?? '') == $bg) ? 'selected' : '';
+                                                                            echo "<option value='{$bg}' {$selected}>" . strtoupper($bg) . "</option>";
+                                                                        } ?></select>
                                             </div>
                                             <div class="col-md-6 form-group"><label
                                                     for="address">Address</label><textarea class="form-control"
@@ -246,12 +257,12 @@ try {
                                     <div class="col-md-6 form-group"><label for="school_id">School *</label><select
                                             class="form-control" id="school_id" name="school_id"
                                             required><?php
-                                                                                                                                                                                    if (isset($schools_result)) {
-                                                                                                                                                                                        foreach ($schools_result as $school) {
-                                                                                                                                                                                            $selected = ($school['id'] == ($student['school_id'] ?? '')) ? 'selected' : '';
-                                                                                                                                                                                            echo "<option value='{$school['id']}' {$selected}>" . htmlspecialchars($school['school_name']) . "</option>";
-                                                                                                                                                                                        }
-                                                                                                                                                                                    } ?></select>
+                                                        if (isset($schools_result)) {
+                                                            foreach ($schools_result as $school) {
+                                                                $selected = ($school['id'] == ($student['school_id'] ?? '')) ? 'selected' : '';
+                                                                echo "<option value='{$school['id']}' {$selected}>" . htmlspecialchars($school['school_name']) . "</option>";
+                                                            }
+                                                        } ?></select>
                                     </div>
                                     <div class="col-md-6 form-group"><label for="rollno">Roll Number *</label><input
                                             type="text" class="form-control" id="rollno" name="rollno"
@@ -267,18 +278,18 @@ try {
                                             value="<?php echo htmlspecialchars($student['academic_year'] ?? ''); ?>"
                                             required></div>
                                 </div>
-                                
+
                                 <hr>
                                 <h6 class="text-primary font-weight-bold">Transport Details</h6>
                                 <div class="row">
-                                     <div class="col-md-6 form-group">
+                                    <div class="col-md-6 form-group">
                                         <label for="transport_mode">Mode of Transport *</label>
                                         <select class="form-control" id="transport_mode" name="transport_mode" required>
                                             <option value="Self" <?php echo (isset($student['transport_mode']) && $student['transport_mode'] == 'Self') ? 'selected' : ''; ?>>Self (Own Vehicle/Walking)</option>
                                             <option value="School Transport" <?php echo (isset($student['transport_mode']) && $student['transport_mode'] == 'School Transport') ? 'selected' : ''; ?>>School Transport (Bus/Van)</option>
                                         </select>
-                                     </div>
-                                     <div class="col-md-6 form-group" id="transport-stop-div" style="display: <?php echo (isset($student['transport_mode']) && $student['transport_mode'] == 'School Transport') ? 'block' : 'none'; ?>;">
+                                    </div>
+                                    <div class="col-md-6 form-group" id="transport-stop-div" style="display: <?php echo (isset($student['transport_mode']) && $student['transport_mode'] == 'School Transport') ? 'block' : 'none'; ?>;">
                                         <label for="stop_id">Assign School Transport Stop</label>
                                         <select class="form-control" id="stop_id" name="stop_id">
                                             <option value="">-- No Stop Selected --</option>
@@ -287,7 +298,7 @@ try {
                                                 $stmt_routes = $conn->prepare('SELECT r.route_name, s.id as stop_id, s.stop_name FROM routes r JOIN stops s ON r.id = s.route_id WHERE r.school_id = ? ORDER BY r.route_name, s.stop_name');
                                                 $stmt_routes->execute([$student['school_id']]);
                                                 $current_route = '';
-                                                while($row = $stmt_routes->fetch(PDO::FETCH_ASSOC)) {
+                                                while ($row = $stmt_routes->fetch(PDO::FETCH_ASSOC)) {
                                                     if ($row['route_name'] !== $current_route) {
                                                         if ($current_route !== '') echo '</optgroup>';
                                                         $current_route = $row['route_name'];
