@@ -18,6 +18,7 @@ $availableStandards = [];
 $selected_std = null;
 $timetable_grid = [];
 $total_periods = 0;
+$teacher_timings = []; // <-- Variable to hold the teacher's personal schedule
 
 try {
     // --- START: MARK AS READ LOGIC ---
@@ -38,6 +39,16 @@ try {
             }
             break;
         case 'teacher':
+            // --- START: ADDED LOGIC TO FETCH THE TEACHER'S PERSONAL WEEKLY SCHEDULE ---
+            $query_timings = "SELECT * FROM teacher_timings WHERE teacher_id = ?";
+            $stmt_timings = $conn->prepare($query_timings);
+            $stmt_timings->execute([$userId]);
+            while ($row = $stmt_timings->fetch(PDO::FETCH_ASSOC)) {
+                $teacher_timings[$row['day_of_week']] = $row;
+            }
+            // --- END: ADDED LOGIC ---
+
+            // Fallthrough to principal logic is intentional as they share functionality
         case 'principal':
             $tableName = ($role === 'teacher') ? 'teacher' : 'principal';
             $stmt = $conn->prepare("SELECT school_id FROM $tableName WHERE id = ?");
@@ -47,21 +58,18 @@ try {
             }
 
             if ($schoolId) {
-                // --- FIX START: Corrected the SQL query to handle non-numeric standards ---
                 $sql_standards = "
                     SELECT std FROM student 
                     WHERE school_id = ? 
                     GROUP BY std 
                     ORDER BY 
-                        CASE WHEN std ~ '^[0-9]+$' THEN 1 ELSE 2 END, -- Numeric standards first
-                        CASE WHEN std ~ '^[0-9]+$' THEN CAST(std AS INTEGER) ELSE NULL END, -- Sort numeric standards correctly
-                        std -- Sort non-numeric standards alphabetically
+                        CASE WHEN std ~ '^[0-9]+$' THEN 1 ELSE 2 END, 
+                        CASE WHEN std ~ '^[0-9]+$' THEN CAST(std AS INTEGER) ELSE NULL END, 
+                        std
                 ";
                 $standards_stmt = $conn->prepare($sql_standards);
-                // --- FIX END ---
-                
                 $standards_stmt->execute([$schoolId]);
-                
+
                 while ($row = $standards_stmt->fetch(PDO::FETCH_ASSOC)) {
                     $availableStandards[] = $row['std'];
                 }
@@ -104,64 +112,74 @@ $pageTitle = 'View Timetable';
 
 if (!is_ajax_request()) {
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title><?php echo htmlspecialchars($pageTitle); ?></title>
+    <!DOCTYPE html>
+    <html lang="en">
 
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
-    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../../assets/css/sidebar.css">
-    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-    
-    <style>
-        .timetable-table th,
-        .timetable-table td {
-            vertical-align: middle;
-            text-align: center;
-            min-width: 150px;
-        }
-        .timetable-table .period-cell {
-            font-weight: bold;
-            background-color: #f8f9fc;
-        }
-        .timetable-table .lecture-block {
-            padding: 10px;
-            border-radius: 5px;
-            background-color: #e9f5ff;
-            border: 1px solid #bde0ff;
-            min-height: 80px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-        .timetable-table .lecture-block .subject {
-            font-weight: bold;
-            color: #0056b3;
-        }
-    </style>
-</head>
+    <head>
+        <meta charset="utf-8">
+        <title><?php echo htmlspecialchars($pageTitle); ?></title>
 
-<body id="page-top">
-    <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
-        <div id="content-wrapper" class="d-flex flex-column">
-            <div id="content">
-                <?php include '../../includes/header.php'; ?>
-<?php
-}
-?>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+        <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+        <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="../../assets/css/sidebar.css">
+        <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+
+        <style>
+            .timetable-table th,
+            .timetable-table td {
+                vertical-align: middle;
+                text-align: center;
+                min-width: 150px;
+            }
+
+            .timetable-table .period-cell {
+                font-weight: bold;
+                background-color: #f8f9fc;
+            }
+
+            .timetable-table .lecture-block {
+                padding: 10px;
+                border-radius: 5px;
+                background-color: #e9f5ff;
+                border: 1px solid #bde0ff;
+                min-height: 80px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+            }
+
+            .timetable-table .lecture-block .subject {
+                font-weight: bold;
+                color: #0056b3;
+            }
+
+            .table-timings th {
+                width: 30%;
+            }
+
+            .table-timings td {
+                width: 70%;
+            }
+        </style>
+    </head>
+
+    <body id="page-top">
+        <div id="wrapper">
+            <?php include '../../includes/sidebar.php'; ?>
+            <div id="content-wrapper" class="d-flex flex-column">
+                <div id="content">
+                    <?php include '../../includes/header.php'; ?>
+                <?php
+            }
+                ?>
                 <div class="container-fluid">
-                    <h1 class="h3 mb-4 text-gray-800">Class Timetable</h1>
-
                     <?php if (in_array($role, ['teacher', 'principal'])): ?>
                         <div class="card shadow mb-4">
                             <div class="card-body">
                                 <form method="GET" class="form-inline">
-                                    <label for="standard" class="mr-2">View Timetable for Standard:</label>
+                                    <label for="standard" class="mr-2">View Class Timetable for Standard:</label>
                                     <select name="standard" id="standard" class="form-control mr-2"
                                         onchange="this.form.submit()">
                                         <option value="">-- Select --</option>
@@ -180,7 +198,7 @@ if (!is_ajax_request()) {
                     <?php if ($selected_std && !empty($timetable_grid)): ?>
                         <div class="card shadow mb-4">
                             <div class="card-header py-3">
-                                <h6 class="m-0 font-weight-bold text-primary">Weekly Schedule for Standard
+                                <h6 class="m-0 font-weight-bold text-primary">Weekly Class Schedule for Standard
                                     <?php echo htmlspecialchars($selected_std); ?></h6>
                             </div>
                             <div class="card-body">
@@ -196,7 +214,7 @@ if (!is_ajax_request()) {
                                             <?php for ($p = 1; $p <= $total_periods; $p++): ?>
                                                 <tr>
                                                     <td class="period-cell">Period <?php echo $p; ?></td>
-                                                    <?php foreach ($days_of_week as $day): 
+                                                    <?php foreach ($days_of_week as $day):
                                                         $entry = $timetable_grid[$p][$day];
                                                     ?>
                                                         <td>
@@ -227,28 +245,58 @@ if (!is_ajax_request()) {
                     <?php elseif ($selected_std): ?>
                         <div class="alert alert-warning">The timetable has not been set for Standard <?php echo htmlspecialchars($selected_std); ?> yet.</div>
                     <?php elseif ($role !== 'student'): ?>
-                        <div class="alert alert-info">Please select a standard to view its timetable.</div>
+                        <div class="alert alert-info">Please select a standard to view its class timetable.</div>
+                        <h1 class="h3 mb-4 text-gray-800">Timetable</h1>
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-user-clock mr-2"></i>Your Personal Weekly Schedule</h6>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm table-bordered table-striped table-timings">
+                                    <tbody>
+                                        <?php
+                                        $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                                        foreach ($days as $day):
+                                            $day_timing = $teacher_timings[$day] ?? null;
+                                        ?>
+                                            <tr>
+                                                <th><?php echo $day; ?></th>
+                                                <td>
+                                                    <?php if ($day_timing && !empty($day_timing['is_closed'])): ?>
+                                                        <span class="badge badge-secondary">Closed</span>
+                                                    <?php elseif ($day_timing && !empty($day_timing['opens_at'])): ?>
+                                                        <?php echo date("g:i A", strtotime($day_timing['opens_at'])); ?> - <?php echo date("g:i A", strtotime($day_timing['closes_at'])); ?>
+                                                    <?php else: ?>
+                                                        <span class="text-muted">Not Set</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     <?php else: ?>
                         <div class="alert alert-warning">The timetable has not been set for your class yet.</div>
                     <?php endif; ?>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
+                <?php
+                if (!is_ajax_request()) {
+                ?>
+                </div>
+                <?php include '../../includes/footer.php'; ?>
             </div>
-            <?php include '../../includes/footer.php'; ?>
         </div>
-    </div>
 
-    <?php include_once "../../includes/logout_modal.php" ?>
+        <?php include_once "../../includes/logout_modal.php" ?>
 
-    <script src="../../assets/vendor/jquery/jquery.min.js"></script>
-    <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="../../assets/js/sb-admin-2.min.js"></script>
-    <script src="../../assets/js/custom_student_scripts.js"></script>
-</body>
+        <script src="../../assets/vendor/jquery/jquery.min.js"></script>
+        <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+        <script src="../../assets/js/sb-admin-2.min.js"></script>
+        <script src="../../assets/js/custom_student_scripts.js"></script>
+    </body>
 
-</html>
+    </html>
 <?php
-}
+                }
 ?>
