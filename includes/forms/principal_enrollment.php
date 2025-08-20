@@ -19,11 +19,8 @@ if (!$role) {
 $errors = [];
 $batch = $_POST['batch'] ?? '';
 $school_id_posted = $_POST['school_id'] ?? '';
-// --- FIX START: Initialize variable to hold the path of a successfully uploaded image across submissions ---
 $temp_image_path = $_POST['temp_image_path'] ?? null;
-// --- FIX END ---
 
-// Fetch available schools based on batch selection
 $schools = [];
 if (!empty($batch)) {
     try {
@@ -41,7 +38,6 @@ if (!empty($batch)) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // --- FIX START: Handle a new file upload first, separately from other validations ---
     if (isset($_FILES['principal_image']) && $_FILES['principal_image']['error'] === UPLOAD_ERR_OK) {
         $file_info = $_FILES['principal_image'];
         $file_errors = [];
@@ -54,7 +50,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if (empty($file_errors)) {
-            // Use the same directory as edit.php for consistency
             $upload_dir_relative = 'uploads/principal_images/';
             $upload_dir_physical = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . BASE_URL . $upload_dir_relative;
             if (!is_dir($upload_dir_physical)) {
@@ -66,18 +61,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $destination_physical_path = $upload_dir_physical . $new_file_name;
 
             if (move_uploaded_file($file_info['tmp_name'], $destination_physical_path)) {
-                // If successful, update our temporary path variable
-                $temp_image_path = $upload_dir_relative . $new_file_name;
+                $temp_image_path = BASE_URL . $upload_dir_relative . $new_file_name;
                 clearstatcache();
             } else {
                 $errors[] = "Failed to move the uploaded photo.";
             }
         } else {
-            // If the file itself had errors, add them to the main error list
             $errors = array_merge($errors, $file_errors);
         }
     }
-    // --- FIX END ---
 
     if (isset($_POST['enroll_principal'])) {
         $school_id = $_POST['school_id'];
@@ -92,7 +84,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $salary = trim($_POST['salary']);
         $password = $_POST['password'];
         $timings = $_POST['timings'] ?? [];
-        // The final path for the DB is the one we've been tracking in $temp_image_path
         $image_path_for_db = $temp_image_path;
 
         if (empty($school_id)) $errors[] = "A school must be selected.";
@@ -126,8 +117,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 foreach ($timings as $day => $details) {
                     $is_closed_bool = isset($details['is_closed']);
                     $is_closed_for_db = $is_closed_bool ? 1 : 0;
-                    $opens_at = ($is_closed_bool || empty($details['opens_at'])) ? null : $details['opens_at'];
-                    $closes_at = ($is_closed_bool || empty($details['closes_at'])) ? null : $details['closes_at'];
+                    
+                    $opens_at = null;
+                    if (!$is_closed_bool && !empty($details['opens_at']) && !empty($details['opens_at_ampm'])) {
+                        $opens_at = $details['opens_at'] . ' ' . $details['opens_at_ampm'];
+                    }
+
+                    $closes_at = null;
+                    if (!$is_closed_bool && !empty($details['closes_at']) && !empty($details['closes_at_ampm'])) {
+                        $closes_at = $details['closes_at'] . ' ' . $details['closes_at_ampm'];
+                    }
+                    
                     $stmt_timing->execute([$new_user_id, $day, $opens_at, $closes_at, $is_closed_for_db]);
                 }
 
@@ -150,7 +150,6 @@ if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <title>Enroll Principal - School Management System</title>
@@ -162,16 +161,12 @@ if (!is_ajax_request()) {
     <link rel="icon" type="image/x-icon" href="../../assets/img/favicon.ico">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
 </head>
-
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
-<?php
-}
-?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Enroll New Principal</h1>
@@ -189,7 +184,6 @@ if (!is_ajax_request()) {
                         <div class="card-body">
                             <form method="POST" enctype="multipart/form-data" id="principalForm">
                                 <input type="hidden" name="temp_image_path" value="<?php echo htmlspecialchars($temp_image_path ?? ''); ?>">
-
                                 <input type="hidden" name="image_preview_data" id="imagePreviewData" value="<?php echo htmlspecialchars($_POST['image_preview_data'] ?? ''); ?>">
                                 <div class="row">
                                     <div class="col-md-3 text-center">
@@ -203,10 +197,7 @@ if (!is_ajax_request()) {
                                         </div>
                                         <div class="form-row">
                                             <div class="form-group col-md-6"><label for="email">Email *</label><input type="email" class="form-control" id="email" name="email" value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>" required></div>
-                                            <div class="form-group col-md-6">
-                                                <label for="password">Password *</label>
-                                                <input type="password" class="form-control" id="password" name="password" value="<?php echo htmlspecialchars($_POST['password'] ?? ''); ?>" required>
-                                            </div>
+                                            <div class="form-group col-md-6"><label for="password">Password *</label><input type="password" class="form-control" id="password" name="password" value="<?php echo htmlspecialchars($_POST['password'] ?? ''); ?>" required></div>
                                         </div>
                                     </div>
                                 </div>
@@ -240,24 +231,43 @@ if (!is_ajax_request()) {
                                 <hr>
                                 <h6 class="font-weight-bold text-primary mb-3">Weekly Timings</h6>
                                 <div id="timings-schedule">
-                                    <?php $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-                                    foreach ($days as $day) : $posted_day = $_POST['timings'][$day] ?? [];
+                                    <?php 
+                                    $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                                    foreach ($days as $day) : 
+                                        $posted_day = $_POST['timings'][$day] ?? [];
                                         $is_closed = isset($posted_day['is_closed']);
                                         $opens_at = $posted_day['opens_at'] ?? '10:00';
-                                        $closes_at = $posted_day['closes_at'] ?? '20:00'; ?>
+                                        $opens_at_ampm = $posted_day['opens_at_ampm'] ?? 'AM';
+                                        $closes_at = $posted_day['closes_at'] ?? '06:00';
+                                        $closes_at_ampm = $posted_day['closes_at_ampm'] ?? 'PM';
+                                    ?>
                                         <div class="form-row align-items-center mb-2 timing-row" data-day="<?php echo $day; ?>">
                                             <div class="col-md-2"><label class="mb-0"><?php echo $day; ?></label></div>
                                             <div class="col-md-2">
                                                 <div class="custom-control custom-checkbox"><input type="checkbox" class="custom-control-input closed-checkbox" id="closed_<?php echo $day; ?>" name="timings[<?php echo $day; ?>][is_closed]" <?php if ($is_closed) echo 'checked'; ?>><label class="custom-control-label" for="closed_<?php echo $day; ?>">Closed</label></div>
                                             </div>
-                                            <div class="col-md-3">
+                                            <div class="col-md-4">
                                                 <div class="input-group">
-                                                    <div class="input-group-prepend"><span class="input-group-text small">Opens at</span></div><input type="time" class="form-control opens-at" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                    <div class="input-group-prepend"><span class="input-group-text small">Opens at</span></div>
+                                                    <input type="text" class="form-control time-input" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" placeholder="HH:MM" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                    <div class="input-group-append">
+                                                        <select class="form-control ampm-select" name="timings[<?php echo $day; ?>][opens_at_ampm]" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                            <option value="AM" <?php if ($opens_at_ampm == 'AM') echo 'selected'; ?>>AM</option>
+                                                            <option value="PM" <?php if ($opens_at_ampm == 'PM') echo 'selected'; ?>>PM</option>
+                                                        </select>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div class="col-md-3">
+                                            <div class="col-md-4">
                                                 <div class="input-group">
-                                                    <div class="input-group-prepend"><span class="input-group-text small">Closes at</span></div><input type="time" class="form-control closes-at" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                    <div class="input-group-prepend"><span class="input-group-text small">Closes at</span></div>
+                                                    <input type="text" class="form-control time-input" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" placeholder="HH:MM" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                    <div class="input-group-append">
+                                                        <select class="form-control ampm-select" name="timings[<?php echo $day; ?>][closes_at_ampm]" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                            <option value="AM" <?php if ($closes_at_ampm == 'AM') echo 'selected'; ?>>AM</option>
+                                                            <option value="PM" <?php if ($closes_at_ampm == 'PM') echo 'selected'; ?>>PM</option>
+                                                        </select>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -295,9 +305,6 @@ if (!is_ajax_request()) {
                         </div>
                     </div>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
             </div>
             <?php include_once '../../includes/footer.php'; ?>
         </div>
@@ -313,7 +320,7 @@ if (!is_ajax_request()) {
             function toggleTimeInputs() {
                 document.querySelectorAll('.closed-checkbox').forEach(function(checkbox) {
                     const row = checkbox.closest('.timing-row');
-                    const timeInputs = row.querySelectorAll('input[type="time"]');
+                    const timeInputs = row.querySelectorAll('.time-input, .ampm-select');
                     timeInputs.forEach(function(input) {
                         input.disabled = checkbox.checked;
                     });
@@ -328,7 +335,6 @@ if (!is_ajax_request()) {
                 document.getElementById('principalForm').reset();
                 document.getElementById('imagePreview').src = '../../assets/images/unisex.png';
                 document.getElementById('imagePreviewData').value = '';
-                // Clear the hidden temp image path on reset
                 document.querySelector('input[name="temp_image_path"]').value = '';
                 setTimeout(toggleTimeInputs, 50);
             });
@@ -348,7 +354,6 @@ if (!is_ajax_request()) {
         });
     </script>
 </body>
-
 </html>
 <?php
 }

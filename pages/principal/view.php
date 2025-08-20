@@ -6,28 +6,24 @@ if (!defined('BASE_URL')) {
     define('BASE_URL', '/BMC-SMS/');
 }
 
-function getWebAccessibleImagePath($relative_path, $base_url)
-{
+function getWebAccessibleImagePath($relative_path, $base_url) {
     if (empty($relative_path)) {
         return null;
     }
-    $full_web_path = $base_url . ltrim($relative_path, '/');
+    $full_web_path = $relative_path;
     $physical_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $full_web_path;
 
     if (file_exists($physical_path) && is_file($physical_path)) {
         return htmlspecialchars($full_web_path);
     }
-
     return null;
 }
 
-function getDefaultImagePath($base_web_path)
-{
+function getDefaultImagePath($base_web_path) {
     return $base_web_path . 'assets/images/unisex.png';
 }
 
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
-
 if (!$role) {
     header("Location: ../../login.php");
     exit;
@@ -72,7 +68,6 @@ $default_photo = getDefaultImagePath(BASE_URL);
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <title>View Principal - <?php echo htmlspecialchars($principal['principal_name']); ?></title>
@@ -83,7 +78,6 @@ $default_photo = getDefaultImagePath(BASE_URL);
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
-
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -228,7 +222,7 @@ $default_photo = getDefaultImagePath(BASE_URL);
                                                             <?php if ($day_timing && !empty($day_timing['is_closed'])): ?>
                                                                 <span class="badge badge-secondary">Closed</span>
                                                             <?php elseif ($day_timing && !empty($day_timing['opens_at'])): ?>
-                                                                <?php echo date("g:i A", strtotime($day_timing['opens_at'])); ?> - <?php echo date("g:i A", strtotime($day_timing['closes_at'])); ?>
+                                                                <?php echo htmlspecialchars($day_timing['opens_at']) . ' - ' . htmlspecialchars($day_timing['closes_at']); ?>
                                                             <?php else: ?>
                                                                 <span class="text-muted">Not Set</span>
                                                             <?php endif; ?>
@@ -256,5 +250,4 @@ $default_photo = getDefaultImagePath(BASE_URL);
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
-
 </html>

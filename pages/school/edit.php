@@ -7,6 +7,24 @@ if (!defined('BASE_WEB_PATH')) {
     define('BASE_WEB_PATH', '/BMC-SMS/');
 }
 
+function getWebAccessibleImagePath($db_path) {
+    if (empty($db_path)) return null;
+
+    // Case 1: The path is already a full web path (e.g., /BMC-SMS/uploads/...)
+    $physical_path_full = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $db_path;
+    if (strpos($db_path, BASE_WEB_PATH) === 0 && file_exists($physical_path_full)) {
+        return htmlspecialchars($db_path);
+    }
+
+    // Case 2: The path is a relative path (e.g., uploads/...) - for old data
+    $physical_path_relative = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . BASE_WEB_PATH . ltrim($db_path, '/');
+    if (file_exists($physical_path_relative)) {
+        return htmlspecialchars(BASE_WEB_PATH . ltrim($db_path, '/'));
+    }
+
+    return null;
+}
+
 // Authenticate user role from cookie. Redirect to login if not found.
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 if (!$role) {
@@ -117,11 +135,9 @@ try {
     }
 }
 
-// --- FIX: SIMPLIFIED DISPLAY LOGIC ---
-// If the path from the DB exists and the file is found on the server, use it. Otherwise, use the default.
-$logo_display_path = (!empty($school['school_logo']) && file_exists(rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $school['school_logo']))
-    ? htmlspecialchars($school['school_logo'])
-    : BASE_WEB_PATH . 'assets/images/unisex.png';
+// Use the helper function to get the correct path, with a fallback to a default logo.
+$default_logo = BASE_WEB_PATH . 'assets/images/default-school.png';
+$logo_display_path = getWebAccessibleImagePath($school['school_logo']) ?? $default_logo;
 ?>
 <!DOCTYPE html>
 <html lang="en">

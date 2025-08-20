@@ -13,12 +13,25 @@ function getWebAccessibleImagePath($db_image_path, $base_web_path, $default_sub_
     if (empty($db_image_path)) {
         return null;
     }
-    $full_web_path = $base_web_path . ltrim($db_image_path, '/');
+
+    // 1. Check the exact path stored in the DB, handling if it's already a full path
+    if (strpos($db_image_path, '/') === 0) {
+        $full_web_path = $db_image_path;
+    } else {
+        $full_web_path = $base_web_path . ltrim($db_image_path, '/');
+    }
+    
     $filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $full_web_path;
     if (@file_exists($filesystem_path) && @is_file($filesystem_path)) {
         return $full_web_path;
     }
-    $possible_locations = ["pages/{$default_sub_folder}/uploads/", "uploads/{$default_sub_folder}s/", "uploads/"];
+    
+    // 2. Fallback check for other possible locations
+    $possible_locations = [
+        "pages/{$default_sub_folder}/uploads/",
+        "uploads/{$default_sub_folder}s/",
+        "uploads/"
+    ];
     foreach ($possible_locations as $location) {
         $test_path = $base_web_path . $location . basename($db_image_path);
         $test_filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $test_path;
@@ -26,7 +39,8 @@ function getWebAccessibleImagePath($db_image_path, $base_web_path, $default_sub_
             return $test_path;
         }
     }
-    return null;
+
+    return null; // Return null if no image is found
 }
 
 $user_data = null;

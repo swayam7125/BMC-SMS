@@ -3463,8 +3463,8 @@ CREATE TABLE public.principal_timings (
     timing_id bigint NOT NULL,
     principal_id bigint NOT NULL,
     day_of_week public.day_of_week NOT NULL,
-    opens_at time without time zone,
-    closes_at time without time zone,
+    opens_at character varying(8),
+    closes_at character varying(8),
     is_closed boolean DEFAULT false NOT NULL
 );
 
@@ -5258,12 +5258,14 @@ COPY public.payroll_records (id, teacher_id, principal_id, school_id, salary_mon
 --
 
 COPY public.principal (id, principal_image, school_id, principal_name, email, password, phone, dob, gender, blood_group, address, qualification, salary, batch) FROM stdin;
+114	/BMC-SMS/pages/principal/uploads/principal_68a4c1410ee3a6.67179248.jpg	4	Hardik Kulkarni	hardik@gmail.com	$2y$10$viDn0Uqmw5uHxjRW09Hg.eadmQ5RIft8UyBcEkzO0cs1amrrW4FXi	8520123697	1996-02-06	Male	O-	39, Sarkar Villa, Piplod, Surat	M.A. M.Ed	52300.00	Evening
+10	/BMC-SMS/uploads/principal_images/principal_10_1755677263.jpg	4	Fenil Pastagia	17fenill@gmail.com	$2y$10$EP56edKNSOvDiPXCub4iZuAI5sEVX3XjU1tnqJu8a4f.VS58QO5de	9924976503	1990-08-17	Male	B+	canal road	M.A. M.Ed	90000.00	Morning
+115	/BMC-SMS/uploads/principal_images/principal_68a57561519cd2.58579375.jpg	13	Rupesh Pastagia	rupesh@gmail.com	$2y$10$bE4j/mv0OVuqDix.gg1NLOTdhoDj2FYSBuDZ1hp6j.tubSV2vhwPm	9678906578	1988-12-28	Male	A+	Adajan, Surat	M.A, B.Ed	80000.00	Morning
 42	\N	8	Akshat	akshat@gmail.com	$2y$10$YW7sWUGqVcbuiHzwxwjShOajCzOXNSbqML9zPAzrM8.RWml.41iXW	8574123698	2000-06-06	Male	AB-	Adajan	MA	560000.00	Morning
 39	/BMC-SMS/uploads/principal_images/principal_39_1754626094.png	5	Sunny	sunny@gmail.com	$2y$10$B4ISjcDHMlF.dJwZ0X.LlOQT6ZKgHPQy.odp78wc8cEahPpkhMKKm	8796457852	2003-06-06	Male	B+	Surat	d	100000.00	Evening
 40	/BMC-SMS/uploads/principal_images/principal_40_1754626208.png	6	Viral	viral@gmail.com	$2y$10$jKjdp7PnB3Ys3M7TnrfQtO97DNw8WPvNtldu7M1rX/ckGXx.P/9QW	7405670345	2000-03-11	Male	O+	Jahangirpura	MA	800000.00	Morning
 13	/BMC-SMS/uploads/principal_images/principal_13_1754638547.png	1	Dhaval	dhaval@gmail.com	$2y$10$/PhOzkuBDiabEZAW5eIZKuEr9Gcr0NTvpE7mGegA1Z6oNalzKXQcW	2563417897	1995-08-06	Male	A+	Varacha	12	600000.00	Morning
 64	/BMC-SMS/uploads/principal_images/principal_6898b7b97f89a0.42981154.jpg	11	PQRS	pqrs@gmail.com	$2y$10$.Nu9UqZeGtKi.A1fJd1VQOMIRiwiqWstqDRIoj2SoFdy/gsmY4cx2	3208741230	2021-12-11	Male	AB+	abcdef	B.C.A	12000.00	Morning
-10	/BMC-SMS/pages/principal/uploads/principal_688e1e9a2a4f50.30741006.jpg	4	Fenil Pastagia	17fenill@gmail.com	$2y$10$EP56edKNSOvDiPXCub4iZuAI5sEVX3XjU1tnqJu8a4f.VS58QO5de	9924976503	1990-08-17	Male	B+	canal road	M.A. M.Ed	90000.00	Morning
 \.
 
 
@@ -5286,7 +5288,9 @@ COPY public.principal_attendance (id, principal_id, school_id, attendance_date, 
 2	10	4	2025-08-07	Absent	21.20995620	72.77066930	18:31:01.623545	2025-08-07 11:51:37.880963+00
 63	10	4	2025-08-12	Absent	21.18553904	72.77813518	11:52:44.990294	2025-08-12 06:05:11.118698+00
 22	13	1	2025-08-08	Absent	\N	\N	08:38:52.86685	2025-08-08 08:32:54.774228+00
-155	10	4	2025-08-19	Absent	\N	\N	17:55:54.4996	2025-08-19 08:00:45.51607+00
+195	114	4	2025-08-19	Absent	\N	\N	18:23:29.601793	2025-08-19 18:23:29.601793+00
+155	10	4	2025-08-19	Absent	21.20139575	72.79829760	20:30:07.473768	2025-08-19 08:00:45.51607+00
+201	115	13	2025-08-20	Absent	21.21023610	72.77077450	07:22:12.572275	2025-08-20 07:22:12.572275+00
 17	10	4	2025-08-08	Absent	\N	\N	16:39:26.206211	2025-08-08 04:26:59.590595+00
 40	10	4	2025-08-09	Absent	21.18541550	72.77866350	13:12:13.945994	2025-08-09 13:07:51.58185+00
 128	10	4	2025-08-18	Absent	21.19106560	72.83671040	17:20:04.812795	2025-08-18 06:36:25.983619+00
@@ -5294,6 +5298,7 @@ COPY public.principal_attendance (id, principal_id, school_id, attendance_date, 
 42	10	4	2025-08-10	Absent	\N	\N	18:27:05.466767	2025-08-10 09:48:58.767457+00
 107	42	8	2025-08-13	Absent	\N	\N	19:02:43.848609	2025-08-13 19:02:43.848609+00
 76	10	4	2025-08-13	Absent	\N	\N	19:05:07.836238	2025-08-13 08:53:01.325826+00
+200	10	4	2025-08-20	Absent	21.20089600	72.83671040	08:07:57.675143	2025-08-20 06:50:10.916801+00
 \.
 
 
@@ -5302,13 +5307,6 @@ COPY public.principal_attendance (id, principal_id, school_id, attendance_date, 
 --
 
 COPY public.principal_timings (timing_id, principal_id, day_of_week, opens_at, closes_at, is_closed) FROM stdin;
-1	10	Monday	06:00:00	20:00:00	f
-2	10	Tuesday	10:00:00	20:00:00	f
-3	10	Wednesday	10:00:00	20:00:00	f
-4	10	Thursday	10:00:00	20:00:00	f
-5	10	Friday	10:00:00	20:00:00	f
-6	10	Saturday	10:00:00	20:00:00	f
-7	10	Sunday	10:00:00	20:00:00	f
 71	39	Monday	10:00:00	20:00:00	f
 72	39	Tuesday	10:00:00	20:00:00	f
 73	39	Wednesday	10:00:00	20:00:00	f
@@ -5344,6 +5342,27 @@ COPY public.principal_timings (timing_id, principal_id, day_of_week, opens_at, c
 152	64	Friday	10:00:00	20:00:00	f
 153	64	Saturday	10:00:00	20:00:00	f
 154	64	Sunday	\N	\N	t
+176	114	Monday	10:00:00	20:00:00	f
+177	114	Tuesday	10:00:00	20:00:00	f
+178	114	Wednesday	10:00:00	20:00:00	f
+179	114	Thursday	10:00:00	20:00:00	f
+180	114	Friday	10:00:00	20:00:00	f
+181	114	Saturday	10:00:00	20:00:00	f
+182	114	Sunday	\N	\N	t
+190	115	Monday	07:00 AM	12:00 PM	f
+191	115	Tuesday	07:00 AM	12:00 PM	f
+192	115	Wednesday	07:00 AM	12:00 PM	f
+193	115	Thursday	07:00 AM	12:00 PM	f
+194	115	Friday	07:00 AM	12:00 PM	f
+195	115	Saturday	07:00 AM	10:00 AM	f
+196	115	Sunday	\N	\N	t
+1	10	Monday	07:00 AM	12:00 PM	f
+2	10	Tuesday	07:00 AM	12:00 PM	f
+3	10	Wednesday	07:00 AM	12:00 PM	f
+4	10	Thursday	07:00 AM	12:00 PM	f
+5	10	Friday	07:00 AM	12:00 PM	f
+6	10	Saturday	07:00 AM	10:00 AM	f
+7	10	Sunday	10:00 AM	12:00 PM	f
 \.
 
 
@@ -5404,6 +5423,7 @@ COPY public.routes (id, school_id, route_name, vehicle_id, driver_id) FROM stdin
 --
 
 COPY public.school (id, school_logo, school_name, email, phone, school_opening, school_type, education_board, school_medium, school_category, address, latitude, longitude, passing_percentage) FROM stdin;
+13	uploads/school_logos/school_13_1755673545.jpg	DD Savani	dd@gmail.com	9087678990	2025-08-20	Private	{CBSE}	{English}	{Primary,"Upper Primary",Secondary,"Higher Secondary"}	Pal, Surat	\N	\N	33.00
 11	\N	ABCD International School	abcd@gmail.com	abcd1234	2024-11-01	Private	{CBSE}	{English}	{Pre-Primary,Primary,"Upper Primary",Secondary,"Higher Secondary"}	abcder	\N	\N	33.00
 1	/BMC-SMS/uploads/school_logos/school_1_1754848090.jpg	LP SAVANI CANAL ROAD	lpsavani@gmail.com	8974589654	2025-08-06	Government	{State}	{Hindi}	{Pre-Primary,Primary}	Surat	\N	\N	33.00
 6	/BMC-SMS/uploads/school_logos/school_6_1754848118.jpg	Sevan Days	seven@gmail.com	7874145963	2003-05-06	Government	{CBSE,State}	{English}	{Pre-Primary,Primary,Secondary}	Canal Road	\N	\N	33.00
@@ -6161,14 +6181,16 @@ COPY public.users (id, role, email, password, account_status, otp_hash, otp_expi
 111	student	rachit@gmail.com	$2y$10$oOyZF2kAaFJob94dgh1Kbu2lNCf.4g6kGM3Zh/vNiz0ho04HXKSUO	active	\N	\N
 112	student	axar@gmail.com	$2y$10$56w4cCDqsO8r1k7/7BDXguiS1o0rFYCF6nBqNau1gI5bFNfSVbCKa	active	\N	\N
 113	student	sumeet@gmail.com	$2y$10$j7nsSInl3GKBU7y5F6ke8.sIXr4Xvj2TicpjD7JH2S/fAGeND9xS.	active	\N	\N
+114	principal	hardik@gmail.com	$2y$10$viDn0Uqmw5uHxjRW09Hg.eadmQ5RIft8UyBcEkzO0cs1amrrW4FXi	active	\N	\N
 12	teacher	jay@gmail.com	$2y$10$TUf4M/5ENm2A6oun27EuAuAz8Wlr8e8Ub8xwCR3w9i09nTBhFEWMO	active	\N	\N
 52	teacher	tara@gmail.com	$2y$10$sjbggi23JLfNjwuNGmvKY.EvgUgWS9.nh7pA3vv5QjJGP75YBBxDO	active	\N	\N
 49	teacher	ayushi@gmail.com	$2y$10$Vo893uZp26VV4sCkTWFXSePR9UxOVhLRZlnVtYthhIgdrm4kdIslO	active	\N	\N
 70	teacher	rahul@gmail.com	$2y$10$QjT3TSvtutmr1Jl2REhPBuJ4c6B34xrmOkAOe7GwI0ms3sB7Ov.iW	active	\N	\N
+115	principal	rupesh@gmail.com	$2y$10$bE4j/mv0OVuqDix.gg1NLOTdhoDj2FYSBuDZ1hp6j.tubSV2vhwPm	active	\N	\N
 42	principal	akshat@gmail.com	$2y$10$YW7sWUGqVcbuiHzwxwjShOajCzOXNSbqML9zPAzrM8.RWml.41iXW	active	\N	\N
+10	principal	17fenill@gmail.com	$2y$10$EP56edKNSOvDiPXCub4iZuAI5sEVX3XjU1tnqJu8a4f.VS58QO5de	active	\N	\N
 53	librarian	rohit@gmail.com	$2y$10$CX5ZFB02c4ncgdCCy9WplezqcHT0jAEaAAaI6uqr6fQHvj0FoSL8m	active	\N	\N
 100	student	peter@gmail.com	$2y$10$UdgNIbWevbGXmWLhyRS1uer5yttZTYCciG.ivmK1jjmlkt4RhVZ4O	active	\N	\N
-10	principal	17fenill@gmail.com	$2y$10$EP56edKNSOvDiPXCub4iZuAI5sEVX3XjU1tnqJu8a4f.VS58QO5de	active	\N	\N
 57	librarian	rajesh@gmail.com	$2y$10$CxN4cGL7URQgFfYsbrYOYOYE6mJxO8KBGL0iDXGOpHmrrFFPgfJsu	active	\N	\N
 \.
 
@@ -6537,14 +6559,14 @@ SELECT pg_catalog.setval('public.payroll_records_id_seq', 8, true);
 -- Name: principal_attendance_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.principal_attendance_id_seq', 194, true);
+SELECT pg_catalog.setval('public.principal_attendance_id_seq', 216, true);
 
 
 --
 -- Name: principal_timings_timing_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.principal_timings_timing_id_seq', 175, true);
+SELECT pg_catalog.setval('public.principal_timings_timing_id_seq', 266, true);
 
 
 --
@@ -6572,7 +6594,7 @@ SELECT pg_catalog.setval('public.routes_id_seq', 2, true);
 -- Name: school_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.school_id_seq', 12, true);
+SELECT pg_catalog.setval('public.school_id_seq', 13, true);
 
 
 --
@@ -6649,7 +6671,7 @@ SELECT pg_catalog.setval('public.timetables_id_seq', 1, false);
 -- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.users_id_seq', 113, true);
+SELECT pg_catalog.setval('public.users_id_seq', 115, true);
 
 
 --

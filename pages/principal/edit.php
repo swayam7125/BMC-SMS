@@ -3,50 +3,39 @@
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
-// Define the base URL if it's not already defined. This is crucial for creating correct file paths.
 if (!defined('BASE_URL')) {
     define('BASE_URL', '/BMC-SMS/');
 }
 
-/**
- * Generates a web-accessible URL for an image path stored in the database.
- * It checks if the path is a full URL, or constructs a path from the document root.
- *
- * @param string|null $db_image_path The path stored in the database.
- * @return string|null The web-accessible path or null if not found.
- */
-function getWebAccessibleImagePath($db_image_path)
-{
-    if (empty($db_image_path)) return null;
-    // If it's already a full URL, return it.
-    if (filter_var($db_image_path, FILTER_VALIDATE_URL)) return $db_image_path;
-    // Construct the full filesystem path to check if the file exists.
-    $filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . BASE_URL . ltrim($db_image_path, '/');
-    if (@is_file($filesystem_path)) {
-        // Return the web-accessible relative path.
-        return BASE_URL . ltrim($db_image_path, '/');
+function getWebAccessibleImagePath($db_image_path) {
+    if (empty($db_image_path)) {
+        return null;
     }
-    return null;
+    
+    // The path from the database is already the correct full web path.
+    $full_web_path = $db_image_path; 
+    
+    // Construct the physical path to check if the file actually exists.
+    $physical_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $full_web_path;
+
+    if (file_exists($physical_path) && is_file($physical_path)) {
+        return htmlspecialchars($full_web_path);
+    }
+    
+    return null; // Return null if the file doesn't exist.
 }
 
-// --- User Authentication Check ---
-// Every secure page should start with this check.
-// It decrypts the user role from the cookie and ensures the user is logged in.
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 if (!$role) {
-    // If no role is found, redirect to the login page and stop script execution.
     header("Location: ../../login.php");
     exit;
 }
 
-// --- ID Validation ---
-// Check if a principal ID is provided in the URL.
 if (!isset($_GET['id']) || empty($_GET['id'])) {
     header("Location: principal_list.php?error=Invalid ID provided");
     exit;
 }
 
-// Sanitize the ID to ensure it's an integer.
 $principal_id = intval($_GET['id']);
 $errors = [];
 $principal = null;
@@ -54,11 +43,8 @@ $timings = [];
 $schools_result = [];
 
 try {
-    // --- MODIFIED: Moved the school fetching logic to the top ---
-    // This ensures the school list is always available for the form dropdown, even if there's a POST error.
     $schools_result = $conn->query("SELECT id, school_name FROM school ORDER BY school_name")->fetchAll(PDO::FETCH_ASSOC);
 
-    // Fetch the existing principal's data to populate the form.
     $stmt_principal_fetch = $conn->prepare("SELECT * FROM principal WHERE id = ?");
     $stmt_principal_fetch->execute([$principal_id]);
     if ($stmt_principal_fetch->rowCount() === 0) {
@@ -66,21 +52,17 @@ try {
         exit;
     }
     $principal = $stmt_principal_fetch->fetch(PDO::FETCH_ASSOC);
-    // Store original values for comparison later.
     $original_image_path = $principal['principal_image'];
     $original_email = $principal['email'];
     $original_batch = $principal['batch'];
 
-    // Fetch the existing principal's weekly timings.
     $stmt_timings_fetch = $conn->prepare("SELECT * FROM principal_timings WHERE principal_id = ?");
     $stmt_timings_fetch->execute([$principal_id]);
     while ($row = $stmt_timings_fetch->fetch(PDO::FETCH_ASSOC)) {
         $timings[$row['day_of_week']] = $row;
     }
 
-    // --- Form Submission Logic ---
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        // Sanitize and retrieve all form data.
         $principal_name = trim($_POST['principal_name']);
         $new_email = trim($_POST['email']);
         $phone = trim($_POST['phone']);
@@ -93,9 +75,10 @@ try {
         $school_id = intval($_POST['school_id']);
         $new_batch = $_POST['batch'];
         $posted_timings = $_POST['timings'] ?? [];
+        
         $image_path_for_db = $original_image_path;
+        $new_image_was_uploaded = false; // Flag to check if a new image was uploaded
 
-        // --- Image Upload Logic ---
         if (isset($_FILES['principal_image']) && $_FILES['principal_image']['error'] === UPLOAD_ERR_OK) {
             $file = $_FILES['principal_image'];
             $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
@@ -106,8 +89,11 @@ try {
                 if (!file_exists($full_target_dir)) mkdir($full_target_dir, 0777, true);
                 $new_filename = 'principal_' . $principal_id . '_' . time() . '.' . $file_ext;
                 $destination = $full_target_dir . $new_filename;
+
                 if (move_uploaded_file($file['tmp_name'], $destination)) {
-                    $image_path_for_db = $target_dir_relative . $new_filename;
+                    // If the file moves successfully, update the path and set our flag
+                    $image_path_for_db = BASE_URL . $target_dir_relative . $new_filename;
+                    $new_image_was_uploaded = true; 
                 } else {
                     $errors[] = "Failed to move uploaded file.";
                 }
@@ -116,11 +102,9 @@ try {
             }
         }
 
-        // --- Database Update Logic ---
         if (empty($errors)) {
             $conn->beginTransaction();
 
-            // Handle batch swapping if another principal is in the same school/batch.
             if ($new_batch !== $original_batch) {
                 $stmt_swap_check = $conn->prepare("SELECT id FROM principal WHERE school_id = ? AND batch = ? AND id != ?");
                 $stmt_swap_check->execute([$school_id, $new_batch, $principal_id]);
@@ -131,49 +115,48 @@ try {
                 }
             }
 
-            // If email is changed, update the corresponding record in the 'users' table.
             if ($new_email !== $original_email) {
                 $stmt_user = $conn->prepare("UPDATE users SET email=? WHERE id=? AND role='principal'");
                 $stmt_user->execute([$new_email, $principal_id]);
             }
 
-            // Update the main principal record.
             $update_principal_query = "UPDATE principal SET principal_image=?, principal_name=?, email=?, phone=?, dob=?, gender=?, blood_group=?, address=?, qualification=?, salary=?, school_id=?, batch=? WHERE id=?";
             $stmt_principal_update = $conn->prepare($update_principal_query);
             $stmt_principal_update->execute([$image_path_for_db, $principal_name, $new_email, $phone, $dob, $gender, $blood_group, $address, $qualification, $salary, $school_id, $new_batch, $principal_id]);
 
-            // Upsert (UPDATE or INSERT) the weekly timings.
             $upsert_timing_query = "INSERT INTO principal_timings (principal_id, day_of_week, opens_at, closes_at, is_closed) VALUES (?, ?, ?, ?, ?) ON CONFLICT (principal_id, day_of_week) DO UPDATE SET opens_at = EXCLUDED.opens_at, closes_at = EXCLUDED.closes_at, is_closed = EXCLUDED.is_closed";
             $stmt_timing_upsert = $conn->prepare($upsert_timing_query);
             foreach ($days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as $day) {
                 $details = $posted_timings[$day] ?? [];
-
-                // *** FIX STARTS HERE ***
-                // The original code passed a PHP boolean (from isset) directly to the database.
-                // When 'is_closed' was not set, this resulted in `false`, which PDO sent as an empty string `''`.
-                // PostgreSQL's boolean type does not accept `''`, causing the `SQLSTATE[22P02]` error.
-                // The fix is to convert the PHP boolean to an integer (1 or 0), which is a valid boolean representation in SQL.
-                
                 $is_closed_bool = isset($details['is_closed']);
-                $is_closed_for_db = $is_closed_bool ? 1 : 0; // Convert boolean to 1 or 0 for the database.
-
-                // Set times to null if the day is marked as closed.
-                $opens_at = ($is_closed_bool || empty($details['opens_at'])) ? null : $details['opens_at'];
-                $closes_at = ($is_closed_bool || empty($details['closes_at'])) ? null : $details['closes_at'];
+                $is_closed_for_db = $is_closed_bool ? 1 : 0;
                 
-                // Execute the query with the corrected boolean value.
+                $opens_at = null;
+                if (!$is_closed_bool && !empty($details['opens_at']) && !empty($details['opens_at_ampm'])) {
+                    $opens_at = date("h:i A", strtotime($details['opens_at'] . ' ' . $details['opens_at_ampm']));
+                }
+
+                $closes_at = null;
+                if (!$is_closed_bool && !empty($details['closes_at']) && !empty($details['closes_at_ampm'])) {
+                    $closes_at = date("h:i A", strtotime($details['closes_at'] . ' ' . $details['closes_at_ampm']));
+                }
+                
                 $stmt_timing_upsert->execute([$principal_id, $day, $opens_at, $closes_at, $is_closed_for_db]);
-                // *** FIX ENDS HERE ***
             }
 
-            // If all queries were successful, commit the transaction.
             $conn->commit();
+
+            // If a new image was uploaded AND the logged-in user is the one being edited...
+            if ($new_image_was_uploaded && $principal_id == decrypt_id($_COOKIE['encrypted_user_id'])) {
+                $encrypted_image_path = encrypt_id($image_path_for_db);
+                setcookie('encrypted_profile_image', $encrypted_image_path, time() + 86400, "/");
+            }
+            
             header("Location: principal_list.php?success=Principal updated successfully.");
             exit;
         }
     }
 } catch (Exception $e) {
-    // If any error occurs, roll back the transaction and display the error message.
     if (isset($conn) && $conn->inTransaction()) $conn->rollBack();
     $errors[] = "Database error: " . $e->getMessage();
 }
@@ -187,8 +170,8 @@ try {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
-
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -253,22 +236,50 @@ try {
                                     foreach ($days as $day):
                                         $day_timing = $timings[$day] ?? [];
                                         $is_closed = !empty($day_timing['is_closed']);
-                                        $opens_at = !empty($day_timing['opens_at']) ? date("H:i", strtotime($day_timing['opens_at'])) : '10:00';
-                                        $closes_at = !empty($day_timing['closes_at']) ? date("H:i", strtotime($day_timing['closes_at'])) : '20:00';
-                                    ?>
+                                        
+                                        if (!empty($day_timing['opens_at'])) {
+                                            $opens_at_time = date("h:i", strtotime($day_timing['opens_at']));
+                                            $opens_at_ampm = date("A", strtotime($day_timing['opens_at']));
+                                        } else {
+                                            $opens_at_time = '10:00';
+                                            $opens_at_ampm = 'AM';
+                                        }
+                                    
+                                        if (!empty($day_timing['closes_at'])) {
+                                            $closes_at_time = date("h:i", strtotime($day_timing['closes_at']));
+                                            $closes_at_ampm = date("A", strtotime($day_timing['closes_at']));
+                                        } else {
+                                            $closes_at_time = '06:00';
+                                            $closes_at_ampm = 'PM';
+                                        }
+                                        ?>
                                         <div class="form-row align-items-center mb-2 timing-row">
                                             <div class="col-md-2"><label class="mb-0"><?php echo $day; ?></label></div>
                                             <div class="col-md-2">
                                                 <div class="custom-control custom-checkbox"><input type="checkbox" class="custom-control-input" id="closed_<?php echo $day; ?>" name="timings[<?php echo $day; ?>][is_closed]" <?php if ($is_closed) echo 'checked'; ?>><label class="custom-control-label" for="closed_<?php echo $day; ?>">Closed</label></div>
                                             </div>
-                                            <div class="col-md-3">
+                                            <div class="col-md-4">
                                                 <div class="input-group">
-                                                    <div class="input-group-prepend"><span class="input-group-text small">Opens at</span></div><input type="time" class="form-control" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                    <div class="input-group-prepend"><span class="input-group-text small">Opens at</span></div>
+                                                    <input type="text" class="form-control time-input" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at_time); ?>" placeholder="HH:MM" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                    <div class="input-group-append">
+                                                        <select class="form-control ampm-select" name="timings[<?php echo $day; ?>][opens_at_ampm]" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                            <option value="AM" <?php if ($opens_at_ampm == 'AM') echo 'selected'; ?>>AM</option>
+                                                            <option value="PM" <?php if ($opens_at_ampm == 'PM') echo 'selected'; ?>>PM</option>
+                                                        </select>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div class="col-md-3">
+                                            <div class="col-md-4">
                                                 <div class="input-group">
-                                                    <div class="input-group-prepend"><span class="input-group-text small">Closes at</span></div><input type="time" class="form-control" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                    <div class="input-group-prepend"><span class="input-group-text small">Closes at</span></div>
+                                                    <input type="text" class="form-control time-input" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at_time); ?>" placeholder="HH:MM" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                    <div class="input-group-append">
+                                                        <select class="form-control ampm-select" name="timings[<?php echo $day; ?>][closes_at_ampm]" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                            <option value="AM" <?php if ($closes_at_ampm == 'AM') echo 'selected'; ?>>AM</option>
+                                                            <option value="PM" <?php if ($closes_at_ampm == 'PM') echo 'selected'; ?>>PM</option>
+                                                        </select>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -311,21 +322,19 @@ try {
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
+    <?php include_once "../../includes/logout_modal.php" ?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // This script handles the "Closed" checkbox for each day's timing.
-            // When checked, it disables the time input fields for that day.
             document.querySelectorAll('.timing-row .custom-control-input').forEach(function(checkbox) {
                 const row = checkbox.closest('.timing-row');
-                const timeInputs = row.querySelectorAll('input[type="time"]');
+                const timeInputs = row.querySelectorAll('.time-input, .ampm-select');
                 function toggle() {
                     timeInputs.forEach(input => input.disabled = checkbox.checked);
                 }
                 checkbox.addEventListener('change', toggle);
-                // Run on page load to set initial state.
                 toggle();
             });
         });

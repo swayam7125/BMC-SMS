@@ -20,22 +20,19 @@ if ($school_id <= 0) {
     exit;
 }
 
-function getWebAccessibleImagePath($db_path)
-{
-    if (empty($db_path)) {
-        return null;
+function getWebAccessibleImagePath($db_path) {
+    if (empty($db_path)) return null;
+
+    // Case 1: The path is already a full web path (e.g., /BMC-SMS/uploads/...)
+    $physical_path_full = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $db_path;
+    if (strpos($db_path, BASE_WEB_PATH) === 0 && file_exists($physical_path_full)) {
+        return htmlspecialchars($db_path);
     }
 
-    $relative_path = $db_path;
-    if (strpos($db_path, BASE_WEB_PATH) === 0) {
-        $relative_path = substr($db_path, strlen(BASE_WEB_PATH));
-    }
-
-    $physical_path_to_check = BASE_PHYSICAL_PATH . ltrim($relative_path, '/');
-    $web_path_to_return = BASE_WEB_PATH . ltrim($relative_path, '/');
-
-    if (file_exists($physical_path_to_check) && is_file($physical_path_to_check)) {
-        return htmlspecialchars($web_path_to_return);
+    // Case 2: The path is a relative path (e.g., uploads/...) - for old data
+    $physical_path_relative = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . BASE_WEB_PATH . ltrim($db_path, '/');
+    if (file_exists($physical_path_relative)) {
+        return htmlspecialchars(BASE_WEB_PATH . ltrim($db_path, '/'));
     }
 
     return null;

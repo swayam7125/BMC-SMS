@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     if (move_uploaded_file($file_info['tmp_name'], $destination_physical_path)) {
                         // --- FIX: Storing a relative path for consistency. ---
-                        $logo_path_for_db = 'uploads/school_logos/' . $new_file_name;
+                        $logo_path_for_db = BASE_WEB_PATH . 'uploads/school_logos/' . $new_file_name;
                         
                         // Step 3: Update the new school record with the logo path.
                         $update_logo_stmt = $conn->prepare('UPDATE "school" SET "school_logo" = ? WHERE "id" = ?');

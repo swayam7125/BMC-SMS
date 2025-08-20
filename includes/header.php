@@ -48,11 +48,15 @@ if (isset($_COOKIE['encrypted_user_role'])) {
             $userName = decrypt_id($_COOKIE['encrypted_user_name']);
         }
         if (isset($_COOKIE['encrypted_profile_image'])) {
-            $decrypted_image_relative_path = decrypt_id($_COOKIE['encrypted_profile_image']);
-            $image_path_for_web = BASE_WEB_PATH . ltrim($decrypted_image_relative_path, '/');
-            $filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $image_path_for_web;
-            if (!empty($decrypted_image_relative_path) && file_exists($filesystem_path) && is_file($filesystem_path)) {
-                $userProfileImage = $image_path_for_web;
+            // The cookie stores the full web path, e.g., /BMC-SMS/pages/principal/uploads/...
+            $decrypted_full_path = decrypt_id($_COOKIE['encrypted_profile_image']);
+            
+            // Construct the absolute physical path on the server's hard drive to check if the file exists.
+            $filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $decrypted_full_path;
+            
+            // If the decrypted path is not empty and the file physically exists, set it as the profile image.
+            if (!empty($decrypted_full_path) && file_exists($filesystem_path)) {
+                $userProfileImage = $decrypted_full_path;
             }
         }
     }

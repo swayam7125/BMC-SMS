@@ -203,6 +203,12 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                 $stmt_users = $conn->prepare($update_users_query);
                 $stmt_users->execute([$email, $user_id]);
 
+                // If a new image was successfully uploaded, update the cookie
+                if ($new_image_path !== $current_image_path) {
+                    $encrypted_image_path = encrypt_id($new_image_path);
+                    setcookie('encrypted_profile_image', $encrypted_image_path, time() + 86400, "/");
+                }
+
                 $conn->commit();
                 header("Location: profile.php?success=Profile updated successfully!");
                 exit();
@@ -229,6 +235,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
 
 <body id="page-top">
