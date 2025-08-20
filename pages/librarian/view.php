@@ -201,7 +201,7 @@ try {
                                 <div class="card-body">
                                     <div class="row mb-3">
                                         <div class="col-sm-4 info-label">Assigned Batch:</div>
-                                        <div class="col-sm-8 info-value"><span class="badge badge-<?php echo ($librarian['batch'] == 'Morning') ? 'primary' : 'warning'; ?> p-2"><?php echo htmlspecialchars($librarian['batch'] ?? 'N/A'); ?></span></div>
+                                        <div class="col-sm-8 info-value"><span class="col-sm-8 info-value<?php echo ($librarian['batch'] == 'Morning')?>"><?php echo htmlspecialchars($librarian['batch'] ?? 'N/A'); ?></span></div>
                                     </div>
                                     <hr class="mt-0">
                                     <h6 class="info-label mb-2">Weekly Schedule:</h6>
@@ -214,7 +214,7 @@ try {
                                                         <th><?php echo $day; ?></th>
                                                         <td>
                                                             <?php if ($day_timing && !empty($day_timing['is_closed'])): ?>
-                                                                <span class="badge badge-secondary">Closed</span>
+                                                                <span class="badge badge-danger">Closed</span>
                                                             <?php elseif ($day_timing && !empty($day_timing['opens_at'])): ?>
                                                                 <?php echo date("g:i A", strtotime($day_timing['opens_at'])); ?> - <?php echo date("g:i A", strtotime($day_timing['closes_at'])); ?>
                                                             <?php else: ?>

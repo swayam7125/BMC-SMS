@@ -177,7 +177,7 @@ if (!empty($photo_path)) {
                                     <hr>
                                     <div class="row">
                                         <div class="col-sm-5 info-label">Is Class Teacher:</div>
-                                        <div class="col-sm-7 info-value"><?php if ($teacher['class_teacher']): ?><span class="badge badge-success">Yes</span><small class="text-muted"> (Std: <?php echo htmlspecialchars($teacher['class_teacher_std']); ?>)</small><?php else: ?><span class="badge badge-secondary">No</span><?php endif; ?></div>
+                                        <div class="col-sm-7 info-value"><?php if ($teacher['class_teacher']): ?><span class="badge badge-success">Yes</span><small class="text-muted"> (Std: <?php echo htmlspecialchars($teacher['class_teacher_std']); ?>)</small><?php else: ?><span class="badge badge-danger">No</span><?php endif; ?></div>
                                     </div>
                                     <hr>
                                     <div class="row">
@@ -195,7 +195,7 @@ if (!empty($photo_path)) {
                                 <div class="card-body">
                                     <div class="row mb-3">
                                         <div class="col-sm-4 info-label">Assigned Batch:</div>
-                                        <div class="col-sm-8 info-value"><span class="badge badge-<?php echo ($teacher['batch'] == 'Morning') ? 'primary' : 'warning'; ?> p-2"><?php echo htmlspecialchars($teacher['batch'] ?? 'N/A'); ?></span></div>
+                                        <div class="col-sm-8 info-value"><span class="col-sm-8 info-value<?php echo ($teacher['batch'] == 'Morning')?>"><?php echo htmlspecialchars($teacher['batch'] ?? 'N/A'); ?></span></div>
                                     </div>
                                     <hr>
                                     <h6 class="info-label mb-2">Weekly Schedule:</h6>

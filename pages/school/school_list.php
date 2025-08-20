@@ -15,10 +15,12 @@ if (!$role) {
 
 $schools = [];
 try {
-    // --- Using PDO to fetch school data ---
-    $query =  'SELECT s.id, s.school_name, s.email, s.phone, s.address, p.principal_name 
+    // Corrected query using STRING_AGG to group principals by school and include batch information
+    $query =  'SELECT s.id, s.school_name, s.email, s.phone, s.address, 
+               STRING_AGG(p.principal_name || \' (\' || p.batch || \')\', \', \' ORDER BY p.principal_name) AS principal_names 
                FROM "school" s 
                LEFT JOIN "principal" p ON s.id = p.school_id
+               GROUP BY s.id, s.school_name, s.email, s.phone, s.address
                ORDER BY s.id ASC';
     $stmt = $conn->query($query);
     $schools = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -96,16 +98,17 @@ if (!is_ajax_request()) {
                                             <th>Email</th>
                                             <th>Phone</th>
                                             <th>Address</th>
-                                            <th>Principal Name</th>
+                                            <th>Principal Name <sup>*with batch</sup></th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <?php
-                                        // CORRECTED: Check if the $schools array (from PDO) is not empty
                                         if (!empty($schools)) {
-                                            // CORRECTED: Loop through the $schools array
                                             foreach ($schools as $row) {
+                                                // Handle the aggregated principal names, showing "Not Assigned" if none exist.
+                                                $principalName = $row['principal_names'] ? htmlspecialchars($row['principal_names']) : '<span class="text-danger">Not Assigned</span>';
+                                                
                                                 echo "<tr>";
                                                 echo "<td>" . htmlspecialchars($row['id']) . "</td>";
                                                 echo "<td>";
@@ -116,8 +119,8 @@ if (!is_ajax_request()) {
                                                 echo "<td>" . htmlspecialchars($row['email'] ?? 'N/A') . "</td>";
                                                 echo "<td>" . htmlspecialchars($row['phone'] ?? 'N/A') . "</td>";
                                                 echo "<td>" . htmlspecialchars($row['address'] ?? 'N/A') . "</td>";
-                                                // Using the null coalescing operator for the principal's name
-                                                echo "<td>" . ($row['principal_name'] ? htmlspecialchars($row['principal_name']) : '<span class="text-danger">Not Assigned</span>') . "</td>";
+                                                // Display the aggregated principal names with batch info or the "Not Assigned" message.
+                                                echo "<td>" . $principalName . "</td>";
                                                 echo "<td>";
                                                 echo "<a href='view.php?id=" . htmlspecialchars($row['id']) . "' class='btn btn-info btn-sm mr-2' title='View'>";
                                                 echo "<i class='fas fa-eye'></i>";
@@ -132,7 +135,6 @@ if (!is_ajax_request()) {
                                                 echo "</tr>";
                                             }
                                         } else {
-                                            // This part is correct and will show if the $schools array is empty
                                             echo "<tr><td colspan='7' class='text-center'>No schools found</td></tr>";
                                         }
                                         ?>
@@ -181,5 +183,5 @@ if (!is_ajax_request()) {
 </html>
 <?php
 }
-$conn = null; 
+$conn = null;
 ?>
