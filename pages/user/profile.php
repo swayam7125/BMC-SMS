@@ -439,41 +439,7 @@ if (!is_ajax_request()) {
                                         </div>
                                     </div>
                                 </div>
-                                <!-- <div class="col-12 mb-4">
-                                    <div class="card shadow">
-                                        <div class="card-header py-3">
-                                            <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-clock"></i> Weekly Schedule</h6>
-                                        </div>
-                                        <div class="card-body">
-                                            <?php if (!empty($timings)): ?>
-                                                <table class="table table-sm table-bordered table-striped table-timings">
-                                                    <tbody>
-                                                        <?php
-                                                        $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-                                                        foreach ($days as $day):
-                                                            $day_timing = $timings[$day] ?? null;
-                                                        ?>
-                                                            <tr>
-                                                                <th><?php echo $day; ?></th>
-                                                                <td>
-                                                                    <?php if ($day_timing && !empty($day_timing['is_closed'])): ?>
-                                                                        <span class="badge badge-secondary">Closed</span>
-                                                                    <?php elseif ($day_timing && !empty($day_timing['opens_at'])): ?>
-                                                                        <?php echo date("g:i A", strtotime($day_timing['opens_at'])); ?> - <?php echo date("g:i A", strtotime($day_timing['closes_at'])); ?>
-                                                                    <?php else: ?>
-                                                                        <span class="text-muted">Not Set</span>
-                                                                    <?php endif; ?>
-                                                                </td>
-                                                            </tr>
-                                                        <?php endforeach; ?>
-                                                    </tbody>
-                                                </table>
-                                            <?php else: ?>
-                                                <div class="alert alert-warning small">No weekly schedule has been set for this teacher.</div>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                </div> -->
+                                
                             <?php elseif ($user_role === 'librarian'): ?>
                                 <div class="col-lg-6 mb-4">
                                     <div class="card shadow h-100">
