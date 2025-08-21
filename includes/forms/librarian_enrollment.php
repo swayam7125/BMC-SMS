@@ -52,6 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $batch = $_POST['batch'] ?? '';
     $school_id = $admin_school_id;
     $image_path_for_db = null;
+    $date_of_joining = $_POST['date_of_joining'] ?? null;
 
     // --- FILE UPLOAD LOGIC ---
     if (isset($_FILES['librarian_image']) && $_FILES['librarian_image']['error'] === UPLOAD_ERR_OK) {
@@ -88,8 +89,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt_user->execute([$user_role, $email, $hashed_password]);
             $new_user_id = $conn->lastInsertId();
 
-            $stmt_librarian = $conn->prepare('INSERT INTO "librarian" (id, librarian_image, librarian_name, school_id, email, password, phone, dob, gender, blood_group, address, qualification, salary, batch) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-            $stmt_librarian->execute([$new_user_id, $image_path_for_db, $librarian_name, $school_id, $email, $hashed_password, $phone, $dob, $gender, $blood_group, $address, $qualification, $salary, $batch]);
+            $stmt_librarian = $conn->prepare('INSERT INTO "librarian" (id, librarian_image, librarian_name, school_id, email, password, phone, dob, gender, blood_group, address, qualification, salary, batch, date_of_joining) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            $stmt_librarian->execute([$new_user_id, $image_path_for_db, $librarian_name, $school_id, $email, $hashed_password, $phone, $dob, $gender, $blood_group, $address, $qualification, $salary, $batch, $date_of_joining]);
 
             $stmt_timing = $conn->prepare('INSERT INTO "librarian_timings" (librarian_id, day_of_week, opens_at, closes_at, is_closed) VALUES (?, ?, ?, ?, ?)');
             foreach ($timings as $day => $details) {
@@ -201,6 +202,14 @@ if (!is_ajax_request()) {
                                             <option value="Evening" <?= (($_POST['batch'] ?? '') == 'Evening') ? 'selected' : '' ?>>Evening</option>
                                         </select>
                                     </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group col-md-12">
+                                        <label for="date_of_joining">Date of Joining</label>
+                                        <input type="date" class="form-control" id="date_of_joining" name="date_of_joining" value="<?php echo htmlspecialchars($_POST['date_of_joining'] ?? ''); ?>">
+                                    </div>
+                                </div>
+                                <div class="form-row">
                                     <div class="form-group col-md-6"><label for="qualification">Qualification</label><input type="text" class="form-control" id="qualification" name="qualification" value="<?php echo htmlspecialchars($_POST['qualification'] ?? ''); ?>"></div>
                                     <div class="form-group col-md-6"><label for="salary">Salary</label><input type="number" class="form-control" id="salary" name="salary" step="0.01" min="0" value="<?php echo htmlspecialchars($_POST['salary'] ?? ''); ?>"></div>
                                 </div>
@@ -321,6 +330,17 @@ if (!is_ajax_request()) {
             $('button[type="reset"]').on('click', function() {
                 $('#imagePreview').attr('src', '../../assets/images/unisex.png');
             });
+            
+            // Blur past dates for "Date of Joining"
+            const dateInput = document.getElementById('date_of_joining');
+            if (dateInput) {
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+                const formattedDate = `${year}-${month}-${day}`;
+                dateInput.setAttribute('min', formattedDate);
+            }
         });
     </script>
 </body>

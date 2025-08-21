@@ -114,9 +114,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $librarian_id
             ]);
 
-            $sql_upsert_timing = "INSERT INTO librarian_timings (librarian_id, day_of_week, opens_at, closes_at, is_closed) 
-                                  VALUES (?, ?, ?, ?, ?) 
-                                  ON CONFLICT (librarian_id, day_of_week) 
+            $sql_upsert_timing = "INSERT INTO librarian_timings (librarian_id, day_of_week, opens_at, closes_at, is_closed)
+                                  VALUES (?, ?, ?, ?, ?)
+                                  ON CONFLICT (librarian_id, day_of_week)
                                   DO UPDATE SET opens_at = EXCLUDED.opens_at, closes_at = EXCLUDED.closes_at, is_closed = EXCLUDED.is_closed";
             $stmt_timing_upsert = $conn->prepare($sql_upsert_timing);
             foreach ($posted_timings as $day => $details) {
@@ -223,7 +223,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     </div>
                                     <div class="col-md-4 form-group"><label for="qualification">Qualification</label><input type="text" class="form-control" id="qualification" name="qualification" value="<?php echo htmlspecialchars($librarian['qualification'] ?? ''); ?>"></div>
                                     <div class="col-md-4 form-group"><label for="salary">Salary</label><input type="number" class="form-control" id="salary" name="salary" value="<?php echo htmlspecialchars($librarian['salary'] ?? '0.00'); ?>" step="0.01" min="0"></div>
-                                    <div class="col-md-4 form-group"><label for="address">Address</label><textarea class="form-control" id="address" name="address" rows="1"><?php echo htmlspecialchars($librarian['address'] ?? ''); ?></textarea></div>
+                                    <div class="col-md-12 form-group"><label for="address">Address</label><textarea class="form-control" id="address" name="address" rows="1"><?php echo htmlspecialchars($librarian['address'] ?? ''); ?></textarea></div>
                                 </div>
                                 <hr>
 

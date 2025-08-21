@@ -86,6 +86,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $timings = $_POST['timings'] ?? [];
         $image_path_for_db = $temp_image_path;
 
+        // NEW: Retrieve date of joining
+        $date_of_joining = $_POST['date_of_joining'] ?? null;
+
         if (empty($school_id)) $errors[] = "A school must be selected.";
         if (empty($principal_name)) $errors[] = "Principal name is required.";
         if (empty($batch)) $errors[] = "Batch selection is required.";
@@ -110,8 +113,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt_user->execute([$user_role, $email, $hashed_password]);
                 $new_user_id = $conn->lastInsertId();
 
-                $stmt_principal = $conn->prepare('INSERT INTO "principal" (id, principal_image, school_id, principal_name, email, password, phone, dob, gender, blood_group, address, qualification, salary, batch) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-                $stmt_principal->execute([$new_user_id, $image_path_for_db, $school_id, $principal_name, $email, $hashed_password, $phone, $dob, $gender, $blood_group, $address, $qualification, $salary, $batch]);
+                // UPDATED: Added date_of_joining column
+                $stmt_principal = $conn->prepare('INSERT INTO "principal" (id, principal_image, school_id, principal_name, email, password, phone, dob, gender, blood_group, address, qualification, salary, batch, date_of_joining) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+                // UPDATED: Added date_of_joining value
+                $stmt_principal->execute([$new_user_id, $image_path_for_db, $school_id, $principal_name, $email, $hashed_password, $phone, $dob, $gender, $blood_group, $address, $qualification, $salary, $batch, $date_of_joining]);
 
                 $stmt_timing = $conn->prepare('INSERT INTO "principal_timings" (principal_id, day_of_week, opens_at, closes_at, is_closed) VALUES (?, ?, ?, ?, ?)');
                 foreach ($timings as $day => $details) {
@@ -228,6 +233,12 @@ if (!is_ajax_request()) {
                                         </select>
                                     </div>
                                 </div>
+                                <div class="form-row">
+                                    <div class="form-group col-md-12">
+                                        <label for="date_of_joining">Date of Joining</label>
+                                        <input type="date" class="form-control" id="date_of_joining" name="date_of_joining" value="<?php echo htmlspecialchars($_POST['date_of_joining'] ?? ''); ?>">
+                                    </div>
+                                </div>
                                 <hr>
                                 <h6 class="font-weight-bold text-primary mb-3">Weekly Timings</h6>
                                 <div id="timings-schedule">
@@ -338,6 +349,17 @@ if (!is_ajax_request()) {
                 document.querySelector('input[name="temp_image_path"]').value = '';
                 setTimeout(toggleTimeInputs, 50);
             });
+
+            // Blur past dates for "Date of Joining"
+            const dateInput = document.getElementById('date_of_joining');
+            if (dateInput) {
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+                const formattedDate = `${year}-${month}-${day}`;
+                dateInput.setAttribute('min', formattedDate);
+            }
 
             document.getElementById('principal_image').addEventListener('change', function(event) {
                 if (event.target.files && event.target.files[0]) {

@@ -132,7 +132,7 @@ try {
                                 <div class="form-row">
                                     <div class="form-group col-md-3">
                                         <label for="vehicle_number">Vehicle Number *</label>
-                                        <input type="text" class="form-control" name="vehicle_number" value="<?php echo htmlspecialchars($edit_vehicle['vehicle_number'] ?? ''); ?>" required>
+                                        <input type="text" class="form-control" name="vehicle_number" placeholder="Format : GJ-05-AA-9999" value="<?php echo htmlspecialchars($edit_vehicle['vehicle_number'] ?? ''); ?>" required>
                                     </div>
                                     <div class="form-group col-md-3">
                                         <label for="model">Model</label>
@@ -144,7 +144,7 @@ try {
                                     </div>
                                     <div class="form-group col-md-3">
                                         <label for="insurance_expiry_date">Insurance Expiry</label>
-                                        <input type="date" class="form-control" name="insurance_expiry_date" value="<?php echo htmlspecialchars($edit_vehicle['insurance_expiry_date'] ?? ''); ?>">
+                                        <input type="date" class="form-control" id="insurance_expiry_date" name="insurance_expiry_date" value="<?php echo htmlspecialchars($edit_vehicle['insurance_expiry_date'] ?? ''); ?>">
                                     </div>
                                 </div>
                                 <button type="submit" name="save_vehicle" class="btn btn-primary"><?php echo $edit_vehicle ? 'Update Vehicle' : 'Save Vehicle'; ?></button>
@@ -228,6 +228,17 @@ try {
             var modal = $(this);
             modal.find('#confirmDeleteBtn').attr('href', url);
         });
+
+    // Blur past dates for "Insurance Expiry Date"
+            const dateInput = document.getElementById('insurance_expiry_date');
+            if (dateInput) {
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+                const formattedDate = `${year}-${month}-${day}`;
+                dateInput.setAttribute('min', formattedDate);
+            }
     });
     </script>
 </body>

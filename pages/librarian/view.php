@@ -187,6 +187,20 @@ try {
                                     </div>
                                     <hr>
                                     <div class="row">
+                                        <div class="col-sm-5 info-label">Date of Joining:</div>
+                                        <div class="col-sm-7 info-value">
+                                            <?php
+                                            // Prevent the error by checking if the field is not empty
+                                            if (!empty($librarian['date_of_joining'])) {
+                                                echo htmlspecialchars(date("d F Y", strtotime($librarian['date_of_joining'])));
+                                            } else {
+                                                echo "N/A";
+                                            }
+                                            ?>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
                                         <div class="col-sm-5 info-label">Salary:</div>
                                         <div class="col-sm-7 info-value font-weight-bold text-success">₹<?php echo number_format($librarian['salary'], 2); ?></div>
                                     </div>

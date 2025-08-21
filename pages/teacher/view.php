@@ -119,7 +119,7 @@ if (!empty($photo_path)) {
                                     <hr>
                                     <div class="row">
                                         <div class="col-sm-4 info-label">Phone Number:</div>
-                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($teacher['phone']); ?></div>
+                                        <div class="sm-8 info-value"><?php echo htmlspecialchars($teacher['phone']); ?></div>
                                     </div>
                                     <hr>
                                     <div class="row">
@@ -158,6 +158,19 @@ if (!empty($photo_path)) {
                                     <div class="row">
                                         <div class="col-sm-5 info-label">Qualification:</div>
                                         <div class="col-sm-7 info-value"><?php echo htmlspecialchars($teacher['qualification']); ?></div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-sm-5 info-label">Date of Joining:</div>
+                                        <div class="col-sm-7 info-value">
+                                            <?php
+                                            if (!empty($teacher['date_of_joining'])) {
+                                                echo htmlspecialchars(date("d F Y", strtotime($teacher['date_of_joining'])));
+                                            } else {
+                                                echo "N/A";
+                                            }
+                                            ?>
+                                        </div>
                                     </div>
                                     <hr>
                                     <div class="row">

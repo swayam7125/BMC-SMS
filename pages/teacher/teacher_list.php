@@ -5,6 +5,7 @@ include_once "../../includes/ajax_helpers.php";
 
 $role = null;
 $teachers = [];
+$selected_standard = $_GET['std'] ?? '';
 
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
@@ -36,16 +37,42 @@ try {
               LEFT JOIN school sc ON t.school_id = sc.id
               LEFT JOIN users u ON t.id = u.id";
 
+    $conditions = [];
     $params = [];
+
     if ($role === 'principal' && $principal_school_id) {
-        $query .= " WHERE t.school_id = ?";
+        $conditions[] = "t.school_id = ?";
         $params[] = $principal_school_id;
     }
+
+    if (!empty($selected_standard)) {
+        $conditions[] = "? = ANY(t.std)";
+        $params[] = $selected_standard;
+    }
+
+    if (!empty($conditions)) {
+        $query .= " WHERE " . implode(' AND ', $conditions);
+    }
+
     $query .= " ORDER BY t.id ASC";
 
     $stmt = $conn->prepare($query);
     $stmt->execute($params);
     $teachers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Get all unique standards for the filter dropdown
+    $standards_query = "SELECT DISTINCT unnest(std) as standard FROM teacher";
+    if ($role === 'principal' && $principal_school_id) {
+        $standards_query .= " WHERE school_id = ?";
+        $stmt_standards = $conn->prepare($standards_query);
+        $stmt_standards->execute([$principal_school_id]);
+    } else {
+        $stmt_standards = $conn->query($standards_query);
+    }
+    $all_standards = $stmt_standards->fetchAll(PDO::FETCH_COLUMN, 0);
+    usort($all_standards, function($a, $b) {
+        return (int)$a <=> (int)$b;
+    });
 } catch (PDOException $e) {
     error_log("Teacher List Error: " . $e->getMessage());
     die("A database error occurred while fetching the teacher list.");
@@ -91,6 +118,20 @@ if (!is_ajax_request()) {
                             <a href="/BMC-SMS/includes/forms/teacher_enrollment.php" class="btn btn-primary btn-icon-split btn-sm"><span class="icon text-white-50"><i class="fas fa-plus"></i></span><span class="text">Add New Teacher</span></a>
                         </div>
                         <div class="card-body">
+                            <div class="d-flex justify-content-end align-items-center mb-3">
+                                <form method="GET" action="teacher_list.php" class="form-inline">
+                                    <label for="standard-filter" class="mr-2">Filter by Standard:</label>
+                                    <select class="form-control" id="standard-filter" name="std" onchange="this.form.submit()">
+                                        <option value="">All</option>
+                                        <?php
+                                            foreach ($all_standards as $standard) {
+                                                $selected = ($standard == $selected_standard) ? 'selected' : '';
+                                                echo "<option value='" . htmlspecialchars($standard) . "' $selected>" . htmlspecialchars($standard) . "</option>";
+                                            }
+                                        ?>
+                                    </select>
+                                </form>
+                            </div>
                             <div class="table-responsive">
                                 <table class="table table-bordered" id="teacherListTable" width="100%" cellspacing="0">
                                     <thead>
@@ -98,6 +139,7 @@ if (!is_ajax_request()) {
                                             <th>ID</th>
                                             <th>Name</th>
                                             <th>Email</th>
+                                            <th>Std</th>
                                             <th>School</th>
                                             <th>Status</th>
                                             <th>Actions</th>
@@ -109,6 +151,7 @@ if (!is_ajax_request()) {
                                                     <td><?php echo htmlspecialchars($row['id']); ?></td>
                                                     <td><a href="view.php?id=<?php echo $row['id']; ?>"><?php echo htmlspecialchars($row['teacher_name'] ?? 'N/A'); ?></a></td>
                                                     <td><?php echo htmlspecialchars($row['email'] ?? 'N/A'); ?></td>
+                                                    <td><?php echo htmlspecialchars(trim(str_replace(['{', '}'], '', $row['std'])) ?? 'N/A'); ?></td>
                                                     <td><?php echo htmlspecialchars($row['school_name'] ?? 'N/A'); ?></td>
                                                     <td>
                                                         <?php if ($row['account_status'] === 'active'): ?>
@@ -138,7 +181,7 @@ if (!is_ajax_request()) {
                                             <?php endforeach;
                                         else: ?>
                                             <tr>
-                                                <td colspan="6" class="text-center">No teachers found</td>
+                                                <td colspan="7" class="text-center">No teachers found</td>
                                             </tr>
                                         <?php endif; ?>
                                     </tbody>
