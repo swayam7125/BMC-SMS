@@ -917,10 +917,17 @@ if (isset($conn) && $user_id) {
             break;
             
         // ====== START: PAYROLL PANEL ======
+        // ====== START: PAYROLL PANEL ======
         case 'payroll':
             $payroll_pages = ['process_teacher_salary.php', 'process_librarian_salary.php', 'view_salary_history.php'];
         ?>
             <div class="sidebar-heading font-weight-semibold">Management</div>
+            <li class="nav-item <?php echo ($current_page == 'manage_incentives.php') ? 'active' : ''; ?>">
+                <a class="nav-link" href="/BMC-SMS/pages/payroll/manage_incentives.php">
+                    <div><i class="fas fa-gift"></i>
+                    <span>Manage Incentives</span></div>
+                </a>
+            </li>
             <li class="nav-item <?php echo ($current_page == 'process_teacher_salary.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/payroll/process_teacher_salary.php">
                     <div><i class="fas fa-file-invoice-dollar"></i>
