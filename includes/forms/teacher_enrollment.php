@@ -60,6 +60,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $school_id = ($role === 'principal') ? $admin_school_id : ($_POST['school_id'] ?? null);
     $image_path_for_db = null;
 
+    // --- NEW: Retrieve date of joining from form data ---
+    $date_of_joining = $_POST['date_of_joining'] ?? null;
+
     // --- START: ADDED FILE UPLOAD LOGIC ---
     if (isset($_FILES['teacher_image']) && $_FILES['teacher_image']['error'] === UPLOAD_ERR_OK) {
         $file = $_FILES['teacher_image'];
@@ -103,8 +106,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $std_pg = '{' . implode(',', $std) . '}'; // Convert to PostgreSQL array format
 
-            $stmt_teacher = $conn->prepare('INSERT INTO "teacher" (id, teacher_image, teacher_name, phone, school_id, dob, gender, blood_group, address, email, password, qualification, subject, language_known, salary, std, experience, batch, class_teacher, class_teacher_std) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-            $stmt_teacher->execute([$new_user_id, $image_path_for_db, $teacher_name, $phone, $school_id, $dob, $gender, $blood_group, $address, $email, $hashed_password, $qualification, $subject, $language_known, $salary, $std_pg, $experience, $batch, $class_teacher, $class_teacher_std]);
+            // --- UPDATED: Added date_of_joining to the INSERT statement ---
+            $stmt_teacher = $conn->prepare('INSERT INTO "teacher" (id, teacher_image, teacher_name, phone, school_id, dob, gender, blood_group, address, email, password, qualification, subject, language_known, salary, std, experience, batch, class_teacher, class_teacher_std, date_of_joining) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            $stmt_teacher->execute([$new_user_id, $image_path_for_db, $teacher_name, $phone, $school_id, $dob, $gender, $blood_group, $address, $email, $hashed_password, $qualification, $subject, $language_known, $salary, $std_pg, $experience, $batch, $class_teacher, $class_teacher_std, $date_of_joining]);
 
             $stmt_timing = $conn->prepare('INSERT INTO "teacher_timings" (teacher_id, day_of_week, opens_at, closes_at, is_closed) VALUES (?, ?, ?, ?, ?)');
             foreach ($timings as $day => $details) {
@@ -130,7 +134,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (PDOException $e) {
             $conn->rollBack();
             if ($e->getCode() == 23505) {
-                $errors[] = "A teacher with this email or phone number already exists.";
+                if (strpos($e->getMessage(), 'uq_class_teacher_std_batch') !== false) {
+                    $errors[] = "A teacher for this standard is already assigned as a class teacher in this batch.";
+                } else {
+                    $errors[] = "A teacher with this email or phone number already exists.";
+                }
             } else {
                 $errors[] = "Database error: " . $e->getMessage();
             }
@@ -236,6 +244,10 @@ if (!is_ajax_request()) {
                                             <option value="Morning" <?php echo (isset($_POST['batch']) && $_POST['batch'] == 'Morning') ? 'selected' : ''; ?>>Morning</option>
                                             <option value="Evening" <?php echo (isset($_POST['batch']) && $_POST['batch'] == 'Evening') ? 'selected' : ''; ?>>Evening</option>
                                         </select>
+                                    </div>
+                                    <div class="form-group col-md-12">
+                                        <label for="date_of_joining">Date of Joining</label>
+                                        <input type="date" class="form-control" id="date_of_joining" name="date_of_joining" value="<?php echo htmlspecialchars($_POST['date_of_joining'] ?? ''); ?>">
                                     </div>
                                 </div>
                                 <div class="form-row">
@@ -390,6 +402,17 @@ if (!is_ajax_request()) {
 
             // Trigger change on page load to set initial state
             $('.closed-checkbox').trigger('change');
+
+            // Blur past dates for "Date of Joining"
+            const dateInput = document.getElementById('date_of_joining');
+            if (dateInput) {
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+                const formattedDate = `${year}-${month}-${day}`;
+                dateInput.setAttribute('min', formattedDate);
+            }
         });
     </script>
 </body>

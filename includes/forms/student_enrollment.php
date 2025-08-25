@@ -61,6 +61,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // NEW: Handle transport mode and stop ID
     $transport_mode = $_POST['transport_mode'] ?? 'Self';
     $stop_id = ($transport_mode === 'School Transport' && !empty($_POST['stop_id'])) ? (int)$_POST['stop_id'] : null;
+
+    // NEW: Retrieve date of joining
+    $date_of_joining = $_POST['date_of_joining'] ?? null;
     
     $image_path_for_db = null;
 
@@ -125,9 +128,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt_user->execute([$user_role, $email, $hashed_password]);
                 $new_user_id = $conn->lastInsertId();
 
-                // MODIFIED: Added transport_mode and stop_id to the INSERT statement
-                $stmt_student = $conn->prepare('INSERT INTO "student" (id, student_image, student_name, rollno, std, email, password, academic_year, school_id, dob, gender, blood_group, address, father_name, father_phone, mother_name, mother_phone, transport_mode, stop_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-                $stmt_student->execute([$new_user_id, $image_path_for_db, $student_name, $rollno, $std, $email, $hashed_password, $academic_year, $school_id, $dob, $gender, $blood_group, $address, $father_name, $father_phone, $mother_name, $mother_phone, $transport_mode, $stop_id]);
+                // MODIFIED: Added date_of_joining, transport_mode and stop_id to the INSERT statement
+                $stmt_student = $conn->prepare('INSERT INTO "student" (id, student_image, student_name, rollno, std, email, password, academic_year, school_id, dob, gender, blood_group, address, father_name, father_phone, mother_name, mother_phone, transport_mode, stop_id, date_of_joining) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+                $stmt_student->execute([$new_user_id, $image_path_for_db, $student_name, $rollno, $std, $email, $hashed_password, $academic_year, $school_id, $dob, $gender, $blood_group, $address, $father_name, $father_phone, $mother_name, $mother_phone, $transport_mode, $stop_id, $date_of_joining]);
 
                 $conn->commit();
                 header("Location: ../../pages/student/student_list.php?success=Student enrolled successfully");
@@ -234,6 +237,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         </select></div>
                                 </div>
                                 <div class="form-row">
+                                    <div class="form-group col-md-4">
+                                        <label for="date_of_joining">Date of Joining</label>
+                                        <input type="date" class="form-control" id="date_of_joining" name="date_of_joining" value="<?php echo htmlspecialchars($_POST['date_of_joining'] ?? ''); ?>">
+                                    </div>
                                     <div class="form-group col-md-4">
                                         <label for="std">Standard / Class *</label>
                                         <select class="form-control" id="std" name="std" required>
@@ -388,6 +395,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 schoolSelect.addEventListener('change', function() {
                     fetchStandards(this.value);
                 });
+            }
+
+            // Blur past dates for "Date of Joining"
+            const dateInput = document.getElementById('date_of_joining');
+            if (dateInput) {
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+                const formattedDate = `${year}-${month}-${day}`;
+                dateInput.setAttribute('min', formattedDate);
             }
 
             // JavaScript to show/hide the stop dropdown

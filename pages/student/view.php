@@ -215,7 +215,7 @@ $default_photo = getDefaultImagePath('student', BASE_WEB_PATH);
                             <div class="card shadow">
                                 <div class="card-header py-3">
                                     <h6 class="m-0 font-weight-bold text-primary">
-                                        <i class="fas fa-info-circle"></i> Basic Information
+                                        <i class="fas fa-info-circle"></i> Academic Information
                                     </h6>
                                 </div>
                                 <div class="card-body">
@@ -259,6 +259,19 @@ $default_photo = getDefaultImagePath('student', BASE_WEB_PATH);
                                         <div class="col-sm-4 font-weight-bold">Academic Year:</div>
                                         <div class="col-sm-8">
                                             <?php echo htmlspecialchars($student['academic_year'] ?? 'N/A'); ?></div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-sm-4 font-weight-bold">Date of Joining:</div>
+                                        <div class="col-sm-8">
+                                            <?php
+                                            if (!empty($student['date_of_joining'])) {
+                                                echo date('F j, Y', strtotime($student['date_of_joining']));
+                                            } else {
+                                                echo 'N/A';
+                                            }
+                                            ?>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

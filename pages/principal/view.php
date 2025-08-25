@@ -169,6 +169,19 @@ $default_photo = getDefaultImagePath(BASE_URL);
                                     </div>
                                     <hr>
                                     <div class="row">
+                                        <div class="col-sm-4 info-label">Date of Joining:</div>
+                                        <div class="col-sm-8 info-value">
+                                            <?php 
+                                                if (!empty($principal['date_of_joining'])) {
+                                                    echo htmlspecialchars(date("d M Y", strtotime($principal['date_of_joining'])));
+                                                } else {
+                                                    echo 'N/A';
+                                                }
+                                            ?>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
                                         <div class="col-sm-4 info-label">Salary:</div>
                                         <div class="col-sm-8 info-value font-weight-bold text-success">₹<?php echo number_format($principal['salary'] ?? 0, 2); ?></div>
                                     </div>

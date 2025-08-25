@@ -36,6 +36,7 @@ try {
     }
     $original_email = $teacher['email'] ?? '';
     $original_image_path = $teacher['teacher_image'] ?? '';
+    $original_class_teacher_std = $teacher['class_teacher_std'];
 
     $sql_timings = "SELECT * FROM teacher_timings WHERE teacher_id = ?";
     $stmt_timings_fetch = $conn->prepare($sql_timings);
@@ -166,11 +167,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $conn->commit();
             header("Location: teacher_list.php?success=Teacher updated successfully");
             exit;
-        } catch (Exception $e) {
+        } catch (PDOException $e) {
             if ($conn->inTransaction()) {
                 $conn->rollBack();
             }
-            $errors[] = "Database update failed: " . $e->getMessage();
+            if ($e->getCode() == 23505) {
+                if (strpos($e->getMessage(), 'uq_class_teacher_std_batch') !== false) {
+                    $errors[] = "A teacher for this standard is already assigned as a class teacher in this batch.";
+                } elseif (strpos($e->getMessage(), 'teacher_email_key') !== false) {
+                    $errors[] = "This email is already in use.";
+                } elseif (strpos($e->getMessage(), 'uq_teacher_phone') !== false) {
+                    $errors[] = "This phone number is already in use.";
+                } else {
+                    $errors[] = "A duplicate entry was found. Please check your data.";
+                }
+            } else {
+                $errors[] = "Database update failed: " . $e->getMessage();
+            }
         }
     }
     $teacher = array_merge($teacher, $_POST);

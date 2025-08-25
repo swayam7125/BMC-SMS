@@ -87,7 +87,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
 
     if ($table_name) {
         try {
-            $query = "SELECT t.*, s.school_name, s.address AS school_address, s.email AS school_email, s.phone AS school_phone
+            $query = "SELECT t.*, s.school_name, s.school_opening, s.address AS school_address, s.email AS school_email, s.phone AS school_phone
                       FROM {$table_name} t
                       LEFT JOIN school s ON t.school_id = s.id
                       WHERE t.id = ?";
@@ -266,14 +266,19 @@ if (!is_ajax_request()) {
                                 <div class="col-lg-6 mb-4">
                                     <div class="card shadow h-100">
                                         <div class="card-header py-3">
-                                            <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-briefcase mr-2"></i>Academics Information</h6>
+                                            <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-briefcase mr-2"></i>Academic Information</h6>
                                         </div>
                                         <div class="card-body">
                                             <div class="row">
                                                 <div class="col-md-12">
                                                     <div class="row info-row">
-                                                        <div class="col-sm-5 info-label">School:</div>
+                                                        <div class="col-sm-5 info-label">School Name:</div>
                                                         <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['school_name'] ?? 'N/A'); ?></div>
+                                                    </div>
+                                                    <hr>
+                                                    <div class="row info-row">
+                                                        <div class="col-sm-5 info-label">Date of Joining:</div>
+                                                        <div class="col-sm-7 info-value"><?php echo !empty($user_data['date_of_joining']) ? htmlspecialchars(date('F j, Y', strtotime($user_data['date_of_joining']))) : 'N/A'; ?></div>
                                                     </div>
                                                     <hr>
                                                 </div>
@@ -311,6 +316,11 @@ if (!is_ajax_request()) {
                                             <div class="row info-row">
                                                 <div class="col-sm-4 info-label">School Name:</div>
                                                 <div class="col-sm-8 info-value"><?php echo htmlspecialchars($user_data['school_name'] ?? 'N/A'); ?></div>
+                                            </div>
+                                            <hr>
+                                            <div class="row info-row">
+                                                <div class="col-sm-4 info-label">Date of Opening:</div>
+                                                <div class="col-sm-8 info-value"><?php echo !empty($user_data['school_opening']) ? htmlspecialchars(date('F j, Y', strtotime($user_data['school_opening']))) : 'N/A'; ?></div>
                                             </div>
                                             <hr>
                                             <div class="row info-row">
@@ -373,8 +383,15 @@ if (!is_ajax_request()) {
                                             <div class="row">
                                                 <div class="col-md-6">
                                                     <div class="row info-row">
-                                                        <div class="col-sm-5 info-label">School:</div>
+                                                        <div class="col-sm-5 info-label">School Name:</div>
                                                         <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['school_name'] ?? 'N/A'); ?></div>
+                                                    </div>
+                                                    <hr>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="row info-row">
+                                                        <div class="col-sm-5 info-label">Date of Joining:</div>
+                                                        <div class="col-sm-7 info-value"><?php echo !empty($user_data['date_of_joining']) ? htmlspecialchars(date('F j, Y', strtotime($user_data['date_of_joining']))) : 'N/A'; ?></div>
                                                     </div>
                                                     <hr>
                                                 </div>
@@ -453,6 +470,11 @@ if (!is_ajax_request()) {
                                             </div>
                                             <hr>
                                             <div class="row info-row">
+                                                <div class="col-sm-4 info-label">Date of Joining:</div>
+                                                <div class="col-sm-8 info-value"><?php echo !empty($user_data['date_of_joining']) ? htmlspecialchars(date('F j, Y', strtotime($user_data['date_of_joining']))) : 'N/A'; ?></div>
+                                            </div>
+                                            <hr>
+                                            <div class="row info-row">
                                                 <div class="col-sm-4 info-label">School Email:</div>
                                                 <div class="col-sm-8 info-value"><?php echo htmlspecialchars($user_data['school_email'] ?? 'N/A'); ?></div>
                                             </div>
@@ -511,6 +533,11 @@ if (!is_ajax_request()) {
                                             <div class="row info-row">
                                                 <div class="col-sm-4 info-label">School Name:</div>
                                                 <div class="col-sm-8 info-value"><?php echo htmlspecialchars($user_data['school_name'] ?? 'N/A'); ?></div>
+                                            </div>
+                                            <hr>
+                                            <div class="row info-row">
+                                                <div class="col-sm-4 info-label">Date of Joining:</div>
+                                                <div class="col-sm-8 info-value"><?php echo !empty($user_data['date_of_joining']) ? htmlspecialchars(date('F j, Y', strtotime($user_data['date_of_joining']))) : 'N/A'; ?></div>
                                             </div>
                                             <hr>
                                             <div class="row info-row">
@@ -577,6 +604,11 @@ if (!is_ajax_request()) {
                                             <div class="row info-row">
                                                 <div class="col-sm-4 info-label">School Name:</div>
                                                 <div class="col-sm-8 info-value"><?php echo htmlspecialchars($user_data['school_name'] ?? 'N/A'); ?></div>
+                                            </div>
+                                            <hr>
+                                            <div class="row info-row">
+                                                <div class="col-sm-4 info-label">Date of Opening:</div>
+                                                <div class="col-sm-8 info-value"><?php echo !empty($user_data['school_opening']) ? htmlspecialchars(date('F j, Y', strtotime($user_data['school_opening']))) : 'N/A'; ?></div>
                                             </div>
                                             <hr>
                                             <div class="row info-row">

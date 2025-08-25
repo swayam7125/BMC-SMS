@@ -122,7 +122,7 @@ try {
                                 <div class="form-row">
                                     <div class="form-group col-md-4"><label for="driver_name">Driver Name *</label><input type="text" class="form-control" name="driver_name" value="<?php echo htmlspecialchars($edit_driver['driver_name'] ?? ''); ?>" required></div>
                                     <div class="form-group col-md-4"><label for="phone_number">Phone Number *</label><input type="text" class="form-control" name="phone_number" value="<?php echo htmlspecialchars($edit_driver['phone_number'] ?? ''); ?>" required></div>
-                                    <div class="form-group col-md-4"><label for="license_number">License Number *</label><input type="text" class="form-control" name="license_number" value="<?php echo htmlspecialchars($edit_driver['license_number'] ?? ''); ?>" required></div>
+                                    <div class="form-group col-md-4"><label for="license_number">License Number *</label><input type="text" class="form-control" placeholder="Format : SS-RRYYYYNNNNNNN" name="license_number" value="<?php echo htmlspecialchars($edit_driver['license_number'] ?? ''); ?>" required></div>
                                 </div>
                                 <button type="submit" name="save_driver" class="btn btn-primary"><?php echo $edit_driver ? 'Update Driver' : 'Save Driver'; ?></button>
                                 <?php if ($edit_driver): ?>

@@ -107,6 +107,7 @@ if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Enroll School - School Management System</title>
@@ -118,24 +119,28 @@ if (!is_ajax_request()) {
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
-<?php
+                <?php
 }
 ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Enroll New School</h1>
-                        <a href="../../pages/school/school_list.php" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i class="fas fa-arrow-left fa-sm"></i> Back to List</a>
+                        <a href="../../pages/school/school_list.php"
+                            class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i
+                                class="fas fa-arrow-left fa-sm"></i> Back to List</a>
                     </div>
                     <?php if (!empty($errors)): ?>
-                        <div class="alert alert-danger">
-                            <ul class="mb-0"><?php foreach ($errors as $error): ?><li><?php echo htmlspecialchars($error); ?></li><?php endforeach; ?></ul>
-                        </div>
+                    <div class="alert alert-danger">
+                        <ul class="mb-0"><?php foreach ($errors as $error): ?><li>
+                                <?php echo htmlspecialchars($error); ?></li><?php endforeach; ?></ul>
+                    </div>
                     <?php endif; ?>
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
@@ -146,49 +151,80 @@ if (!is_ajax_request()) {
                                 <div class="row">
                                     <div class="col-md-3 text-center">
                                         <label>School Logo</label><br>
-                                        <img src="../../assets/images/unisex.png" alt="School Logo Preview" id="logoPreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: contain;">
+                                        <img src="../../assets/images/unisex.png" alt="School Logo Preview"
+                                            id="logoPreview" class="img-thumbnail mb-2"
+                                            style="width: 150px; height: 150px; object-fit: contain;">
                                         <div class="form-group">
-                                            <label for="school_logo" class="small btn btn-sm btn-info"><i class="fas fa-upload fa-sm"></i> Upload Logo</label>
-                                            <input type="file" class="d-none" id="school_logo" name="school_logo" onchange="document.getElementById('logoPreview').src = window.URL.createObjectURL(this.files[0])">
+                                            <label for="school_logo" class="small btn btn-sm btn-info"><i
+                                                    class="fas fa-upload fa-sm"></i> Upload Logo</label>
+                                            <input type="file" class="d-none" id="school_logo" name="school_logo"
+                                                onchange="document.getElementById('logoPreview').src = window.URL.createObjectURL(this.files[0])">
                                         </div>
                                     </div>
                                     <div class="col-md-9">
                                         <div class="form-row">
-                                            <div class="form-group col-md-12"><label for="school_name">School Name *</label><input type="text" class="form-control" name="school_name" required></div>
+                                            <div class="form-group col-md-12"><label for="school_name">School Name
+                                                    *</label><input type="text" class="form-control" name="school_name"
+                                                    required></div>
                                         </div>
                                         <div class="form-row">
-                                            <div class="form-group col-md-6"><label for="email">Email Address *</label><input type="email" class="form-control" name="email" required></div>
-                                            <div class="form-group col-md-6"><label for="phone">Phone Number *</label><input type="tel" class="form-control" name="phone" maxlength="10" required></div>
+                                            <div class="form-group col-md-6"><label for="email">Email Address
+                                                    *</label><input type="email" class="form-control" name="email"
+                                                    required></div>
+                                            <div class="form-group col-md-6"><label for="phone">Phone Number
+                                                    *</label><input type="tel" class="form-control" name="phone"
+                                                    maxlength="10" required></div>
                                         </div>
                                     </div>
                                 </div>
                                 <hr>
                                 <div class="form-row">
-                                    <div class="form-group col-md-6"><label for="school_opening">School Opening Date *</label><input type="date" class="form-control" name="school_opening" required></div>
-                                    <div class="form-group col-md-6"><label for="school_type">School Type *</label><select class="form-control" name="school_type" required>
+                                    <div class="form-group col-md-6"><label for="school_opening">School Opening Date
+                                            *</label><input type="date" class="form-control" id="date_of_opening" name="school_opening"
+                                            required></div>
+                                    <div class="form-group col-md-6"><label for="school_type">School Type
+                                            *</label><select class="form-control" name="school_type" required>
                                             <option value="">-- Select Type --</option>
                                             <option value="Government">Government</option>
                                             <option value="Private">Private</option>
                                         </select></div>
                                 </div>
                                 <div class="form-row">
-                                    <div class="form-group col-md-6"><label for="education_board">Education Board *</label><select class="form-control multi-select" name="education_board[]" multiple="multiple" required><?php $boards = ['CBSE', 'State', 'IGCSE']; foreach ($boards as $board): ?><option value="<?php echo $board; ?>"><?php echo $board; ?></option><?php endforeach; ?></select></div>
-                                    <div class="form-group col-md-6"><label for="school_medium">School Medium *</label><select class="form-control multi-select" name="school_medium[]" multiple="multiple" required><?php $mediums = ['English', 'Hindi', 'Regional Language']; foreach ($mediums as $medium): ?><option value="<?php echo $medium; ?>"><?php echo $medium; ?></option><?php endforeach; ?></select></div>
+                                    <div class="form-group col-md-6"><label for="education_board">Education Board
+                                            *</label><select class="form-control multi-select" name="education_board[]"
+                                            multiple="multiple"
+                                            required><?php $boards = ['CBSE', 'State', 'IGCSE']; foreach ($boards as $board): ?>
+                                            <option value="<?php echo $board; ?>"><?php echo $board; ?></option>
+                                            <?php endforeach; ?></select></div>
+                                    <div class="form-group col-md-6"><label for="school_medium">School Medium
+                                            *</label><select class="form-control multi-select" name="school_medium[]"
+                                            multiple="multiple"
+                                            required><?php $mediums = ['English', 'Hindi', 'Regional Language']; foreach ($mediums as $medium): ?>
+                                            <option value="<?php echo $medium; ?>"><?php echo $medium; ?></option>
+                                            <?php endforeach; ?></select></div>
                                 </div>
                                 <div class="form-row">
-                                    <div class="form-group col-md-12"><label for="school_category">School Category *</label><select class="form-control multi-select" name="school_category[]" multiple="multiple" required><?php $categories = ['Pre-Primary', 'Primary', 'Upper Primary', 'Secondary', 'Higher Secondary']; foreach ($categories as $cat): ?><option value="<?php echo $cat; ?>"><?php echo $cat; ?></option><?php endforeach; ?></select></div>
+                                    <div class="form-group col-md-12"><label for="school_category">School Category
+                                            *</label><select class="form-control multi-select" name="school_category[]"
+                                            multiple="multiple"
+                                            required><?php $categories = ['Pre-Primary', 'Primary', 'Upper Primary', 'Secondary', 'Higher Secondary']; foreach ($categories as $cat): ?>
+                                            <option value="<?php echo $cat; ?>"><?php echo $cat; ?></option>
+                                            <?php endforeach; ?></select></div>
                                 </div>
-                                <div class="form-group"><label for="address">Address *</label><textarea class="form-control" name="address" rows="3" required></textarea></div>
+                                <div class="form-group"><label for="address">Address *</label><textarea
+                                        class="form-control" name="address" rows="3" required></textarea></div>
                                 <hr>
                                 <div class="form-group mt-4">
-                                    <button type="submit" name="submit" class="btn btn-primary"><i class="fas fa-user-plus"></i> Enroll School</button>
-                                    <button type="reset" class="btn btn-secondary"><i class="fas fa-times"></i> Reset Form</button>
+                                    <button type="submit" name="submit" class="btn btn-primary"><i
+                                            class="fas fa-user-plus"></i> Enroll School</button>
+                                    <button type="reset" class="btn btn-secondary"><i class="fas fa-times"></i> Reset
+                                        Form</button>
                                 </div>
                             </form>
                         </div>
                     </div>
                 </div>
-<?php
+                <?php
 if (!is_ajax_request()) {
 ?>
             </div>
@@ -200,11 +236,23 @@ if (!is_ajax_request()) {
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
-        $(document).ready(function() {
-            $('.multi-select').select2();
-        });
+    $(document).ready(function() {
+        $('.multi-select').select2();
+    });
+
+    // Blur past dates for "Date of Opening"
+            const dateInput = document.getElementById('date_of_opening');
+            if (dateInput) {
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+                const formattedDate = `${year}-${month}-${day}`;
+                dateInput.setAttribute('min', formattedDate);
+            }
     </script>
 </body>
+
 </html>
 <?php
 }
