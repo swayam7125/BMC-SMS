@@ -49,35 +49,55 @@ try {
         }
     }
 
-    // --- MODIFIED: Mandatory Past Attendance Check (now skips holidays) ---
-    if (empty($errorMessage) && !$is_holiday) { 
+    // --- Mandatory Past Attendance Check (starts from joining date) ---
+    if (empty($errorMessage) && !$is_holiday) {
         $target_date = new DateTime($attendance_date_display);
-        $start_date = new DateTime($target_date->format('Y-m-01'));
-        $interval = new DateInterval('P1D');
-        $period = new DatePeriod($start_date, $interval, $target_date);
+        
+        // Find the earliest joining date of a teacher in the school to optimize the check period.
+        $first_joining_stmt = $conn->prepare("SELECT MIN(date_of_joining) FROM teacher WHERE school_id = ?");
+        $first_joining_stmt->execute([$principalDetails['school_id']]);
+        $first_joining_date = $first_joining_stmt->fetchColumn();
 
-        $teacher_count_stmt = $conn->prepare("SELECT COUNT(id) FROM teacher WHERE school_id = ?");
-        $teacher_count_stmt->execute([$principalDetails['school_id']]);
-        $total_teachers = $teacher_count_stmt->fetchColumn();
+        // Determine the start date for the check: either the 1st of the month or the first teacher's joining date, whichever is later.
+        $start_of_month = new DateTime($target_date->format('Y-m-01'));
+        $start_date = ($first_joining_date && new DateTime($first_joining_date) > $start_of_month) ? new DateTime($first_joining_date) : $start_of_month;
 
-        if ($total_teachers > 0) {
+        // Only perform the check if there are past dates to validate.
+        if ($start_date < $target_date) {
+            $interval = new DateInterval('P1D');
+            $period = new DatePeriod($start_date, $interval, $target_date);
+
+            // Prepare statements outside the loop for better performance.
             $att_count_stmt = $conn->prepare("SELECT COUNT(teacher_id) FROM teacher_attendance WHERE school_id = ? AND attendance_date = ?");
-            // Prepare statement to check for holidays
-            $holiday_check_stmt = $conn->prepare("SELECT COUNT(*) FROM holidays WHERE school_id = ? AND holiday_date = ?"); 
+            $holiday_check_stmt = $conn->prepare("SELECT COUNT(*) FROM holidays WHERE school_id = ? AND holiday_date = ?");
+            // New statement to count teachers who should have been present on a given date.
+            $teacher_expected_stmt = $conn->prepare("SELECT COUNT(id) FROM teacher WHERE school_id = ? AND (date_of_joining IS NULL OR date_of_joining <= ?)");
 
             foreach ($period as $date) {
-                if (date('N', $date->getTimestamp()) < 7) { // Mon-Sat
+                if (date('N', $date->getTimestamp()) < 7) { // Check only Mon-Sat
                     $date_to_check = $date->format('Y-m-d');
 
-                    // Check if the date is a holiday
+                    // Skip holidays
                     $holiday_check_stmt->execute([$principalDetails['school_id'], $date_to_check]);
                     if ($holiday_check_stmt->fetchColumn() > 0) {
-                        continue; // Skip this date as it's a holiday
+                        continue;
                     }
 
+                    // Get the number of teachers expected to be working on this date
+                    $teacher_expected_stmt->execute([$principalDetails['school_id'], $date_to_check]);
+                    $expected_teachers = $teacher_expected_stmt->fetchColumn();
+                    
+                    // If no teachers were employed yet on this date, skip.
+                    if ($expected_teachers == 0) {
+                        continue;
+                    }
+
+                    // Get the number of teachers with recorded attendance
                     $att_count_stmt->execute([$principalDetails['school_id'], $date_to_check]);
                     $recorded_teachers = $att_count_stmt->fetchColumn();
-                    if ($recorded_teachers < $total_teachers) {
+                    
+                    // If recorded attendance is less than expected, flag the date as missing.
+                    if ($recorded_teachers < $expected_teachers) {
                         $all_missing_dates[] = $date_to_check;
                     }
                 }

@@ -53,35 +53,55 @@ try {
         }
     }
 
-    // --- MODIFIED: Mandatory Past Attendance Check (skips holidays) ---
+    // --- Mandatory Past Attendance Check (starts from joining date) ---
     if (empty($errorMessage) && !$is_holiday) {
         $target_date = new DateTime($attendance_date_display);
-        $start_date = new DateTime($target_date->format('Y-m-01'));
-        $interval = new DateInterval('P1D');
-        $period = new DatePeriod($start_date, $interval, $target_date);
+        
+        // Find the earliest joining date of a librarian in the school to optimize the check period.
+        $first_joining_stmt = $conn->prepare("SELECT MIN(date_of_joining) FROM librarian WHERE school_id = ?");
+        $first_joining_stmt->execute([$school_id]);
+        $first_joining_date = $first_joining_stmt->fetchColumn();
 
-        $lib_count_stmt = $conn->prepare("SELECT COUNT(id) FROM librarian WHERE school_id = ?");
-        $lib_count_stmt->execute([$school_id]);
-        $total_librarians = $lib_count_stmt->fetchColumn();
+        // Determine the start date for the check: either the 1st of the month or the first librarian's joining date, whichever is later.
+        $start_of_month = new DateTime($target_date->format('Y-m-01'));
+        $start_date = ($first_joining_date && new DateTime($first_joining_date) > $start_of_month) ? new DateTime($first_joining_date) : $start_of_month;
 
-        if ($total_librarians > 0) {
+        // Only perform the check if there are past dates to validate.
+        if ($start_date < $target_date) {
+            $interval = new DateInterval('P1D');
+            $period = new DatePeriod($start_date, $interval, $target_date);
+            
+            // Prepare statements outside the loop for better performance.
             $att_count_stmt = $conn->prepare("SELECT COUNT(librarian_id) FROM librarian_attendance WHERE school_id = ? AND attendance_date = ?");
-            // Prepare statement to check for holidays
             $holiday_check_stmt = $conn->prepare("SELECT COUNT(*) FROM holidays WHERE school_id = ? AND holiday_date = ?");
+            // New statement to count librarians who should have been present on a given date.
+            $lib_expected_stmt = $conn->prepare("SELECT COUNT(id) FROM librarian WHERE school_id = ? AND (date_of_joining IS NULL OR date_of_joining <= ?)");
 
             foreach ($period as $date) {
-                if (date('N', $date->getTimestamp()) < 7) { // Mon-Sat
+                if (date('N', $date->getTimestamp()) < 7) { // Check only Mon-Sat
                     $date_to_check = $date->format('Y-m-d');
                     
-                    // Check if the date is a holiday
+                    // Skip holidays
                     $holiday_check_stmt->execute([$school_id, $date_to_check]);
                     if ($holiday_check_stmt->fetchColumn() > 0) {
-                        continue; // Skip this date if it's a holiday
+                        continue; 
                     }
                     
+                    // Get the number of librarians expected to be working on this date
+                    $lib_expected_stmt->execute([$school_id, $date_to_check]);
+                    $expected_librarians = $lib_expected_stmt->fetchColumn();
+
+                    // If no librarians were employed yet on this date, skip.
+                    if ($expected_librarians == 0) {
+                        continue;
+                    }
+
+                    // Get the number of librarians with recorded attendance
                     $att_count_stmt->execute([$school_id, $date_to_check]);
                     $recorded_librarians = $att_count_stmt->fetchColumn();
-                    if ($recorded_librarians < $total_librarians) {
+                    
+                    // If recorded attendance is less than expected, flag the date as missing.
+                    if ($recorded_librarians < $expected_librarians) {
                         $all_missing_dates[] = $date_to_check;
                     }
                 }
