@@ -56,6 +56,7 @@ $students = $students_query->fetchAll(PDO::FETCH_ASSOC);
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
     <div id="wrapper">
@@ -122,6 +123,9 @@ $students = $students_query->fetchAll(PDO::FETCH_ASSOC);
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
+
+    <?php include_once "../../includes/logout_modal.php"; ?>
+
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>

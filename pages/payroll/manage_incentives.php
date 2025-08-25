@@ -122,8 +122,12 @@ $incentive_list = $incentives->fetchAll(PDO::FETCH_ASSOC);
 <head>
     <meta charset="utf-8">
     <title>Manage Incentives</title>
-    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
     <div id="wrapper">
@@ -219,6 +223,9 @@ $incentive_list = $incentives->fetchAll(PDO::FETCH_ASSOC);
             <?php include_once '../../includes/footer.php'; ?>
         </div>
     </div>
+
+    <?php include_once "../../includes/logout_modal.php"; ?>
+
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
