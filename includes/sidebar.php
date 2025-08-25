@@ -78,16 +78,15 @@ if (isset($conn) && $user_id) {
             case 'principal':
                 // === START: ROBUST PRINCIPAL NOTIFICATION LOGIC ===
                 // Query 1: Get count of unread notices specifically from superadmin
-                $sql_bmc_notices = "SELECT COUNT(n.id)
-                                    FROM notifications n
-                                    JOIN users u ON n.user_id = u.id
-                                    WHERE n.user_id = ?
-                                      AND n.is_read = false
-                                      AND n.type = 'new_notice'
-                                      AND u.role = 'superadmin'";
-                $stmt_bmc = $conn->prepare($sql_bmc_notices);
-                $stmt_bmc->execute([$user_id]);
-                $unread_bmc_notices = (int) $stmt_bmc->fetchColumn();
+                // Query 1: Get count of unread notices from BMC
+$sql_bmc_notices = "SELECT COUNT(*)
+                    FROM notifications
+                    WHERE user_id = ?
+                      AND is_read = false
+                      AND type = 'new_notice'";
+$stmt_bmc = $conn->prepare($sql_bmc_notices);
+$stmt_bmc->execute([$user_id]);
+$unread_bmc_notices = (int) $stmt_bmc->fetchColumn();
 
                 // Query 2: Get count of unread leave requests
                 $sql_leave_requests = "SELECT COUNT(*)
