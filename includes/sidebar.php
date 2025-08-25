@@ -1,14 +1,8 @@
 <?php
+include_once __DIR__ . '/functions.php';
+
 $role = null;
 $user_id = null;
-
-// Helper function to check if the current page is in a list of pages
-function is_active_page($pages)
-{
-    $current_page = basename($_SERVER['SCRIPT_NAME']);
-    // Ensure $pages is an array before using in_array
-    return is_array($pages) && in_array($current_page, $pages);
-}
 
 // Get the current page's file name for individual link checks
 $current_page = basename($_SERVER['SCRIPT_NAME']);
