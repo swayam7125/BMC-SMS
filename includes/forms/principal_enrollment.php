@@ -45,8 +45,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!in_array(mime_content_type($file_info['tmp_name']), $allowed_mime_types)) {
             $file_errors[] = "Invalid photo type. Only JPG, PNG, and GIF are allowed.";
         }
-        if ($file_info['size'] > 5 * 1024 * 1024) { // 5MB limit
-            $file_errors[] = "Photo is too large. Maximum size is 5MB.";
+        if ($file_info['size'] > 1024 * 1024) { // 1MB limit
+            $file_errors[] = "Photo is too large. Maximum size is 1MB.";
         }
 
         if (empty($file_errors)) {

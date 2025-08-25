@@ -58,8 +58,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $allowed_mime_types = ['image/jpeg', 'image/png', 'image/gif'];
                 if (!in_array(mime_content_type($file_info['tmp_name']), $allowed_mime_types)) {
                     $errors[] = "Invalid file type. Only JPG, PNG, and GIF are allowed.";
-                } elseif ($file_info['size'] > 5 * 1024 * 1024) { // 5MB limit
-                    $errors[] = "File is too large. Maximum size is 5MB.";
+                } elseif ($file_info['size'] > 1024 * 1024) { // 1MB limit
+                    $errors[] = "File is too large. Maximum size is 1MB.";
                 } else {
                     $upload_dir_physical = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . BASE_WEB_PATH . 'uploads/school_logos/';
                     if (!is_dir($upload_dir_physical)) {

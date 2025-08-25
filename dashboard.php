@@ -130,8 +130,16 @@ $issuedToday = 0;
 $overdueBooks = 0;
 $totalLibraryMembers = 0;
 $monthly_present_days = 0;
-$librarian_total_absent = 0; // ADDED: For librarian absence count
-$librarian_deduction_amount = 0; // ADDED: For librarian deduction amount
+$librarian_total_absent = 0; 
+$librarian_deduction_amount = 0;
+
+// --- START OF PAYROLL ROLE ADDITION ---
+$totalSalaryDisbursed = 0;
+$totalPayrollTeachers = 0;
+$totalPayrollLibrarians = 0;
+$totalPayrollPrincipals = 0;
+// --- END OF PAYROLL ROLE ADDITION ---
+
 
 // Fetch data based on user role
 try {
@@ -212,6 +220,45 @@ try {
                 $leavesStmt = $conn->prepare('SELECT COUNT(*) FROM "leave_applications" WHERE "teacher_id" = ? AND "status" = \'Approved\'');
                 $leavesStmt->execute([$userId]);
                 $totalLeaves = $leavesStmt->fetchColumn();
+            }
+            break;
+            
+        case 'payroll':
+            // First, get the school_id for the logged-in payroll user
+            $stmt = $conn->prepare('SELECT "school_id" FROM "payroll" WHERE "id" = ?');
+            $stmt->execute([$userId]);
+            $payrollData = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($payrollData && !empty($payrollData['school_id'])) {
+                $schoolId = $payrollData['school_id'];
+                $current_month = date('m');
+                $current_year = date('Y');
+
+                // Calculate total salary disbursed this month FOR THE ASSIGNED SCHOOL
+                $salary_query = '
+                    SELECT SUM(total_paid) as monthly_disbursement
+                    FROM (
+                        SELECT SUM(net_salary_paid) as total_paid FROM payroll_records WHERE salary_month = ? AND salary_year = ? AND school_id = ?
+                        UNION ALL
+                        SELECT SUM(net_salary_paid) as total_paid FROM librarian_payroll_records WHERE salary_month = ? AND salary_year = ? AND school_id = ?
+                    ) as combined_payroll
+                ';
+                $salary_stmt = $conn->prepare($salary_query);
+                $salary_stmt->execute([$current_month, $current_year, $schoolId, $current_month, $current_year, $schoolId]);
+                $totalSalaryDisbursed = $salary_stmt->fetchColumn() ?: 0;
+
+                // Get counts of staff FOR THE ASSIGNED SCHOOL
+                $teacherStmt = $conn->prepare('SELECT COUNT(*) FROM "teacher" WHERE "school_id" = ?');
+                $teacherStmt->execute([$schoolId]);
+                $totalPayrollTeachers = $teacherStmt->fetchColumn();
+
+                $librarianStmt = $conn->prepare('SELECT COUNT(*) FROM "librarian" WHERE "school_id" = ?');
+                $librarianStmt->execute([$schoolId]);
+                $totalPayrollLibrarians = $librarianStmt->fetchColumn();
+
+                $principalStmt = $conn->prepare('SELECT COUNT(*) FROM "principal" WHERE "school_id" = ?');
+                $principalStmt->execute([$schoolId]);
+                $totalPayrollPrincipals = $principalStmt->fetchColumn();
             }
             break;
 
@@ -534,6 +581,60 @@ if ($userId && isset($conn)) {
                                     </div>
                                 </a>
                             </div>
+                        
+                        <?php elseif ($role == 'payroll') : ?>
+                            <div class="col-xl-3 col-md-6 mb-4">
+                                <div class="card border-left-success shadow h-100 py-2">
+                                    <div class="card-body">
+                                        <div class="row no-gutters align-items-center">
+                                            <div class="col mr-2">
+                                                <div class="text-xs font-weight-bold text-success text-uppercase mb-1">SALARY DISBURSED (THIS MONTH)</div>
+                                                <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo formatIndianCurrency($totalSalaryDisbursed); ?></div>
+                                            </div>
+                                            <div class="col-auto"><i class="fas fa-money-bill-wave fa-2x text-gray-300"></i></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xl-3 col-md-6 mb-4">
+                                <div class="card border-left-primary shadow h-100 py-2">
+                                    <div class="card-body">
+                                        <div class="row no-gutters align-items-center">
+                                            <div class="col mr-2">
+                                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">TOTAL PRINCIPALS</div>
+                                                <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalPayrollPrincipals; ?></div>
+                                            </div>
+                                            <div class="col-auto"><i class="fas fa-user-tie fa-2x text-gray-300"></i></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xl-3 col-md-6 mb-4">
+                                <div class="card border-left-info shadow h-100 py-2">
+                                    <div class="card-body">
+                                        <div class="row no-gutters align-items-center">
+                                            <div class="col mr-2">
+                                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">TOTAL TEACHERS</div>
+                                                <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalPayrollTeachers; ?></div>
+                                            </div>
+                                            <div class="col-auto"><i class="fas fa-person-chalkboard fa-2x text-gray-300"></i></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                             <div class="col-xl-3 col-md-6 mb-4">
+                                <div class="card border-left-warning shadow h-100 py-2">
+                                    <div class="card-body">
+                                        <div class="row no-gutters align-items-center">
+                                            <div class="col mr-2">
+                                                <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">TOTAL LIBRARIANS</div>
+                                                <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalPayrollLibrarians; ?></div>
+                                            </div>
+                                            <div class="col-auto"><i class="fas fa-book-reader fa-2x text-gray-300"></i></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         <?php elseif ($role == 'librarian') : ?>
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <a class="card-link" href="#">
@@ -758,3 +859,4 @@ if ($userId && isset($conn)) {
 </body>
 
 </html>
+}

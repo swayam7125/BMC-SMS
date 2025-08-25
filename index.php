@@ -1,8 +1,8 @@
 <?php
 include_once "encryption.php";
 
-// List of valid roles
-$allowed_roles = ['student', 'teacher', 'principal', 'superadmin', 'librarian'];
+// List of valid roles --- 'payroll' has been added here
+$allowed_roles = ['student', 'teacher', 'principal', 'superadmin', 'librarian', 'payroll'];
 
 // Initialize role
 $role = null;
@@ -24,7 +24,8 @@ if ($role) {
         case 'teacher':
         case 'principal':
         case 'superadmin':
-        case 'librarian': // Added librarian case
+        case 'librarian':
+        case 'payroll': // Added payroll case to ensure it proceeds
             header("Location: dashboard.php");
             break;
     }

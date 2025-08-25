@@ -46,6 +46,7 @@ $unread_principal_to_librarian_notices = 0;
 $unread_librarian_requests = 0;
 $unread_salary_notifications = 0; // For librarian salary history
 $unread_teacher_salary = 0; // For teacher salary history
+$unread_principal_salary = 0; // For principal salary history
 $is_class_teacher = false; // Initialize teacher-specific flag
 
 // Fetch counts based on the user's role if a valid user ID and connection exist
@@ -76,40 +77,23 @@ if (isset($conn) && $user_id) {
                 break;
 
             case 'principal':
-                // === START: ROBUST PRINCIPAL NOTIFICATION LOGIC ===
-                // Query 1: Get count of unread notices specifically from superadmin
-                $sql_bmc_notices = "SELECT COUNT(n.id)
-                                    FROM notifications n
-                                    JOIN users u ON n.user_id = u.id
-                                    WHERE n.user_id = ?
-                                      AND n.is_read = false
-                                      AND n.type = 'new_notice'
-                                      AND u.role = 'superadmin'";
-                $stmt_bmc = $conn->prepare($sql_bmc_notices);
-                $stmt_bmc->execute([$user_id]);
-                $unread_bmc_notices = (int) $stmt_bmc->fetchColumn();
-
-                // Query 2: Get count of unread leave requests
-                $sql_leave_requests = "SELECT COUNT(*)
-                                       FROM notifications
-                                       WHERE user_id = ?
-                                         AND is_read = false
-                                         AND type = 'leave_request'";
-                $stmt_leave = $conn->prepare($sql_leave_requests);
-                $stmt_leave->execute([$user_id]);
-                $unread_leave_requests = (int) $stmt_leave->fetchColumn();
-                
-                // NEW Query: Get count of unread librarian leave requests
-                $sql_librarian_leave_requests = "SELECT COUNT(*)
-                                       FROM notifications
-                                       WHERE user_id = ?
-                                         AND is_read = false
-                                         AND type = 'librarian_leave_request'";
-                $stmt_librarian_leave = $conn->prepare($sql_librarian_leave_requests);
-                $stmt_librarian_leave->execute([$user_id]);
-                $unread_librarian_requests = (int) $stmt_librarian_leave->fetchColumn();
-                
-                // === END: ROBUST PRINCIPAL NOTIFICATION LOGIC ===
+                 $sql_principal_counts = "SELECT
+                                COUNT(*) FILTER (WHERE n.type = 'new_notice' AND n.is_read = false AND u.role = 'superadmin') AS bmc_notices,
+                                COUNT(*) FILTER (WHERE n.type = 'leave_request' AND n.is_read = false) AS leave_requests,
+                                COUNT(*) FILTER (WHERE n.type = 'librarian_leave_request' AND n.is_read = false) AS librarian_requests,
+                                COUNT(*) FILTER (WHERE n.type = 'principal_salary' AND n.is_read = false) AS salary_notifs
+                           FROM notifications n
+                           LEFT JOIN users u ON n.user_id = u.id
+                           WHERE n.user_id = ?";
+                $stmt_principal_counts = $conn->prepare($sql_principal_counts);
+                $stmt_principal_counts->execute([$user_id]);
+                $result = $stmt_principal_counts->fetch(PDO::FETCH_ASSOC);
+                if($result){
+                    $unread_bmc_notices = (int) ($result['bmc_notices'] ?? 0);
+                    $unread_leave_requests = (int) ($result['leave_requests'] ?? 0);
+                    $unread_librarian_requests = (int) ($result['librarian_requests'] ?? 0);
+                    $unread_principal_salary = (int) ($result['salary_notifs'] ?? 0);
+                }
                 break;
 
             case 'teacher':
@@ -312,9 +296,9 @@ if (isset($conn) && $user_id) {
             $teacher_pages = ['teacher_enrollment.php', 'teacher_list.php', 'teacher_attendence.php', 'view_teacher_attendence.php'];
             $librarian_pages = ['librarian_enrollment.php', 'librarian_list.php', 'librarian_attendance.php', 'view_librarian_attendance.php'];
             $student_pages = ['student_enrollment.php', 'student_list.php', 'generate_lc.php'];
+            $payroll_pages = ['payroll_enrollment.php', 'payroll_list.php']; 
             $notice_pages = ['send_notice.php', 'send_notice_to_bmc.php', 'send_notice_to_librarian.php', 'view_notice.php'];
             $academics_pages = ['manage_subjects.php', 'manage_timetable.php', 'send_exam_timetable.php', 'manage_holidays.php'];
-            $salary_pages = ['generate_payroll.php', 'generate_librarian_payroll.php']; 
             $past_data_pages_principal = ['past_teacher.php', 'past_librarian.php', 'past_student.php'];
             $leave_management_pages = ['teacher_leave_management.php', 'librarian_leave_management.php'];
             $is_leave_management_active = in_array($current_page, $leave_management_pages);
@@ -368,7 +352,18 @@ if (isset($conn) && $user_id) {
                     </div>
                 </div>
             </li>
-
+            <li class="nav-item">
+                <a class="nav-link <?php echo (is_active_page($payroll_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapsePayrollUsers">
+                    <div><i class="fas fa-fw fa-users-cog"></i>
+                    <span>Manage Payroll</span></div>
+                </a>
+                <div id="collapsePayrollUsers" class="collapse <?php echo (is_active_page($payroll_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item <?php echo ($current_page == 'payroll_enrollment.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>includes/forms/payroll_enrollment.php">Enroll Payroll User</a>
+                        <a class="collapse-item <?php echo ($current_page == 'payroll_list.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/payroll/payroll_list.php">Payroll User List</a>
+                    </div>
+                </div>
+            </li>
             <?php
                 // Define pages for the new transport panel to make the menu active
                 $transport_pages = ['manage_vehicles.php', 'manage_drivers.php', 'manage_routes.php', 'student_transport.php'];
@@ -395,6 +390,19 @@ if (isset($conn) && $user_id) {
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_my_attendance.php">
                     <div><i class="fas fa-fw fa-user-check"></i>
                     <span>My Attendance</span></div>
+                </a>
+            </li>
+             <li class="nav-item <?php echo ($current_page == 'view_my_salary.php') ? 'active' : ''; ?>">
+                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_my_salary.php" data-notification-type="principal_salary">
+                    <div>
+                        <i class="fas fa-fw fa-receipt"></i>
+                        <span>My Salary History</span>
+                        <?php if ($unread_principal_salary > 0): ?>
+                            <span class="badge badge-danger badge-counter">
+                                <?php echo ($unread_principal_salary > 9) ? '9+' : $unread_principal_salary; ?>
+                            </span>
+                        <?php endif; ?>
+                    </div>
                 </a>
             </li>
             <li class="nav-item">
@@ -432,19 +440,6 @@ if (isset($conn) && $user_id) {
                         <a class="collapse-item <?php echo ($current_page == 'manage_timetable.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/academics/manage_timetable.php">Manage Timetable</a>
                         <a class="collapse-item <?php echo ($current_page == 'send_exam_timetable.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/principal/send_exam_timetable.php">Send Exam Timetable</a>
                         <a class="collapse-item <?php echo ($current_page == 'manage_holidays.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/principal/manage_holidays.php">Holiday Management</a>
-                    </div>
-                </div>
-            </li>
-            
-            <li class="nav-item">
-                <a class="nav-link <?php echo (is_active_page($salary_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseSalary">
-                    <div><i class="fas fa-fw fa-hand-holding-usd"></i>
-                    <span>Salary Management</span></div>
-                </a>
-                <div id="collapseSalary" class="collapse <?php echo (is_active_page($salary_pages)) ? 'show' : ''; ?>" data-parent="#accordionSidebar">
-                    <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item <?php echo ($current_page == 'generate_payroll.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/principal/generate_payroll.php">Teacher Payroll</a>
-                        <a class="collapse-item <?php echo ($current_page == 'generate_librarian_payroll.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/principal/generate_librarian_payroll.php">Librarian Payroll</a>
                     </div>
                 </div>
             </li>
@@ -820,7 +815,7 @@ if (isset($conn) && $user_id) {
                     <span>My Attendance</span></div>
                 </a>
             </li>
-             <li class="nav-item <?php echo ($current_page == 'view_salary_history.php') ? 'active' : ''; ?>">
+            <li class="nav-item <?php echo ($current_page == 'view_salary_history.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/view_salary_history.php" data-notification-type="librarian_salary">
                     <div>
                         <i class="fas fa-fw fa-receipt"></i>
@@ -920,6 +915,39 @@ if (isset($conn) && $user_id) {
             </li>
         <?php
             break;
+            
+        // ====== START: PAYROLL PANEL ======
+        case 'payroll':
+            $payroll_pages = ['process_teacher_salary.php', 'process_librarian_salary.php', 'view_salary_history.php'];
+        ?>
+            <div class="sidebar-heading font-weight-semibold">Management</div>
+            <li class="nav-item <?php echo ($current_page == 'process_teacher_salary.php') ? 'active' : ''; ?>">
+                <a class="nav-link" href="/BMC-SMS/pages/payroll/process_teacher_salary.php">
+                    <div><i class="fas fa-file-invoice-dollar"></i>
+                    <span>Teacher Payroll</span></div>
+                </a>
+            </li>
+            <li class="nav-item <?php echo ($current_page == 'process_librarian_salary.php') ? 'active' : ''; ?>">
+                <a class="nav-link" href="/BMC-SMS/pages/payroll/process_librarian_salary.php">
+                    <div><i class="fas fa-file-invoice-dollar"></i>
+                    <span>Librarian Payroll</span></div>
+                </a>
+            </li>
+            <li class="nav-item <?php echo ($current_page == 'process_principal_salary.php') ? 'active' : ''; ?>">
+                <a class="nav-link" href="/BMC-SMS/pages/payroll/process_principal_salary.php">
+                    <div><i class="fas fa-file-invoice-dollar"></i>
+                    <span>Principal Payroll</span></div>
+                </a>
+            </li>
+            <li class="nav-item <?php echo ($current_page == 'view_salary_history.php') ? 'active' : ''; ?>">
+                <a class="nav-link" href="/BMC-SMS/pages/payroll/view_salary_history.php">
+                    <div><i class="fas fa-history"></i>
+                    <span>Salary History</span></div>
+                </a>
+            </li>
+        <?php
+            break;
+        // ====== END: PAYROLL PANEL ======
     }
     ?>
 

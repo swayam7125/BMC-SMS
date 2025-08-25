@@ -40,58 +40,70 @@ $isLoggedIn = false;
 if (isset($_COOKIE['encrypted_user_role'])) {
     $isLoggedIn = true;
     $user_role = decrypt_id($_COOKIE['encrypted_user_role']);
+    $user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
 
     if ($user_role === 'superadmin') {
         $userName = 'Super Admin';
     } else {
-        if (isset($_COOKIE['encrypted_user_name'])) {
-            $userName = decrypt_id($_COOKIE['encrypted_user_name']);
-        }
-
-        // --- START: MODIFIED LOGIC - Fetch latest profile image directly from the database ---
-        $user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+        // --- START: MODIFIED LOGIC - Fetch user name and image from the database ---
         $table_name = '';
+        $name_field = '';
         $image_field = '';
 
         if ($user_id && isset($conn)) {
-            // Determine the correct table and field based on the user's role
+            // Determine the correct table and fields based on the user's role
             switch ($user_role) {
                 case 'teacher':
                     $table_name = 'teacher';
+                    $name_field = 'teacher_name';
                     $image_field = 'teacher_image';
                     break;
                 case 'student':
                     $table_name = 'student';
+                    $name_field = 'student_name';
                     $image_field = 'student_image';
                     break;
                 case 'principal':
                     $table_name = 'principal';
+                    $name_field = 'principal_name';
                     $image_field = 'principal_image';
                     break;
                 case 'librarian':
                     $table_name = 'librarian';
+                    $name_field = 'librarian_name';
                     $image_field = 'librarian_image';
+                    break;
+                case 'payroll':
+                    $table_name = 'payroll';
+                    $name_field = 'payroll_name';
+                    $image_field = 'payroll_image'; // This field exists in your table
                     break;
             }
 
             if (!empty($table_name)) {
                 try {
-                    // Prepare and execute the query to get the image path
-                    $stmt_image = $conn->prepare("SELECT {$image_field} FROM {$table_name} WHERE id = ?");
-                    $stmt_image->execute([$user_id]);
-                    $db_image_path = $stmt_image->fetchColumn();
+                    // Prepare and execute the query to get the name and image path
+                    $stmt_details = $conn->prepare("SELECT {$name_field}, {$image_field} FROM {$table_name} WHERE id = ?");
+                    $stmt_details->execute([$user_id]);
+                    $user_details = $stmt_details->fetch(PDO::FETCH_ASSOC);
 
-                    if (!empty($db_image_path)) {
-                        // The path from the DB is already the full web path (e.g., /BMC-SMS/pages/teacher/uploads/...)
-                        // We just need to verify the file exists on the server's filesystem.
-                        $filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $db_image_path;
-                        if (file_exists($filesystem_path) && is_file($filesystem_path)) {
-                            $userProfileImage = $db_image_path;
+                    if ($user_details) {
+                        // Set the user's name
+                        $userName = $user_details[$name_field] ?? ucfirst($user_role);
+
+                        // Set the profile image
+                        $db_image_path = $user_details[$image_field];
+                        if (!empty($db_image_path)) {
+                            $filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $db_image_path;
+                            if (file_exists($filesystem_path) && is_file($filesystem_path)) {
+                                $userProfileImage = $db_image_path;
+                            }
                         }
                     }
                 } catch (PDOException $e) {
-                    error_log("Failed to fetch profile image for user ID {$user_id}: " . $e->getMessage());
-                    // If there's an error, the default image will be used.
+                    error_log("Failed to fetch profile details for user ID {$user_id}: " . $e->getMessage());
+                    // Fallback to role name if query fails
+                    $userName = ucfirst($user_role);
                 }
             }
         }
@@ -313,14 +325,14 @@ if (!function_exists('getNotificationIcon')) {
                     style="width: 32px; height: 32px; object-fit: cover;">
             </a>
             <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="userDropdown">
-                <?php if ($user_role !== 'superadmin'): ?>
+                <?php if ($user_role !== 'superadmin' && $user_role !== 'payroll'): ?>
                 <a class="dropdown-item" href="<?php echo BASE_WEB_PATH; ?>pages/user/profile.php">
                     <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
                     Profile
                 </a>
+                <div class="dropdown-divider"></div>
                 <?php endif; ?>
 
-                <div class="dropdown-divider"></div>
                 <a class="dropdown-item" href="#" data-toggle="modal" data-target="#logoutModal">
                     <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
                     Logout
@@ -422,39 +434,46 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // --- START: Search Bar Functionality ---
+    // --- START: DYNAMIC Search Bar Functionality ---
     const searchInput = document.getElementById('pageSearchInput');
     const searchResults = document.getElementById('pageSearchResults');
     const base_url_for_search = '<?php echo BASE_WEB_PATH; ?>';
 
-    // A list of pages for the 'principal' role. This list can be expanded.
-    const pages = [
-        { title: 'Dashboard', url: 'dashboard.php' },
-        { title: 'Enroll Teacher', url: 'includes/forms/teacher_enrollment.php' },
-        { title: 'Teacher List', url: 'pages/teacher/teacher_list.php' },
-        { title: 'Teacher Attendance', url: 'pages/principal/teacher_attendence.php' },
-        { title: 'View Teacher Attendance', url: 'pages/principal/view_teacher_attendence.php' },
-        { title: 'Enroll Librarian', url: 'includes/forms/librarian_enrollment.php' },
-        { title: 'Librarian List', url: 'pages/librarian/librarian_list.php' },
-        { title: 'Librarian Attendance', url: 'pages/principal/librarian_attendance.php' },
-        { title: 'View Librarian Attendance', url: 'pages/principal/view_librarian_attendance.php' },
-        { title: 'Enroll Student', url: 'includes/forms/student_enrollment.php' },
-        { title: 'Student List', url: 'pages/student/student_list.php' },
-        { title: 'Generate LC', url: 'pages/principal/generate_lc.php' },
-        { title: 'My Attendance', url: 'pages/principal/view_my_attendance.php' },
-        { title: 'Send School Notice', url: 'pages/principal/send_notice.php' },
-        { title: 'Send Notice to BMC', url: 'pages/principal/send_notice_to_bmc.php' },
-        { title: 'Send Notice to Librarian', url: 'pages/principal/send_notice_to_librarian.php' },
-        { title: 'View BMC Notices', url: 'pages/principal/view_notice.php' },
-        { title: 'Manage Subjects', url: 'pages/academics/manage_subjects.php' },
-        { title: 'Manage Timetable', url: 'pages/academics/manage_timetable.php' },
-        { title: 'Send Exam Timetable', url: 'pages/principal/send_exam_timetable.php' },
-        { title: 'Passing Criteria', url: 'pages/principal/school_settings.php' },
-        { title: 'Teacher Leave', url: 'pages/principal/principal_leave_requests.php' },
-        { title: 'Past Teacher List', url: 'pages/past_record/past_teacher.php' },
-        { title: 'Past Librarian List', url: 'pages/past_record/past_librarian.php' },
-        { title: 'Past Student List', url: 'pages/past_record/past_student.php' },
+    <?php
+    // Master list of all searchable pages with their allowed roles
+    $all_pages = [
+        // Payroll Pages
+        ['title' => 'Teacher Payroll', 'url' => 'pages/payroll/process_teacher_salary.php', 'roles' => ['payroll']],
+        ['title' => 'Librarian Payroll', 'url' => 'pages/payroll/process_librarian_salary.php', 'roles' => ['payroll']],
+        ['title' => 'Salary History', 'url' => 'pages/payroll/view_salary_history.php', 'roles' => ['payroll']],
+        
+        // Principal Pages
+        ['title' => 'Dashboard', 'url' => 'dashboard.php', 'roles' => ['principal']],
+        ['title' => 'Enroll Teacher', 'url' => 'includes/forms/teacher_enrollment.php', 'roles' => ['principal']],
+        ['title' => 'Teacher List', 'url' => 'pages/teacher/teacher_list.php', 'roles' => ['principal']],
+        ['title' => 'Enroll Librarian', 'url' => 'includes/forms/librarian_enrollment.php', 'roles' => ['principal']],
+        ['title' => 'Librarian List', 'url' => 'pages/librarian/librarian_list.php', 'roles' => ['principal']],
+        ['title' => 'Enroll Student', 'url' => 'includes/forms/student_enrollment.php', 'roles' => ['principal']],
+        ['title' => 'Student List', 'url' => 'pages/student/student_list.php', 'roles' => ['principal']],
+        ['title' => 'Enroll Payroll User', 'url' => 'includes/forms/payroll_enrollment.php', 'roles' => ['principal']],
+        ['title' => 'Payroll User List', 'url' => 'pages/payroll/payroll_list.php', 'roles' => ['principal']],
+        
+        // Add other roles' pages here...
     ];
+
+    // Filter the pages based on the current user's role
+    $accessible_pages = [];
+    if (isset($user_role)) {
+        foreach ($all_pages as $page) {
+            if (in_array($user_role, $page['roles'])) {
+                $accessible_pages[] = ['title' => $page['title'], 'url' => $page['url']];
+            }
+        }
+    }
+    ?>
+    
+    // Convert the PHP array of accessible pages to a JavaScript array
+    const pages = <?php echo json_encode($accessible_pages); ?>;
 
     searchInput.addEventListener('input', function() {
         const query = searchInput.value.toLowerCase();
@@ -502,7 +521,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 let formData = new FormData();
                 formData.append('type', notificationType);
                 
-                // This is the new endpoint you just created
                 const endpoint = '<?php echo BASE_WEB_PATH; ?>includes/actions/mark_notifications_as_read.php';
 
                 // 'keepalive' ensures the request is sent even if the user navigates away immediately.
@@ -514,7 +532,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-    // --- END: FIX ---
 
 });
 </script>
