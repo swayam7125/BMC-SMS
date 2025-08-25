@@ -57,10 +57,7 @@ try {
 } catch (PDOException $e) {
     error_log("Error viewing principal notices: " . $e->getMessage());
     die("A database error occurred. Please try again later.");
-} finally {
-    // Close the connection
-    $conn = null;
-}
+} 
 
 $pageTitle = 'View Principal Notices';
 
@@ -166,4 +163,5 @@ if (!is_ajax_request()) {
 </html>
 <?php
 }
+$conn = null; // Close the connection
 ?>

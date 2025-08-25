@@ -54,6 +54,12 @@ $(document).ready(function() {
                             </li>`;
                         contactsList.append(contactElement);
                     });
+                    
+                    // NEW: Re-apply the active class to the previously selected contact
+                    if (activeContactId !== null) {
+                        $(`.contact-item[data-contact-id="${activeContactId}"]`).addClass('active');
+                    }
+                    
                 } else {
                     contactsList.html('<li class="list-group-item text-center text-muted">No contacts found.</li>');
                 }
@@ -68,6 +74,7 @@ $(document).ready(function() {
     // Function to load and display messages
     function loadMessages(contactId) {
         if (!contactId) return;
+        // NEW: Set the active contact ID before loading messages
         activeContactId = contactId;
         const messageArea = $('#message-area');
         
