@@ -151,6 +151,59 @@ body {
   color: var(--primary-blue-light);
   text-decoration: underline;
 }
+.bg-login-image {
+    background: url(https://source.unsplash.com/K4mSJ7kc0As/600x800);
+    background-position: center;
+    background-size: cover;
+}
+/* login.css */
+body, html {
+    height: 100%;
+    margin: 0;
+    font-family: 'Nunito', sans-serif;
+}
+.bg-login {
+    min-height: 100%;
+    background: #4e73df; /* This is the bg-gradient-primary from SB Admin 2 */
+    background: linear-gradient(180deg, #4e73df 10%, #224abe 100%);
+    background-size: cover;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 15px; /* Added padding for small screens */
+}
+.login-container {
+    /* RESPONSIVE CHANGE STARTS HERE */
+    max-width: 450px; /* Sets the maximum width on large screens */
+    width: 100%;      /* Allows the container to be smaller than 450px on small screens */
+    /* RESPONSIVE CHANGE ENDS HERE */
+    
+    padding: 40px;
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+/* SB Admin 2 styles for form elements that you were using */
+.form-control-user {
+    font-size: .8rem;
+    border-radius: 10rem;
+    padding: 1.5rem 1rem;
+}
+.btn-user {
+    font-size: .8rem;
+    border-radius: 10rem;
+    padding: .75rem 1rem;
+}
+.btn-google {
+    color: #fff !important;
+    background-color: #ea4335 !important;
+    border-color: #fff !important;
+}
+.btn-facebook {
+    color: #fff !important;
+    background-color: #3b5998 !important;
+    border-color: #fff !important;
+}
 @keyframes animated-gradient {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
