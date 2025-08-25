@@ -73,7 +73,7 @@ function getWorkingDays($year, $month, $conn, $schoolId)
             return $weekdays; // Fallback to weekday count if query fails
         }
     }
-    
+
     // Step 3: Calculate effective working days
     return $weekdays - $holiday_count;
 }
@@ -130,7 +130,7 @@ $issuedToday = 0;
 $overdueBooks = 0;
 $totalLibraryMembers = 0;
 $monthly_present_days = 0;
-$librarian_total_absent = 0; 
+$librarian_total_absent = 0;
 $librarian_deduction_amount = 0;
 
 // --- START OF PAYROLL ROLE ADDITION ---
@@ -209,7 +209,7 @@ try {
                 if ($total_working_days > 0 && $base_salary > 0) {
                     $per_day_salary = $base_salary / $total_working_days;
                 }
-                
+
                 // MODIFIED: Salary is based on payable days
                 $salary = $per_day_salary * $totalPresent;
                 $deduction_amount = $per_day_salary * $totalAbsent;
@@ -222,7 +222,7 @@ try {
                 $totalLeaves = $leavesStmt->fetchColumn();
             }
             break;
-            
+
         case 'payroll':
             // First, get the school_id for the logged-in payroll user
             $stmt = $conn->prepare('SELECT "school_id" FROM "payroll" WHERE "id" = ?');
@@ -302,7 +302,7 @@ try {
                 if ($total_working_days > 0 && $base_salary > 0) {
                     $per_day_salary = $base_salary / $total_working_days;
                 }
-                
+
                 // MODIFIED: Salary based on payable days
                 $salary = $per_day_salary * $monthly_present_days;
                 $librarian_deduction_amount = $per_day_salary * $librarian_total_absent;
@@ -375,8 +375,10 @@ if ($userId && isset($conn)) {
         .card-link {
             text-decoration: none;
         }
-        .absent-salary-cal{
-            color: #dc3545; opacity: 0.8;
+
+        .absent-salary-cal {
+            color: #dc3545;
+            opacity: 0.8;
         }
     </style>
 </head>
@@ -392,469 +394,469 @@ if ($userId && isset($conn)) {
                         <div class="d-sm-flex align-items-center justify-content-between mb-4">
                             <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
                         </div>
-                    <div class="row">
-                        <?php if ($role == 'superadmin') : ?>
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="./pages/school/school_list.php">
-                                    <div class="card border-left-primary shadow h-100 py-2">
-                                        <div class="card-body">
-                                            <div class="row no-gutters align-items-center">
-                                                <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">TOTAL Schools</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalSchools; ?></div>
+                        <div class="row">
+                            <?php if ($role == 'superadmin') : ?>
+                                <div class="col-xl-3 col-md-6 mb-4">
+                                    <a class="card-link" href="./pages/school/school_list.php">
+                                        <div class="card border-left-primary shadow h-100 py-2">
+                                            <div class="card-body">
+                                                <div class="row no-gutters align-items-center">
+                                                    <div class="col mr-2">
+                                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">TOTAL Schools</div>
+                                                        <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalSchools; ?></div>
+                                                    </div>
+                                                    <div class="col-auto"><i class="fas fa-school fa-2x text-gray-300"></i></div>
                                                 </div>
-                                                <div class="col-auto"><i class="fas fa-school fa-2x text-gray-300"></i></div>
                                             </div>
                                         </div>
-                                    </div>
-                                </a>
-                            </div>
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="./pages/principal/principal_list.php">
+                                    </a>
+                                </div>
+                                <div class="col-xl-3 col-md-6 mb-4">
+                                    <a class="card-link" href="./pages/principal/principal_list.php">
+                                        <div class="card border-left-success shadow h-100 py-2">
+                                            <div class="card-body">
+                                                <div class="row no-gutters align-items-center">
+                                                    <div class="col mr-2">
+                                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">TOTAL Principals</div>
+                                                        <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalPrincipals; ?></div>
+                                                    </div>
+                                                    <div class="col-auto"><i class="fas fa-user-tie fa-2x text-gray-300"></i></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="col-xl-3 col-md-6 mb-4">
+                                    <a class="card-link" href="./pages/teacher/teacher_list.php">
+                                        <div class="card border-left-info shadow h-100 py-2">
+                                            <div class="card-body">
+                                                <div class="row no-gutters align-items-center">
+                                                    <div class="col mr-2">
+                                                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">TOTAL Teachers</div>
+                                                        <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalTeachers; ?></div>
+                                                    </div>
+                                                    <div class="col-auto"><i class="fas fa-person-chalkboard fa-2x text-gray-300"></i></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="col-xl-3 col-md-6 mb-4">
+                                    <a class="card-link" href="./pages/student/student_list.php">
+                                        <div class="card border-left-warning shadow h-100 py-2">
+                                            <div class="card-body">
+                                                <div class="row no-gutters align-items-center">
+                                                    <div class="col mr-2">
+                                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">TOTAL Students</div>
+                                                        <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalStudents; ?></div>
+                                                    </div>
+                                                    <div class="col-auto"><i class="fas fa-children fa-2x text-gray-300"></i></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                            <?php elseif ($role == 'principal') : ?>
+                                <div class="col-xl-3 col-md-6 mb-4">
+                                    <a class="card-link" href="./pages/teacher/teacher_list.php">
+                                        <div class="card border-left-primary shadow h-100 py-2">
+                                            <div class="card-body">
+                                                <div class="row no-gutters align-items-center">
+                                                    <div class="col mr-2">
+                                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">TOTAL Teachers</div>
+                                                        <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalTeachers; ?></div>
+                                                    </div>
+                                                    <div class="col-auto"><i class="fas fa-person-chalkboard fa-2x text-gray-300"></i></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="col-xl-3 col-md-6 mb-4">
+                                    <a class="card-link" href="./pages/student/student_list.php">
+                                        <div class="card border-left-success shadow h-100 py-2">
+                                            <div class="card-body">
+                                                <div class="row no-gutters align-items-center">
+                                                    <div class="col mr-2">
+                                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">TOTAL Students</div>
+                                                        <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalStudents; ?></div>
+                                                    </div>
+                                                    <div class="col-auto"><i class="fas fa-children fa-2x text-gray-300"></i></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="col-xl-3 col-md-6 mb-4">
+                                    <a class="card-link" href="./pages/student/student_list.php">
+                                        <div class="card border-left-info shadow h-100 py-2">
+                                            <div class="card-body">
+                                                <div class="row no-gutters align-items-center">
+                                                    <div class="col mr-2">
+                                                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">TOTAL Admissions</div>
+                                                        <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalAdmissions; ?></div>
+                                                    </div>
+                                                    <div class="col-auto"><i class="fas fa-user-plus fa-2x text-gray-300"></i></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="col-xl-3 col-md-6 mb-4">
+                                    <a class="card-link" href="pages/past_record/past_student.php">
+                                        <div class="card border-left-warning shadow h-100 py-2">
+                                            <div class="card-body">
+                                                <div class="row no-gutters align-items-center">
+                                                    <div class="col mr-2">
+                                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Students Left</div>
+                                                        <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalStudentsLeft; ?></div>
+                                                    </div>
+                                                    <div class="col-auto"><i class="fas fa-right-from-bracket fa-2x text-gray-300"></i></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                            <?php elseif ($role == 'teacher') : ?>
+                                <div class="col-xl-3 col-md-6 mb-4">
+                                    <a class="card-link" href="./pages/student/student_list.php">
+                                        <div class="card border-left-primary shadow h-100 py-2">
+                                            <div class="card-body">
+                                                <div class="row no-gutters align-items-center">
+                                                    <div class="col mr-2">
+                                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">TOTAL Students</div>
+                                                        <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalStudents; ?></div>
+                                                    </div>
+                                                    <div class="col-auto"><i class="fas fa-children fa-2x text-gray-300"></i></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="col-xl-3 col-md-6 mb-4">
+                                    <a class="card-link" href="#">
+                                        <div class="card border-left-success shadow h-100 py-2">
+                                            <div class="card-body">
+                                                <div class="row no-gutters align-items-center">
+                                                    <div class="col mr-2">
+                                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Monthly Salary</div>
+                                                        <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo formatIndianCurrency($salary); ?></div>
+                                                        <?php if ($totalAbsent > 0) : ?>
+                                                            <small class="d-block absent-salary-cal">
+                                                                (-<?php echo formatIndianCurrency($deduction_amount); ?> for <?php echo $totalAbsent; ?> absent day/s)
+                                                            </small>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                    <div class="col-auto"><i class="fas fa-indian-rupee-sign fa-2x text-gray-300"></i></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="col-xl-3 col-md-6 mb-4">
+                                    <a class="card-link" href="./pages/teacher/view_my_attendance.php">
+                                        <div class="card border-left-info shadow h-100 py-2">
+                                            <div class="card-body">
+                                                <div class="row no-gutters align-items-center">
+                                                    <div class="col mr-2">
+                                                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Payable Days (This Month)</div>
+                                                        <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalPresent; ?></div>
+                                                    </div>
+                                                    <div class="col-auto"><i class="fas fa-user-check fa-2x text-gray-300"></i></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="col-xl-3 col-md-6 mb-4">
+                                    <a class="card-link" href="#">
+                                        <div class="card border-left-warning shadow h-100 py-2">
+                                            <div class="card-body">
+                                                <div class="row no-gutters align-items-center">
+                                                    <div class="col mr-2">
+                                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">TOTAL Leaves</div>
+                                                        <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalLeaves; ?></div>
+                                                    </div>
+                                                    <div class="col-auto"><i class="fas fa-envelope-circle-check fa-2x text-gray-300"></i></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+
+                            <?php elseif ($role == 'payroll') : ?>
+                                <div class="col-xl-3 col-md-6 mb-4">
                                     <div class="card border-left-success shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">TOTAL Principals</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalPrincipals; ?></div>
+                                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">SALARY DISBURSED (THIS MONTH)</div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo formatIndianCurrency($totalSalaryDisbursed); ?></div>
+                                                </div>
+                                                <div class="col-auto"><i class="fas fa-money-bill-wave fa-2x text-gray-300"></i></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xl-3 col-md-6 mb-4">
+                                    <div class="card border-left-primary shadow h-100 py-2">
+                                        <div class="card-body">
+                                            <div class="row no-gutters align-items-center">
+                                                <div class="col mr-2">
+                                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">TOTAL PRINCIPALS</div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalPayrollPrincipals; ?></div>
                                                 </div>
                                                 <div class="col-auto"><i class="fas fa-user-tie fa-2x text-gray-300"></i></div>
                                             </div>
                                         </div>
                                     </div>
-                                </a>
-                            </div>
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="./pages/teacher/teacher_list.php">
+                                </div>
+                                <div class="col-xl-3 col-md-6 mb-4">
                                     <div class="card border-left-info shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">TOTAL Teachers</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalTeachers; ?></div>
+                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">TOTAL TEACHERS</div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalPayrollTeachers; ?></div>
                                                 </div>
                                                 <div class="col-auto"><i class="fas fa-person-chalkboard fa-2x text-gray-300"></i></div>
                                             </div>
                                         </div>
                                     </div>
-                                </a>
-                            </div>
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="./pages/student/student_list.php">
+                                </div>
+                                <div class="col-xl-3 col-md-6 mb-4">
                                     <div class="card border-left-warning shadow h-100 py-2">
                                         <div class="card-body">
                                             <div class="row no-gutters align-items-center">
                                                 <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">TOTAL Students</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalStudents; ?></div>
+                                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">TOTAL LIBRARIANS</div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalPayrollLibrarians; ?></div>
                                                 </div>
-                                                <div class="col-auto"><i class="fas fa-children fa-2x text-gray-300"></i></div>
+                                                <div class="col-auto"><i class="fas fa-book-reader fa-2x text-gray-300"></i></div>
                                             </div>
-                                        </div>
-                                    </div>
-                                </a>
-                            </div>
-                        <?php elseif ($role == 'principal') : ?>
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="./pages/teacher/teacher_list.php">
-                                    <div class="card border-left-primary shadow h-100 py-2">
-                                        <div class="card-body">
-                                            <div class="row no-gutters align-items-center">
-                                                <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">TOTAL Teachers</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalTeachers; ?></div>
-                                                </div>
-                                                <div class="col-auto"><i class="fas fa-person-chalkboard fa-2x text-gray-300"></i></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </a>
-                            </div>
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="./pages/student/student_list.php">
-                                    <div class="card border-left-success shadow h-100 py-2">
-                                        <div class="card-body">
-                                            <div class="row no-gutters align-items-center">
-                                                <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">TOTAL Students</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalStudents; ?></div>
-                                                </div>
-                                                <div class="col-auto"><i class="fas fa-children fa-2x text-gray-300"></i></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </a>
-                            </div>
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="./pages/student/student_list.php">
-                                    <div class="card border-left-info shadow h-100 py-2">
-                                        <div class="card-body">
-                                            <div class="row no-gutters align-items-center">
-                                                <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">TOTAL Admissions</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalAdmissions; ?></div>
-                                                </div>
-                                                <div class="col-auto"><i class="fas fa-user-plus fa-2x text-gray-300"></i></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </a>
-                            </div>
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="pages/past_record/past_student.php">
-                                    <div class="card border-left-warning shadow h-100 py-2">
-                                        <div class="card-body">
-                                            <div class="row no-gutters align-items-center">
-                                                <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Students Left</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalStudentsLeft; ?></div>
-                                                </div>
-                                                <div class="col-auto"><i class="fas fa-right-from-bracket fa-2x text-gray-300"></i></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </a>
-                            </div>
-                        <?php elseif ($role == 'teacher') : ?>
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="./pages/student/student_list.php">
-                                    <div class="card border-left-primary shadow h-100 py-2">
-                                        <div class="card-body">
-                                            <div class="row no-gutters align-items-center">
-                                                <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">TOTAL Students</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalStudents; ?></div>
-                                                </div>
-                                                <div class="col-auto"><i class="fas fa-children fa-2x text-gray-300"></i></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </a>
-                            </div>
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="#">
-                                    <div class="card border-left-success shadow h-100 py-2">
-                                        <div class="card-body">
-                                            <div class="row no-gutters align-items-center">
-                                                <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Monthly Salary</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo formatIndianCurrency($salary); ?></div>
-                                                    <?php if ($totalAbsent > 0) : ?>
-                                                        <small class="d-block absent-salary-cal">
-                                                            (-<?php echo formatIndianCurrency($deduction_amount); ?> for <?php echo $totalAbsent; ?> absent day/s)
-                                                        </small>
-                                                    <?php endif; ?>
-                                                </div>
-                                                <div class="col-auto"><i class="fas fa-indian-rupee-sign fa-2x text-gray-300"></i></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </a>
-                            </div>
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="./pages/teacher/view_my_attendance.php">
-                                    <div class="card border-left-info shadow h-100 py-2">
-                                        <div class="card-body">
-                                            <div class="row no-gutters align-items-center">
-                                                <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Payable Days (This Month)</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalPresent; ?></div>
-                                                </div>
-                                                <div class="col-auto"><i class="fas fa-user-check fa-2x text-gray-300"></i></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </a>
-                            </div>
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="#">
-                                    <div class="card border-left-warning shadow h-100 py-2">
-                                        <div class="card-body">
-                                            <div class="row no-gutters align-items-center">
-                                                <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">TOTAL Leaves</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalLeaves; ?></div>
-                                                </div>
-                                                <div class="col-auto"><i class="fas fa-envelope-circle-check fa-2x text-gray-300"></i></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </a>
-                            </div>
-                        
-                        <?php elseif ($role == 'payroll') : ?>
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <div class="card border-left-success shadow h-100 py-2">
-                                    <div class="card-body">
-                                        <div class="row no-gutters align-items-center">
-                                            <div class="col mr-2">
-                                                <div class="text-xs font-weight-bold text-success text-uppercase mb-1">SALARY DISBURSED (THIS MONTH)</div>
-                                                <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo formatIndianCurrency($totalSalaryDisbursed); ?></div>
-                                            </div>
-                                            <div class="col-auto"><i class="fas fa-money-bill-wave fa-2x text-gray-300"></i></div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <div class="card border-left-primary shadow h-100 py-2">
-                                    <div class="card-body">
-                                        <div class="row no-gutters align-items-center">
-                                            <div class="col mr-2">
-                                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">TOTAL PRINCIPALS</div>
-                                                <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalPayrollPrincipals; ?></div>
-                                            </div>
-                                            <div class="col-auto"><i class="fas fa-user-tie fa-2x text-gray-300"></i></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <div class="card border-left-info shadow h-100 py-2">
-                                    <div class="card-body">
-                                        <div class="row no-gutters align-items-center">
-                                            <div class="col mr-2">
-                                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">TOTAL TEACHERS</div>
-                                                <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalPayrollTeachers; ?></div>
-                                            </div>
-                                            <div class="col-auto"><i class="fas fa-person-chalkboard fa-2x text-gray-300"></i></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                             <div class="col-xl-3 col-md-6 mb-4">
-                                <div class="card border-left-warning shadow h-100 py-2">
-                                    <div class="card-body">
-                                        <div class="row no-gutters align-items-center">
-                                            <div class="col mr-2">
-                                                <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">TOTAL LIBRARIANS</div>
-                                                <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalPayrollLibrarians; ?></div>
-                                            </div>
-                                            <div class="col-auto"><i class="fas fa-book-reader fa-2x text-gray-300"></i></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        <?php elseif ($role == 'librarian') : ?>
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="#">
-                                    <div class="card border-left-success shadow h-100 py-2">
-                                        <div class="card-body">
-                                            <div class="row no-gutters align-items-center">
-                                                <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Monthly Salary</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo formatIndianCurrency($salary); ?></div>
+                            <?php elseif ($role == 'librarian') : ?>
+                                <div class="col-xl-3 col-md-6 mb-4">
+                                    <a class="card-link" href="#">
+                                        <div class="card border-left-success shadow h-100 py-2">
+                                            <div class="card-body">
+                                                <div class="row no-gutters align-items-center">
+                                                    <div class="col mr-2">
+                                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Monthly Salary</div>
+                                                        <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo formatIndianCurrency($salary); ?></div>
 
-                                                    <?php if ($librarian_total_absent > 0) : ?>
-                                                        <small class="d-block mt-1 absent-salary-cal">
-                                                            (-<?php echo formatIndianCurrency($librarian_deduction_amount); ?> for <?php echo $librarian_total_absent; ?> absent day/s)
-                                                        </small>
-                                                    <?php endif; ?>
+                                                        <?php if ($librarian_total_absent > 0) : ?>
+                                                            <small class="d-block mt-1 absent-salary-cal">
+                                                                (-<?php echo formatIndianCurrency($librarian_deduction_amount); ?> for <?php echo $librarian_total_absent; ?> absent day/s)
+                                                            </small>
+                                                        <?php endif; ?>
 
+                                                    </div>
+                                                    <div class="col-auto"><i class="fas fa-indian-rupee-sign fa-2x text-gray-300"></i></div>
                                                 </div>
-                                                <div class="col-auto"><i class="fas fa-indian-rupee-sign fa-2x text-gray-300"></i></div>
                                             </div>
                                         </div>
-                                    </div>
-                                </a>
-                            </div>
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="#">
-                                    <div class="card border-left-info shadow h-100 py-2">
-                                        <div class="card-body">
-                                            <div class="row no-gutters align-items-center">
-                                                <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Payable Days (This Month)</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $monthly_present_days; ?></div>
+                                    </a>
+                                </div>
+                                <div class="col-xl-3 col-md-6 mb-4">
+                                    <a class="card-link" href="#">
+                                        <div class="card border-left-info shadow h-100 py-2">
+                                            <div class="card-body">
+                                                <div class="row no-gutters align-items-center">
+                                                    <div class="col mr-2">
+                                                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Payable Days (This Month)</div>
+                                                        <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $monthly_present_days; ?></div>
+                                                    </div>
+                                                    <div class="col-auto"><i class="fas fa-user-check fa-2x text-gray-300"></i></div>
                                                 </div>
-                                                <div class="col-auto"><i class="fas fa-user-check fa-2x text-gray-300"></i></div>
                                             </div>
                                         </div>
-                                    </div>
-                                </a>
-                            </div>
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="/BMC-SMS/pages/librarian/book_list.php">
-                                    <div class="card border-left-primary shadow h-100 py-2">
-                                        <div class="card-body">
-                                            <div class="row no-gutters align-items-center">
-                                                <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">TOTAL Books</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo number_format($totalBooks); ?></div>
+                                    </a>
+                                </div>
+                                <div class="col-xl-3 col-md-6 mb-4">
+                                    <a class="card-link" href="/BMC-SMS/pages/librarian/book_list.php">
+                                        <div class="card border-left-primary shadow h-100 py-2">
+                                            <div class="card-body">
+                                                <div class="row no-gutters align-items-center">
+                                                    <div class="col mr-2">
+                                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">TOTAL Books</div>
+                                                        <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo number_format($totalBooks); ?></div>
+                                                    </div>
+                                                    <div class="col-auto"><i class="fas fa-book-bookmark fa-2x text-gray-300"></i></div>
                                                 </div>
-                                                <div class="col-auto"><i class="fas fa-book-bookmark fa-2x text-gray-300"></i></div>
                                             </div>
                                         </div>
-                                    </div>
-                                </a>
-                            </div>
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="/BMC-SMS/pages/librarian/issue_return.php">
-                                    <div class="card border-left-warning shadow h-100 py-2">
-                                        <div class="card-body">
-                                            <div class="row no-gutters align-items-center">
-                                                <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Overdue Books</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $overdueBooks; ?></div>
+                                    </a>
+                                </div>
+                                <div class="col-xl-3 col-md-6 mb-4">
+                                    <a class="card-link" href="/BMC-SMS/pages/librarian/issue_return.php">
+                                        <div class="card border-left-warning shadow h-100 py-2">
+                                            <div class="card-body">
+                                                <div class="row no-gutters align-items-center">
+                                                    <div class="col mr-2">
+                                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Overdue Books</div>
+                                                        <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $overdueBooks; ?></div>
+                                                    </div>
+                                                    <div class="col-auto"><i class="fas fa-triangle-exclamation fa-2x text-gray-300"></i></div>
                                                 </div>
-                                                <div class="col-auto"><i class="fas fa-triangle-exclamation fa-2x text-gray-300"></i></div>
                                             </div>
                                         </div>
-                                    </div>
-                                </a>
-                            </div>
-                        <?php elseif ($role == 'student') : ?>
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="dashboard.php">
-                                    <div class="card border-left-primary shadow h-100 py-2">
-                                        <div class="card-body">
-                                            <div class="row no-gutters align-items-center">
-                                                <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">My Standard</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php
-                                                                                                        $student_std = 'N/A';
-                                                                                                        if ($userId && isset($conn)) {
-                                                                                                            $stmt_std = $conn->prepare('SELECT "std" FROM "student" WHERE "id" = ?');
-                                                                                                            $stmt_std->execute([$userId]);
-                                                                                                            if ($std_data = $stmt_std->fetch(PDO::FETCH_ASSOC)) {
-                                                                                                                $student_std = htmlspecialchars($std_data['std']);
+                                    </a>
+                                </div>
+                            <?php elseif ($role == 'student') : ?>
+                                <div class="col-xl-3 col-md-6 mb-4">
+                                    <a class="card-link" href="dashboard.php">
+                                        <div class="card border-left-primary shadow h-100 py-2">
+                                            <div class="card-body">
+                                                <div class="row no-gutters align-items-center">
+                                                    <div class="col mr-2">
+                                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">My Standard</div>
+                                                        <div class="h5 mb-0 font-weight-bold text-gray-800"><?php
+                                                                                                            $student_std = 'N/A';
+                                                                                                            if ($userId && isset($conn)) {
+                                                                                                                $stmt_std = $conn->prepare('SELECT "std" FROM "student" WHERE "id" = ?');
+                                                                                                                $stmt_std->execute([$userId]);
+                                                                                                                if ($std_data = $stmt_std->fetch(PDO::FETCH_ASSOC)) {
+                                                                                                                    $student_std = htmlspecialchars($std_data['std']);
+                                                                                                                }
                                                                                                             }
-                                                                                                        }
-                                                                                                        echo $student_std;
-                                                                                                        ?></div>
+                                                                                                            echo $student_std;
+                                                                                                            ?></div>
+                                                    </div>
+                                                    <div class="col-auto"><i class="fas fa-book-open fa-2x text-gray-300"></i></div>
                                                 </div>
-                                                <div class="col-auto"><i class="fas fa-book-open fa-2x text-gray-300"></i></div>
                                             </div>
                                         </div>
-                                    </div>
-                                </a>
-                            </div>
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="pages/student/view_lecture_attendance.php">
-                                    <div class="card border-left-success shadow h-100 py-2">
-                                        <div class="card-body">
-                                            <div class="row no-gutters align-items-center">
-                                                <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Present Days</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalPresent; ?></div>
-                                                </div>
-                                                <div class="col-auto"><i class="fas fa-user-check fa-2x text-gray-300"></i></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </a>
-                            </div>
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="pages/student/view_lecture_attendance.php">
-                                    <div class="card border-left-info shadow h-100 py-2">
-                                        <div class="card-body">
-                                            <div class="row no-gutters align-items-center">
-                                                <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Leaves Taken</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalLeaves; ?></div>
-                                                </div>
-                                                <div class="col-auto"><i class="fas fa-envelope-circle-check fa-2x text-gray-300"></i></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </a>
-                            </div>
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <a class="card-link" href="pages/student/view_lecture_attendance.php">
-                                    <div class="card border-left-warning shadow h-100 py-2">
-                                        <div class="card-body">
-                                            <div class="row no-gutters align-items-center">
-                                                <div class="col mr-2">
-                                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Absent Lectures</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalAbsent; ?></div>
-                                                </div>
-                                                <div class="col-auto"><i class="fas fa-calendar-xmark fa-2x text-gray-300"></i></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </a>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                    <div class="row mb-4">
-                        <div class="col-xl-8 col-lg-7">
-                            <div class="card shadow mb-4 h-100">
-                                <div class="card-header py-3">
-                                    <h6 id="chart-title" class="m-0 font-weight-bold text-primary">Overview</h6>
+                                    </a>
                                 </div>
-                                <div class="card-body">
-                                    <div class="chart-area"><canvas id="myAreaChart" data-role="<?php echo htmlspecialchars($role ?? ''); ?>" data-user-id="<?php echo htmlspecialchars($userId ?? ''); ?>" data-base-url="/BMC-SMS/"></canvas></div>
+                                <div class="col-xl-3 col-md-6 mb-4">
+                                    <a class="card-link" href="pages/student/view_lecture_attendance.php">
+                                        <div class="card border-left-success shadow h-100 py-2">
+                                            <div class="card-body">
+                                                <div class="row no-gutters align-items-center">
+                                                    <div class="col mr-2">
+                                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Present Days</div>
+                                                        <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalPresent; ?></div>
+                                                    </div>
+                                                    <div class="col-auto"><i class="fas fa-user-check fa-2x text-gray-300"></i></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </a>
                                 </div>
-                            </div>
+                                <div class="col-xl-3 col-md-6 mb-4">
+                                    <a class="card-link" href="pages/student/view_lecture_attendance.php">
+                                        <div class="card border-left-info shadow h-100 py-2">
+                                            <div class="card-body">
+                                                <div class="row no-gutters align-items-center">
+                                                    <div class="col mr-2">
+                                                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Leaves Taken</div>
+                                                        <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalLeaves; ?></div>
+                                                    </div>
+                                                    <div class="col-auto"><i class="fas fa-envelope-circle-check fa-2x text-gray-300"></i></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="col-xl-3 col-md-6 mb-4">
+                                    <a class="card-link" href="pages/student/view_lecture_attendance.php">
+                                        <div class="card border-left-warning shadow h-100 py-2">
+                                            <div class="card-body">
+                                                <div class="row no-gutters align-items-center">
+                                                    <div class="col mr-2">
+                                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Absent Lectures</div>
+                                                        <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalAbsent; ?></div>
+                                                    </div>
+                                                    <div class="col-auto"><i class="fas fa-calendar-xmark fa-2x text-gray-300"></i></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                            <?php endif; ?>
                         </div>
-                        <div class="col-xl-4 col-lg-5">
-                            <div class="card shadow mb-4 h-100">
-                                <div class="card-header py-3">
-                                    <h6 class="m-0 font-weight-bold text-primary">Recent Notifications</h6>
+                        <div class="row mb-4">
+                            <div class="col-xl-8 col-lg-7">
+                                <div class="card shadow mb-4 h-100">
+                                    <div class="card-header py-3">
+                                        <h6 id="chart-title" class="m-0 font-weight-bold text-primary">Overview</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="chart-area"><canvas id="myAreaChart" data-role="<?php echo htmlspecialchars($role ?? ''); ?>" data-user-id="<?php echo htmlspecialchars($userId ?? ''); ?>" data-base-url="/BMC-SMS/"></canvas></div>
+                                    </div>
                                 </div>
-                                <div class="card-body d-flex flex-column">
-                                    <div class="list-group list-group-flush notification-dashboard-list" id="dashboard-notifications-list">
+                            </div>
+                            <div class="col-xl-4 col-lg-5">
+                                <div class="card shadow mb-4 h-100">
+                                    <div class="card-header py-3">
+                                        <h6 class="m-0 font-weight-bold text-primary">Recent Notifications</h6>
+                                    </div>
+                                    <div class="card-body d-flex flex-column">
+                                        <div class="list-group list-group-flush notification-dashboard-list" id="dashboard-notifications-list">
                                         </div>
-                                    <a class="dropdown-item text-center small text-gray-500 mt-auto" href="/BMC-SMS/notification_history.php">Show All Notifications</a>
+                                        <a class="dropdown-item text-center small text-gray-500 mt-auto" href="/BMC-SMS/notification_history.php">Show All Notifications</a>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+                <?php include './includes/footer.php'; ?>
             </div>
-            <?php include './includes/footer.php'; ?>
         </div>
-    </div>
-    <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
-    <?php include_once "./includes/logout_modal.php" ?>
-    <script src="/BMC-SMS/assets/vendor/jquery/jquery.min.js"></script>
-    <script src="/BMC-SMS/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="/BMC-SMS/assets/vendor/jquery-easing/jquery.easing.min.js"></script>
-    <script src="/BMC-SMS/assets/js/sb-admin-2.min.js"></script>
-    <script src="/BMC-SMS/assets/vendor/chart.js/Chart.min.js"></script>
-    <script src="/BMC-SMS/assets/js/dynamic_chart.js"></script>
-    <script src="/BMC-SMS/assets/js/notification.js"></script>
-    <script src="/BMC-SMS/assets/js/sidebar.js"></script>
-    <script src="/BMC-SMS/assets/js/ajax-navigation.js"></script>
-    
-    <script>
-    // New script block to handle notification clicks on the dashboard
-    document.addEventListener('DOMContentLoaded', function() {
-        const base_path = '/BMC-SMS/';
-        const notification_api_endpoint = base_path + 'includes/header.php'; // The API is now inside header.php
+        <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
+        <?php include_once "./includes/logout_modal.php" ?>
+        <script src="/BMC-SMS/assets/vendor/jquery/jquery.min.js"></script>
+        <script src="/BMC-SMS/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+        <script src="/BMC-SMS/assets/vendor/jquery-easing/jquery.easing.min.js"></script>
+        <script src="/BMC-SMS/assets/js/sb-admin-2.min.js"></script>
+        <script src="/BMC-SMS/assets/vendor/chart.js/Chart.min.js"></script>
+        <script src="/BMC-SMS/assets/js/dynamic_chart.js"></script>
+        <script src="/BMC-SMS/assets/js/notification.js"></script>
+        <script src="/BMC-SMS/assets/js/sidebar.js"></script>
+        <script src="/BMC-SMS/assets/js/ajax-navigation.js"></script>
 
-        // Use event delegation to handle clicks on links that are dynamically added
-        document.getElementById('dashboard-notifications-list').addEventListener('click', function(event) {
-            // Find the clicked link
-            const link = event.target.closest('a.list-group-item');
-            if (!link) {
-                return; // Click was not on a notification link
-            }
+        <script>
+            // New script block to handle notification clicks on the dashboard
+            document.addEventListener('DOMContentLoaded', function() {
+                const base_path = '/BMC-SMS/';
+                const notification_api_endpoint = base_path + 'includes/header.php'; // The API is now inside header.php
 
-            const isUnread = link.classList.contains('unread');
-            const notifId = link.getAttribute('data-notif-id');
-            
-            if (isUnread && notifId) {
-                event.preventDefault(); // Stop the default navigation
-                const targetUrl = link.getAttribute('href');
+                // Use event delegation to handle clicks on links that are dynamically added
+                document.getElementById('dashboard-notifications-list').addEventListener('click', function(event) {
+                    // Find the clicked link
+                    const link = event.target.closest('a.list-group-item');
+                    if (!link) {
+                        return; // Click was not on a notification link
+                    }
 
-                let formData = new FormData();
-                formData.append('action', 'mark_single_read');
-                formData.append('notif_id', notifId);
+                    const isUnread = link.classList.contains('unread');
+                    const notifId = link.getAttribute('data-notif-id');
 
-                fetch(notification_api_endpoint, {
-                    method: 'POST',
-                    body: formData
-                })
-                .catch(error => console.error('Error marking dashboard notification as read:', error))
-                .finally(() => {
-                    // Navigate after the API call is complete to ensure the state is updated
-                    window.location.href = targetUrl;
+                    if (isUnread && notifId) {
+                        event.preventDefault(); // Stop the default navigation
+                        const targetUrl = link.getAttribute('href');
+
+                        let formData = new FormData();
+                        formData.append('action', 'mark_single_read');
+                        formData.append('notif_id', notifId);
+
+                        fetch(notification_api_endpoint, {
+                                method: 'POST',
+                                body: formData
+                            })
+                            .catch(error => console.error('Error marking dashboard notification as read:', error))
+                            .finally(() => {
+                                // Navigate after the API call is complete to ensure the state is updated
+                                window.location.href = targetUrl;
+                            });
+                    }
                 });
-            }
-        });
-    });
-    </script>
+            });
+        </script>
 
 </body>
 

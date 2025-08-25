@@ -63,7 +63,10 @@ try {
                         // FIX: Normalize image paths to be absolute URLs before sending
                         foreach ($contacts as &$contact) {
                             if (!empty($contact['image_path'])) {
-                                $contact['image_path'] = BASE_WEB_PATH . ltrim($contact['image_path'], '/');
+                                // Check if the path is already a full web path.
+                                if (strpos($contact['image_path'], BASE_WEB_PATH) !== 0) {
+                                    $contact['image_path'] = BASE_WEB_PATH . ltrim($contact['image_path'], '/');
+                                }
                             }
                         }
                     }
@@ -89,7 +92,10 @@ try {
                     // FIX: Normalize image paths to be absolute URLs before sending
                     foreach ($contacts as &$contact) {
                         if (!empty($contact['image_path'])) {
-                            $contact['image_path'] = BASE_WEB_PATH . ltrim($contact['image_path'], '/');
+                            // Check if the path is already a full web path.
+                            if (strpos($contact['image_path'], BASE_WEB_PATH) !== 0) {
+                                $contact['image_path'] = BASE_WEB_PATH . ltrim($contact['image_path'], '/');
+                            }
                         }
                     }
                 }
@@ -132,7 +138,10 @@ try {
             // FIX: Normalize sender image paths to be absolute URLs
             foreach ($messages as &$msg) {
                 if (!empty($msg['sender_image'])) {
-                    $msg['sender_image'] = BASE_WEB_PATH . ltrim($msg['sender_image'], '/');
+                    // Check if the path is already a full web path.
+                    if (strpos($msg['sender_image'], BASE_WEB_PATH) !== 0) {
+                        $msg['sender_image'] = BASE_WEB_PATH . ltrim($msg['sender_image'], '/');
+                    }
                 }
             }
 
