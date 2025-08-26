@@ -52,16 +52,18 @@ if ($filter_year !== 'all') {
     $params[':year'] = $filter_year;
 }
 
+// UPDATED: Use the new 'teacher_payroll' table
 $teacher_query = "
     SELECT 'Teacher' as staff_role, t.teacher_name as staff_name, pr.salary_month, pr.salary_year, pr.net_salary_paid, pr.payment_date
-    FROM payroll_records pr
+    FROM teacher_payroll pr
     JOIN teacher t ON pr.teacher_id = t.id
     WHERE $where_clauses
 ";
 
+// UPDATED: Use the new 'librarian_payroll' table
 $librarian_query = "
     SELECT 'Librarian' as staff_role, l.librarian_name as staff_name, lpr.salary_month, lpr.salary_year, lpr.net_salary_paid, lpr.payment_date
-    FROM librarian_payroll_records lpr
+    FROM librarian_payroll lpr
     JOIN librarian l ON lpr.librarian_id = l.id
     WHERE $where_clauses_lpr
 ";
