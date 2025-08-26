@@ -32,7 +32,7 @@ $successMessage = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_incentive'])) {
     $incentive_name = filter_input(INPUT_POST, 'incentive_name', FILTER_SANITIZE_STRING);
     $percentage = filter_input(INPUT_POST, 'percentage', FILTER_VALIDATE_FLOAT);
-    $type = filter_input(INPUT_POST, 'type', FILTER_SANITIZE_STRING); // 'Addition' or 'Subtraction'
+    $type = filter_input(INPUT_POST, 'type', FILTER_SANITIZE_STRING);
 
     try {
         $stmt = $conn->prepare("INSERT INTO incentives (school_id, incentive_name, percentage, type) VALUES (?, ?, ?, ?)");
@@ -45,6 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_incentive'])) {
 
 // Assign Incentive to Staff Groups
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['assign_incentive'])) {
+    // This backend logic correctly handles the array of checkboxes
     $assign_to = $_POST['assign_to'] ?? [];
     $incentive_id = filter_input(INPUT_POST, 'incentive_id', FILTER_VALIDATE_INT);
     $period = explode('-', $_POST['period']);
@@ -56,21 +57,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['assign_incentive'])) 
     } else {
         try {
             $conn->beginTransaction();
-
             $incentiveStmt = $conn->prepare("SELECT percentage, type FROM incentives WHERE id = ?");
             $incentiveStmt->execute([$incentive_id]);
             $incentive_details = $incentiveStmt->fetch(PDO::FETCH_ASSOC);
             $percentage = $incentive_details['percentage'];
             $incentive_type = $incentive_details['type'];
-
             $assignStmt = $conn->prepare("INSERT INTO staff_incentives (staff_id, staff_role, incentive_id, salary_month, salary_year, amount, assigned_by_user_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            
             $total_assigned = 0;
-
             foreach ($assign_to as $role_to_assign) {
                 $staff_list = [];
                 $staff_role_name = '';
-
                 if ($role_to_assign === 'all_teachers') {
                     $staff_role_name = 'teacher';
                     $staff_stmt = $conn->prepare("SELECT id, salary FROM teacher WHERE school_id = ?");
@@ -81,28 +77,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['assign_incentive'])) 
                     $staff_role_name = 'principal';
                     $staff_stmt = $conn->prepare("SELECT id, salary FROM principal WHERE school_id = ?");
                 }
-
                 if (!empty($staff_role_name)) {
                     $staff_stmt->execute([$school_id]);
                     $staff_list = $staff_stmt->fetchAll(PDO::FETCH_ASSOC);
-
                     foreach ($staff_list as $staff) {
                         $base_salary = $staff['salary'];
                         $incentive_amount = ($base_salary * $percentage) / 100;
-                        
                         if ($incentive_type === 'Subtraction') {
                             $incentive_amount *= -1;
                         }
-                        
                         $assignStmt->execute([$staff['id'], $staff_role_name, $incentive_id, $salary_month, $salary_year, $incentive_amount, $userId]);
                         $total_assigned++;
                     }
                 }
             }
-
             $conn->commit();
             $successMessage = "Incentive assigned successfully to " . $total_assigned . " staff member(s)!";
-
         } catch (Exception $e) {
             $conn->rollBack();
             $errorMessage = "Error assigning incentive: " . $e->getMessage();
@@ -110,12 +100,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['assign_incentive'])) 
     }
 }
 
-
 // Fetch Data for Display
 $incentives = $conn->prepare("SELECT * FROM incentives WHERE school_id = ? ORDER BY incentive_name");
 $incentives->execute([$school_id]);
 $incentive_list = $incentives->fetchAll(PDO::FETCH_ASSOC);
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -126,7 +114,6 @@ $incentive_list = $incentives->fetchAll(PDO::FETCH_ASSOC);
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
-    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
@@ -143,39 +130,15 @@ $incentive_list = $incentives->fetchAll(PDO::FETCH_ASSOC);
 
                     <div class="row">
                         <div class="col-lg-5">
-                            <div class="card shadow mb-4">
+                             <div class="card shadow mb-4">
                                 <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Define Incentive Types</h6></div>
                                 <div class="card-body">
                                     <form action="" method="POST">
-                                        <div class="form-group">
-                                            <label for="incentive_name">Incentive Name</label>
-                                            <input type="text" name="incentive_name" class="form-control" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="percentage">Percentage of Base Salary (%)</label>
-                                            <input type="number" step="0.01" name="percentage" class="form-control" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="type">Type</label>
-                                            <select name="type" class="form-control" required>
-                                                <option value="Addition">Addition (Bonus)</option>
-                                                <option value="Subtraction">Subtraction (Deduction)</option>
-                                            </select>
-                                        </div>
+                                        <div class="form-group"><label for="incentive_name">Incentive Name</label><input type="text" name="incentive_name" class="form-control" required></div>
+                                        <div class="form-group"><label for="percentage">Percentage of Base Salary (%)</label><input type="number" step="0.01" name="percentage" class="form-control" required></div>
+                                        <div class="form-group"><label for="type">Type</label><select name="type" class="form-control" required><option value="Addition">Addition (Bonus)</option><option value="Subtraction">Subtraction (Deduction)</option></select></div>
                                         <button type="submit" name="save_incentive" class="btn btn-primary">Add Incentive</button>
                                     </form>
-                                    <hr>
-                                    <h6 class="mt-4">Existing Incentives</h6>
-                                    <ul class="list-group">
-                                        <?php foreach($incentive_list as $inc): ?>
-                                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <?php echo htmlspecialchars($inc['incentive_name']); ?>
-                                                <span class="badge badge-<?php echo $inc['type'] === 'Addition' ? 'success' : 'danger'; ?> badge-pill">
-                                                    <?php echo ($inc['type'] === 'Addition' ? '+' : '-'); ?><?php echo $inc['percentage']; ?>%
-                                                </span>
-                                            </li>
-                                        <?php endforeach; ?>
-                                    </ul>
                                 </div>
                             </div>
                         </div>
@@ -188,27 +151,32 @@ $incentive_list = $incentives->fetchAll(PDO::FETCH_ASSOC);
                                             <label for="period">For Period (Month-Year)</label>
                                             <input type="month" name="period" class="form-control" value="<?php echo date('Y-m'); ?>" required>
                                         </div>
-                                        <div class="form-group">
-                                            <label>Assign To</label>
-                                            <div class="custom-control custom-checkbox">
-                                                <input type="checkbox" class="custom-control-input" id="assign_all_teachers" name="assign_to[]" value="all_teachers">
-                                                <label class="custom-control-label" for="assign_all_teachers">All Teachers</label>
-                                            </div>
-                                            <div class="custom-control custom-checkbox">
-                                                <input type="checkbox" class="custom-control-input" id="assign_all_librarians" name="assign_to[]" value="all_librarians">
-                                                <label class="custom-control-label" for="assign_all_librarians">All Librarians</label>
-                                            </div>
-                                            <div class="custom-control custom-checkbox">
-                                                <input type="checkbox" class="custom-control-input" id="assign_all_principals" name="assign_to[]" value="all_principals">
-                                                <label class="custom-control-label" for="assign_all_principals">All Principals</label>
+                                        
+                                        <div class="form-group position-relative">
+                                            <label for="assignToDisplay">Assign To</label>
+                                            <input type="text" id="assignToDisplay" class="form-control" placeholder="Select one or more staff groups" readonly style="cursor: pointer; background-color: #fff;">
+                                            <div id="assignToOptions" class="dropdown-menu p-2 w-100" style="display:none; position: absolute;">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="assign_to[]" value="all_teachers" id="assign_teachers">
+                                                    <label class="form-check-label" for="assign_teachers">All Teachers</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="assign_to[]" value="all_librarians" id="assign_librarians">
+                                                    <label class="form-check-label" for="assign_librarians">All Librarians</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="assign_to[]" value="all_principals" id="assign_principals">
+                                                    <label class="form-check-label" for="assign_principals">All Principals</label>
+                                                </div>
                                             </div>
                                         </div>
+                                        
                                         <div class="form-group">
                                             <label for="incentive_id">Incentive Type</label>
                                             <select name="incentive_id" class="form-control" required>
                                                 <option value="">-- Select Incentive --</option>
                                                 <?php foreach($incentive_list as $inc): ?>
-                                                    <option value="<?php echo $inc['id']; ?>"><?php echo htmlspecialchars($inc['incentive_name']); ?> (<?php echo $inc['type'] === 'Addition' ? '+' : '-'; ?><?php echo $inc['percentage']; ?>%)</option>
+                                                    <option value="<?php echo $inc['id']; ?>"><?php echo htmlspecialchars($inc['incentive_name']); ?> (<?php echo $inc['type'] === 'Addition' ? '+' : '-'; ?><?php echo rtrim(rtrim($inc['percentage'], '0'), '.'); ?>%)</option>
                                                 <?php endforeach; ?>
                                             </select>
                                         </div>
@@ -218,6 +186,31 @@ $incentive_list = $incentives->fetchAll(PDO::FETCH_ASSOC);
                             </div>
                         </div>
                     </div>
+                    
+                    <div class="row">
+                        <div class="col-lg-12">
+                            <div class="card shadow mb-4">
+                                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Existing Incentives</h6></div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered" id="incentivesTable" width="100%" cellspacing="0">
+                                            <thead><tr><th>Incentive Name</th><th>Type</th><th>Percentage</th></tr></thead>
+                                            <tbody>
+                                                <?php foreach($incentive_list as $inc): ?>
+                                                    <tr>
+                                                        <td><?php echo htmlspecialchars($inc['incentive_name']); ?></td>
+                                                        <td><span class="badge badge-<?php echo $inc['type'] === 'Addition' ? 'success' : 'danger'; ?>"><?php echo htmlspecialchars($inc['type']); ?></span></td>
+                                                        <td><?php echo rtrim(rtrim($inc['percentage'], '0'), '.'); ?>%</td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
             <?php include_once '../../includes/footer.php'; ?>
@@ -229,5 +222,46 @@ $incentive_list = $incentives->fetchAll(PDO::FETCH_ASSOC);
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
+    <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
+    <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+    
+    <script>
+    $(document).ready(function() {
+        $('#incentivesTable').DataTable();
+
+        const displayInput = $('#assignToDisplay');
+        const optionsContainer = $('#assignToOptions');
+        const checkboxes = optionsContainer.find('.form-check-input');
+        const placeholder = "Select one or more staff groups";
+
+        // Toggle the dropdown visibility when the fake input is clicked
+        displayInput.on('click', function() {
+            optionsContainer.toggle();
+        });
+
+        // Update the display text whenever a checkbox is changed
+        checkboxes.on('change', function() {
+            const selectedLabels = [];
+            checkboxes.filter(':checked').each(function() {
+                selectedLabels.push($(this).siblings('label').text());
+            });
+
+            if (selectedLabels.length > 0) {
+                displayInput.val(selectedLabels.join(', '));
+            } else {
+                displayInput.val('');
+                displayInput.attr('placeholder', placeholder);
+            }
+        }).trigger('change'); // Trigger on page load to set initial state
+
+        // Close the dropdown when clicking anywhere else on the page
+        $(document).on('click', function(e) {
+            // Check if the click is outside of the custom dropdown component
+            if (!$(e.target).closest('.position-relative').length) {
+                optionsContainer.hide();
+            }
+        });
+    });
+    </script>
 </body>
 </html>
