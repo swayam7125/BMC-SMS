@@ -58,35 +58,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mother_name = trim($_POST['mother_name']);
     $mother_phone = trim($_POST['mother_phone']);
     
-    // NEW: Handle transport mode and stop ID
-    $transport_mode = $_POST['transport_mode'] ?? 'Self';
+    $transport_mode = $_POST['transport_mode'] ?? 'Self Transport';
     $stop_id = ($transport_mode === 'School Transport' && !empty($_POST['stop_id'])) ? (int)$_POST['stop_id'] : null;
+    $self_transport_mode = ($transport_mode === 'Self Transport' && !empty($_POST['self_transport_mode'])) ? $_POST['self_transport_mode'] : null;
+    
+    $vehicle_number = null;
+    $license_number = null;
+    if ($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') {
+        $vehicle_number = trim($_POST['vehicle_number'] ?? '');
+        $license_number = trim($_POST['license_number'] ?? '');
+    }
 
-    // NEW: Retrieve date of joining
     $date_of_joining = $_POST['date_of_joining'] ?? null;
     
     $image_path_for_db = null;
 
-    // --- Step 2: Perform all validations together ---
-
-    // File upload validation
+    // --- Start of FIX: File upload logic moved here ---
     if (isset($_FILES['student_image']) && $_FILES['student_image']['error'] === UPLOAD_ERR_OK) {
         $file = $_FILES['student_image'];
-        $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        $allowed_exts = ['jpg', 'jpeg', 'png', 'gif'];
+        $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/student/uploads/';
+        
+        // Ensure upload directory exists
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0777, true);
+        }
 
-        if (!in_array($file_ext, $allowed_exts)) {
-            $errors[] = "Invalid file type. Only JPG, JPEG, PNG, and GIF are allowed.";
+        $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        $new_filename = 'student_' . uniqid('', true) . '.' . $file_ext;
+        $destination = $upload_dir . $new_filename;
+
+        if (move_uploaded_file($file['tmp_name'], $destination)) {
+            // Correctly set the web-accessible path for the database
+            $image_path_for_db = '/BMC-SMS/pages/student/uploads/' . $new_filename;
+        } else {
+            $errors[] = "Failed to move uploaded file.";
         }
     }
+    // --- End of FIX: File upload logic ---
 
-    // Form field validation
+    // --- Step 2: Perform all validations together ---
     if (empty($student_name)) $errors[] = "Student name is required.";
     if (empty($school_id)) $errors[] = "A school must be selected.";
     if (empty($std)) $errors[] = "Standard / Class is required.";
     if (empty($rollno)) $errors[] = "Roll number is required.";
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "A valid email is required.";
     if (empty($password)) $errors[] = "Password is required.";
+    if ($transport_mode === 'Self Transport' && empty($self_transport_mode)) $errors[] = "Please specify the mode of self-transport.";
+    if (($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') && empty($vehicle_number)) $errors[] = "Vehicle number is required.";
+    if (($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') && empty($license_number)) $errors[] = "License number is required.";
 
     // Duplicate roll number validation
     if (empty($errors)) {
@@ -103,45 +122,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // --- Step 3: If there are NO errors, process file and save to database ---
     if (empty($errors)) {
-        if (isset($_FILES['student_image']) && $_FILES['student_image']['error'] === UPLOAD_ERR_OK) {
-            $target_dir = "/BMC-SMS/pages/student/uploads/";
-            if (!file_exists($target_dir)) {
-                mkdir($target_dir, 0777, true);
-            }
-            $new_filename = 'student_' . uniqid('', true) . '.' . strtolower(pathinfo($_FILES['student_image']['name'], PATHINFO_EXTENSION));
-            $destination = $target_dir . $new_filename;
+        try {
+            $conn->beginTransaction();
+            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+            $user_role = 'student';
 
-            if (move_uploaded_file($_FILES['student_image']['tmp_name'], $destination)) {
-                $image_path_for_db = "/BMC-SMS/pages/student/uploads/" . $new_filename;
+            $stmt_user = $conn->prepare('INSERT INTO "users" ("role", "email", "password") VALUES (?, ?, ?)');
+            $stmt_user->execute([$user_role, $email, $hashed_password]);
+            $new_user_id = $conn->lastInsertId();
+
+            $stmt_student = $conn->prepare('INSERT INTO "student" (id, student_image, student_name, rollno, std, email, password, academic_year, school_id, dob, gender, blood_group, address, father_name, father_phone, mother_name, mother_phone, transport_mode, self_transport_mode, vehicle_number, license_number, stop_id, date_of_joining) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            $stmt_student->execute([$new_user_id, $image_path_for_db, $student_name, $rollno, $std, $email, $hashed_password, $academic_year, $school_id, $dob, $gender, $blood_group, $address, $father_name, $father_phone, $mother_name, $mother_phone, $transport_mode, $self_transport_mode, $vehicle_number, $license_number, $stop_id, $date_of_joining]);
+
+            $conn->commit();
+            header("Location: ../../pages/student/student_list.php?success=Student enrolled successfully");
+            exit();
+        } catch (PDOException $e) {
+            $conn->rollBack();
+            if ($e->getCode() == 23505) {
+                $errors[] = "A student with this email already exists.";
             } else {
-                $errors[] = "Critical error: Could not move uploaded file. Check directory permissions.";
-            }
-        }
-
-        if (empty($errors)) {
-            try {
-                $conn->beginTransaction();
-                $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-                $user_role = 'student';
-
-                $stmt_user = $conn->prepare('INSERT INTO "users" ("role", "email", "password") VALUES (?, ?, ?)');
-                $stmt_user->execute([$user_role, $email, $hashed_password]);
-                $new_user_id = $conn->lastInsertId();
-
-                // MODIFIED: Added date_of_joining, transport_mode and stop_id to the INSERT statement
-                $stmt_student = $conn->prepare('INSERT INTO "student" (id, student_image, student_name, rollno, std, email, password, academic_year, school_id, dob, gender, blood_group, address, father_name, father_phone, mother_name, mother_phone, transport_mode, stop_id, date_of_joining) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-                $stmt_student->execute([$new_user_id, $image_path_for_db, $student_name, $rollno, $std, $email, $hashed_password, $academic_year, $school_id, $dob, $gender, $blood_group, $address, $father_name, $father_phone, $mother_name, $mother_phone, $transport_mode, $stop_id, $date_of_joining]);
-
-                $conn->commit();
-                header("Location: ../../pages/student/student_list.php?success=Student enrolled successfully");
-                exit();
-            } catch (PDOException $e) {
-                $conn->rollBack();
-                if ($e->getCode() == 23505) {
-                    $errors[] = "A student with this email already exists.";
-                } else {
-                    $errors[] = "Database error: " . $e->getMessage();
-                }
+                $errors[] = "Database error: " . $e->getMessage();
             }
         }
     }
@@ -255,10 +256,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                      <div class="form-group col-md-6">
                                         <label for="transport_mode">Mode of Transport *</label>
                                         <select class="form-control" id="transport_mode" name="transport_mode" required>
-                                            <option value="Self" <?php echo (isset($_POST['transport_mode']) && $_POST['transport_mode'] == 'Self') ? 'selected' : ''; ?>>Self (Own Vehicle/Walking)</option>
+                                            <option value="Self Transport" <?php echo (isset($_POST['transport_mode']) && $_POST['transport_mode'] == 'Self Transport') ? 'selected' : ''; ?>>Self (Own Vehicle/Walking)</option>
                                             <option value="School Transport" <?php echo (isset($_POST['transport_mode']) && $_POST['transport_mode'] == 'School Transport') ? 'selected' : ''; ?>>School Transport (Bus/Van)</option>
                                         </select>
                                      </div>
+                                     <div class="form-group col-md-6" id="self-transport-div" style="display: <?php echo (isset($_POST['transport_mode']) && $_POST['transport_mode'] == 'Self Transport') ? 'block' : 'none'; ?>;">
+                                        <label for="self_transport_mode">Self Transport Mode *</label>
+                                        <select class="form-control" id="self_transport_mode" name="self_transport_mode">
+                                            <option value="">-- Select Mode --</option>
+                                            <option value="Walking" <?php echo (isset($_POST['self_transport_mode']) && $_POST['self_transport_mode'] == 'Walking') ? 'selected' : ''; ?>>Walking</option>
+                                            <option value="Parents" <?php echo (isset($_POST['self_transport_mode']) && $_POST['self_transport_mode'] == 'Parents') ? 'selected' : ''; ?>>Parents</option>
+                                            <option value="Bike" <?php echo (isset($_POST['self_transport_mode']) && $_POST['self_transport_mode'] == 'Bike') ? 'selected' : ''; ?>>Bike</option>
+                                            <option value="Car" <?php echo (isset($_POST['self_transport_mode']) && $_POST['self_transport_mode'] == 'Car') ? 'selected' : ''; ?>>Car</option>
+                                        </select>
+                                    </div>
                                      <div class="form-group col-md-6" id="transport-stop-div" style="display: <?php echo (isset($_POST['transport_mode']) && $_POST['transport_mode'] == 'School Transport') ? 'block' : 'none'; ?>;">
                                         <label for="stop_id">Assign Transport Stop (Optional)</label>
                                         <select class="form-control" id="stop_id" name="stop_id">
@@ -282,6 +293,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                             }
                                             ?>
                                         </select>
+                                    </div>
+                                </div>
+                                <div class="form-row mt-3" id="vehicle-details-div" style="display: <?php echo (isset($_POST['self_transport_mode']) && ($_POST['self_transport_mode'] == 'Bike' || $_POST['self_transport_mode'] == 'Car')) ? 'flex' : 'none'; ?>;">
+                                    <div class="form-group col-md-6">
+                                        <label for="vehicle_number">Vehicle Number *</label>
+                                        <input type="text" class="form-control" id="vehicle_number" name="vehicle_number" value="<?php echo htmlspecialchars($_POST['vehicle_number'] ?? ''); ?>">
+                                    </div>
+                                    <div class="form-group col-md-6">
+                                        <label for="license_number">License Number *</label>
+                                        <input type="text" class="form-control" id="license_number" name="license_number" value="<?php echo htmlspecialchars($_POST['license_number'] ?? ''); ?>">
                                     </div>
                                 </div>
                                 <hr>
@@ -326,9 +347,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             <?php include_once '../../includes/footer.php'; ?>
         </div>
-        <?php
-            if (!is_ajax_request()) {
-        ?>
     </div>
 
     <?php include_once "../../includes/logout_modal.php"; ?>
@@ -410,22 +428,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // JavaScript to show/hide the stop dropdown
             const transportModeSelect = document.getElementById('transport_mode');
-            const stopDiv = document.getElementById('transport-stop-div');
-            
-            function toggleStopField() {
-                if (transportModeSelect.value === 'School Transport') {
-                    stopDiv.style.display = 'block';
+            const selfTransportSelect = document.getElementById('self_transport_mode');
+            const schoolTransportDiv = document.getElementById('transport-stop-div');
+            const selfTransportDiv = document.getElementById('self-transport-div');
+            const vehicleDetailsDiv = document.getElementById('vehicle-details-div');
+
+            function toggleSelfTransportFields() {
+                const selectedMode = selfTransportSelect.value;
+                if (selectedMode === 'Bike' || selectedMode === 'Car') {
+                    vehicleDetailsDiv.style.display = 'flex';
                 } else {
-                    stopDiv.style.display = 'none';
-                    document.getElementById('stop_id').value = ''; // Clear selection when hidden
+                    vehicleDetailsDiv.style.display = 'none';
+                    document.getElementById('vehicle_number').value = '';
+                    document.getElementById('license_number').value = '';
                 }
             }
-            toggleStopField(); // Check on page load
-            transportModeSelect.addEventListener('change', toggleStopField); // Add event listener
+
+            function toggleTransportFields() {
+                const mainMode = transportModeSelect.value;
+                if (mainMode === 'School Transport') {
+                    schoolTransportDiv.style.display = 'block';
+                    selfTransportDiv.style.display = 'none';
+                    vehicleDetailsDiv.style.display = 'none';
+                    document.getElementById('self_transport_mode').value = '';
+                    document.getElementById('vehicle_number').value = '';
+                    document.getElementById('license_number').value = '';
+                } else if (mainMode === 'Self Transport') {
+                    selfTransportDiv.style.display = 'block';
+                    schoolTransportDiv.style.display = 'none';
+                    document.getElementById('stop_id').value = '';
+                    toggleSelfTransportFields(); 
+                } else {
+                    selfTransportDiv.style.display = 'none';
+                    schoolTransportDiv.style.display = 'none';
+                    vehicleDetailsDiv.style.display = 'none';
+                    document.getElementById('self_transport_mode').value = '';
+                    document.getElementById('stop_id').value = '';
+                    document.getElementById('vehicle_number').value = '';
+                    document.getElementById('license_number').value = '';
+                }
+            }
+
+            toggleTransportFields();
+
+            transportModeSelect.addEventListener('change', toggleTransportFields);
+            selfTransportSelect.addEventListener('change', toggleSelfTransportFields);
         });
     </script>
 </body>
 </html>
-<?php 
-} 
-?>

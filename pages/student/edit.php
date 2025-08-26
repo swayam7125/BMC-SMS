@@ -24,8 +24,13 @@ $student = null;
 $original_email = null;
 $original_image_path = null;
 
+// Define BASE_WEB_PATH for consistent path handling
+if (!defined('BASE_WEB_PATH')) {
+    define('BASE_WEB_PATH', '/BMC-SMS/');
+}
+
 try {
-    // PDO Change: Fetch current student data
+    // Fetch current student data with all necessary fields
     $stmt = $conn->prepare("SELECT * FROM student WHERE id = ?");
     $stmt->execute([$student_id]);
     $student = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -45,7 +50,7 @@ try {
         $new_email = trim($_POST['email']);
         $rollno = trim($_POST['rollno']);
         $school_id = intval($_POST['school_id']);
-        $dob = $_POST['dob'] ?: null; // Handle empty date
+        $dob = $_POST['dob'] ?: null;
         $gender = $_POST['gender'];
         $blood_group = $_POST['blood_group'];
         $std = trim($_POST['std']);
@@ -55,10 +60,19 @@ try {
         $father_phone = trim($_POST['father_phone']);
         $mother_name = trim($_POST['mother_name']);
         $mother_phone = trim($_POST['mother_phone']);
-
-        // --- UPDATED LOGIC FOR SIMPLIFIED TRANSPORT ---
-        $transport_mode = $_POST['transport_mode'] ?? 'Self';
+        
+        $transport_mode = $_POST['transport_mode'] ?? 'Self Transport';
         $stop_id = ($transport_mode === 'School Transport' && !empty($_POST['stop_id'])) ? (int)$_POST['stop_id'] : null;
+        
+        // NEW: Retrieve self-transport fields
+        $self_transport_mode = ($transport_mode === 'Self Transport' && !empty($_POST['self_transport_mode'])) ? $_POST['self_transport_mode'] : null;
+        $vehicle_number = null;
+        $license_number = null;
+
+        if ($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') {
+            $vehicle_number = trim($_POST['vehicle_number'] ?? '');
+            $license_number = trim($_POST['license_number'] ?? '');
+        }
 
         $image_path_for_db = $original_image_path;
 
@@ -66,6 +80,10 @@ try {
         if (empty($student_name)) $errors[] = "Student name is required.";
         if (empty($new_email) || !filter_var($new_email, FILTER_VALIDATE_EMAIL)) $errors[] = "A valid email is required.";
         if (empty($rollno)) $errors[] = "Roll Number is required.";
+        if ($transport_mode === 'Self Transport' && empty($self_transport_mode)) $errors[] = "Please specify the mode of self-transport.";
+        if (($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') && empty($vehicle_number)) $errors[] = "Vehicle number is required.";
+        if (($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') && empty($license_number)) $errors[] = "License number is required.";
+        
 
         if ($new_email !== $original_email) {
             $stmt_check = $conn->prepare("SELECT id FROM users WHERE email = ? AND id != ?");
@@ -82,16 +100,20 @@ try {
             $allowed_exts = ['jpg', 'jpeg', 'png', 'gif'];
 
             if (in_array($file_ext, $allowed_exts)) {
-                $target_dir = "../../pages/student/uploads/";
-                if (!file_exists($target_dir)) mkdir($target_dir, 0777, true);
+                $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/student/uploads/';
+                if (!file_exists($upload_dir)) {
+                    mkdir($upload_dir, 0777, true);
+                }
 
                 $new_filename = 'student_' . uniqid('', true) . '.' . $file_ext;
-                $destination = $target_dir . $new_filename;
+                $destination = $upload_dir . $new_filename;
 
                 if (move_uploaded_file($file['tmp_name'], $destination)) {
-                    $image_path_for_db = "pages/student/uploads/" . $new_filename;
-                    if (!empty($original_image_path) && file_exists("../../" . $original_image_path) && $original_image_path !== $image_path_for_db) {
-                        unlink("../../" . $original_image_path);
+                    $image_path_for_db = '/BMC-SMS/pages/student/uploads/' . $new_filename;
+
+                    $old_path_for_delete = $_SERVER['DOCUMENT_ROOT'] . $original_image_path;
+                    if (!empty($original_image_path) && file_exists($old_path_for_delete) && is_file($old_path_for_delete)) {
+                        @unlink($old_path_for_delete);
                     }
                 } else {
                     $errors[] = "Failed to move uploaded file.";
@@ -109,12 +131,12 @@ try {
                 $stmt_users->execute([$new_email, $student_id]);
             }
 
-            // --- UPDATED SQL QUERY ---
+            // MODIFIED SQL QUERY: Added self_transport_mode, vehicle_number, and license_number
             $update_student_sql = "UPDATE student SET
                                   student_image = ?, student_name = ?, rollno = ?, std = ?, email = ?, academic_year = ?,
                                   school_id = ?, dob = ?, gender = ?, blood_group = ?, address = ?,
-                                  father_name = ?, father_phone = ?, mother_name = ?, mother_phone = ?, 
-                                  stop_id = ?, transport_mode = ?
+                                  father_name = ?, father_phone = ?, mother_name = ?, mother_phone = ?,
+                                  stop_id = ?, transport_mode = ?, self_transport_mode = ?, vehicle_number = ?, license_number = ?
                                   WHERE id = ?";
 
             $stmt_update = $conn->prepare($update_student_sql);
@@ -136,6 +158,9 @@ try {
                 $mother_phone,
                 $stop_id,
                 $transport_mode,
+                $self_transport_mode,
+                $vehicle_number,
+                $license_number,
                 $student_id
             ]);
 
@@ -143,6 +168,8 @@ try {
             header("Location: student_list.php?success=Student updated successfully");
             exit;
         }
+
+        // Repopulate form fields in case of error
         $student = $_POST;
         $student['id'] = $student_id;
         $student['student_image'] = $image_path_for_db;
@@ -156,6 +183,17 @@ try {
     $schools_result = $conn->query("SELECT id, school_name FROM school ORDER BY school_name");
 }
 
+// Prepare the image path for display in the HTML
+$display_image_path = $student['student_image'] ?? '';
+$default_image_path = BASE_WEB_PATH . 'assets/images/undraw_profile.svg';
+
+$full_path = $_SERVER['DOCUMENT_ROOT'] . $display_image_path;
+
+if (!empty($display_image_path) && file_exists($full_path)) {
+    $image_src = $display_image_path;
+} else {
+    $image_src = $default_image_path;
+}
 ?>
 
 <!DOCTYPE html>
@@ -180,18 +218,13 @@ try {
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Edit Student</h1>
-                        <a href="student_list.php"
-                            class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm"><i
-                                class="fas fa-arrow-left fa-sm text-white-50"></i> Back to List</a>
+                        <a href="student_list.php" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm"><i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to List</a>
                     </div>
-
                     <?php if (!empty($errors)): ?>
                         <div class="alert alert-danger">
-                            <ul class="mb-0"><?php foreach ($errors as $error): ?><li>
-                                        <?php echo htmlspecialchars($error); ?></li><?php endforeach; ?></ul>
+                            <ul class="mb-0"><?php foreach ($errors as $error): ?><li><?php echo htmlspecialchars($error); ?></li><?php endforeach; ?></ul>
                         </div>
                     <?php endif; ?>
-
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
                             <h6 class="m-0 font-weight-bold text-primary">Student Information</h6>
@@ -200,83 +233,46 @@ try {
                             <form method="POST" enctype="multipart/form-data">
                                 <div class="row">
                                     <div class="col-md-3 text-center">
-                                        <img src="<?php echo htmlspecialchars(!empty($student['student_image']) && file_exists('../../' . $student['student_image']) ? '../../' . $student['student_image'] : '../../assets/images/unisex.png'); ?>"
-                                            alt="Student Photo" id="imagePreview" class="img-thumbnail mb-2 mt-3 h-50 w-50"
-                                            style="width: 150px; height: 150px; object-fit: cover;">
+                                        <img src="<?php echo htmlspecialchars($image_src); ?>" alt="Student Photo" id="imagePreview" class="img-thumbnail mb-2 mt-3 h-50 w-50" style="width: 150px; height: 150px; object-fit: cover;">
                                         <div class="form-group mt-3"><label for="student_image" class="small btn btn-sm btn-primary"><i class="fas fa-upload fa-sm"></i> Change Photo</label><input type="file" class="d-none" id="student_image" name="student_image" onchange="document.getElementById('imagePreview').src = window.URL.createObjectURL(this.files[0])"></div>
                                     </div>
                                     <div class="col-md-9">
                                         <div class="row">
-                                            <div class="col-md-6 form-group"><label for="student_name">Student Name
-                                                    *</label><input type="text" class="form-control" id="student_name"
-                                                    name="student_name"
-                                                    value="<?php echo htmlspecialchars($student['student_name'] ?? ''); ?>"
-                                                    required></div>
-                                            <div class="col-md-6 form-group"><label for="email">Email *</label><input
-                                                    type="email" class="form-control" id="email" name="email"
-                                                    value="<?php echo htmlspecialchars($student['email'] ?? ''); ?>"
-                                                    required></div>
-                                            <div class="col-md-6 form-group"><label for="dob">Date of
-                                                    Birth</label><input type="date" class="form-control" id="dob"
-                                                    name="dob"
-                                                    value="<?php echo htmlspecialchars($student['dob'] ?? ''); ?>">
-                                            </div>
+                                            <div class="col-md-6 form-group"><label for="student_name">Student Name *</label><input type="text" class="form-control" id="student_name" name="student_name" value="<?php echo htmlspecialchars($student['student_name'] ?? ''); ?>" required></div>
+                                            <div class="col-md-6 form-group"><label for="email">Email *</label><input type="email" class="form-control" id="email" name="email" value="<?php echo htmlspecialchars($student['email'] ?? ''); ?>" required></div>
+                                            <div class="col-md-6 form-group"><label for="dob">Date of Birth</label><input type="date" class="form-control" id="dob" name="dob" value="<?php echo htmlspecialchars($student['dob'] ?? ''); ?>"></div>
                                             <div class="col-md-6 form-group">
                                                 <label for="gender">Gender</label>
                                                 <select class="form-control" id="gender" name="gender">
-                                                    <option value="Male"
-                                                        <?php echo (isset($student['gender']) && $student['gender'] === 'Male') ? 'selected' : ''; ?>>
-                                                        Male</option>
-                                                    <option value="Female"
-                                                        <?php echo (isset($student['gender']) && $student['gender'] === 'Female') ? 'selected' : ''; ?>>
-                                                        Female</option>
-                                                    <option value="Others"
-                                                        <?php echo (isset($student['gender']) && $student['gender'] === 'Others') ? 'selected' : ''; ?>>
-                                                        Others</option>
+                                                    <option value="Male" <?php echo (isset($student['gender']) && $student['gender'] === 'Male') ? 'selected' : ''; ?>>Male</option>
+                                                    <option value="Female" <?php echo (isset($student['gender']) && $student['gender'] === 'Female') ? 'selected' : ''; ?>>Female</option>
+                                                    <option value="Others" <?php echo (isset($student['gender']) && $student['gender'] === 'Others') ? 'selected' : ''; ?>>Others</option>
                                                 </select>
                                             </div>
-                                            <div class="col-md-6 form-group"><label for="blood_group">Blood
-                                                    Group</label><select class="form-control" id="blood_group"
-                                                    name="blood_group"><?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-                                                                        foreach ($bg_options as $bg) {
-                                                                            $selected = (($student['blood_group'] ?? '') == $bg) ? 'selected' : '';
-                                                                            echo "<option value='{$bg}' {$selected}>" . strtoupper($bg) . "</option>";
-                                                                        } ?></select>
+                                            <div class="col-md-6 form-group"><label for="blood_group">Blood Group</label><select class="form-control" id="blood_group" name="blood_group"><?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+                                                foreach ($bg_options as $bg) {
+                                                    $selected = (($student['blood_group'] ?? '') == $bg) ? 'selected' : '';
+                                                    echo "<option value='{$bg}' {$selected}>" . strtoupper($bg) . "</option>";
+                                                } ?></select>
                                             </div>
-                                            <div class="col-md-6 form-group"><label
-                                                    for="address">Address</label><textarea class="form-control"
-                                                    id="address" name="address"
-                                                    rows="1"><?php echo htmlspecialchars($student['address'] ?? ''); ?></textarea>
-                                            </div>
+                                            <div class="col-md-6 form-group"><label for="address">Address</label><textarea class="form-control" id="address" name="address" rows="1"><?php echo htmlspecialchars($student['address'] ?? ''); ?></textarea></div>
                                         </div>
                                     </div>
                                 </div>
                                 <hr>
                                 <h6 class="text-primary font-weight-bold">Academic Details</h6>
                                 <div class="row">
-                                    <div class="col-md-6 form-group"><label for="school_id">School *</label><select
-                                            class="form-control" id="school_id" name="school_id"
-                                            required><?php
-                                                        if (isset($schools_result)) {
-                                                            foreach ($schools_result as $school) {
-                                                                $selected = ($school['id'] == ($student['school_id'] ?? '')) ? 'selected' : '';
-                                                                echo "<option value='{$school['id']}' {$selected}>" . htmlspecialchars($school['school_name']) . "</option>";
-                                                            }
-                                                        } ?></select>
+                                    <div class="col-md-6 form-group"><label for="school_id">School *</label><select class="form-control" id="school_id" name="school_id" required><?php
+                                        if (isset($schools_result)) {
+                                            foreach ($schools_result as $school) {
+                                                $selected = ($school['id'] == ($student['school_id'] ?? '')) ? 'selected' : '';
+                                                echo "<option value='{$school['id']}' {$selected}>" . htmlspecialchars($school['school_name']) . "</option>";
+                                            }
+                                        } ?></select>
                                     </div>
-                                    <div class="col-md-6 form-group"><label for="rollno">Roll Number *</label><input
-                                            type="text" class="form-control" id="rollno" name="rollno"
-                                            value="<?php echo htmlspecialchars($student['rollno'] ?? ''); ?>" required>
-                                    </div>
-                                    <div class="col-md-6 form-group"><label for="std">Class (Standard) *</label><input
-                                            type="text" class="form-control" id="std" name="std"
-                                            value="<?php echo htmlspecialchars($student['std'] ?? ''); ?>" required>
-                                    </div>
-                                    <div class="col-md-6 form-group"><label for="academic_year">Academic Year
-                                            *</label><input type="text" class="form-control" id="academic_year"
-                                            name="academic_year"
-                                            value="<?php echo htmlspecialchars($student['academic_year'] ?? ''); ?>"
-                                            required></div>
+                                    <div class="col-md-6 form-group"><label for="rollno">Roll Number *</label><input type="text" class="form-control" id="rollno" name="rollno" value="<?php echo htmlspecialchars($student['rollno'] ?? ''); ?>" required></div>
+                                    <div class="col-md-6 form-group"><label for="std">Class (Standard) *</label><input type="text" class="form-control" id="std" name="std" value="<?php echo htmlspecialchars($student['std'] ?? ''); ?>" required></div>
+                                    <div class="col-md-6 form-group"><label for="academic_year">Academic Year *</label><input type="text" class="form-control" id="academic_year" name="academic_year" value="<?php echo htmlspecialchars($student['academic_year'] ?? ''); ?>" required></div>
                                 </div>
 
                                 <hr>
@@ -285,8 +281,18 @@ try {
                                     <div class="col-md-6 form-group">
                                         <label for="transport_mode">Mode of Transport *</label>
                                         <select class="form-control" id="transport_mode" name="transport_mode" required>
-                                            <option value="Self" <?php echo (isset($student['transport_mode']) && $student['transport_mode'] == 'Self') ? 'selected' : ''; ?>>Self (Own Vehicle/Walking)</option>
+                                            <option value="Self Transport" <?php echo (isset($student['transport_mode']) && $student['transport_mode'] == 'Self Transport') ? 'selected' : ''; ?>>Self (Own Vehicle/Walking)</option>
                                             <option value="School Transport" <?php echo (isset($student['transport_mode']) && $student['transport_mode'] == 'School Transport') ? 'selected' : ''; ?>>School Transport (Bus/Van)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 form-group" id="self-transport-div" style="display: <?php echo (isset($student['transport_mode']) && $student['transport_mode'] == 'Self Transport') ? 'block' : 'none'; ?>;">
+                                        <label for="self_transport_mode">Self Transport Mode *</label>
+                                        <select class="form-control" id="self_transport_mode" name="self_transport_mode">
+                                            <option value="">-- Select Mode --</option>
+                                            <option value="Walking" <?php echo (isset($student['self_transport_mode']) && $student['self_transport_mode'] == 'Walking') ? 'selected' : ''; ?>>Walking</option>
+                                            <option value="Parents" <?php echo (isset($student['self_transport_mode']) && $student['self_transport_mode'] == 'Parents') ? 'selected' : ''; ?>>Parents</option>
+                                            <option value="Bike" <?php echo (isset($student['self_transport_mode']) && $student['self_transport_mode'] == 'Bike') ? 'selected' : ''; ?>>Bike</option>
+                                            <option value="Car" <?php echo (isset($student['self_transport_mode']) && $student['self_transport_mode'] == 'Car') ? 'selected' : ''; ?>>Car</option>
                                         </select>
                                     </div>
                                     <div class="col-md-6 form-group" id="transport-stop-div" style="display: <?php echo (isset($student['transport_mode']) && $student['transport_mode'] == 'School Transport') ? 'block' : 'none'; ?>;">
@@ -313,36 +319,28 @@ try {
                                         </select>
                                     </div>
                                 </div>
+                                <div class="row mt-3" id="vehicle-details-div" style="display: <?php echo (isset($student['self_transport_mode']) && ($student['self_transport_mode'] == 'Bike' || $student['self_transport_mode'] == 'Car')) ? 'flex' : 'none'; ?>;">
+                                    <div class="col-md-6 form-group">
+                                        <label for="vehicle_number">Vehicle Number *</label>
+                                        <input type="text" class="form-control" id="vehicle_number" name="vehicle_number" value="<?php echo htmlspecialchars($student['vehicle_number'] ?? ''); ?>">
+                                    </div>
+                                    <div class="col-md-6 form-group">
+                                        <label for="license_number">License Number *</label>
+                                        <input type="text" class="form-control" id="license_number" name="license_number" value="<?php echo htmlspecialchars($student['license_number'] ?? ''); ?>">
+                                    </div>
+                                </div>
                                 <hr>
                                 <h6 class="text-primary font-weight-bold">Parent Details</h6>
                                 <div class="row">
-                                    <div class="col-md-6 form-group"><label for="father_name">Father's Name
-                                            *</label><input type="text" class="form-control" id="father_name"
-                                            name="father_name"
-                                            value="<?php echo htmlspecialchars($student['father_name'] ?? ''); ?>"
-                                            required></div>
-                                    <div class="col-md-6 form-group"><label for="father_phone">Father's Phone
-                                            *</label><input type="text" class="form-control" id="father_phone"
-                                            name="father_phone"
-                                            value="<?php echo htmlspecialchars($student['father_phone'] ?? ''); ?>"
-                                            maxlength="10" required></div>
-                                    <div class="col-md-6 form-group"><label for="mother_name">Mother's
-                                            Name</label><input type="text" class="form-control" id="mother_name"
-                                            name="mother_name"
-                                            value="<?php echo htmlspecialchars($student['mother_name'] ?? ''); ?>">
-                                    </div>
-                                    <div class="col-md-6 form-group"><label for="mother_phone">Mother's
-                                            Phone</label><input type="text" class="form-control" id="mother_phone"
-                                            name="mother_phone"
-                                            value="<?php echo htmlspecialchars($student['mother_phone'] ?? ''); ?>"
-                                            maxlength="10"></div>
+                                    <div class="col-md-6 form-group"><label for="father_name">Father's Name *</label><input type="text" class="form-control" id="father_name" name="father_name" value="<?php echo htmlspecialchars($student['father_name'] ?? ''); ?>" required></div>
+                                    <div class="col-md-6 form-group"><label for="father_phone">Father's Phone *</label><input type="text" class="form-control" id="father_phone" name="father_phone" value="<?php echo htmlspecialchars($student['father_phone'] ?? ''); ?>" maxlength="10" required></div>
+                                    <div class="col-md-6 form-group"><label for="mother_name">Mother's Name</label><input type="text" class="form-control" id="mother_name" name="mother_name" value="<?php echo htmlspecialchars($student['mother_name'] ?? ''); ?>"></div>
+                                    <div class="col-md-6 form-group"><label for="mother_phone">Mother's Phone</label><input type="text" class="form-control" id="mother_phone" name="mother_phone" value="<?php echo htmlspecialchars($student['mother_phone'] ?? ''); ?>" maxlength="10"></div>
                                 </div>
 
                                 <div class="form-group mt-4">
-                                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update
-                                        Student</button>
-                                    <a href="student_list.php" class="btn btn-secondary"><i class="fas fa-times"></i>
-                                        Cancel</a>
+                                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update Student</button>
+                                    <a href="student_list.php" class="btn btn-secondary"><i class="fas fa-times"></i> Cancel</a>
                                 </div>
                             </form>
                         </div>
@@ -361,20 +359,60 @@ try {
         document.getElementById('student_image').onchange = function(evt) {
             const [file] = this.files
             if (file) {
-                document.getElementById('imagePreview').src = URL.createObjectURL(file)
+                document.getElementById('imagePreview').src = window.URL.createObjectURL(file)
             }
         };
 
-        // Script to show/hide the stop dropdown
-        document.getElementById('transport_mode').addEventListener('change', function() {
-            var stopDiv = document.getElementById('transport-stop-div');
-            if (this.value === 'School Transport') {
-                stopDiv.style.display = 'block';
+        const transportModeSelect = document.getElementById('transport_mode');
+        const selfTransportSelect = document.getElementById('self_transport_mode');
+        const schoolTransportDiv = document.getElementById('transport-stop-div');
+        const selfTransportDiv = document.getElementById('self-transport-div');
+        const vehicleDetailsDiv = document.getElementById('vehicle-details-div');
+
+        function toggleSelfTransportFields() {
+            const selectedMode = selfTransportSelect.value;
+            if (selectedMode === 'Bike' || selectedMode === 'Car') {
+                vehicleDetailsDiv.style.display = 'flex';
             } else {
-                stopDiv.style.display = 'none';
-                document.getElementById('stop_id').value = ''; // Clear selection
+                vehicleDetailsDiv.style.display = 'none';
+                document.getElementById('vehicle_number').value = '';
+                document.getElementById('license_number').value = '';
             }
+        }
+
+        function toggleTransportFields() {
+            const mainMode = transportModeSelect.value;
+            if (mainMode === 'School Transport') {
+                schoolTransportDiv.style.display = 'block';
+                selfTransportDiv.style.display = 'none';
+                vehicleDetailsDiv.style.display = 'none';
+                document.getElementById('self_transport_mode').value = '';
+                document.getElementById('vehicle_number').value = '';
+                document.getElementById('license_number').value = '';
+            } else if (mainMode === 'Self Transport') {
+                selfTransportDiv.style.display = 'block';
+                schoolTransportDiv.style.display = 'none';
+                document.getElementById('stop_id').value = '';
+                toggleSelfTransportFields(); 
+            } else {
+                selfTransportDiv.style.display = 'none';
+                schoolTransportDiv.style.display = 'none';
+                vehicleDetailsDiv.style.display = 'none';
+                document.getElementById('self_transport_mode').value = '';
+                document.getElementById('stop_id').value = '';
+                document.getElementById('vehicle_number').value = '';
+                document.getElementById('license_number').value = '';
+            }
+        }
+
+        // Initial check on page load to set the correct display state
+        document.addEventListener('DOMContentLoaded', function() {
+            toggleTransportFields();
         });
+
+        // Add event listeners
+        transportModeSelect.addEventListener('change', toggleTransportFields);
+        selfTransportSelect.addEventListener('change', toggleSelfTransportFields);
     </script>
 </body>
 
