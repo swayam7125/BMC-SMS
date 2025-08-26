@@ -5149,6 +5149,8 @@ COPY public.librarian_leave_applications (id, librarian_id, from_date, to_date, 
 --
 
 COPY public.librarian_payroll (id, librarian_id, payroll_user_id, school_id, salary_month, salary_year, base_salary, total_working_days, present_days, absent_days, deduction_amount, total_incentives, net_salary_paid, payment_date, status) FROM stdin;
+1	36	134	4	8	2025	40000.00	23	17.0	2	3478.26	2800.00	32365.22	2025-08-26 08:39:47.997126+00	Paid
+2	130	134	4	8	2025	12800.00	23	4.0	0	0.00	896.00	3122.09	2025-08-26 08:41:21.898148+00	Paid
 \.
 
 
@@ -5222,6 +5224,9 @@ COPY public.messages (id, sender_id, receiver_id, message_text, "timestamp", is_
 143	63	6	Hi Sir, photo is coming properly	2025-08-25 11:56:36.064766+00	t
 145	6	15	hi	2025-08-25 12:29:11.384391+00	t
 147	15	6	ok sir thank you	2025-08-25 17:32:05.472353+00	t
+151	15	54	meet	2025-08-26 09:13:28.813259+00	f
+149	15	6	hy	2025-08-26 09:12:16.838629+00	t
+153	6	15	hy	2025-08-26 09:16:32.013656+00	f
 126	65	6	Yes sir, i got notificiation	2025-08-12 05:53:44.17014+00	t
 128	6	65	Yes beta, i also got	2025-08-12 05:54:28.719786+00	t
 130	6	65	Confirm, if now you can see the notification or not?	2025-08-12 06:00:04.014087+00	t
@@ -5243,6 +5248,10 @@ COPY public.messages (id, sender_id, receiver_id, message_text, "timestamp", is_
 142	6	63	Hi	2025-08-25 11:35:59.707088+00	t
 144	6	15	hi	2025-08-25 12:01:27.610259+00	t
 146	6	15	Hyy, today's date is 25 august	2025-08-25 17:30:47.136358+00	t
+148	6	15	Hyy	2025-08-26 08:40:12.549386+00	t
+152	15	54	patel	2025-08-26 09:13:38.409457+00	f
+150	15	6	bye	2025-08-26 09:12:49.232306+00	t
+154	6	59	hyy	2025-08-26 09:16:48.895197+00	f
 \.
 
 
@@ -5555,6 +5564,9 @@ COPY public.notifications (id, user_id, message, link, is_read, created_at, type
 701	122	New notice from BMC: Re-scheduling AGM	pages/principal/view_notice.php	f	2025-08-25 10:58:07.693808+00	new_notice
 702	10	New notice from BMC: Re-scheduling AGM	pages/principal/view_notice.php	t	2025-08-25 10:58:07.693808+00	new_notice
 703	12	Your salary for August 2025 amounting to ₹7,156.52 has been processed.	pages/teacher/view_salary_history.php	t	2025-08-26 08:17:00.084272+00	salary
+704	119	Your salary for August 2025 amounting to ₹1,203.48 has been processed.	pages/teacher/view_salary_history.php	t	2025-08-26 08:37:56.736531+00	salary
+705	36	Your salary for August 2025 amounting to ₹32,365.22 has been processed.	pages/librarian/view_salary_history.php	t	2025-08-26 08:39:47.997126+00	librarian_salary
+706	130	Your salary for August 2025 amounting to ₹3,122.09 has been processed.	pages/librarian/view_salary_history.php	t	2025-08-26 08:41:21.898148+00	librarian_salary
 \.
 
 
@@ -5628,7 +5640,7 @@ COPY public.principal_attendance (id, principal_id, school_id, attendance_date, 
 107	42	8	2025-08-13	Absent	\N	\N	19:02:43.848609	2025-08-13 19:02:43.848609+00
 76	10	4	2025-08-13	Absent	\N	\N	19:05:07.836238	2025-08-13 08:53:01.325826+00
 256	10	4	2025-08-25	Absent	\N	\N	16:18:05.726122	2025-08-25 07:32:20.190986+00
-274	10	4	2025-08-26	Absent	\N	\N	07:40:39.213264	2025-08-26 07:40:39.213264+00
+274	10	4	2025-08-26	Absent	\N	\N	11:15:27.889159	2025-08-26 07:40:39.213264+00
 \.
 
 
@@ -6234,6 +6246,12 @@ COPY public.student (id, student_image, student_name, rollno, std, email, passwo
 15	/BMC-SMS/pages/student/uploads/student_6899d870ccf7b8.64617169.jpeg	Harsh Shah	2	11	shh.260105@gmail.com	$2y$10$ElcA7CdXPNbx4NeZSme2jufbadSqx1n/uhjR2/fk7uzXG859y6UnK	2025-2026	4	2005-01-26	Male	O-	Adajan, Surat, Gujarat, India	hemant shah	8520321499	sunita shah	6547852366	2	School Transport	\N	\N	\N	\N
 131	/BMC-SMS/pages/student/uploads/student_68a706175707b4.34022666.jpg	Kriti Sanon	1	8	kriti@gmail.com	$2y$10$CtCTzRF3M5HYZXB3nGclDOgWgT42ZxtSlhFe5lCU1xBvumo.Fae/S	2025-2026	4	2010-02-02	Female	O+	Green Park, Surat	Akash Sanon	8742300142	Amrita Sanon	8741023696	7	School Transport	2025-08-22	\N	\N	\N
 132	/BMC-SMS/pages/student/uploads/student_68a707030ed408.87915878.jpg	Nupur Sanon	2	8	nupur@gmail.com	$2y$10$rWf7Fxr9PflkuPE9YccyieI0Y7rdcsHtmXCVwdtdtG6lKPJwtmP2K	2025-2026	4	2010-02-02	Female	O-	Green Park II, Surat	Vikrant Sanon	9852103656	Daya Sanon	8741023697	5	School Transport	2025-08-22	\N	\N	\N
+138	/BMC-SMS/pages/student/uploads/student_68ad7a2b5b5481.34666509.jpg	Bhavin Parmar	4	8	bhavin@gmail.com	$2y$10$CxSrWAJVSlNpOH7hctyFn.JxE6xok9YVHRyTkGXS80CN00n4mgeH6	2025-2026	4	2010-04-08	Male	O-	abcde	Jayesh Parmar	7410256501	Bhavna Parmar	8400369857	\N	Self	2025-08-27	Bike	GJ-05-JE-4129	GJ-0520219632011
+139	/BMC-SMS/pages/student/uploads/student_68ad8b2538dae0.39387097.jpg	Nikhil Singh	5	8	nikhil@gmail.com	$2y$10$Nqv3SZxxcjGz7vNr2uoMJe1uYFCygi5XePPlDMlrLLUVqcsGfqobG	2025-2026	4	2010-07-08	Male	AB-	abcdd	Himalaya Singh	9632145697	Priti Singh	8741002370	1	School Transport	2025-08-27	\N	\N	\N
+142	/BMC-SMS/pages/student/uploads/student_68ad9257d8b842.04642097.jpg	Mihil Hirpara	6	11	mihil@gmail.com	$2y$10$QtB4smfb.NER6nC.8ZiVD.naUe9bKnnbeDGE1ZSg42Ha8cIJ.SbIi	2025-2026	4	2004-02-12	Male	A+	fd	Hitesh Hirpara	7410023698	Asha Hirpara	8520147893	\N	Self	2025-08-27	Car	GJ-23-HC-2153	GJ-0520219732011
+136	/BMC-SMS/pages/student/uploads/student_68ad92a1884c01.69420538.jpg	Anurag Kashyap	3	8	anuragk@gmail.com	$2y$10$6bYBEJIY/EgHwulRl/sslen0XshYsDTTRXX7UJLCKZJKEk6VWfi2.	2025-2026	4	2010-02-04	Male	O-	abcd	Dhrumil Kashyap	7410256307	Dhruti Kashyap	8741023699	\N	Self	2025-08-27	Walking	\N	\N
+140	/BMC-SMS/pages/student/uploads/student_68ad94cf4d5df6.71176930.jpg	Surbhi Roy	4	10	surbhi@gmail.com	$2y$10$kcoIWDueMv02/Ta3gJjX8.dVG1q7svT7oWyxzrOHkNd2yrlcNWv.i	2025-2026	4	2008-01-05	Female	B-	abcde	Ranjikant Roy	7410256502	Mukti Roy	8741023691	6	School Transport	2025-08-27	\N	\N	\N
+143	/BMC-SMS/pages/student/uploads/student_68ad95c2c75b21.34404751.jpg	Aakrut Shukla	5	12	aakrut@gmail.com	$2y$10$K68LghEAbzMDMgwlmE9XNuRTxP8xaObhdVNVxmXROQA4jPGoUWw4a	2025-2026	4	2004-02-02	Male	AB-	uh	Jaydeep Shukla	9874500052	Susmita Shukla	7410246589	\N	Self	2025-08-27	Parents	\N	\N
 \.
 
 
@@ -6341,11 +6359,13 @@ COPY public.teacher (id, teacher_image, teacher_name, phone, school_id, dob, gen
 70	/BMC-SMS/pages/teacher/uploads/teacher_689c61f5e28d4.jpg	Rahul	9523001459	4	1997-08-12	Male	AB+	sd	rahul@gmail.com	$2y$10$QjT3TSvtutmr1Jl2REhPBuJ4c6B34xrmOkAOe7GwI0ms3sB7Ov.iW	B.C.A	Hindi	Hindi	50000	{8}	8	Morning	f	\N	\N
 106	/BMC-SMS/pages/teacher/uploads/teacher_68a47ae3e1e34.jpg	Yug Pandya	7410025633	4	1997-06-07	Male	B+	V-101, Amrut Heights, Jakatnaka, Surat	yug@gmail.com	$2y$10$8.d4YkdwLMfcBmHQWizcLObYGeBopqGAqTQarYOrO6SALDwDgAFRq	B.A.	Business Studies	English, Hindi, Gujarati	23000	{12}	3	Morning	f	\N	\N
 49	/BMC-SMS/pages/teacher/uploads/teacher_49_689c643ced517.jpg	Ayushi Patil	8745632100	4	1980-12-12	Male	B+	abcd	ayushi@gmail.com	$2y$10$Vo893uZp26VV4sCkTWFXSePR9UxOVhLRZlnVtYthhIgdrm4kdIslO	B.C.A	Computer Science	English, Hindi, Gujarati	20000	{10,11}	2	Morning	f	\N	\N
+141	/BMC-SMS/pages/teacher/uploads/teacher_141_68ad8f5f6a06f.jpg	Tina Sen	8576548525	4	1991-01-06	Female	O-	acbd	tina@gmail.com	$2y$10$NWErAseL5ni2z8d4xUwPg.CKdUtjK6bAm8uL331Gek/xC7eLfmc3i	M.A. M.Ed	Music	English, Hindi	12400	{8}	2	Morning	f	\N	2025-08-27
 92	/BMC-SMS/pages/teacher/uploads/teacher_689dd8764d7f4.jpg	Meera Rajput	8741203698	4	1997-01-05	Female	A+	J-501, Shivam Heights, Ankur Char Rasta, Udhana, Surat	meera@gmail.com	$2y$10$8rmmBKRvJBYB3g0Ct1iIIOiZ.o1pBFnqsjXqfbcnO0qbaJ.QIu7a6	MCA	Social Studies	English, Hindi, Gujarati	25000	{12}	5	Morning	f	\N	\N
 123	/BMC-SMS/pages/teacher/uploads/teacher_68a6eb2f3f240.jpg	Viraj Gelani	9852142011	4	1997-01-01	Male	O-	abcd	viraj@gmail.com	$2y$10$5I8lVaVWXFV0tQeB2o/ig.QnfyhDmtW3oeGe3oQGP7pdqfxn.6mKW	B.tech	Gujarati	English, Hindi, Gujarati	23000	{12}	5	Evening	t	12	\N
 51	/BMC-SMS/pages/teacher/uploads/teacher_68a46e8a9b32e0.13131507.jpg	Ravindra Jadeja	7456321062	4	1987-02-01	Male	A-	J-801, Shurveer Bunglows, Near HK Road, Udhana, Surat	jadeja@gmail.com	$2y$10$yzEERP8pUf.GaSHQrRtc6uLlzjr.ft1N6j/BS2KGqQzoykf289BGS	MCA	Physical Education	English	15000	{11,12}	3	Evening	f	\N	\N
 124	/BMC-SMS/pages/teacher/uploads/teacher_68a6f372d1cc7.jpg	Ranjit Chaudhari	9852142012	4	1999-02-02	Male	O-	abcd	ranjit@gmail.com	$2y$10$JzR2jkc6zlkIUC4GGN3BSO9wZBmNf1AvegpuGpAfTfMPh7Igz9sIi	B.ed	Sanskrit	Hindi, Sanskrit	21500	{8}	4	Morning	f	\N	2025-08-22
-6	/BMC-SMS/pages/teacher/uploads/teacher_68a5b01a3388c8.94207396.jpg	Meet Patel	9852142016	4	2005-09-04	Male	AB+	Motavarachha	meet@gmail.com	$2y$10$sdz4DZ5oaMJNrUA9mld44uiBNIIkAQCPjs2XrrnUcl.Bp6wlzYz1a	B.C.A	Maths, Chemistry	english	100000	{10,11}	10	Evening	t	11	\N
+137	/BMC-SMS/pages/teacher/uploads/teacher_68ad76a1bb684.jpg	Avantika Sironi	9924976504	4	1988-12-04	Female	O+	pqrs	avantika@gmail.com	$2y$10$IRXNzxfDGlWgQdjvuouM7O2xLcZ5Wf3hMMBbq6aHtgg0O64n1i5H6	M.A. M.Ed	English	English, Gujarati	21000	{8}	4	Morning	f	\N	2025-08-27
+6	/BMC-SMS/pages/teacher/uploads/teacher_6_68ad86ca00f07.jpg	Meet Patel	9852142016	4	2005-09-04	Male	AB+	Motavarachha	meet@gmail.com	$2y$10$sdz4DZ5oaMJNrUA9mld44uiBNIIkAQCPjs2XrrnUcl.Bp6wlzYz1a	B.C.A	Maths, Chemistry	english	100000	{10,11}	10	Evening	t	11	\N
 \.
 
 
@@ -6563,6 +6583,7 @@ COPY public.teacher_attendance (attendance_id, teacher_id, school_id, attendance
 
 COPY public.teacher_payroll (id, teacher_id, payroll_user_id, school_id, salary_month, salary_year, base_salary, total_working_days, present_days, absent_days, deduction_amount, total_incentives, net_salary_paid, payment_date, status) FROM stdin;
 1	12	134	4	8	2025	10000.00	23	16.0	3	1304.35	200.00	7156.52	2025-08-26 08:17:00.084272+00	Paid
+2	119	134	4	8	2025	8000.00	23	3.0	0	0.00	160.00	1203.48	2025-08-26 08:37:56.736531+00	Paid
 \.
 
 
@@ -6655,6 +6676,13 @@ COPY public.teacher_timings (timing_id, teacher_id, day_of_week, opens_at, close
 355	119	Friday	10:00:00	18:00:00	f
 356	119	Saturday	10:00:00	18:00:00	f
 357	119	Sunday	\N	\N	t
+393	137	Monday	10:00:00	18:00:00	f
+394	137	Tuesday	10:00:00	18:00:00	f
+395	137	Wednesday	10:00:00	18:00:00	f
+396	137	Thursday	10:00:00	18:00:00	f
+397	137	Friday	10:00:00	18:00:00	f
+398	137	Saturday	10:00:00	18:00:00	f
+399	137	Sunday	\N	\N	t
 358	123	Monday	10:00:00	18:00:00	f
 359	123	Tuesday	10:00:00	18:00:00	f
 360	123	Wednesday	10:00:00	18:00:00	f
@@ -6662,6 +6690,13 @@ COPY public.teacher_timings (timing_id, teacher_id, day_of_week, opens_at, close
 390	124	Friday	10:00:00	18:00:00	f
 391	124	Saturday	10:00:00	18:00:00	f
 392	124	Sunday	\N	\N	t
+414	141	Monday	10:00:00	18:00:00	f
+415	141	Tuesday	10:00:00	18:00:00	f
+416	141	Wednesday	10:00:00	18:00:00	f
+417	141	Thursday	10:00:00	18:00:00	f
+418	141	Friday	10:00:00	18:00:00	f
+419	141	Saturday	10:00:00	18:00:00	f
+420	141	Sunday	\N	\N	t
 \.
 
 
@@ -6713,6 +6748,7 @@ COPY public.users (id, role, email, password, account_status, otp_hash, otp_expi
 131	student	kriti@gmail.com	$2y$10$CtCTzRF3M5HYZXB3nGclDOgWgT42ZxtSlhFe5lCU1xBvumo.Fae/S	active	\N	\N
 132	student	nupur@gmail.com	$2y$10$rWf7Fxr9PflkuPE9YccyieI0Y7rdcsHtmXCVwdtdtG6lKPJwtmP2K	active	\N	\N
 42	principal	akshat@gmail.com	$2y$10$YW7sWUGqVcbuiHzwxwjShOajCzOXNSbqML9zPAzrM8.RWml.41iXW	active	\N	\N
+141	teacher	tina@gmail.com	$2y$10$NWErAseL5ni2z8d4xUwPg.CKdUtjK6bAm8uL331Gek/xC7eLfmc3i	active	\N	\N
 133	principal	viken@gmail.com	$2y$10$j4Qz1IbrFpsR8FbzluTBueDH7pjxZvGefShnN3O9ZF7TFt90lNZgG	active	\N	\N
 134	payroll	prithvi@gmail.com	$2y$10$FcKBnpIqM9ypJ6iwb.yZYOHyCwMcF//0KR50/J5AV9lN7fhYih44K	active	\N	\N
 6	teacher	meet@gmail.com	$2y$10$Dy/QvvkcnkheaPFyapfKR.9hzc/ZA5twsbVVqc6Gm.jR4nglV6Mv6	active	\N	\N
@@ -6724,6 +6760,13 @@ COPY public.users (id, role, email, password, account_status, otp_hash, otp_expi
 10	principal	17fenill@gmail.com	$2y$10$EP56edKNSOvDiPXCub4iZuAI5sEVX3XjU1tnqJu8a4f.VS58QO5de	active	\N	\N
 123	teacher	viraj@gmail.com	$2y$10$5I8lVaVWXFV0tQeB2o/ig.QnfyhDmtW3oeGe3oQGP7pdqfxn.6mKW	active	\N	\N
 124	teacher	ranjit@gmail.com	$2y$10$JzR2jkc6zlkIUC4GGN3BSO9wZBmNf1AvegpuGpAfTfMPh7Igz9sIi	active	\N	\N
+136	student	anuragk@gmail.com	$2y$10$6bYBEJIY/EgHwulRl/sslen0XshYsDTTRXX7UJLCKZJKEk6VWfi2.	active	\N	\N
+137	teacher	avantika@gmail.com	$2y$10$IRXNzxfDGlWgQdjvuouM7O2xLcZ5Wf3hMMBbq6aHtgg0O64n1i5H6	active	\N	\N
+138	student	bhavin@gmail.com	$2y$10$CxSrWAJVSlNpOH7hctyFn.JxE6xok9YVHRyTkGXS80CN00n4mgeH6	active	\N	\N
+139	student	nikhil@gmail.com	$2y$10$Nqv3SZxxcjGz7vNr2uoMJe1uYFCygi5XePPlDMlrLLUVqcsGfqobG	active	\N	\N
+140	student	surbhi@gmail.com	$2y$10$kcoIWDueMv02/Ta3gJjX8.dVG1q7svT7oWyxzrOHkNd2yrlcNWv.i	active	\N	\N
+142	student	mihil@gmail.com	$2y$10$QtB4smfb.NER6nC.8ZiVD.naUe9bKnnbeDGE1ZSg42Ha8cIJ.SbIi	active	\N	\N
+143	student	aakrut@gmail.com	$2y$10$K68LghEAbzMDMgwlmE9XNuRTxP8xaObhdVNVxmXROQA4jPGoUWw4a	active	\N	\N
 \.
 
 
@@ -7043,7 +7086,7 @@ SELECT pg_catalog.setval('public.librarian_leave_applications_id_seq', 2, true);
 -- Name: librarian_payroll_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.librarian_payroll_id_seq', 1, false);
+SELECT pg_catalog.setval('public.librarian_payroll_id_seq', 2, true);
 
 
 --
@@ -7057,7 +7100,7 @@ SELECT pg_catalog.setval('public.librarian_timings_timing_id_seq', 189, true);
 -- Name: messages_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.messages_id_seq', 147, true);
+SELECT pg_catalog.setval('public.messages_id_seq', 154, true);
 
 
 --
@@ -7078,7 +7121,7 @@ SELECT pg_catalog.setval('public.notice_id_seq', 29, true);
 -- Name: notifications_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.notifications_id_seq', 703, true);
+SELECT pg_catalog.setval('public.notifications_id_seq', 706, true);
 
 
 --
@@ -7092,7 +7135,7 @@ SELECT pg_catalog.setval('public.password_resets_id_seq', 1, false);
 -- Name: principal_attendance_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.principal_attendance_id_seq', 274, true);
+SELECT pg_catalog.setval('public.principal_attendance_id_seq', 280, true);
 
 
 --
@@ -7204,14 +7247,14 @@ SELECT pg_catalog.setval('public.teacher_attendance_attendance_id_seq', 440, tru
 -- Name: teacher_payroll_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.teacher_payroll_id_seq', 1, true);
+SELECT pg_catalog.setval('public.teacher_payroll_id_seq', 2, true);
 
 
 --
 -- Name: teacher_timings_timing_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.teacher_timings_timing_id_seq', 392, true);
+SELECT pg_catalog.setval('public.teacher_timings_timing_id_seq', 427, true);
 
 
 --
@@ -7225,7 +7268,7 @@ SELECT pg_catalog.setval('public.timetables_id_seq', 1, false);
 -- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.users_id_seq', 134, true);
+SELECT pg_catalog.setval('public.users_id_seq', 143, true);
 
 
 --
@@ -7864,6 +7907,14 @@ ALTER TABLE ONLY public.standard_subjects
 
 ALTER TABLE ONLY public.stops
     ADD CONSTRAINT stops_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: student student_email_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.student
+    ADD CONSTRAINT student_email_key UNIQUE (email);
 
 
 --
