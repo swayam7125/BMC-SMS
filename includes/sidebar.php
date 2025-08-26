@@ -71,9 +71,6 @@ if (isset($conn) && $user_id) {
                 break;
 
            case 'principal':
-                // === START: ROBUST PRINCIPAL NOTIFICATION LOGIC ===
-                // Query 1: Get count of unread notices specifically from superadmin
-                // Query 1: Get count of unread notices from BMC
                 $sql_bmc_notices = "SELECT COUNT(*)
                     FROM notifications
                     WHERE user_id = ?
@@ -85,7 +82,6 @@ if (isset($conn) && $user_id) {
                 break;
 
             case 'teacher':
-                // Check if the teacher is a class teacher (using PDO)
                 $stmt_check = $conn->prepare("SELECT class_teacher FROM teacher WHERE id = ?");
                 $stmt_check->execute([$user_id]);
                 $teacher_details = $stmt_check->fetch(PDO::FETCH_ASSOC);
@@ -93,7 +89,6 @@ if (isset($conn) && $user_id) {
                     $is_class_teacher = true;
                 }
 
-                // ** CORRECTED QUERY FOR TEACHER **
                 $sql_counts = "SELECT
                                   COUNT(*) FILTER (WHERE type = 'school_notice' AND is_read = false) AS teacher_notices,
                                   COUNT(*) FILTER (WHERE type = 'assignment_submission' AND is_read = false) AS submissions,
@@ -142,17 +137,14 @@ if (isset($conn) && $user_id) {
         }
     } catch (PDOException $e) {
         error_log("Sidebar notification count error: " . $e->getMessage());
-        // Fail gracefully, counters will remain 0 and the page will still load
     }
 }
-// --- END: FETCH UNREAD NOTIFICATION COUNTS ---
 ?>
 <style>
 .sidebar .nav-item .nav-link {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    /* space between text and dropdown icon */
 }
 
 .sidebar .nav-item .nav-link>div,
@@ -161,20 +153,16 @@ if (isset($conn) && $user_id) {
     align-items: center;
 }
 
-/* Badge after text */
 .sidebar .nav-item .nav-link .badge-counter,
 .collapse-inner>.collapse-item .badge-counter {
     margin-left: 0.5rem;
     position: static;
     transform: none;
     font-size: 0.65rem;
-    /* smaller text */
     padding: 0.25em 0.4em;
-    /* smaller size */
     line-height: 1;
 }
 
-/* Collapsed sidebar */
 .sidebar.toggled .nav-item .nav-link {
     justify-content: center;
     position: relative;
@@ -210,14 +198,12 @@ if (isset($conn) && $user_id) {
     <hr class="sidebar-divider">
 
     <?php
-    // Use a switch statement to show menu items based on the user's role
     switch ($role) {
-
-        // ====== Super Admin Admin Panel ======
         case 'superadmin':
             $school_pages = ['school_enrollment.php', 'school_list.php'];
             $principal_pages = ['principal_enrollment.php', 'principal_list.php'];
             $past_data_pages = ['past_school.php', 'past_principal.php'];
+            $reports_pages = ['report_enrollment.php', 'report_attendance.php', 'report_academic.php', 'report_payroll.php', 'report_library.php'];
     ?>
     <div class="sidebar-heading font-weight-semibold">Admin Controls</div>
     <li class="nav-item">
@@ -298,11 +284,27 @@ if (isset($conn) && $user_id) {
             </div>
         </div>
     </li>
+    <li class="nav-item">
+        <a class="nav-link <?php echo (is_active_page($reports_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseReports"
+            aria-expanded="true" aria-controls="collapseReports">
+            <div><i class="fas fa-fw fa-chart-area"></i>
+                <span>Reports</span>
+            </div>
+        </a>
+        <div id="collapseReports" class="collapse <?php echo (is_active_page($reports_pages)) ? 'show' : ''; ?>" aria-labelledby="headingReports" data-parent="#accordionSidebar">
+            <div class="bg-white py-2 collapse-inner rounded">
+                <h6 class="collapse-header">School Reports:</h6>
+                <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/reports/report_enrollment.php">Enrollment Report</a>
+                <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/reports/report_attendance.php">Attendance Analysis</a>
+                <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/reports/report_academic.php">Academic Performance</a>
+                <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/reports/report_payroll.php">Payroll Summary</a>
+                <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/reports/report_library.php">Library Usage</a>
+            </div>
+        </div>
+    </li>
     <?php
             break;
 
-
-        // ====== Principal Panel ======
         case 'principal':
             $teacher_pages = ['teacher_enrollment.php', 'teacher_list.php', 'teacher_attendence.php', 'view_teacher_attendence.php'];
             $librarian_pages = ['librarian_enrollment.php', 'librarian_list.php', 'librarian_attendance.php', 'view_librarian_attendance.php'];
@@ -313,6 +315,7 @@ if (isset($conn) && $user_id) {
             $past_data_pages_principal = ['past_teacher.php', 'past_librarian.php', 'past_student.php'];
             $leave_management_pages = ['teacher_leave_management.php', 'librarian_leave_management.php'];
             $is_leave_management_active = in_array($current_page, $leave_management_pages);
+            $reports_pages = ['report_enrollment.php', 'report_attendance.php', 'report_academic.php', 'report_payroll.php', 'report_library.php'];
             
         ?>
     <div class="sidebar-heading font-weight-semibold">School Management</div>
@@ -404,7 +407,6 @@ if (isset($conn) && $user_id) {
         </div>
     </li>
     <?php
-                // Define pages for the new transport panel to make the menu active
                 $transport_pages = ['manage_vehicles.php', 'manage_drivers.php', 'manage_routes.php', 'student_transport.php'];
             ?>
     <li class="nav-item">
@@ -573,11 +575,27 @@ if (isset($conn) && $user_id) {
             </div>
         </div>
     </li>
+     <li class="nav-item">
+        <a class="nav-link <?php echo (is_active_page($reports_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseReports"
+            aria-expanded="true" aria-controls="collapseReports">
+            <div><i class="fas fa-fw fa-chart-area"></i>
+                <span>Reports</span>
+            </div>
+        </a>
+        <div id="collapseReports" class="collapse <?php echo (is_active_page($reports_pages)) ? 'show' : ''; ?>" aria-labelledby="headingReports" data-parent="#accordionSidebar">
+            <div class="bg-white py-2 collapse-inner rounded">
+                <h6 class="collapse-header">School Reports:</h6>
+                <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/reports/report_enrollment.php">Enrollment Report</a>
+                <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/reports/report_attendance.php">Attendance Analysis</a>
+                <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/reports/report_academic.php">Academic Performance</a>
+                <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/reports/report_payroll.php">Payroll Summary</a>
+                <a class="collapse-item" href="<?php echo BASE_WEB_PATH; ?>pages/reports/report_library.php">Library Usage</a>
+            </div>
+        </div>
+    </li>
     <?php
             break;
 
-
-        // ====== Teacher Panel ======
         case 'teacher':
             $marks_pages = ['marks_entry.php', 'view_marks.php'];
             $assignment_pages = ['send_assignment.php', 'assignment_history.php'];
@@ -786,8 +804,6 @@ if (isset($conn) && $user_id) {
     <?php
             break;
 
-
-        // ====== Student Panel ======
         case 'student':
             $library_pages_student = ['browse_books.php', 'my_library_record.php', 'request_new_book.php'];
         ?>
@@ -919,7 +935,6 @@ if (isset($conn) && $user_id) {
     <?php
             break;
 
-        // ====== Librarian Panel ======
         case 'librarian':
             $books_pages = ['book_list.php', 'add_new_book.php'];
             $past_data_librarian = ['past_books.php'];
@@ -1061,8 +1076,6 @@ if (isset($conn) && $user_id) {
     <?php
             break;
             
-        // ====== START: PAYROLL PANEL ======
-        // ====== START: PAYROLL PANEL ======
         case 'payroll':
             $payroll_pages = ['process_teacher_salary.php', 'process_librarian_salary.php', 'view_salary_history.php'];
         ?>
@@ -1099,7 +1112,6 @@ if (isset($conn) && $user_id) {
             </li>
         <?php
             break;
-        // ====== END: PAYROLL PANEL ======
     }
     ?>
 
