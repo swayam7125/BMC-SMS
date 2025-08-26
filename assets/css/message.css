@@ -1,8 +1,52 @@
+/* --- UI Improvement: Modern Scrollbars --- */
+#contacts-list-container::-webkit-scrollbar,
+.message-display::-webkit-scrollbar {
+    width: 8px;
+}
+#contacts-list-container::-webkit-scrollbar-track,
+.message-display::-webkit-scrollbar-track {
+    background: #f8f9fc;
+}
+#contacts-list-container::-webkit-scrollbar-thumb,
+.message-display::-webkit-scrollbar-thumb {
+    background: #e0e0e0;
+    border-radius: 4px;
+}
+#contacts-list-container::-webkit-scrollbar-thumb:hover,
+.message-display::-webkit-scrollbar-thumb:hover {
+    background: #cccccc;
+}
+
+/* --- ⭐ FIX: Better Active Contact Style ⭐ --- */
+.contact-item.active {
+    background-color: #f0f5ff !important; /* A very light, subtle blue background */
+    border-color: #e0e8f8 !important;   /* A light border color to match */
+    border-left: 4px solid #4e73df !important; /* Keep the strong left highlight */
+    color: #4e73df !important;         /* Make the text blue and readable */
+    font-weight: 600;                   /* Make the font slightly bolder */
+    box-shadow: none !important;        /* Remove any default browser shadows */
+}
+.contact-item {
+    border: 1px solid #eaecf4;
+    border-left: 4px solid transparent;
+    transition: background-color 0.2s ease-in-out;
+}
+
+/* --- UI Improvement: Pulsing Notification Badge --- */
+.contact-item .badge-counter {
+    animation: pulse 2s infinite;
+}
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+}
+
 /* Main container for the chat messages */
 .message-display {
     display: flex;
     flex-direction: column;
-    gap: 1rem; /* Adds space between messages */
+    gap: 1rem;
     padding: 1rem;
     height: 60vh;
     overflow-y: auto;
@@ -18,12 +62,14 @@
 /* Style for the message bubble itself */
 .message-bubble {
     display: flex;
-    align-items: flex-start; /* Aligns avatar with the top of the bubble */
+    align-items: flex-start;
     gap: 10px;
     max-width: 75%;
     padding: 10px 15px;
     border-radius: 18px;
     position: relative;
+    /* --- UI Improvement: Subtle shadow for depth --- */
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
 /* Content inside the bubble (text and time) */
@@ -44,23 +90,25 @@
 
 /* Styling for messages RECEIVED (from the other person) */
 .message-wrapper.received {
-    justify-content: flex-start; /* Aligns the bubble to the left */
+    justify-content: flex-start;
 }
 .message-bubble.received {
-    background-color: #f1f0f0; /* Light gray background */
+    background-color: #ffffff; /* Change to white for better contrast */
     color: #333;
-    border-top-left-radius: 5px;
+    /* --- UI Improvement: Speech bubble effect --- */
+    border-bottom-left-radius: 5px;
 }
 
 /* Styling for messages SENT (by you) */
 .message-wrapper.sent {
-    justify-content: flex-end; /* Aligns the bubble to the right */
+    justify-content: flex-end;
 }
 .message-bubble.sent {
-    background-color: #4e73df; /* Primary blue background */
+    background-color: #4e73df;
     color: #fff;
-    flex-direction: row-reverse; /* This moves the avatar to the right of the text */
-    border-top-right-radius: 5px;
+    flex-direction: row-reverse;
+    /* --- UI Improvement: Speech bubble effect --- */
+    border-bottom-right-radius: 5px;
 }
 
 /* Styling for the message text */
@@ -73,7 +121,7 @@
 .message-time {
     font-size: 0.75rem;
     margin-top: 4px;
-    opacity: 0.8;
+    opacity: 0.7; /* Slightly more subtle */
     text-align: right;
 }
 .message-bubble.received .message-time {
@@ -81,4 +129,42 @@
 }
 .message-bubble.sent .message-time {
     color: #f0f0f0;
+}
+
+/* Styling for date separators in chat */
+.date-separator {
+    text-align: center;
+    margin: 1rem 0 0;
+}
+.date-separator span {
+    background-color: #e9eaeb;
+    color: #555;
+    padding: 5px 12px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
+}
+
+/* --- UI Improvement: Enhanced Input Field Focus --- */
+#message-text {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+#message-text:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+    outline: none; /* Remove default browser outline */
+}
+
+/* Animation classes (from previous steps) */
+.list-group-item-action {
+    transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+}
+.message-wrapper,
+.date-separator {
+    transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+}
+.animate-in {
+    opacity: 0;
+    transform: translateY(10px);
 }

@@ -40,30 +40,29 @@ try {
 
                 if ($teacher_data && !empty($teacher_data['std'])) {
                     $school_id = $teacher_data['school_id'];
-                    
-                    // 1. Parse the database string (e.g., "{10,11}") into a PHP array
                     $stds_string = trim($teacher_data['std'], '{}');
                     $stds_array = explode(',', $stds_string);
 
                     if (!empty($stds_array) && !empty($stds_array[0])) {
-                        // 2. Manually format the PHP array into a PostgreSQL array literal string
                         $postgres_array_string = '{' . implode(',', $stds_array) . '}';
                         
-                        // MODIFIED QUERY: Added a subquery to count unread messages for each student contact.
-                        $sql = "SELECT s.id, s.student_name AS name, s.student_image AS image_path,
-                                (SELECT COUNT(m.id) FROM messages m WHERE m.sender_id = s.id AND m.receiver_id = ? AND m.is_read = FALSE) AS unread_count
+                        // ⭐ MODIFIED QUERY: Added a subquery to get the last message time and ordered by it.
+                        $sql = "SELECT 
+                                    s.id, 
+                                    s.student_name AS name, 
+                                    s.student_image AS image_path,
+                                    (SELECT COUNT(m.id) FROM messages m WHERE m.sender_id = s.id AND m.receiver_id = ? AND m.is_read = FALSE) AS unread_count,
+                                    (SELECT MAX(m.timestamp) FROM messages m WHERE (m.sender_id = s.id AND m.receiver_id = ?) OR (m.sender_id = ? AND m.receiver_id = s.id)) AS last_message_time
                                 FROM student s
-                                WHERE s.school_id = ? AND s.std = ANY(?)";
+                                WHERE s.school_id = ? AND s.std = ANY(?)
+                                ORDER BY last_message_time DESC NULLS LAST, name ASC";
                         
                         $stmt_students = $conn->prepare($sql);
-                        // 3. Execute the query, passing the correctly formatted string and current user ID
-                        $stmt_students->execute([$current_user_id, $school_id, $postgres_array_string]);
+                        $stmt_students->execute([$current_user_id, $current_user_id, $current_user_id, $school_id, $postgres_array_string]);
                         $contacts = $stmt_students->fetchAll(PDO::FETCH_ASSOC);
 
-                        // FIX: Normalize image paths to be absolute URLs before sending
                         foreach ($contacts as &$contact) {
                             if (!empty($contact['image_path'])) {
-                                // Check if the path is already a full web path.
                                 if (strpos($contact['image_path'], BASE_WEB_PATH) !== 0) {
                                     $contact['image_path'] = BASE_WEB_PATH . ltrim($contact['image_path'], '/');
                                 }
@@ -80,19 +79,23 @@ try {
                     $student_std = $student_data['std'];
                     $school_id = $student_data['school_id'];
                     
-                    // MODIFIED QUERY: Added a subquery to count unread messages for each teacher contact.
-                    $sql = 'SELECT t.id, t.teacher_name AS name, t.teacher_image AS image_path,
-                            (SELECT COUNT(m.id) FROM messages m WHERE m.sender_id = t.id AND m.receiver_id = ? AND m.is_read = FALSE) AS unread_count
+                    // ⭐ MODIFIED QUERY: Added a subquery to get the last message time and ordered by it.
+                    $sql = "SELECT 
+                                t.id, 
+                                t.teacher_name AS name, 
+                                t.teacher_image AS image_path,
+                                (SELECT COUNT(m.id) FROM messages m WHERE m.sender_id = t.id AND m.receiver_id = ? AND m.is_read = FALSE) AS unread_count,
+                                (SELECT MAX(m.timestamp) FROM messages m WHERE (m.sender_id = t.id AND m.receiver_id = ?) OR (m.sender_id = ? AND m.receiver_id = t.id)) AS last_message_time
                             FROM teacher t
-                            WHERE t.school_id = ? AND ? = ANY(t.std)';
+                            WHERE t.school_id = ? AND ? = ANY(t.std)
+                            ORDER BY last_message_time DESC NULLS LAST, name ASC";
+
                     $stmt_teachers = $conn->prepare($sql);
-                    $stmt_teachers->execute([$current_user_id, $school_id, $student_std]);
+                    $stmt_teachers->execute([$current_user_id, $current_user_id, $current_user_id, $school_id, $student_std]);
                     $contacts = $stmt_teachers->fetchAll(PDO::FETCH_ASSOC);
 
-                    // FIX: Normalize image paths to be absolute URLs before sending
                     foreach ($contacts as &$contact) {
                         if (!empty($contact['image_path'])) {
-                            // Check if the path is already a full web path.
                             if (strpos($contact['image_path'], BASE_WEB_PATH) !== 0) {
                                 $contact['image_path'] = BASE_WEB_PATH . ltrim($contact['image_path'], '/');
                             }
@@ -110,11 +113,9 @@ try {
                 break;
             }
 
-            // Mark messages from the other user as read
             $stmt_mark_read = $conn->prepare("UPDATE messages SET is_read = true WHERE sender_id = ? AND receiver_id = ? AND is_read = false");
             $stmt_mark_read->execute([$other_user_id, $current_user_id]);
 
-            // UPDATED QUERY: Fetch the conversation AND the sender's image
             $sql = "
                 SELECT 
                     m.*,
@@ -135,10 +136,8 @@ try {
             ]);
             $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            // FIX: Normalize sender image paths to be absolute URLs
             foreach ($messages as &$msg) {
                 if (!empty($msg['sender_image'])) {
-                    // Check if the path is already a full web path.
                     if (strpos($msg['sender_image'], BASE_WEB_PATH) !== 0) {
                         $msg['sender_image'] = BASE_WEB_PATH . ltrim($msg['sender_image'], '/');
                     }

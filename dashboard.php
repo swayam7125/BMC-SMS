@@ -238,9 +238,9 @@ try {
                 $salary_query = '
                     SELECT SUM(total_paid) as monthly_disbursement
                     FROM (
-                        SELECT SUM(net_salary_paid) as total_paid FROM payroll_records WHERE salary_month = ? AND salary_year = ? AND school_id = ?
+                        SELECT SUM(net_salary_paid) as total_paid FROM teacher_payroll WHERE salary_month = ? AND salary_year = ? AND school_id = ?
                         UNION ALL
-                        SELECT SUM(net_salary_paid) as total_paid FROM librarian_payroll_records WHERE salary_month = ? AND salary_year = ? AND school_id = ?
+                        SELECT SUM(net_salary_paid) as total_paid FROM librarian_payroll WHERE salary_month = ? AND salary_year = ? AND school_id = ?
                     ) as combined_payroll
                 ';
                 $salary_stmt = $conn->prepare($salary_query);

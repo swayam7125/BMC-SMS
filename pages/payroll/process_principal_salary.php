@@ -43,8 +43,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_pay_submit'])) {
 
     try {
         $conn->beginTransaction();
+        // Use the new table name 'principal_payroll'
         $payment_stmt = $conn->prepare(
-            "INSERT INTO principal_payroll_records (principal_id, payroll_user_id, school_id, salary_month, salary_year, base_salary, total_working_days, present_days, absent_days, deduction_amount, total_incentives, net_salary_paid) 
+            "INSERT INTO principal_payroll (principal_id, payroll_user_id, school_id, salary_month, salary_year, base_salary, total_working_days, present_days, absent_days, deduction_amount, total_incentives, net_salary_paid) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         );
         $notify_stmt = $conn->prepare(
@@ -99,7 +100,8 @@ try {
     $principals = $principal_stmt->fetchAll(PDO::FETCH_ASSOC);
 
     if (!empty($principals)) {
-        $paid_stmt = $conn->prepare("SELECT principal_id FROM principal_payroll_records WHERE school_id = ? AND salary_month = ? AND salary_year = ?");
+        // Use the new table name 'principal_payroll'
+        $paid_stmt = $conn->prepare("SELECT principal_id FROM principal_payroll WHERE school_id = ? AND salary_month = ? AND salary_year = ?");
         $paid_stmt->execute([$school_id, $filter_month, $filter_year]);
         $paid_principals = $paid_stmt->fetchAll(PDO::FETCH_COLUMN);
 
@@ -126,7 +128,6 @@ try {
 
             $payroll_data[$principal['id']] = [
                 'principal_name' => $principal['principal_name'], 'base_salary' => $base_salary, 'deduction_amount' => $deduction_amount, 'total_incentives' => $total_incentives, 'net_salary_paid' => $net_salary, 'status' => $is_paid ? 'Paid' : 'Pending',
-                // Hidden data for POST
                 'total_working_days' => $total_working_days, 'present_days' => $present_days, 'absent_days' => $absent_days,
             ];
         }
@@ -162,7 +163,32 @@ try {
                     <div class="card shadow mb-4">
                          <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Select Payroll Period</h6></div>
                         <div class="card-body">
-                            <form method="GET" action="" class="form-inline"></form>
+                            <form method="GET" action="" class="form-inline">
+                                <div class="form-group mr-3">
+                                    <label for="month-select" class="mr-2">Month:</label>
+                                    <select name="month" id="month-select" class="form-control">
+                                        <?php for ($m = 1; $m <= 12; $m++): ?>
+                                            <option value="<?php echo $m; ?>" <?php if ($m == $filter_month) echo 'selected'; ?>>
+                                                <?php echo date('F', mktime(0, 0, 0, $m, 10)); ?>
+                                            </option>
+                                        <?php endfor; ?>
+                                    </select>
+                                </div>
+                                <div class="form-group mr-3">
+                                    <label for="year-select" class="mr-2">Year:</label>
+                                    <select name="year" id="year-select" class="form-control">
+                                        <?php 
+                                        $current_year = date('Y');
+                                        for ($y = $current_year; $y >= $current_year - 5; $y--): 
+                                        ?>
+                                            <option value="<?php echo $y; ?>" <?php if ($y == $filter_year) echo 'selected'; ?>>
+                                                <?php echo $y; ?>
+                                            </option>
+                                        <?php endfor; ?>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Filter</button>
+                            </form>
                         </div>
                     </div>
 

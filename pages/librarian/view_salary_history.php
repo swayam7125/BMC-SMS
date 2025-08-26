@@ -22,9 +22,9 @@ $salary_records = [];
 $errorMessage = '';
 
 try {
-    // Fetch all processed salary records for the logged-in librarian
+    // UPDATED: Fetch from the new 'librarian_payroll' table
     $stmt = $conn->prepare(
-        "SELECT * FROM librarian_payroll_records 
+        "SELECT * FROM librarian_payroll 
          WHERE librarian_id = ? 
          ORDER BY salary_year DESC, salary_month DESC"
     );
