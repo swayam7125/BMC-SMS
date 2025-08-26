@@ -1,10 +1,9 @@
 $(document).ready(function() {
     let activeContactId = null;
     const api_url = window.base_url + 'includes/messaging_api.php';
-    const default_avatar = window.base_url + 'assets/images/unisex.png'; 
+    const default_avatar = window.base_url + 'assets/images/unisex.png';
     let messageInterval = null;
 
-    // A new polling function to get the total unread messages for the header icon
     function pollForNotifications() {
         $.ajax({
             url: api_url,
@@ -13,9 +12,9 @@ $(document).ready(function() {
             data: { action: 'get_unread_total' },
             success: function(response) {
                 if (response.status === 'success' && response.total_unread > 0) {
-                    $('#message-notification-badge').text(response.total_unread).show();
+                    $('#messages-badge').text(response.total_unread > 9 ? '9+' : response.total_unread).show();
                 } else {
-                    $('#message-notification-badge').hide().text('');
+                    $('#messages-badge').hide();
                 }
             },
             error: function(xhr) {
@@ -24,7 +23,6 @@ $(document).ready(function() {
         });
     }
 
-    // Function to load contacts and their unread counts
     function loadContacts() {
         $.ajax({
             url: api_url,
@@ -36,13 +34,11 @@ $(document).ready(function() {
                 contactsList.empty();
                 if (response.status === 'success' && response.contacts.length > 0) {
                     response.contacts.forEach(contact => {
-                        // FIX: Use the full path provided by the API directly
                         const contactImage = contact.image_path || default_avatar;
-                        // NEW: Create a badge for unread messages if count is > 0
-                        const unreadBadge = contact.unread_count > 0 ? 
+                        const unreadBadge = contact.unread_count > 0 ?
                             `<span class="badge badge-danger badge-counter">${contact.unread_count}</span>` : '';
                         
-                        const contactElement = `
+                        const contactHtml = `
                             <li class="list-group-item list-group-item-action contact-item" data-contact-id="${contact.id}" data-contact-name="${escapeHtml(contact.name)}">
                                 <div class="d-flex align-items-center">
                                     <img src="${contactImage}" class="rounded-circle mr-3" width="50" height="50" alt="${escapeHtml(contact.name)}" onerror="this.src='${default_avatar}'">
@@ -52,14 +48,13 @@ $(document).ready(function() {
                                     ${unreadBadge}
                                 </div>
                             </li>`;
-                        contactsList.append(contactElement);
+                        contactsList.append(contactHtml);
                     });
-                    
-                    // NEW: Re-apply the active class to the previously selected contact
+
                     if (activeContactId !== null) {
                         $(`.contact-item[data-contact-id="${activeContactId}"]`).addClass('active');
                     }
-                    
+
                 } else {
                     contactsList.html('<li class="list-group-item text-center text-muted">No contacts found.</li>');
                 }
@@ -71,31 +66,41 @@ $(document).ready(function() {
         });
     }
 
-    // Function to load and display messages
-    function loadMessages(contactId) {
+    function loadMessages(contactId, isInitialLoad = false) {
         if (!contactId) return;
-        // NEW: Set the active contact ID before loading messages
-        activeContactId = contactId;
         const messageArea = $('#message-area');
-        
+
         $.ajax({
             url: api_url,
             type: 'POST',
             dataType: 'json',
             data: { action: 'get_messages', other_user_id: contactId },
             success: function(response) {
-                messageArea.empty();
+                let hadNewMessages = false;
+                let lastDate = messageArea.find('.date-separator:last').data('date-string') || messageArea.find('.message-wrapper:last').data('date-string') || null;
+
                 if (response.status === 'success' && response.messages.length > 0) {
-                    response.messages.forEach(msg => {
+                    response.messages.forEach((msg, index) => {
+                        if ($(`.message-wrapper[data-message-id="${msg.id}"]`).length > 0) return;
+                        hadNewMessages = true;
+
+                        const messageDate = new Date(msg.timestamp);
+                        const messageDateString = messageDate.toDateString();
+                        let $dateSeparator;
+
+                        if (lastDate !== messageDateString) {
+                            const dateSeparatorHtml = `<div class="date-separator" data-date-string="${messageDateString}"><span>${formatDateSeparator(messageDate)}</span></div>`;
+                            $dateSeparator = $(dateSeparatorHtml);
+                            lastDate = messageDateString;
+                        }
+
                         const isSender = parseInt(msg.sender_id) === parseInt(window.currentUserId);
                         const wrapperClass = isSender ? 'sent' : 'received';
                         const bubbleClass = isSender ? 'sent' : 'received';
-                        
-                        // FIX: Use the full path provided by the API directly
                         const senderImage = msg.sender_image || default_avatar;
-
+                        
                         const messageHtml = `
-                            <div class="message-wrapper ${wrapperClass}">
+                            <div class="message-wrapper ${wrapperClass}" data-message-id="${msg.id}" data-date-string="${messageDateString}">
                                 <div class="message-bubble ${bubbleClass}">
                                     <img src="${senderImage}" class="chat-avatar" alt="User" onerror="this.src='${default_avatar}'">
                                     <div class="message-content">
@@ -104,46 +109,63 @@ $(document).ready(function() {
                                     </div>
                                 </div>
                             </div>`;
-                        messageArea.append(messageHtml);
+
+                        const $messageElement = $(messageHtml);
+                        
+                        if (isInitialLoad) {
+                            if ($dateSeparator) $dateSeparator.addClass('animate-in');
+                            $messageElement.addClass('animate-in');
+                        }
+
+                        if ($dateSeparator) messageArea.append($dateSeparator);
+                        messageArea.append($messageElement);
+
+                        if (isInitialLoad) {
+                            const delay = index * 50;
+                            setTimeout(() => {
+                                if ($dateSeparator) $dateSeparator.removeClass('animate-in');
+                                $messageElement.removeClass('animate-in');
+                            }, delay + 10);
+                        }
                     });
-                    // Scroll to the latest message
-                    messageArea.scrollTop(messageArea[0].scrollHeight);
-                } else {
+
+                    // --- IMPROVEMENT ---
+                    // The animated scroll created a jarring "scrolling down" effect.
+                    // This is now an instantaneous scroll, so the user immediately sees the latest messages.
+                    if (hadNewMessages || isInitialLoad) {
+                         messageArea.scrollTop(messageArea[0].scrollHeight);
+                    }
+                } else if (isInitialLoad) {
                     messageArea.html('<div class="text-center h-100 d-flex justify-content-center align-items-center text-muted"><p>Start the conversation!</p></div>');
                 }
-                // After loading messages for a contact, reload the contacts to update the unread badge
-                loadContacts(); 
-                // Also update the main header notification
-                pollForNotifications();
+
+                if (hadNewMessages) {
+                    loadContacts();
+                    pollForNotifications();
+                }
             },
             error: function(xhr) {
                 console.error("Error loading messages:", xhr.responseText);
             }
         });
     }
-    
+
     function sendMessage() {
         const messageText = $('#message-text').val().trim();
         if (messageText === '' || !activeContactId) return;
-
         $('#send-button').prop('disabled', true);
 
         $.ajax({
             url: api_url,
             type: 'POST',
             dataType: 'json',
-            data: {
-                action: 'send_message',
-                receiver_id: activeContactId,
-                message_text: messageText
-            },
+            data: { action: 'send_message', receiver_id: activeContactId, message_text: messageText },
             success: function(response) {
                 if (response.status === 'success') {
                     $('#message-text').val('');
-                    loadMessages(activeContactId); // Reload messages after sending
+                    loadMessages(activeContactId, false);
                 } else {
-                    // Use a custom modal instead of alert
-                    showCustomAlert('Error sending message: ' + response.message);
+                    alert('Error sending message: ' + response.message);
                 }
             },
             complete: function() {
@@ -157,6 +179,12 @@ $(document).ready(function() {
         const contactId = $(this).data('contact-id');
         const contactName = $(this).data('contact-name');
         
+        // --- IMPROVEMENT ---
+        // Prevents reloading the chat if the user clicks the same active contact again.
+        if (activeContactId === contactId) return;
+        
+        activeContactId = contactId;
+
         $('.contact-item').removeClass('active');
         $(this).addClass('active');
         
@@ -164,33 +192,36 @@ $(document).ready(function() {
         $('#message-text, #send-button').prop('disabled', false);
         $('#message-text').focus();
 
+        $('#message-area').empty();
         if (messageInterval) clearInterval(messageInterval);
-        loadMessages(contactId);
-        messageInterval = setInterval(() => loadMessages(contactId), 5000); // Refresh chat every 5 seconds
-    });
 
-    $('#send-button').on('click', sendMessage);
-    $('#message-text').on('keypress', function(e) {
-        if (e.which === 13) {
-            e.preventDefault();
-            sendMessage();
-        }
+        loadMessages(contactId, true);
+        messageInterval = setInterval(() => loadMessages(contactId, false), 5000);
     });
     
-    // Initial loads and polling
+    $('#send-button').on('click', sendMessage);
+    $('#message-text').on('keypress', function(e) { if (e.which === 13) { e.preventDefault(); sendMessage(); } });
+
     loadContacts();
     pollForNotifications();
-    setInterval(pollForNotifications, 30000); // Poll for new notifications every 30 seconds
+    setInterval(pollForNotifications, 15000);
 
     function formatTimestamp(timestamp) {
         const date = new Date(timestamp);
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
     }
 
+    function formatDateSeparator(date) {
+        const today = new Date();
+        const yesterday = new Date();
+        yesterday.setDate(today.getDate() - 1);
+        if (date.toDateString() === today.toDateString()) return 'Today';
+        if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+        return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    }
+
     function escapeHtml(text) {
-        if (text === null || text === undefined) {
-            return '';
-        }
+        if (text === null || text === undefined) return '';
         return $('<div/>').text(text).html();
     }
 });

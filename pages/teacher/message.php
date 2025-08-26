@@ -1,5 +1,5 @@
 <?php
-// pages/teacher/message.php
+// A single, unified message file for both teachers and students.
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
@@ -13,13 +13,13 @@ if (isset($_COOKIE['encrypted_user_id'])) {
     $current_user_id = decrypt_id($_COOKIE['encrypted_user_id']);
 }
 
-// Security check for role
+// Security check to ensure a valid user is logged in
 if ($current_user_role !== 'teacher' && $current_user_role !== 'student') {
     header("Location: ../../login.php");
     exit();
 }
 
-// Set dynamic page titles based on role
+// Dynamically set page titles and content based on the user's role
 $page_title = ($current_user_role === 'teacher') ? "Message Students" : "Message Teachers";
 $contacts_title = ($current_user_role === 'teacher') ? "Students" : "Teachers";
 ?>
@@ -28,13 +28,13 @@ $contacts_title = ($current_user_role === 'teacher') ? "Students" : "Teachers";
 <head>
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($page_title); ?> - Dashboard</title>
-    <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link href="/BMC-SMS/assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
-    <link rel="stylesheet" href="../../assets/css/message.css?v=1.3">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-</head>
+    <link rel="stylesheet" href="../../assets/css/message.css?v=1.3">
+    </head>
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -49,9 +49,9 @@ $contacts_title = ($current_user_role === 'teacher') ? "Students" : "Teachers";
                                 <div class="card-header py-3">
                                     <h6 class="m-0 font-weight-bold text-primary"><?php echo htmlspecialchars($contacts_title); ?></h6>
                                 </div>
-                                <div class="card-body p-0">
+                                <div class="card-body">
                                     <div id="contacts-list-container" style="max-height: 60vh; overflow-y: auto;">
-                                        <ul class="list-group list-group-flush" id="contacts-list">
+                                        <ul class="list-group" id="contacts-list">
                                             <div class="text-center p-4"><div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div></div>
                                         </ul>
                                     </div>
@@ -88,7 +88,7 @@ $contacts_title = ($current_user_role === 'teacher') ? "Students" : "Teachers";
     <script src="/BMC-SMS/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="/BMC-SMS/assets/js/sb-admin-2.min.js"></script>
     <script>
-        // Pass PHP variables to JavaScript
+        // Pass PHP variables to JavaScript so the script knows who is logged in
         window.currentUserId = '<?php echo $current_user_id; ?>';
         window.currentUserRole = '<?php echo $current_user_role; ?>';
         window.base_url = '/BMC-SMS/';

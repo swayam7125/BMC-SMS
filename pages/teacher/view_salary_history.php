@@ -23,9 +23,9 @@ $salary_records = [];
 $errorMessage = '';
 
 try {
-    // Fetch all processed salary records for the logged-in teacher
+    // UPDATED: Fetch from the new 'teacher_payroll' table
     $stmt = $conn->prepare(
-        "SELECT * FROM payroll_records 
+        "SELECT * FROM teacher_payroll 
          WHERE teacher_id = ? 
          ORDER BY salary_year DESC, salary_month DESC"
     );

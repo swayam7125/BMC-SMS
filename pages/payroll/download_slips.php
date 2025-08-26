@@ -50,7 +50,7 @@ $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_
 $userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
 $period = $_POST['period'] ?? 'current_month';
 
-if ((!$role || !$userId) || ($role !== 'teacher' && $role !== 'librarian')) {
+if ((!$role || !$userId) || !in_array($role, ['teacher', 'librarian', 'principal'])) {
     die("Unauthorized access.");
 }
 
@@ -89,13 +89,18 @@ switch ($period) {
 try {
     if ($role === 'teacher') {
         $sql = "SELECT pr.*, t.teacher_name as employee_name, s.school_name, s.school_logo, s.address as school_address 
-                FROM payroll_records pr JOIN teacher t ON pr.teacher_id = t.id JOIN school s ON pr.school_id = s.id
+                FROM teacher_payroll pr JOIN teacher t ON pr.teacher_id = t.id JOIN school s ON pr.school_id = s.id
                 WHERE pr.teacher_id = ? {$where_clause}
                 ORDER BY pr.salary_year DESC, pr.salary_month DESC";
-    } else {
+    } elseif ($role === 'librarian') {
         $sql = "SELECT pr.*, l.librarian_name as employee_name, s.school_name, s.school_logo, s.address as school_address
-                FROM librarian_payroll_records pr JOIN librarian l ON pr.librarian_id = l.id JOIN school s ON pr.school_id = s.id
+                FROM librarian_payroll pr JOIN librarian l ON pr.librarian_id = l.id JOIN school s ON pr.school_id = s.id
                 WHERE pr.librarian_id = ? {$where_clause}
+                ORDER BY pr.salary_year DESC, pr.salary_month DESC";
+    } else { // Principal
+        $sql = "SELECT pr.*, p.principal_name as employee_name, s.school_name, s.school_logo, s.address as school_address
+                FROM principal_payroll pr JOIN principal p ON pr.principal_id = p.id JOIN school s ON pr.school_id = s.id
+                WHERE pr.principal_id = ? {$where_clause}
                 ORDER BY pr.salary_year DESC, pr.salary_month DESC";
     }
     $stmt = $conn->prepare($sql);
@@ -106,7 +111,7 @@ try {
 if (empty($records)) { die("No salary records found for the selected period."); }
 
 
-// --- NEW HTML & CSS DESIGN ---
+// --- HTML & CSS DESIGN ---
 $html = '
 <!DOCTYPE html>
 <html>
@@ -146,6 +151,7 @@ $html = '
 foreach ($records as $details) {
     $base_salary_formatted = '₹ ' . number_format($details['base_salary'], 2);
     $deduction_formatted = '₹ ' . number_format($details['deduction_amount'], 2);
+    $incentives_formatted = '₹ ' . number_format($details['total_incentives'], 2);
     $net_paid_formatted = '₹ ' . number_format($details['net_salary_paid'], 2);
     $amount_in_words = getIndianCurrencyInWords($details['net_salary_paid']);
     $logo_path = '../../' . $details['school_logo'];
@@ -192,6 +198,10 @@ foreach ($records as $details) {
                     <td>Base Salary</td>
                     <td class="amount">' . $base_salary_formatted . '</td>
                 </tr>
+                 <tr>
+                    <td>Incentives / Adjustments</td>
+                    <td class="amount">' . $incentives_formatted . '</td>
+                </tr>
                 <tr>
                     <td>Absent Day Deduction</td>
                     <td class="amount">- ' . $deduction_formatted . '</td>
@@ -200,7 +210,7 @@ foreach ($records as $details) {
             <tfoot>
                 <tr>
                     <td><strong>Gross Earnings</strong></td>
-                    <td class="amount"><strong>' . $base_salary_formatted . '</strong></td>
+                    <td class="amount"><strong>' . '₹ ' . number_format($details['base_salary'] + $details['total_incentives'], 2) . '</strong></td>
                 </tr>
                 <tr>
                     <td><strong>Total Deductions</strong></td>
@@ -232,14 +242,16 @@ $dompdf->setPaper('A4', 'portrait');
 $dompdf->render();
 
 $filename = "Salary-Slips.pdf";
-switch ($period) {
-    case 'current_month':
-        $month_name = date('F-Y', mktime(0,0,0, $records[0]['salary_month'], 1, $records[0]['salary_year']));
-        $filename = "Salary-Slip-{$month_name}.pdf";
-        break;
-    case 'last_3_months': $filename = "Salary-Slips-Last-3-Months.pdf"; break;
-    case 'last_6_months': $filename = "Salary-Slips-Last-6-Months.pdf"; break;
-    case 'current_fy': $filename = "Salary-Slips-Current-Financial-Year.pdf"; break;
+if (!empty($records)) {
+    switch ($period) {
+        case 'current_month':
+            $month_name = date('F-Y', mktime(0,0,0, $records[0]['salary_month'], 1, $records[0]['salary_year']));
+            $filename = "Salary-Slip-{$month_name}.pdf";
+            break;
+        case 'last_3_months': $filename = "Salary-Slips-Last-3-Months.pdf"; break;
+        case 'last_6_months': $filename = "Salary-Slips-Last-6-Months.pdf"; break;
+        case 'current_fy': $filename = "Salary-Slips-Current-Financial-Year.pdf"; break;
+    }
 }
 
 $dompdf->stream($filename, ["Attachment" => 1]);

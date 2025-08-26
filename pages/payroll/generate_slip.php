@@ -13,34 +13,11 @@ function getIndianCurrencyInWords(float $number)
     $i = 0;
     $str = array();
     $words = array(
-        0 => '',
-        1 => 'one',
-        2 => 'two',
-        3 => 'three',
-        4 => 'four',
-        5 => 'five',
-        6 => 'six',
-        7 => 'seven',
-        8 => 'eight',
-        9 => 'nine',
-        10 => 'ten',
-        11 => 'eleven',
-        12 => 'twelve',
-        13 => 'thirteen',
-        14 => 'fourteen',
-        15 => 'fifteen',
-        16 => 'sixteen',
-        17 => 'seventeen',
-        18 => 'eighteen',
-        19 => 'nineteen',
-        20 => 'twenty',
-        30 => 'thirty',
-        40 => 'forty',
-        50 => 'fifty',
-        60 => 'sixty',
-        70 => 'seventy',
-        80 => 'eighty',
-        90 => 'ninety'
+        0 => '', 1 => 'one', 2 => 'two', 3 => 'three', 4 => 'four', 5 => 'five', 6 => 'six',
+        7 => 'seven', 8 => 'eight', 9 => 'nine', 10 => 'ten', 11 => 'eleven', 12 => 'twelve',
+        13 => 'thirteen', 14 => 'fourteen', 15 => 'fifteen', 16 => 'sixteen', 17 => 'seventeen',
+        18 => 'eighteen', 19 => 'nineteen', 20 => 'twenty', 30 => 'thirty', 40 => 'forty',
+        50 => 'fifty', 60 => 'sixty', 70 => 'seventy', 80 => 'eighty', 90 => 'ninety'
     );
     $digits = array('', 'hundred', 'thousand', 'lakh', 'crore');
     while ($i < $digits_length) {
@@ -73,15 +50,22 @@ $details = null;
 try {
     if ($type === 'teacher' && $role === 'teacher') {
         $sql = "SELECT pr.*, t.teacher_name as employee_name, s.school_name, s.school_logo, s.address as school_address 
-                FROM payroll_records pr JOIN teacher t ON pr.teacher_id = t.id JOIN school s ON pr.school_id = s.id
+                FROM teacher_payroll pr JOIN teacher t ON pr.teacher_id = t.id JOIN school s ON pr.school_id = s.id
                 WHERE pr.id = ? AND pr.teacher_id = ?";
         $stmt = $conn->prepare($sql);
         $stmt->execute([$record_id, $userId]);
         $details = $stmt->fetch(PDO::FETCH_ASSOC);
     } elseif ($type === 'librarian' && $role === 'librarian') {
         $sql = "SELECT pr.*, l.librarian_name as employee_name, s.school_name, s.school_logo, s.address as school_address 
-                FROM librarian_payroll_records pr JOIN librarian l ON pr.librarian_id = l.id JOIN school s ON pr.school_id = s.id
+                FROM librarian_payroll pr JOIN librarian l ON pr.librarian_id = l.id JOIN school s ON pr.school_id = s.id
                 WHERE pr.id = ? AND pr.librarian_id = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->execute([$record_id, $userId]);
+        $details = $stmt->fetch(PDO::FETCH_ASSOC);
+    } elseif ($type === 'principal' && $role === 'principal') {
+        $sql = "SELECT pr.*, p.principal_name as employee_name, s.school_name, s.school_logo, s.address as school_address 
+                FROM principal_payroll pr JOIN principal p ON pr.principal_id = p.id JOIN school s ON pr.school_id = s.id
+                WHERE pr.id = ? AND pr.principal_id = ?";
         $stmt = $conn->prepare($sql);
         $stmt->execute([$record_id, $userId]);
         $details = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -98,6 +82,7 @@ try {
 
 $base_salary_formatted = '₹ ' . number_format($details['base_salary'], 2);
 $deduction_formatted = '₹ ' . number_format($details['deduction_amount'], 2);
+$incentives_formatted = '₹ ' . number_format($details['total_incentives'], 2);
 $net_paid_formatted = '₹ ' . number_format($details['net_salary_paid'], 2);
 $amount_in_words = getIndianCurrencyInWords($details['net_salary_paid']);
 
@@ -112,136 +97,30 @@ $amount_in_words = getIndianCurrencyInWords($details['net_salary_paid']);
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
 
     <style>
-        body {
-            background-color: #e0e0e0;
-            font-family: 'Nunito', sans-serif;
-        }
-
-        .payslip {
-            max-width: 800px;
-            margin: 30px auto;
-            background: #fff;
-            padding: 30px;
-            border: 1px solid #ddd;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            color: #333;
-            font-size: 14px;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-            position: relative;
-            padding: 10px 0;
-            border-bottom: 2px solid #333;
-        }
-
-        .header img {
-            max-height: 70px;
-            position: absolute;
-            top: 0;
-            left: 0;
-        }
-
-        .school-name {
-            font-size: 26px;
-            font-weight: bold;
-        }
-
-        .school-address {
-            font-size: 13px;
-        }
-
-        .slip-title {
-            font-size: 18px;
-            font-weight: bold;
-            text-align: center;
-            margin: 20px 0;
-            text-decoration: underline;
-        }
-
-        .employee-details {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-            border: 1px solid #ccc;
-        }
-
-        .employee-details td {
-            padding: 8px 12px;
-        }
-
-        .employee-details .label {
-            font-weight: bold;
-            width: 150px;
-        }
-
-        .salary-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .salary-table th,
-        .salary-table td {
-            border: 1px solid #ccc;
-            padding: 10px;
-            text-align: left;
-        }
-
-        .salary-table th {
-            background-color: #f2f2f2;
-            font-weight: bold;
-        }
-
-        .salary-table .amount {
-            text-align: right;
-        }
-
-        .salary-table tfoot td {
-            font-weight: bold;
-        }
-
-        .salary-table tfoot .net-salary-row {
-            background-color: #e9e9e9;
-            font-size: 16px;
-        }
-
-        .amount-in-words {
-            margin-top: 20px;
-            font-size: 13px;
-        }
-
-        .amount-in-words span {
-            font-weight: bold;
-        }
-
-        .footer {
-            margin-top: 40px;
-            text-align: center;
-            font-size: 12px;
-            color: #777;
-        }
-
-        .print-download-buttons {
-            text-align: center;
-            margin: 30px auto;
-            max-width: 800px;
-        }
-
+        body { background-color: #e0e0e0; font-family: 'Nunito', sans-serif; }
+        .payslip { max-width: 800px; margin: 30px auto; background: #fff; padding: 30px; border: 1px solid #ddd; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); color: #333; font-size: 14px; }
+        .header { text-align: center; margin-bottom: 20px; position: relative; padding: 10px 0; border-bottom: 2px solid #333; }
+        .header img { max-height: 70px; position: absolute; top: 0; left: 0; }
+        .school-name { font-size: 26px; font-weight: bold; }
+        .school-address { font-size: 13px; }
+        .slip-title { font-size: 18px; font-weight: bold; text-align: center; margin: 20px 0; text-decoration: underline; }
+        .employee-details { width: 100%; border-collapse: collapse; margin-bottom: 20px; border: 1px solid #ccc; }
+        .employee-details td { padding: 8px 12px; }
+        .employee-details .label { font-weight: bold; width: 150px; }
+        .salary-table { width: 100%; border-collapse: collapse; }
+        .salary-table th, .salary-table td { border: 1px solid #ccc; padding: 10px; text-align: left; }
+        .salary-table th { background-color: #f2f2f2; font-weight: bold; }
+        .salary-table .amount { text-align: right; }
+        .salary-table tfoot td { font-weight: bold; }
+        .salary-table tfoot .net-salary-row { background-color: #e9e9e9; font-size: 16px; }
+        .amount-in-words { margin-top: 20px; font-size: 13px; }
+        .amount-in-words span { font-weight: bold; }
+        .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #777; }
+        .print-download-buttons { text-align: center; margin: 30px auto; max-width: 800px; }
         @media print {
-            body {
-                background-color: #fff;
-            }
-
-            .payslip {
-                margin: 0;
-                border: none;
-                box-shadow: none;
-            }
-
-            .print-download-buttons {
-                display: none;
-            }
+            body { background-color: #fff; }
+            .payslip { margin: 0; border: none; box-shadow: none; }
+            .print-download-buttons { display: none; }
         }
     </style>
 </head>
@@ -290,6 +169,10 @@ $amount_in_words = getIndianCurrencyInWords($details['net_salary_paid']);
                     <td>Base Salary</td>
                     <td class="amount"><?php echo $base_salary_formatted; ?></td>
                 </tr>
+                 <tr>
+                    <td>Incentives / Adjustments</td>
+                    <td class="amount"><?php echo $incentives_formatted; ?></td>
+                </tr>
                 <tr>
                     <td>Absent Day Deduction</td>
                     <td class="amount">- <?php echo $deduction_formatted; ?></td>
@@ -298,7 +181,7 @@ $amount_in_words = getIndianCurrencyInWords($details['net_salary_paid']);
             <tfoot>
                 <tr>
                     <td class="text-dark"><strong>Gross Earnings</strong></td>
-                    <td class="amount text-dark"><strong><?php echo $base_salary_formatted; ?></strong></td>
+                    <td class="amount text-dark"><strong><?php echo '₹ ' . number_format($details['base_salary'] + $details['total_incentives'], 2); ?></strong></td>
                 </tr>
                 <tr>
                     <td class="text-dark"><strong>Total Deductions</strong></td>
@@ -331,19 +214,11 @@ $amount_in_words = getIndianCurrencyInWords($details['net_salary_paid']);
     <script>
         document.getElementById('download-pdf').addEventListener('click', function() {
             const slipElement = document.getElementById('payslip');
-            const {
-                jsPDF
-            } = window.jspdf;
+            const { jsPDF } = window.jspdf;
 
-            html2canvas(slipElement, {
-                scale: 2
-            }).then(canvas => {
+            html2canvas(slipElement, { scale: 2 }).then(canvas => {
                 const imgData = canvas.toDataURL('image/png');
-                const pdf = new jsPDF({
-                    orientation: 'portrait',
-                    unit: 'pt',
-                    format: 'a4'
-                });
+                const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
                 const pdfWidth = pdf.internal.pageSize.getWidth();
                 const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
                 pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);

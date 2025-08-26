@@ -89,11 +89,11 @@ function get_current_page() {
  * @param array $pages Array of page names to check
  * @return bool True if current page is in array
  */
-function is_active_page($pages) {
-    if(!is_array($pages)) {
-        $pages = [$pages];
-    }
-    return in_array(get_current_page(), $pages);
+function is_active_page($pages)
+{
+    $current_page = basename($_SERVER['SCRIPT_NAME']);
+    // Ensure $pages is an array before using in_array
+    return is_array($pages) && in_array($current_page, $pages);
 }
 
 /**
