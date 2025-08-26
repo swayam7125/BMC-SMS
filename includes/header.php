@@ -355,17 +355,13 @@ document.addEventListener('DOMContentLoaded', function() {
     function fetchUnreadMessageCount() {
         if (!messagesBadge) return; 
 
-        let formData = new FormData();
-        formData.append('action', 'get_unread_count');
-
-        fetch(`${base_url}includes/messaging_api.php`, {
-            method: 'POST',
-            body: formData
-        })
+        // ⭐ FIX: Changed action to 'get_unread_total' to match the API endpoint
+        // This was the primary reason the header counter was not updating.
+        fetch(`${base_url}includes/messaging_api.php?action=get_unread_total`)
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
-                const count = parseInt(data.unread_count, 10);
+                const count = parseInt(data.total_unread, 10); // Use total_unread from response
                 if (count > 0) {
                     messagesBadge.textContent = count > 9 ? '9+' : count;
                     messagesBadge.style.display = 'block';
@@ -377,19 +373,19 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(error => console.error('Error fetching unread message count:', error));
     }
 
+    // Run it once on page load
     fetchUnreadMessageCount();
+
+    // Set an interval to check for new messages every 15 seconds
+    setInterval(fetchUnreadMessageCount, 15000); 
 
     if (messagesLink) {
         messagesLink.addEventListener('click', function() {
             if (messagesBadge) {
                 messagesBadge.style.display = 'none';
             }
-            let formData = new FormData();
-            formData.append('action', 'mark_all_messages_as_read');
-            fetch(`${base_url}includes/messaging_api.php`, {
-                method: 'POST',
-                body: formData
-            });
+            // Note: Marking messages as read is handled on the message page itself
+            // when a conversation is opened. No separate API call is needed here.
         });
     }
     <?php endif; ?>
