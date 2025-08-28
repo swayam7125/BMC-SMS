@@ -163,6 +163,11 @@ if ($school_id) {
         $errorMessage = "An error occurred: " . $e->getMessage();
     }
 }
+
+// Calculate totals for the pie chart
+$total_present = array_sum(array_column($individual_staff_attendance, 'present'));
+$total_absent = array_sum(array_column($individual_staff_attendance, 'absent'));
+$total_leave = array_sum(array_column($individual_staff_attendance, 'leave'));
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -291,7 +296,7 @@ if ($school_id) {
                                         </div>
                                     </div>
                                     <div class="col-lg-6">
-                                        <div class="chart-bar" style="height: 250px;"><canvas id="staffAttendanceChart"></canvas></div>
+                                        <div class="chart-pie pt-4 pb-2" style="height: 250px;"><canvas id="staffAttendanceChart"></canvas></div>
                                     </div>
                                 </div>
                             </div>
@@ -310,18 +315,36 @@ if ($school_id) {
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
+    // Staff Attendance Pie Chart
     var ctxStaff = document.getElementById("staffAttendanceChart");
     var staffChart = new Chart(ctxStaff, {
-        type: 'bar',
+        type: 'pie',
         data: {
-            labels: <?php echo json_encode(array_keys($staff_attendance_summary)); ?>,
-            datasets: [
-                { label: 'Present', data: <?php echo json_encode(array_column($staff_attendance_summary, 'present')); ?>, backgroundColor: '#1cc88a' },
-                { label: 'Absent', data: <?php echo json_encode(array_column($staff_attendance_summary, 'absent')); ?>, backgroundColor: '#e74a3b' },
-                { label: 'On Leave', data: <?php echo json_encode(array_column($staff_attendance_summary, 'leave')); ?>, backgroundColor: '#f6c23e' }
-            ]
+            labels: ['Present', 'Absent', 'On Leave'],
+            datasets: [{
+                data: [<?php echo $total_present; ?>, <?php echo $total_absent; ?>, <?php echo $total_leave; ?>],
+                backgroundColor: ['#1cc88a', '#e74a3b', '#f6c23e'],
+                hoverBackgroundColor: ['#17a673', '#c73e31', '#d4a12c'],
+                hoverBorderColor: "rgba(234, 236, 244, 1)",
+            }],
         },
-        options: { maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
+        options: {
+            maintainAspectRatio: false,
+            tooltips: {
+                backgroundColor: "rgb(255,255,255)",
+                bodyFontColor: "#858796",
+                borderColor: '#dddfeb',
+                borderWidth: 1,
+                xPadding: 15,
+                yPadding: 15,
+                displayColors: false,
+                caretPadding: 10,
+            },
+            legend: {
+                display: true,
+                position: 'bottom'
+            }
+        },
     });
 
     // PDF Download Logic
