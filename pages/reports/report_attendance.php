@@ -99,7 +99,7 @@ if ($school_id) {
                 'teacher' => ['name_col' => 'teacher_name', 'att_table' => 'teacher_attendance', 'id_col' => 'teacher_id'],
                 'librarian' => ['name_col' => 'librarian_name', 'att_table' => 'librarian_attendance', 'id_col' => 'librarian_id'],
                 'principal' => ['name_col' => 'principal_name', 'att_table' => 'principal_attendance', 'id_col' => 'principal_id'],
-                'payroll' => ['name_col' => 'payroll_name', 'att_table' => 'payroll_attendance', 'id_col' => 'payroll_id'] // Assumes payroll_attendance table exists
+                'payroll' => ['name_col' => 'payroll_name', 'att_table' => 'payroll_attendance', 'id_col' => 'payroll_id'] 
             ];
             
             if (!isset($table_map[$current_role])) continue;
@@ -114,7 +114,6 @@ if ($school_id) {
             $staff_ids = array_column($staff_members, 'id');
             if (!empty($staff_ids)) {
                 $placeholders = implode(',', array_fill(0, count($staff_ids), '?'));
-                // Note: This assumes a 'payroll_attendance' table exists with a similar structure.
                 $att_query = "SELECT {$map['id_col']} as staff_id, status, COUNT(*) as count 
                             FROM {$map['att_table']} 
                             WHERE {$map['id_col']} IN ($placeholders) AND EXTRACT(YEAR FROM attendance_date) = ? AND EXTRACT(MONTH FROM attendance_date) = ? 
@@ -142,17 +141,14 @@ if ($school_id) {
                         ];
                     }
                 } catch (PDOException $e) {
-                    // Gracefully handle if an attendance table doesn't exist (e.g., payroll_attendance)
                     if (strpos($e->getMessage(), "relation \"{$map['att_table']}\" does not exist") !== false) {
-                        // Just skip this role if its attendance table is missing
                     } else {
-                        throw $e; // Re-throw other errors
+                        throw $e; 
                     }
                 }
             }
         }
 
-        // Recalculate summary based on the filtered individual data
         foreach ($individual_staff_attendance as $record) {
             $role_name = $record['role'];
             if (!isset($staff_attendance_summary[$role_name])) {
@@ -179,6 +175,19 @@ if ($school_id) {
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <style>
+        .staff-list-container {
+            max-height: 250px; /* Same as chart height */
+            overflow-y: auto;
+            position: relative;
+        }
+        .staff-list-container .table thead th {
+            position: sticky;
+            top: 0;
+            background-color: #f8f9fc; /* A light background to match the theme */
+            z-index: 1;
+        }
+    </style>
 </head>
 <body id="page-top">
     <div id="wrapper">
@@ -270,7 +279,7 @@ if ($school_id) {
                             <div class="card-body">
                                 <div class="row">
                                     <div class="col-lg-6">
-                                        <div class="table-responsive" id="staff-attendance-table">
+                                        <div class="staff-list-container" id="staff-list-wrapper">
                                             <table class="table table-bordered">
                                                 <thead><tr><th>Staff Name</th><th>Role</th><th>Present</th><th>Absent</th><th>On Leave</th></tr></thead>
                                                 <tbody>
@@ -301,7 +310,6 @@ if ($school_id) {
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-    // Staff Attendance Chart
     var ctxStaff = document.getElementById("staffAttendanceChart");
     var staffChart = new Chart(ctxStaff, {
         type: 'bar',
