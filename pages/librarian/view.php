@@ -22,11 +22,16 @@ $librarian = null;
 $timings = [];
 
 try {
-    // Fetch main librarian details
-    $query_librarian = 'SELECT l.*, s.school_name, s.email AS school_email, s.phone AS school_phone
+    // MODIFIED: Fetch main librarian details including transportation fields by joining tables
+    $query_librarian = 'SELECT l.*, s.school_name, s.email AS school_email, s.phone AS school_phone,
+                        st.stop_name, r.route_name, v.vehicle_number as school_vehicle_number
                         FROM "librarian" l
                         LEFT JOIN "school" s ON l.school_id = s.id
+                        LEFT JOIN "stops" st ON l.stop_id = st.id
+                        LEFT JOIN "routes" r ON st.route_id = r.id
+                        LEFT JOIN "vehicles" v ON r.vehicle_id = v.id
                         WHERE l.id = ?';
+
     $stmt_librarian = $conn->prepare($query_librarian);
     $stmt_librarian->execute([$librarian_id]);
     $librarian = $stmt_librarian->fetch(PDO::FETCH_ASSOC);
@@ -78,7 +83,6 @@ try {
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
                 <div class="container-fluid">
-
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Librarian's Details</h1>
                         <div>
@@ -190,7 +194,6 @@ try {
                                         <div class="col-sm-5 info-label">Date of Joining:</div>
                                         <div class="col-sm-7 info-value">
                                             <?php
-                                            // Prevent the error by checking if the field is not empty
                                             if (!empty($librarian['date_of_joining'])) {
                                                 echo htmlspecialchars(date("d F Y", strtotime($librarian['date_of_joining'])));
                                             } else {
@@ -242,6 +245,66 @@ try {
                                     <?php else: ?>
                                         <div class="alert alert-warning small">No weekly schedule has been set for this librarian.</div>
                                     <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-12 mt-4">
+                            <div class="card shadow">
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-bus"></i> Transportation Information</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="row info-row">
+                                                <div class="col-sm-5 info-label">Mode of Transport:</div>
+                                                <div class="col-sm-7 info-value"><?php echo htmlspecialchars($librarian['transport_mode'] ?? 'N/A'); ?></div>
+                                            </div>
+                                        </div>
+                                        <?php if (isset($librarian['transport_mode']) && $librarian['transport_mode'] === 'School Transport'): ?>
+                                            <div class="col-md-8">
+                                                <div class="row">
+                                                    <div class="col-lg-4">
+                                                        <div class="row info-row">
+                                                            <div class="col-sm-5 info-label">Route:</div>
+                                                            <div class="col-sm-7 info-value"><?php echo htmlspecialchars($librarian['route_name'] ?? 'N/A'); ?></div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-lg-4">
+                                                        <div class="row info-row">
+                                                            <div class="col-sm-5 info-label">Stop:</div>
+                                                            <div class="col-sm-7 info-value"><?php echo htmlspecialchars($librarian['stop_name'] ?? 'N/A'); ?></div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-lg-4">
+                                                        <div class="row info-row">
+                                                            <div class="col-sm-5 info-label">Vehicle:</div>
+                                                            <div class="col-sm-7 info-value"><?php echo htmlspecialchars($librarian['school_vehicle_number'] ?? 'N/A'); ?></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        <?php elseif (isset($librarian['transport_mode']) && $librarian['transport_mode'] === 'Self Transport'): ?>
+                                            <div class="col-md-8">
+                                                <div class="row info-row">
+                                                    <div class="col-sm-4 info-label">Self Transport Mode:</div>
+                                                    <div class="col-sm-8 info-value"><?php echo htmlspecialchars($librarian['self_transport_mode'] ?? 'N/A'); ?></div>
+                                                </div>
+                                                <?php if (isset($librarian['self_transport_mode']) && ($librarian['self_transport_mode'] === 'Bike' || $librarian['self_transport_mode'] === 'Car')): ?>
+                                                    <hr>
+                                                    <div class="row info-row">
+                                                        <div class="col-sm-4 info-label">Vehicle Number:</div>
+                                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($librarian['vehicle_number'] ?? 'N/A'); ?></div>
+                                                    </div>
+                                                    <hr>
+                                                    <div class="row info-row">
+                                                        <div class="col-sm-4 info-label">License Number:</div>
+                                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($librarian['license_number'] ?? 'N/A'); ?></div>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                             </div>
                         </div>

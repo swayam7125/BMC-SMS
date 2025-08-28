@@ -41,9 +41,14 @@ $principal = null;
 $timings = [];
 
 try {
-    $query_principal = "SELECT p.*, s.school_name, s.address as school_address, s.phone as school_phone, s.email as school_email
+    // MODIFIED: Updated query to select all new transportation fields
+    $query_principal = "SELECT p.*, s.school_name, s.address as school_address, s.phone as school_phone, s.email as school_email,
+                        st.stop_name, r.route_name, v.vehicle_number as school_vehicle_number
                       FROM principal p 
                       LEFT JOIN school s ON p.school_id = s.id
+                      LEFT JOIN stops st ON p.stop_id = st.id
+                      LEFT JOIN routes r ON st.route_id = r.id
+                      LEFT JOIN vehicles v ON r.vehicle_id = v.id
                       WHERE p.id = ?";
     $stmt_principal = $conn->prepare($query_principal);
     $stmt_principal->execute([$principal_id]);
@@ -251,6 +256,53 @@ $default_photo = getDefaultImagePath(BASE_URL);
                                     <?php else: ?>
                                         <div class="alert alert-warning small">No weekly schedule has been set for this principal.</div>
                                     <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-12 mb-4 mt-4">
+                            <div class="card shadow">
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-bus"></i> Transportation Information</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <div class="row info-row">
+                                                <div class="col-sm-4 info-label">Mode of Transport:</div>
+                                                <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['transport_mode'] ?? 'N/A'); ?></div>
+                                            </div>
+                                            <?php if (isset($principal['transport_mode']) && $principal['transport_mode'] === 'School Transport'): ?>
+                                                <hr>
+                                                <div class="row info-row">
+                                                    <div class="col-sm-4 info-label">Route:</div>
+                                                    <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['route_name'] ?? 'N/A'); ?></div>
+                                                </div>
+                                                <hr>
+                                                <div class="row info-row">
+                                                    <div class="col-sm-4 info-label">Stop:</div>
+                                                    <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['stop_name'] ?? 'N/A'); ?></div>
+                                                </div>
+                                            <?php elseif (isset($principal['transport_mode']) && $principal['transport_mode'] === 'Self Transport'): ?>
+                                                <hr>
+                                                <div class="row info-row">
+                                                    <div class="col-sm-4 info-label">Self Transport Mode:</div>
+                                                    <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['self_transport_mode'] ?? 'N/A'); ?></div>
+                                                </div>
+                                                <?php if (isset($principal['self_transport_mode']) && ($principal['self_transport_mode'] === 'Bike' || $principal['self_transport_mode'] === 'Car')): ?>
+                                                    <hr>
+                                                    <div class="row info-row">
+                                                        <div class="col-sm-4 info-label">Vehicle Number:</div>
+                                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['vehicle_number'] ?? 'N/A'); ?></div>
+                                                    </div>
+                                                    <hr>
+                                                    <div class="row info-row">
+                                                        <div class="col-sm-4 info-label">License Number:</div>
+                                                        <div class="col-sm-8 info-value"><?php echo htmlspecialchars($principal['license_number'] ?? 'N/A'); ?></div>
+                                                    </div>
+                                                <?php endif; ?>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

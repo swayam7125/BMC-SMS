@@ -1,5 +1,5 @@
 <?php
-include_once "../../includes/connect.php"; // Your PDO connection file
+include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
 // Check if user is logged in
@@ -8,24 +8,34 @@ if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
 
-if (!$role) {
-    header("Location: ../../login.php");
+if ($role !== 'principal') {
+    header("Location: ../../login.php?error=Unauthorized");
     exit;
 }
 
-if (!isset($_GET['id']) || !filter_var($_GET['id'], FILTER_VALIDATE_INT)) {
+if (!isset($_GET['id']) || empty($_GET['id'])) {
     header("Location: teacher_list.php?error=Invalid ID provided");
     exit;
 }
 
-$teacher_id = (int)$_GET['id'];
+$teacher_id = intval($_GET['id']);
 $errors = [];
-$teacher = [];
-$timings = [];
+$teacher = null;
+$original_email = null;
+$original_image_path = null;
+
+// Define BASE_WEB_PATH for consistent path handling
+if (!defined('BASE_WEB_PATH')) {
+    define('BASE_WEB_PATH', '/BMC-SMS/');
+}
 
 try {
-    // --- FETCH TEACHER AND TIMINGS DATA (PDO) ---
-    $sql_teacher = "SELECT * FROM teacher WHERE id = ?";
+    // MODIFIED: Fetch current teacher data with all necessary fields, including transport
+    $sql_teacher = "SELECT t.*, st.stop_name, r.route_name, v.vehicle_number as school_vehicle_number FROM teacher t
+                    LEFT JOIN stops st ON t.stop_id = st.id
+                    LEFT JOIN routes r ON st.route_id = r.id
+                    LEFT JOIN vehicles v ON r.vehicle_id = v.id
+                    WHERE t.id = ?";
     $stmt_teacher_fetch = $conn->prepare($sql_teacher);
     $stmt_teacher_fetch->execute([$teacher_id]);
     $teacher = $stmt_teacher_fetch->fetch(PDO::FETCH_ASSOC);
@@ -34,6 +44,7 @@ try {
         header("Location: teacher_list.php?error=Teacher not found");
         exit;
     }
+
     $original_email = $teacher['email'] ?? '';
     $original_image_path = $teacher['teacher_image'] ?? '';
     $original_class_teacher_std = $teacher['class_teacher_std'];
@@ -41,13 +52,14 @@ try {
     $sql_timings = "SELECT * FROM teacher_timings WHERE teacher_id = ?";
     $stmt_timings_fetch = $conn->prepare($sql_timings);
     $stmt_timings_fetch->execute([$teacher_id]);
+    $timings = [];
     while ($row = $stmt_timings_fetch->fetch(PDO::FETCH_ASSOC)) {
         $timings[$row['day_of_week']] = $row;
     }
+    
 } catch (PDOException $e) {
     die("Database error while fetching data: " . $e->getMessage());
 }
-
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -74,7 +86,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $class_teacher = isset($_POST['class_teacher']) ? 1 : 0;
     $class_teacher_std = $class_teacher ? ($_POST['class_teacher_std'] ?? null) : null;
-
+    
+    // NEW: Retrieve transport fields from the form
+    $transport_mode = $_POST['transport_mode'] ?? 'Self Transport';
+    $stop_id = ($transport_mode === 'School Transport' && !empty($_POST['stop_id'])) ? (int)$_POST['stop_id'] : null;
+    $self_transport_mode = ($transport_mode === 'Self Transport' && !empty($_POST['self_transport_mode'])) ? $_POST['self_transport_mode'] : null;
+    $vehicle_number = null;
+    $license_number = null;
+    
+    if ($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') {
+        $vehicle_number = trim($_POST['vehicle_number'] ?? '');
+        $license_number = trim($_POST['license_number'] ?? '');
+    }
+    
     $image_path_for_db = $original_image_path;
 
     // --- Validation ---
@@ -84,6 +108,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($class_teacher && empty($class_teacher_std)) {
         $errors[] = "Please select a standard for the class teacher.";
     }
+    
+    // NEW: Validation for transport details
+    if ($transport_mode === 'Self Transport' && empty($self_transport_mode)) $errors[] = "Please specify the mode of self-transport.";
+    if (($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') && empty($vehicle_number)) $errors[] = "Vehicle number is required.";
+    if (($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') && empty($license_number)) $errors[] = "License number is required.";
+
 
     // --- Handle Photo Upload ---
     if (isset($_FILES['teacher_image']) && $_FILES['teacher_image']['error'] === UPLOAD_ERR_OK) {
@@ -118,7 +148,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt_users->execute([$new_email, $teacher_id]);
             }
 
-            $sql_update_teacher = "UPDATE teacher SET teacher_image = ?, teacher_name = ?, phone = ?, school_id = ?, dob = ?, gender = ?, blood_group = ?, address = ?, email = ?, qualification = ?, subject = ?, language_known = ?, salary = ?, std = ?, experience = ?, batch = ?, class_teacher = ?, class_teacher_std = ? WHERE id = ?";
+            // CORRECTED: The SQL query now uses correct column names and placeholders.
+            $sql_update_teacher = "UPDATE teacher SET 
+                                  teacher_image = ?, teacher_name = ?, phone = ?, school_id = ?, dob = ?, gender = ?, blood_group = ?, address = ?, 
+                                  email = ?, qualification = ?, subject = ?, language_known = ?, salary = ?, std = ?, experience = ?, batch = ?, 
+                                  class_teacher = ?, class_teacher_std = ?, 
+                                  transport_mode = ?, self_transport_mode = ?, vehicle_number = ?, license_number = ?, stop_id = ? 
+                                  WHERE id = ?";
+
             $stmt_update = $conn->prepare($sql_update_teacher);
             $stmt_update->execute([
                 $image_path_for_db,
@@ -139,6 +176,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $batch,
                 $class_teacher,
                 $class_teacher_std,
+                // New fields start here
+                $transport_mode,
+                $self_transport_mode,
+                $vehicle_number,
+                $license_number,
+                $stop_id,
+                // WHERE clause variable
                 $teacher_id
             ]);
 
@@ -155,12 +199,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!$is_closed && !empty($details['opens_at']) && !empty($details['opens_at_ampm'])) {
                     $opens_at = date("H:i:s", strtotime($details['opens_at'] . ' ' . $details['opens_at_ampm']));
                 }
-
                 $closes_at = null;
                 if (!$is_closed && !empty($details['closes_at']) && !empty($details['closes_at_ampm'])) {
                     $closes_at = date("H:i:s", strtotime($details['closes_at'] . ' ' . $details['closes_at_ampm']));
                 }
-
                 $stmt_timing_upsert->execute([$teacher_id, $day, $opens_at, $closes_at, $is_closed]);
             }
 
@@ -186,6 +228,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     }
+    // Re-populate form fields in case of error
     $teacher = array_merge($teacher, $_POST);
     $timings = $posted_timings;
 }
@@ -193,8 +236,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 try {
     $schools_query = "SELECT id, school_name FROM school ORDER BY school_name";
     $schools_result = $conn->query($schools_query)->fetchAll(PDO::FETCH_ASSOC);
+
+    $school_to_check = $teacher['school_id'];
+    $stmt_routes = $conn->prepare('SELECT r.route_name, s.id as stop_id, s.stop_name FROM routes r JOIN stops s ON r.id = s.route_id WHERE r.school_id = ? ORDER BY r.route_name, s.stop_name');
+    $stmt_routes->execute([$school_to_check]);
+    $transport_stops = $stmt_routes->fetchAll(PDO::FETCH_ASSOC);
+
 } catch (PDOException $e) {
-    die("Could not fetch schools list: " . $e->getMessage());
+    die("Could not fetch schools list or transport stops: " . $e->getMessage());
 }
 
 $raw_stds = $teacher['std'] ?? '';
@@ -304,10 +353,54 @@ if (is_string($raw_stds) && !empty($raw_stds)) {
                                     </div>
                                     <div class="form-group col-md-6" id="classTeacherStdGroup" style="display: <?php echo !empty($teacher['class_teacher']) ? 'block' : 'none'; ?>;"><label for="class_teacher_std">Class Teacher for Standard *</label><select class="form-control" id="class_teacher_std" name="class_teacher_std">
                                             <option value="">-- Select Standard --</option><?php $stds_for_class_teacher = ['Nursery', 'Junior', 'Senior', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
-                                                                                            foreach ($stds_for_class_teacher as $std_val): ?><option value="<?php echo $std_val; ?>" <?php echo (($teacher['class_teacher_std'] ?? '') == $std_val) ? 'selected' : ''; ?>><?php echo $std_val; ?></option><?php endforeach; ?>
-                                        </select></div>
+                                                                                            foreach ($stds_for_class_teacher as $std_val): ?><option value="<?php echo $std_val; ?>" <?php echo (($teacher['class_teacher_std'] ?? '') == $std_val) ? 'selected' : ''; ?>><?php echo $std_val; ?></option><?php endforeach; ?></select></div>
                                 </div>
-
+                                
+                                <hr>
+                                <h6 class="font-weight-bold text-primary">Transportation Details</h6>
+                                <div class="row mt-3">
+                                    <div class="col-md-6 form-group">
+                                        <label for="transport_mode">Mode of Transport</label>
+                                        <select class="form-control" id="transport_mode" name="transport_mode">
+                                            <option value="Self Transport" <?php echo (isset($teacher['transport_mode']) && $teacher['transport_mode'] == 'Self Transport') ? 'selected' : ''; ?>>Self Transport</option>
+                                            <option value="School Transport" <?php echo (isset($teacher['transport_mode']) && $teacher['transport_mode'] == 'School Transport') ? 'selected' : ''; ?>>School Transport</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 form-group" id="self-transport-div" style="display: <?php echo (isset($teacher['transport_mode']) && $teacher['transport_mode'] == 'Self Transport') ? 'block' : 'none'; ?>;">
+                                        <label for="self_transport_mode">Self Transport Mode</label>
+                                        <select class="form-control" id="self_transport_mode" name="self_transport_mode">
+                                            <option value="">-- Select Mode --</option>
+                                            <option value="Public Transport" <?php echo (isset($teacher['self_transport_mode']) && $teacher['self_transport_mode'] == 'Public Transport') ? 'selected' : ''; ?>>Public Transport</option>
+                                            <option value="Walking" <?php echo (isset($teacher['self_transport_mode']) && $teacher['self_transport_mode'] == 'Walking') ? 'selected' : ''; ?>>Walking</option>
+                                            <option value="Parents" <?php echo (isset($teacher['self_transport_mode']) && $teacher['self_transport_mode'] == 'Parents') ? 'selected' : ''; ?>>Parents</option>
+                                            <option value="Bike" <?php echo (isset($teacher['self_transport_mode']) && $teacher['self_transport_mode'] == 'Bike') ? 'selected' : ''; ?>>Bike</option>
+                                            <option value="Car" <?php echo (isset($teacher['self_transport_mode']) && $teacher['self_transport_mode'] == 'Car') ? 'selected' : ''; ?>>Car</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 form-group" id="transport-stop-div" style="display: <?php echo (isset($teacher['transport_mode']) && $teacher['transport_mode'] == 'School Transport') ? 'block' : 'none'; ?>;">
+                                        <label for="stop_id">Assign School Transport Stop</label>
+                                        <select class="form-control" id="stop_id" name="stop_id">
+                                            <option value="">-- No Stop Selected --</option>
+                                            <?php
+                                            foreach ($transport_stops as $stop) {
+                                                $selected = ($stop['stop_id'] == ($teacher['stop_id'] ?? '')) ? 'selected' : '';
+                                                echo "<option value='{$stop['stop_id']}' {$selected}>" . htmlspecialchars($stop['stop_name']) . " (Route: " . htmlspecialchars($stop['route_name']) . ")</option>";
+                                            }
+                                            ?>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row mt-3" id="vehicle-details-div" style="display: <?php echo (isset($teacher['self_transport_mode']) && ($teacher['self_transport_mode'] == 'Bike' || $teacher['self_transport_mode'] == 'Car')) ? 'flex' : 'none'; ?>;">
+                                    <div class="col-md-6 form-group">
+                                        <label for="vehicle_number">Vehicle Number *</label>
+                                        <input type="text" class="form-control" id="vehicle_number" name="vehicle_number" value="<?php echo htmlspecialchars($teacher['vehicle_number'] ?? ''); ?>">
+                                    </div>
+                                    <div class="col-md-6 form-group">
+                                        <label for="license_number">License Number *</label>
+                                        <input type="text" class="form-control" id="license_number" name="license_number" value="<?php echo htmlspecialchars($teacher['license_number'] ?? ''); ?>">
+                                    </div>
+                                </div>
+                                
                                 <hr>
                                 <h6 class="font-weight-bold text-primary mb-3">Weekly Timings</h6>
                                 <div id="timings-schedule">
@@ -402,6 +495,60 @@ if (is_string($raw_stds) && !empty($raw_stds)) {
             });
             // Trigger the change on page load to set the initial state correctly
             $('.closed-checkbox').trigger('change');
+
+            // NEW: JavaScript for dynamic transport fields
+            const transportModeSelect = document.getElementById('transport_mode');
+            const selfTransportSelect = document.getElementById('self_transport_mode');
+            const schoolTransportDiv = document.getElementById('transport-stop-div');
+            const selfTransportDiv = document.getElementById('self-transport-div');
+            const vehicleDetailsDiv = document.getElementById('vehicle-details-div');
+
+            function toggleSelfTransportFields() {
+                const selectedMode = selfTransportSelect.value;
+                if (selectedMode === 'Bike' || selectedMode === 'Car') {
+                    vehicleDetailsDiv.style.display = 'flex';
+                } else {
+                    vehicleDetailsDiv.style.display = 'none';
+                    // Clear values when hiding
+                    document.getElementById('vehicle_number').value = '';
+                    document.getElementById('license_number').value = '';
+                }
+            }
+
+            function toggleTransportFields() {
+                const mainMode = transportModeSelect.value;
+                if (mainMode === 'School Transport') {
+                    schoolTransportDiv.style.display = 'block';
+                    selfTransportDiv.style.display = 'none';
+                    vehicleDetailsDiv.style.display = 'none';
+                    // Clear values when hiding
+                    selfTransportSelect.value = '';
+                    document.getElementById('vehicle_number').value = '';
+                    document.getElementById('license_number').value = '';
+                } else if (mainMode === 'Self Transport') {
+                    selfTransportDiv.style.display = 'block';
+                    schoolTransportDiv.style.display = 'none';
+                    // Clear values when hiding
+                    document.getElementById('stop_id').value = '';
+                    toggleSelfTransportFields(); 
+                } else {
+                    // Default state, hide all
+                    selfTransportDiv.style.display = 'none';
+                    schoolTransportDiv.style.display = 'none';
+                    vehicleDetailsDiv.style.display = 'none';
+                    // Clear all values
+                    selfTransportSelect.value = '';
+                    document.getElementById('stop_id').value = '';
+                    document.getElementById('vehicle_number').value = '';
+                    document.getElementById('license_number').value = '';
+                }
+            }
+            // Initial check on page load
+            toggleTransportFields();
+
+            // Add event listeners for dynamic changes
+            transportModeSelect.addEventListener('change', toggleTransportFields);
+            selfTransportSelect.addEventListener('change', toggleSelfTransportFields);
         });
     </script>
 </body>

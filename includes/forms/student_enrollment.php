@@ -256,7 +256,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                      <div class="form-group col-md-6">
                                         <label for="transport_mode">Mode of Transport *</label>
                                         <select class="form-control" id="transport_mode" name="transport_mode" required>
-                                            <option value="Self Transport" <?php echo (isset($_POST['transport_mode']) && $_POST['transport_mode'] == 'Self Transport') ? 'selected' : ''; ?>>Self (Own Vehicle/Walking)</option>
+                                            <option value="Self Transport" <?php echo (isset($_POST['transport_mode']) && $_POST['transport_mode'] == 'Self Transport') ? 'selected' : ''; ?>>Self Transport (Own Vehicle/Walking)</option>
                                             <option value="School Transport" <?php echo (isset($_POST['transport_mode']) && $_POST['transport_mode'] == 'School Transport') ? 'selected' : ''; ?>>School Transport (Bus/Van)</option>
                                         </select>
                                      </div>
@@ -264,6 +264,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         <label for="self_transport_mode">Self Transport Mode *</label>
                                         <select class="form-control" id="self_transport_mode" name="self_transport_mode">
                                             <option value="">-- Select Mode --</option>
+                                            <option value="Public Transport" <?php echo (isset($_POST['self_transport_mode']) && $_POST['self_transport_mode'] == 'Public Transport') ? 'selected' : ''; ?>>Public Transport</option>
                                             <option value="Walking" <?php echo (isset($_POST['self_transport_mode']) && $_POST['self_transport_mode'] == 'Walking') ? 'selected' : ''; ?>>Walking</option>
                                             <option value="Parents" <?php echo (isset($_POST['self_transport_mode']) && $_POST['self_transport_mode'] == 'Parents') ? 'selected' : ''; ?>>Parents</option>
                                             <option value="Bike" <?php echo (isset($_POST['self_transport_mode']) && $_POST['self_transport_mode'] == 'Bike') ? 'selected' : ''; ?>>Bike</option>

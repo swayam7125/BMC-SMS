@@ -35,6 +35,14 @@ if ($userId) {
 }
 
 $errors = [];
+$schools = [];
+
+try {
+    $stmt_schools = $conn->query('SELECT "id", "school_name" FROM "school" ORDER BY "school_name"');
+    $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    $errors[] = "Database error: " . $e->getMessage();
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // --- FORM DATA RETRIEVAL ---
@@ -53,6 +61,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $school_id = $admin_school_id;
     $image_path_for_db = null;
     $date_of_joining = $_POST['date_of_joining'] ?? null;
+
+    // NEW: Retrieve transport-related fields
+    $transport_mode = $_POST['transport_mode'] ?? 'Self Transport';
+    $stop_id = ($transport_mode === 'School Transport' && !empty($_POST['stop_id'])) ? (int)$_POST['stop_id'] : null;
+    $self_transport_mode = ($transport_mode === 'Self Transport' && !empty($_POST['self_transport_mode'])) ? $_POST['self_transport_mode'] : null;
+    $vehicle_number = null;
+    $license_number = null;
+    if ($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') {
+        $vehicle_number = trim($_POST['vehicle_number'] ?? '');
+        $license_number = trim($_POST['license_number'] ?? '');
+    }
 
     // --- FILE UPLOAD LOGIC ---
     if (isset($_FILES['librarian_image']) && $_FILES['librarian_image']['error'] === UPLOAD_ERR_OK) {
@@ -77,6 +96,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($phone)) $errors[] = "Phone number is required.";
     if (empty($school_id)) $errors[] = "School association is missing.";
     if (empty($batch)) $errors[] = "Batch is required.";
+    // NEW: Validation for transport fields
+    if ($transport_mode === 'Self Transport' && empty($self_transport_mode)) $errors[] = "Please specify the mode of self-transport.";
+    if (($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') && empty($vehicle_number)) $errors[] = "Vehicle number is required.";
+    if (($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') && empty($license_number)) $errors[] = "License number is required.";
 
     // --- DATABASE INSERTION ---
     if (empty($errors)) {
@@ -89,8 +112,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt_user->execute([$user_role, $email, $hashed_password]);
             $new_user_id = $conn->lastInsertId();
 
-            $stmt_librarian = $conn->prepare('INSERT INTO "librarian" (id, librarian_image, librarian_name, school_id, email, password, phone, dob, gender, blood_group, address, qualification, salary, batch, date_of_joining) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-            $stmt_librarian->execute([$new_user_id, $image_path_for_db, $librarian_name, $school_id, $email, $hashed_password, $phone, $dob, $gender, $blood_group, $address, $qualification, $salary, $batch, $date_of_joining]);
+            // MODIFIED: Added new columns to the INSERT statement
+            $stmt_librarian = $conn->prepare('INSERT INTO "librarian" (id, librarian_image, librarian_name, school_id, email, password, phone, dob, gender, blood_group, address, qualification, salary, batch, date_of_joining, transport_mode, self_transport_mode, vehicle_number, license_number, stop_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            $stmt_librarian->execute([$new_user_id, $image_path_for_db, $librarian_name, $school_id, $email, $hashed_password, $phone, $dob, $gender, $blood_group, $address, $qualification, $salary, $batch, $date_of_joining, $transport_mode, $self_transport_mode, $vehicle_number, $license_number, $stop_id]);
 
             $stmt_timing = $conn->prepare('INSERT INTO "librarian_timings" (librarian_id, day_of_week, opens_at, closes_at, is_closed) VALUES (?, ?, ?, ?, ?)');
             foreach ($timings as $day => $details) {
@@ -204,15 +228,73 @@ if (!is_ajax_request()) {
                                     </div>
                                 </div>
                                 <div class="form-row">
-                                    <div class="form-group col-md-12">
+                                    <div class="form-group col-md-6">
                                         <label for="date_of_joining">Date of Joining</label>
                                         <input type="date" class="form-control" id="date_of_joining" name="date_of_joining" value="<?php echo htmlspecialchars($_POST['date_of_joining'] ?? ''); ?>">
                                     </div>
+                                    <div class="form-group col-md-6"><label for="qualification">Qualification</label><input type="text" class="form-control" id="qualification" name="qualification" value="<?php echo htmlspecialchars($_POST['qualification'] ?? ''); ?>"></div>
                                 </div>
                                 <div class="form-row">
-                                    <div class="form-group col-md-6"><label for="qualification">Qualification</label><input type="text" class="form-control" id="qualification" name="qualification" value="<?php echo htmlspecialchars($_POST['qualification'] ?? ''); ?>"></div>
                                     <div class="form-group col-md-6"><label for="salary">Salary</label><input type="number" class="form-control" id="salary" name="salary" step="0.01" min="0" value="<?php echo htmlspecialchars($_POST['salary'] ?? ''); ?>"></div>
                                 </div>
+                                
+                                <hr>
+                                <h6 class="text-primary">Transport Details</h6>
+                                 <div class="form-row mt-3">
+                                     <div class="form-group col-md-6">
+                                        <label for="transport_mode">Mode of Transport *</label>
+                                        <select class="form-control" id="transport_mode" name="transport_mode" required>
+                                            <option value="Self Transport" <?php echo (isset($_POST['transport_mode']) && $_POST['transport_mode'] == 'Self Transport') ? 'selected' : ''; ?>>Self Transport (Own Vehicle/Walking)</option>
+                                            <option value="School Transport" <?php echo (isset($_POST['transport_mode']) && $_POST['transport_mode'] == 'School Transport') ? 'selected' : ''; ?>>School Transport (Bus/Van)</option>
+                                        </select>
+                                     </div>
+                                     <div class="form-group col-md-6" id="self-transport-div" style="display: <?php echo (isset($_POST['transport_mode']) && $_POST['transport_mode'] == 'Self Transport') ? 'block' : 'none'; ?>;">
+                                        <label for="self_transport_mode">Self Transport Mode *</label>
+                                        <select class="form-control" id="self_transport_mode" name="self_transport_mode">
+                                            <option value="">-- Select Mode --</option>
+                                            <option value="Public Transport" <?php echo (isset($_POST['self_transport_mode']) && $_POST['self_transport_mode'] == 'Public Transport') ? 'selected' : ''; ?>>Public Transport</option>
+                                            <option value="Walking" <?php echo (isset($_POST['self_transport_mode']) && $_POST['self_transport_mode'] == 'Walking') ? 'selected' : ''; ?>>Walking</option>
+                                            <option value="Parents" <?php echo (isset($_POST['self_transport_mode']) && $_POST['self_transport_mode'] == 'Parents') ? 'selected' : ''; ?>>Parents</option>
+                                            <option value="Bike" <?php echo (isset($_POST['self_transport_mode']) && $_POST['self_transport_mode'] == 'Bike') ? 'selected' : ''; ?>>Bike</option>
+                                            <option value="Car" <?php echo (isset($_POST['self_transport_mode']) && $_POST['self_transport_mode'] == 'Car') ? 'selected' : ''; ?>>Car</option>
+                                        </select>
+                                    </div>
+                                     <div class="form-group col-md-6" id="transport-stop-div" style="display: <?php echo (isset($_POST['transport_mode']) && $_POST['transport_mode'] == 'School Transport') ? 'block' : 'none'; ?>;">
+                                        <label for="stop_id">Assign Transport Stop (Optional)</label>
+                                        <select class="form-control" id="stop_id" name="stop_id">
+                                            <option value="">-- No Transport --</option>
+                                            <?php
+                                            $school_to_check = ($role === 'principal') ? $admin_school_id : ($_POST['school_id'] ?? null);
+                                            if ($school_to_check) {
+                                                $stmt_routes = $conn->prepare('SELECT r.route_name, s.id as stop_id, s.stop_name FROM routes r JOIN stops s ON r.id = s.route_id WHERE r.school_id = ? ORDER BY r.route_name, s.stop_name');
+                                                $stmt_routes->execute([$school_to_check]);
+                                                $current_route = '';
+                                                while($row = $stmt_routes->fetch(PDO::FETCH_ASSOC)) {
+                                                    if ($row['route_name'] !== $current_route) {
+                                                        if ($current_route !== '') echo '</optgroup>';
+                                                        $current_route = $row['route_name'];
+                                                        echo '<optgroup label="' . htmlspecialchars($current_route) . '">';
+                                                    }
+                                                    $selected = (isset($_POST['stop_id']) && $_POST['stop_id'] == $row['stop_id']) ? 'selected' : '';
+                                                    echo "<option value='" . $row['stop_id'] . "' {$selected}>" . htmlspecialchars($row['stop_name']) . "</option>";
+                                                }
+                                                if ($current_route !== '') echo '</optgroup>';
+                                            }
+                                            ?>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-row mt-3" id="vehicle-details-div" style="display: <?php echo (isset($_POST['self_transport_mode']) && ($_POST['self_transport_mode'] == 'Bike' || $_POST['self_transport_mode'] == 'Car')) ? 'flex' : 'none'; ?>;">
+                                    <div class="form-group col-md-6">
+                                        <label for="vehicle_number">Vehicle Number *</label>
+                                        <input type="text" class="form-control" id="vehicle_number" name="vehicle_number" value="<?php echo htmlspecialchars($_POST['vehicle_number'] ?? ''); ?>">
+                                    </div>
+                                    <div class="form-group col-md-6">
+                                        <label for="license_number">License Number *</label>
+                                        <input type="text" class="form-control" id="license_number" name="license_number" value="<?php echo htmlspecialchars($_POST['license_number'] ?? ''); ?>">
+                                    </div>
+                                </div>
+                                
                                 <hr>
                                 <h6 class="font-weight-bold text-primary mb-3">Weekly Timings</h6>
                                 <div id="timings-schedule">
@@ -340,6 +422,97 @@ if (!is_ajax_request()) {
                 const day = String(today.getDate()).padStart(2, '0');
                 const formattedDate = `${year}-${month}-${day}`;
                 dateInput.setAttribute('min', formattedDate);
+            }
+
+            // NEW: JavaScript for transport fields
+            const transportModeSelect = document.getElementById('transport_mode');
+            const selfTransportSelect = document.getElementById('self_transport_mode');
+            const schoolTransportDiv = document.getElementById('transport-stop-div');
+            const selfTransportDiv = document.getElementById('self-transport-div');
+            const vehicleDetailsDiv = document.getElementById('vehicle-details-div');
+            const schoolSelect = document.getElementById('school_id'); // Assuming there's a school_id select for non-principal roles
+            
+            // Function to fetch transport stops for a school
+            function fetchTransportStops(schoolId, selectedStopId = null) {
+                if (!schoolId) {
+                    $('#stop_id').html('<option value="">-- No Transport --</option>');
+                    return;
+                }
+                
+                $('#stop_id').html('<option value="">-- Loading stops --</option>');
+                
+                fetch('../../pages/student/get_transport_stops.php?school_id=' + schoolId)
+                    .then(response => response.json())
+                    .then(data => {
+                        let options = '<option value="">-- No Transport --</option>';
+                        data.forEach(stop => {
+                            const isSelected = stop.stop_id == selectedStopId ? 'selected' : '';
+                            options += `<option value="${stop.stop_id}" ${isSelected}>${stop.stop_name} (Route: ${stop.route_name})</option>`;
+                        });
+                        $('#stop_id').html(options);
+                    })
+                    .catch(error => {
+                        console.error('Error fetching transport stops:', error);
+                        $('#stop_id').html('<option value="">-- Error loading stops --</option>');
+                    });
+            }
+
+            function toggleSelfTransportFields() {
+                const selectedMode = selfTransportSelect.value;
+                if (selectedMode === 'Bike' || selectedMode === 'Car') {
+                    vehicleDetailsDiv.style.display = 'flex';
+                } else {
+                    vehicleDetailsDiv.style.display = 'none';
+                    document.getElementById('vehicle_number').value = '';
+                    document.getElementById('license_number').value = '';
+                }
+            }
+
+            function toggleTransportFields() {
+                const mainMode = transportModeSelect.value;
+                if (mainMode === 'School Transport') {
+                    schoolTransportDiv.style.display = 'block';
+                    selfTransportDiv.style.display = 'none';
+                    vehicleDetailsDiv.style.display = 'none';
+                    document.getElementById('self_transport_mode').value = '';
+                    document.getElementById('vehicle_number').value = '';
+                    document.getElementById('license_number').value = '';
+
+                    const schoolId = $('#school_id').val();
+                    if (schoolId) {
+                        fetchTransportStops(schoolId);
+                    }
+                    
+                } else if (mainMode === 'Self Transport') {
+                    selfTransportDiv.style.display = 'block';
+                    schoolTransportDiv.style.display = 'none';
+                    document.getElementById('stop_id').value = '';
+                    toggleSelfTransportFields(); 
+                } else {
+                    selfTransportDiv.style.display = 'none';
+                    schoolTransportDiv.style.display = 'none';
+                    vehicleDetailsDiv.style.display = 'none';
+                    document.getElementById('self_transport_mode').value = '';
+                    document.getElementById('stop_id').value = '';
+                    document.getElementById('vehicle_number').value = '';
+                    document.getElementById('license_number').value = '';
+                }
+            }
+
+            // Trigger initial state
+            toggleTransportFields();
+
+            // Add event listeners
+            transportModeSelect.addEventListener('change', toggleTransportFields);
+            selfTransportSelect.addEventListener('change', toggleSelfTransportFields);
+
+            // Re-fetch stops if school changes
+            if (schoolSelect) {
+                schoolSelect.addEventListener('change', function() {
+                    if (transportModeSelect.value === 'School Transport') {
+                        fetchTransportStops(this.value);
+                    }
+                });
             }
         });
     </script>
