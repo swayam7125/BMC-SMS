@@ -179,8 +179,7 @@ if (!function_exists('getNotificationIcon')) {
         border: 1px solid #e3e6f0;
         border-radius: 0.35rem;
         box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-        max-height: 50vh; /* Allow to scale on smaller screens */
-        min-height: 100px; /* Ensure a minimum height */
+        max-height: 50vh; 
         overflow-y: auto;
         display: none;
     }
@@ -202,6 +201,30 @@ if (!function_exists('getNotificationIcon')) {
         color: #858796;
         text-align: center;
     }
+    /* ⭐ START: Styles for Search History */
+    .history-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+    }
+    .history-item .history-text {
+        display: flex;
+        align-items: center;
+    }
+    .history-item .history-text i {
+        margin-right: 12px;
+        color: #858796;
+    }
+    .history-item .remove-history {
+        color: #d1d3e2;
+        font-size: 0.9rem;
+        padding: 4px 8px; /* Easier to click */
+    }
+    .history-item .remove-history:hover {
+        color: #e74a3b;
+    }
+    /* ⭐ END: Styles for Search History */
 </style>
 <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
 
@@ -212,8 +235,7 @@ if (!function_exists('getNotificationIcon')) {
     <div class="d-none d-sm-inline-block form-inline mr-auto ml-md-3 my-2 my-md-0 mw-100 navbar-search position-relative">
         <div class="input-group">
             <input type="text" id="pageSearchInput" class="form-control bg-light border-0 small" placeholder="Search for pages..."
-                aria-label="Search">
-            <div class="input-group-append">
+                aria-label="Search" autocomplete="off"> <div class="input-group-append">
                 <button class="btn btn-primary" type="button">
                     <i class="fas fa-search fa-sm"></i>
                 </button>
@@ -430,31 +452,136 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // --- START: DYNAMIC Search Bar Functionality ---
+    // ⭐ START: ENHANCED DYNAMIC Search Bar Functionality ---
     const searchInput = document.getElementById('pageSearchInput');
     const searchResults = document.getElementById('pageSearchResults');
     const base_url_for_search = '<?php echo BASE_WEB_PATH; ?>';
+    const SEARCH_HISTORY_COOKIE = 'page_search_history';
+    const MAX_HISTORY_ITEMS = 5;
 
     <?php
     // Master list of all searchable pages with their allowed roles
-    $all_pages = [
-        // Payroll Pages
-        ['title' => 'Teacher Payroll', 'url' => 'pages/payroll/process_teacher_salary.php', 'roles' => ['payroll']],
-        ['title' => 'Librarian Payroll', 'url' => 'pages/payroll/process_librarian_salary.php', 'roles' => ['payroll']],
-        ['title' => 'Salary History', 'url' => 'pages/payroll/view_salary_history.php', 'roles' => ['payroll']],
-        
+    $all_pages = [        
+        // Super Admin Pages
+        ['title' => 'Dashboard', 'url' => 'dashboard.php', 'roles' => ['superadmin']],
+        ['title' => 'Enroll School', 'url' => 'includes/forms/school_enrollment.php', 'roles' => ['superadmin']],
+        ['title' => 'School List', 'url' => 'pages/school/school_list.php', 'roles' => ['superadmin']],
+        ['title' => 'Enroll Principal', 'url' => 'includes/forms/principal_enrollment.php', 'roles' => ['superadmin']],
+        ['title' => 'Principal List', 'url' => 'pages/principal/principal_list.php', 'roles' => ['superadmin']],
+        ['title' => 'Principal Attendance', 'url' => 'pages/bmc/principal_attendance.php', 'roles' => ['superadmin']],
+        ['title' => 'Send Notice to Principals', 'url' => 'pages/bmc/send_notice.php', 'roles' => ['superadmin']],
+        ['title' => 'View Principal Notice', 'url' => 'pages/bmc/view_principal_notices.php', 'roles' => ['superadmin']],
+        ['title' => 'Past School List', 'url' => 'pages/past_record/past_school.php', 'roles' => ['superadmin']],
+        ['title' => 'Past Principal List', 'url' => 'pages/past_record/past_principal.php', 'roles' => ['superadmin']],
+        ['title' => 'Enrollment Report', 'url' => 'pages/reports/report_enrollment.php', 'roles' => ['superadmin']],
+        ['title' => 'Attendance Analysis', 'url' => 'pages/reports/report_attendance.php', 'roles' => ['superadmin']],
+        ['title' => 'Academic Performance', 'url' => 'pages/reports/report_academic.php', 'roles' => ['superadmin']],
+        ['title' => 'Payroll Summary', 'url' => 'pages/reports/report_payroll.php', 'roles' => ['superadmin']],
+        ['title' => 'Library Usage', 'url' => 'pages/reports/report_library.php', 'roles' => ['superadmin']],
+
         // Principal Pages
         ['title' => 'Dashboard', 'url' => 'dashboard.php', 'roles' => ['principal']],
+        ['title' => 'My Profile', 'url' => 'pages/user/profile.php', 'roles' => ['principal']],
         ['title' => 'Enroll Teacher', 'url' => 'includes/forms/teacher_enrollment.php', 'roles' => ['principal']],
         ['title' => 'Teacher List', 'url' => 'pages/teacher/teacher_list.php', 'roles' => ['principal']],
+        ['title' => 'Teacher Attendance', 'url' => 'pages/principal/teacher_attendence.php', 'roles' => ['principal']],
+        ['title' => 'View Teacher Attendance', 'url' => 'pages/principal/view_teacher_attendence.php', 'roles' => ['principal']],
         ['title' => 'Enroll Librarian', 'url' => 'includes/forms/librarian_enrollment.php', 'roles' => ['principal']],
         ['title' => 'Librarian List', 'url' => 'pages/librarian/librarian_list.php', 'roles' => ['principal']],
+        ['title' => 'Librarian Attendance', 'url' => 'pages/principal/librarian_attendence.php', 'roles' => ['principal']],
+        ['title' => 'View Librarian Attendance', 'url' => 'pages/principal/view_librarian_attendence.php', 'roles' => ['principal']],
         ['title' => 'Enroll Student', 'url' => 'includes/forms/student_enrollment.php', 'roles' => ['principal']],
         ['title' => 'Student List', 'url' => 'pages/student/student_list.php', 'roles' => ['principal']],
+        ['title' => 'Generate LC', 'url' => 'pages/principal/generate_lc.php', 'roles' => ['principal']],
         ['title' => 'Enroll Payroll User', 'url' => 'includes/forms/payroll_enrollment.php', 'roles' => ['principal']],
         ['title' => 'Payroll User List', 'url' => 'pages/payroll/payroll_list.php', 'roles' => ['principal']],
+        ['title' => 'Payroll Attendance', 'url' => 'pages/principal/payroll_attendance.php', 'roles' => ['principal']],
+        ['title' => 'Manage Vehicles', 'url' => 'pages/transport/manage_vehicles.php', 'roles' => ['principal']],
+        ['title' => 'Manage Drivers', 'url' => 'pages/transport/manage_drivers.php', 'roles' => ['principal']],
+        ['title' => 'Manage Routes & Stops', 'url' => 'pages/transport/manage_routes.php', 'roles' => ['principal']],
+        ['title' => 'Student Transport', 'url' => 'pages/transport/student_transport.php', 'roles' => ['principal']],
+        ['title' => 'My Attendance', 'url' => 'pages/principal/view_my_attendance.php', 'roles' => ['principal']],
+        ['title' => 'My Salary', 'url' => 'pages/principal/view_my_salary.php', 'roles' => ['principal']],
+        ['title' => 'Send School Notice', 'url' => 'pages/principal/send_notice.php', 'roles' => ['principal']],
+        ['title' => 'Send Notice to BMC', 'url' => 'pages/principal/send_notice_to_bmc.php', 'roles' => ['principal']],
+        ['title' => 'Send Notice to Librarian', 'url' => 'pages/principal/send_notice_to_librarian.php', 'roles' => ['principal']],
+        ['title' => 'View BMC Notice', 'url' => 'pages/principal/view_notice.php', 'roles' => ['principal']],
+        ['title' => 'Manage Subjects', 'url' => 'pages/academics/manage_subjects.php', 'roles' => ['principal']],
+        ['title' => 'Manage Timetable', 'url' => 'pages/academics/manage_timetable.php', 'roles' => ['principal']],
+        ['title' => 'Send Exam Timetable', 'url' => 'pages/principal/send_exam_timetable.php', 'roles' => ['principal']],
+        ['title' => 'Holiday Management', 'url' => 'pages/principal/manage_holidays.php', 'roles' => ['principal']],
+        ['title' => 'School Settings', 'url' => 'pages/principal/school_settings.php', 'roles' => ['principal']],
+        ['title' => 'Teacher Leave', 'url' => 'pages/principal/teacher_leave_management.php', 'roles' => ['principal']],
+        ['title' => 'Librarian Leave', 'url' => 'pages/principal/librarian_leave_management.php', 'roles' => ['principal']],
+        ['title' => 'Past Teacher List', 'url' => 'pages/past_record/past_teacher.php', 'roles' => ['principal']],
+        ['title' => 'Past Librarian List', 'url' => 'pages/past_record/past_librarian.php', 'roles' => ['principal']],
+        ['title' => 'Past Student List', 'url' => 'pages/past_record/past_student.php', 'roles' => ['principal']],
+        ['title' => 'Enrollment Report', 'url' => 'pages/reports/report_enrollment.php', 'roles' => ['principal']],
+        ['title' => 'Attendance Analysis', 'url' => 'pages/reports/report_attendance.php', 'roles' => ['principal']],
+        ['title' => 'Academic Performance', 'url' => 'pages/reports/report_academic.php', 'roles' => ['principal']],
+        ['title' => 'Payroll Summary', 'url' => 'pages/reports/report_payroll.php', 'roles' => ['principal']],
+        ['title' => 'Library Usage', 'url' => 'pages/reports/report_library.php', 'roles' => ['principal']],
         
-        // Add other roles' pages here...
+        // Teacher Pages
+        ['title' => 'Dashboard', 'url' => 'dashboard.php', 'roles' => ['teacher']],
+        ['title' => 'My Profile', 'url' => 'pages/user/profile.php', 'roles' => ['teacher']],
+        ['title' => 'My Student', 'url' => 'pages/student/student_list.php', 'roles' => ['teacher']],
+        ['title' => 'My Attendance', 'url' => 'pages/teacher/view_my_attendance.php', 'roles' => ['teacher']],
+        ['title' => 'My Salary History', 'url' => 'pages/teacher/view_salary_history.php', 'roles' => ['teacher']],
+        ['title' => 'Salary History', 'url' => 'pages/payroll/view_salary_history.php', 'roles' => ['teacher']],
+        ['title' => 'Enter Marks', 'url' => 'pages/teacher/marks_entry/marks_entry.php', 'roles' => ['teacher']],
+        ['title' => 'View Marks', 'url' => 'pages/teacher/marks_entry/view_marks.php', 'roles' => ['teacher']],
+        ['title' => 'Send Assignment', 'url' => 'pages/assignments/send_assignment.php', 'roles' => ['teacher']],
+        ['title' => 'Assignment History', 'url' => 'pages/assignments/assignment_history.php', 'roles' => ['teacher']],
+        ['title' => 'Manage Leave', 'url' => 'pages/teacher/teacher_leave_management.php', 'roles' => ['teacher']],
+        ['title' => 'Lecture Attendance', 'url' => 'pages/teacher/add_lecture_attendance.php', 'roles' => ['teacher']],
+        ['title' => 'View Attendance', 'url' => 'pages/teacher/view_lecture_attendance.php', 'roles' => ['teacher']],
+        ['title' => 'View Lecture Timetable', 'url' => 'pages/student/view_timetable.php', 'roles' => ['teacher']],
+        ['title' => 'View Exam Timetable', 'url' => 'pages/teacher/view_exam_timetable.php', 'roles' => ['teacher']],
+        ['title' => 'Send Notes', 'url' => 'pages/teacher/send_notes.php', 'roles' => ['teacher']],
+        ['title' => 'View School Notices', 'url' => 'pages/teacher/view_notice.php', 'roles' => ['teacher']],
+        ['title' => 'Browse & Request Books', 'url' => 'pages/teacher/browse_books.php', 'roles' => ['teacher']],
+        ['title' => 'My Borrowing Record', 'url' => 'pages/teacher/my_library_record.php', 'roles' => ['teacher']],
+        ['title' => 'Request New Book', 'url' => 'pages/user/request_new_book.php', 'roles' => ['teacher']],
+        ['title' => 'My Request History', 'url' => 'pages/user/my_book_requests.php', 'roles' => ['teacher']],
+
+        // Student Pages
+        ['title' => 'Dashboard', 'url' => 'dashboard.php', 'roles' => ['student']],
+        ['title' => 'My Profile', 'url' => 'pages/user/profile.php', 'roles' => ['student']],
+        ['title' => 'View Assignments', 'url' => 'pages/assignments/view_assignments.php', 'roles' => ['student']],
+        ['title' => 'View Attendance', 'url' => 'pages/student/view_lecture_attendance.php', 'roles' => ['student']],
+        ['title' => 'View Results', 'url' => 'pages/student/view_my_marks.php', 'roles' => ['student']],
+        ['title' => 'View School Notices', 'url' => 'pages/student/view_notice.php', 'roles' => ['student']],
+        ['title' => 'View Notes', 'url' => 'pages/student/view_notes.php', 'roles' => ['student']],
+        ['title' => 'View Lecture Timetable', 'url' => 'pages/student/view_timetable.php', 'roles' => ['student']],
+        ['title' => 'View Exam Timetable', 'url' => 'pages/student/view_exam_timetable.php', 'roles' => ['student']],
+        ['title' => 'Browse & Request Books', 'url' => 'pages/student/browse_books.php', 'roles' => ['student']],
+        ['title' => 'My Borrowing Record', 'url' => 'pages/student/my_library_record.php', 'roles' => ['student']],
+        ['title' => 'Request New Book', 'url' => 'pages/user/request_new_book.php', 'roles' => ['student']],
+        ['title' => 'My Request History', 'url' => 'pages/user/my_book_requests.php', 'roles' => ['student']],
+
+        // Librarian Pages
+        ['title' => 'Dashboard', 'url' => 'dashboard.php', 'roles' => ['librarian']],
+        ['title' => 'My Profile', 'url' => 'pages/user/profile.php', 'roles' => ['librarian']],
+        ['title' => 'My Attendance', 'url' => 'pages/librarian/view_my_attendance.php', 'roles' => ['librarian']],
+        ['title' => 'My Salary History', 'url' => 'pages/librarian/view_salary_history.php', 'roles' => ['librarian']],
+        ['title' => 'Manage Leave', 'url' => 'pages/librarian/my_leave_management.php', 'roles' => ['librarian']],
+        ['title' => 'Book List', 'url' => 'pages/librarian/book_list.php', 'roles' => ['librarian']],
+        ['title' => 'Add New Book', 'url' => 'pages/librarian/add_new_book.php', 'roles' => ['librarian']],
+        ['title' => 'Principal Notices', 'url' => 'pages/librarian/view_principal_notices.php', 'roles' => ['librarian']],
+        ['title' => 'Issue & Return', 'url' => 'pages/librarian/issue_return.php', 'roles' => ['librarian']],
+        ['title' => 'Borrow Requests', 'url' => 'pages/librarian/borrow_requests.php', 'roles' => ['librarian']],
+        ['title' => 'Acquisition Requests', 'url' => 'pages/librarian/book_requests.php', 'roles' => ['librarian']],
+        ['title' => 'Past Book Records', 'url' => 'pages/past_record/past_books.php', 'roles' => ['librarian']],
+
+        // Payroll Pages
+        ['title' => 'Dashboard', 'url' => 'dashboard.php', 'roles' => ['payroll']],
+        ['title' => 'My Attendance', 'url' => 'pages/payroll/view_my_attendance.php', 'roles' => ['payroll']],
+        ['title' => 'Manage Incentives', 'url' => 'pages/payroll/manage_incentives.php', 'roles' => ['payroll']],
+        ['title' => 'Teacher Payroll', 'url' => 'pages/payroll/process_teacher_salary.php', 'roles' => ['payroll']],
+        ['title' => 'Librarian Payroll', 'url' => 'pages/payroll/process_librarian_salary.php', 'roles' => ['payroll']],
+        ['title' => 'Principal Payroll', 'url' => 'pages/payroll/process_principal_salary.php', 'roles' => ['payroll']],
+        ['title' => 'Salary History', 'url' => 'pages/payroll/view_salary_history.php', 'roles' => ['payroll']],
     ];
 
     // Filter the pages based on the current user's role
@@ -468,13 +595,109 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     ?>
     
-    // Convert the PHP array of accessible pages to a JavaScript array
     const pages = <?php echo json_encode($accessible_pages); ?>;
 
-    searchInput.addEventListener('input', function() {
-        const query = searchInput.value.toLowerCase();
+    // --- ⭐ Helper functions for cookie management ---
+    function setCookie(name, value, days) {
+        let expires = "";
+        if (days) {
+            const date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            expires = "; expires=" + date.toUTCString();
+        }
+        document.cookie = name + "=" + (value || "") + expires + "; path=/";
+    }
+
+    function getCookie(name) {
+        const nameEQ = name + "=";
+        const ca = document.cookie.split(';');
+        for (let i = 0; i < ca.length; i++) {
+            let c = ca[i];
+            while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+            if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+        }
+        return null;
+    }
+
+    // --- ⭐ Functions for search history ---
+    function getSearchHistory() {
+        const history = getCookie(SEARCH_HISTORY_COOKIE);
+        return history ? JSON.parse(history) : [];
+    }
+
+    function addToSearchHistory(query) {
+        if (!query) return;
+        let history = getSearchHistory();
+        // Remove existing entry to move it to the top
+        history = history.filter(item => item !== query);
+        // Add new query to the front
+        history.unshift(query);
+        // Trim history to the max length
+        history = history.slice(0, MAX_HISTORY_ITEMS);
+        setCookie(SEARCH_HISTORY_COOKIE, JSON.stringify(history), 365);
+    }
+
+    function removeFromSearchHistory(query) {
+        let history = getSearchHistory();
+        history = history.filter(item => item !== query);
+        setCookie(SEARCH_HISTORY_COOKIE, JSON.stringify(history), 365);
+        displaySearchHistory(); // Refresh the displayed list
+    }
+
+    function displaySearchHistory() {
+        const history = getSearchHistory();
         searchResults.innerHTML = '';
-        searchResults.style.display = 'none';
+        if (history.length > 0) {
+            history.forEach(item => {
+                const historyDiv = document.createElement('div');
+                historyDiv.className = 'dropdown-item history-item';
+                historyDiv.innerHTML = `
+                    <div class="history-text">
+                        <i class="fas fa-history"></i>
+                        <span class="history-query">${item}</span>
+                    </div>
+                    <span class="remove-history" title="Remove">&times;</span>`;
+                
+                // ⭐ MODIFIED SECTION START: This logic now finds a page and navigates.
+                historyDiv.querySelector('.history-text').addEventListener('click', () => {
+                    const query = item.toLowerCase();
+                    // Find the first page that matches the history query
+                    const targetPage = pages.find(page => page.title.toLowerCase().includes(query));
+                    
+                    if (targetPage) {
+                        // If a matching page is found, go to its URL
+                        window.location.href = base_url_for_search + targetPage.url;
+                    } else {
+                        // Fallback: if no direct match, just fill the search bar
+                        searchInput.value = item;
+                        searchInput.dispatchEvent(new Event('input')); 
+                    }
+                });
+                // ⭐ MODIFIED SECTION END
+
+                // Event listener for removing an item
+                historyDiv.querySelector('.remove-history').addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent the main click event
+                    removeFromSearchHistory(item);
+                });
+
+                searchResults.appendChild(historyDiv);
+            });
+            searchResults.style.display = 'block';
+        } else {
+            searchResults.style.display = 'none';
+        }
+    }
+
+    // --- ⭐ Main search event listeners ---
+    searchInput.addEventListener('input', function() {
+        const query = searchInput.value.toLowerCase().trim();
+        searchResults.innerHTML = '';
+
+        if (query.length === 0) {
+            displaySearchHistory();
+            return;
+        }
 
         if (query.length > 1) {
             const filteredPages = pages.filter(page => 
@@ -486,12 +709,34 @@ document.addEventListener('DOMContentLoaded', function() {
                     const link = document.createElement('a');
                     link.href = base_url_for_search + page.url;
                     link.textContent = page.title;
+                    link.addEventListener('click', () => {
+                        addToSearchHistory(searchInput.value.trim());
+                    });
                     searchResults.appendChild(link);
                 });
                 searchResults.style.display = 'block';
             } else {
                 searchResults.innerHTML = '<div class="no-results">No pages found.</div>';
                 searchResults.style.display = 'block';
+            }
+        } else {
+            searchResults.style.display = 'none';
+        }
+    });
+
+    searchInput.addEventListener('focus', function() {
+        if (this.value.trim().length === 0) {
+            displaySearchHistory();
+        }
+    });
+
+    searchInput.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            const firstResult = searchResults.querySelector('a');
+            if (firstResult) {
+                addToSearchHistory(this.value.trim());
+                window.location.href = firstResult.href;
             }
         }
     });
@@ -502,7 +747,7 @@ document.addEventListener('DOMContentLoaded', function() {
             searchResults.style.display = 'none';
         }
     });
-    // --- END: Search Bar Functionality ---
+    // ⭐ END: ENHANCED Search Bar Functionality ---
 
     // --- START: FIX - SIDEBAR NOTIFICATION CLEARING SCRIPT ---
     const sidebarNotificationLinks = document.querySelectorAll('#accordionSidebar .nav-link[data-notification-type]');
