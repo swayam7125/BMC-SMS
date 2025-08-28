@@ -87,10 +87,22 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
 
     if ($table_name) {
         try {
-            $query = "SELECT t.*, s.school_name, s.school_opening, s.address AS school_address, s.email AS school_email, s.phone AS school_phone
-                      FROM {$table_name} t
-                      LEFT JOIN school s ON t.school_id = s.id
-                      WHERE t.id = ?";
+            // MODIFIED: Added self_transport_mode, vehicle_number, license_number, stop_name, and route_name to the SELECT query.
+            if ($user_role === 'student') {
+                $query = "SELECT t.*, s.school_name, s.school_opening, s.address AS school_address, s.email AS school_email, s.phone AS school_phone,
+                          st.stop_name, r.route_name
+                          FROM {$table_name} t
+                          LEFT JOIN school s ON t.school_id = s.id
+                          LEFT JOIN stops st ON t.stop_id = st.id
+                          LEFT JOIN routes r ON st.route_id = r.id
+                          WHERE t.id = ?";
+            } else {
+                $query = "SELECT t.*, s.school_name, s.school_opening, s.address AS school_address, s.email AS school_email, s.phone AS school_phone
+                          FROM {$table_name} t
+                          LEFT JOIN school s ON t.school_id = s.id
+                          WHERE t.id = ?";
+            }
+
             $stmt = $conn->prepare($query);
             $stmt->execute([$user_id]);
 
@@ -263,110 +275,158 @@ if (!is_ajax_request()) {
                             </div>
 
                             <?php if ($user_role === 'student'): ?>
-                                <div class="col-lg-6 mb-4">
-                                    <div class="card shadow h-100">
-                                        <div class="card-header py-3">
-                                            <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-briefcase mr-2"></i>Academic Information</h6>
+                                <div class="row">
+                                    <div class="col-lg-6 mb-4">
+                                        <div class="card shadow h-100">
+                                            <div class="card-header py-3">
+                                                <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-briefcase mr-2"></i>Academic Information</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="row">
+                                                    <div class="col-md-12">
+                                                        <div class="row info-row">
+                                                            <div class="col-sm-5 info-label">School Name:</div>
+                                                            <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['school_name'] ?? 'N/A'); ?></div>
+                                                        </div>
+                                                        <hr>
+                                                        <div class="row info-row">
+                                                            <div class="col-sm-5 info-label">Date of Joining:</div>
+                                                            <div class="col-sm-7 info-value"><?php echo !empty($user_data['date_of_joining']) ? htmlspecialchars(date('F j, Y', strtotime($user_data['date_of_joining']))) : 'N/A'; ?></div>
+                                                        </div>
+                                                        <hr>
+                                                    </div>
+                                                    <div class="col-md-12">
+                                                        <div class="row info-row">
+                                                            <div class="col-sm-5 info-label">Standard:</div>
+                                                            <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['std'] ?? 'N/A'); ?></div>
+                                                        </div>
+                                                        <hr>
+                                                    </div>
+                                                    <div class="col-md-12">
+                                                        <div class="row info-row">
+                                                            <div class="col-sm-5 info-label">Roll No:</div>
+                                                            <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['rollno'] ?? 'N/A'); ?></div>
+                                                        </div>
+                                                        <hr>
+                                                    </div>
+                                                    <div class="col-md-12">
+                                                        <div class="row info-row">
+                                                            <div class="col-sm-5 info-label">Academic Year:</div>
+                                                            <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['academic_year'] ?? 'N/A'); ?></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div class="card-body">
-                                            <div class="row">
-                                                <div class="col-md-12">
-                                                    <div class="row info-row">
-                                                        <div class="col-sm-5 info-label">School Name:</div>
-                                                        <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['school_name'] ?? 'N/A'); ?></div>
-                                                    </div>
-                                                    <hr>
-                                                    <div class="row info-row">
-                                                        <div class="col-sm-5 info-label">Date of Joining:</div>
-                                                        <div class="col-sm-7 info-value"><?php echo !empty($user_data['date_of_joining']) ? htmlspecialchars(date('F j, Y', strtotime($user_data['date_of_joining']))) : 'N/A'; ?></div>
-                                                    </div>
-                                                    <hr>
+                                    </div>
+                                    <div class="col-lg-6 mb-4">
+                                        <div class="card shadow h-100">
+                                            <div class="card-header py-3">
+                                                <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-school"></i> School Information</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="row info-row">
+                                                    <div class="col-sm-4 info-label">School Name:</div>
+                                                    <div class="col-sm-8 info-value"><?php echo htmlspecialchars($user_data['school_name'] ?? 'N/A'); ?></div>
                                                 </div>
-                                                <div class="col-md-12">
-                                                    <div class="row info-row">
-                                                        <div class="col-sm-5 info-label">Standard:</div>
-                                                        <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['std'] ?? 'N/A'); ?></div>
-                                                    </div>
-                                                    <hr>
+                                                <hr>
+                                                <div class="row info-row">
+                                                    <div class="col-sm-4 info-label">Date of Opening:</div>
+                                                    <div class="col-sm-8 info-value"><?php echo !empty($user_data['school_opening']) ? htmlspecialchars(date('F j, Y', strtotime($user_data['school_opening']))) : 'N/A'; ?></div>
                                                 </div>
-                                                <div class="col-md-12">
-                                                    <div class="row info-row">
-                                                        <div class="col-sm-5 info-label">Roll No:</div>
-                                                        <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['rollno'] ?? 'N/A'); ?></div>
-                                                    </div>
-                                                    <hr>
+                                                <hr>
+                                                <div class="row info-row">
+                                                    <div class="col-sm-4 info-label">School Address:</div>
+                                                    <div class="col-sm-8 info-value"><?php echo htmlspecialchars($user_data['school_address'] ?? 'N/A'); ?></div>
                                                 </div>
-                                                <div class="col-md-12">
-                                                    <div class="row info-row">
-                                                        <div class="col-sm-5 info-label">Academic Year:</div>
-                                                        <div class="col-sm-7 info-value"><?php echo htmlspecialchars($user_data['academic_year'] ?? 'N/A'); ?></div>
+                                                <hr>
+                                                <div class="row info-row">
+                                                    <div class="col-sm-4 info-label">School Email:</div>
+                                                    <div class="col-sm-8 info-value"><?php echo htmlspecialchars($user_data['school_email'] ?? 'N/A'); ?></div>
+                                                </div>
+                                                <hr>
+                                                <div class="row info-row">
+                                                    <div class="col-sm-4 info-label">School Phone:</div>
+                                                    <div class="col-sm-8 info-value"><?php echo htmlspecialchars($user_data['school_phone'] ?? 'N/A'); ?></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-12 mb-4">
+                                        <div class="card shadow">
+                                            <div class="card-header py-3">
+                                                <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-users"></i> Parent Information</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="row">
+                                                            <div class="col-sm-4 font-weight-bold">Father's Name:</div>
+                                                            <div class="col-sm-8"><?php echo htmlspecialchars($user_data['father_name'] ?? 'N/A'); ?></div>
+                                                        </div>
+                                                        <hr>
+                                                        <div class="row">
+                                                            <div class="col-sm-4 font-weight-bold">Father's Phone:</div>
+                                                            <div class="col-sm-8"><?php echo htmlspecialchars($user_data['father_phone'] ?? 'N/A'); ?></div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <div class="row">
+                                                            <div class="col-sm-4 font-weight-bold">Mother's Name:</div>
+                                                            <div class="col-sm-8"><?php echo htmlspecialchars($user_data['mother_name'] ?? 'N/A'); ?></div>
+                                                        </div>
+                                                        <hr>
+                                                        <div class="row">
+                                                            <div class="col-sm-4 font-weight-bold">Mother's Phone:</div>
+                                                            <div class="col-sm-8"><?php echo htmlspecialchars($user_data['mother_phone'] ?? 'N/A'); ?></div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div class="col-lg-6 mb-4">
-                                    <div class="card shadow h-100">
-                                        <div class="card-header py-3">
-                                            <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-school"></i> School Information</h6>
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="row info-row">
-                                                <div class="col-sm-4 info-label">School Name:</div>
-                                                <div class="col-sm-8 info-value"><?php echo htmlspecialchars($user_data['school_name'] ?? 'N/A'); ?></div>
+                                    <div class="col-lg-12 mb-4">
+                                        <div class="card shadow">
+                                            <div class="card-header py-3">
+                                                <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-bus"></i> Transport Information</h6>
                                             </div>
-                                            <hr>
-                                            <div class="row info-row">
-                                                <div class="col-sm-4 info-label">Date of Opening:</div>
-                                                <div class="col-sm-8 info-value"><?php echo !empty($user_data['school_opening']) ? htmlspecialchars(date('F j, Y', strtotime($user_data['school_opening']))) : 'N/A'; ?></div>
-                                            </div>
-                                            <hr>
-                                            <div class="row info-row">
-                                                <div class="col-sm-4 info-label">School Address:</div>
-                                                <div class="col-sm-8 info-value"><?php echo htmlspecialchars($user_data['school_address'] ?? 'N/A'); ?></div>
-                                            </div>
-                                            <hr>
-                                            <div class="row info-row">
-                                                <div class="col-sm-4 info-label">School Email:</div>
-                                                <div class="col-sm-8 info-value"><?php echo htmlspecialchars($user_data['school_email'] ?? 'N/A'); ?></div>
-                                            </div>
-                                            <hr>
-                                            <div class="row info-row">
-                                                <div class="col-sm-4 info-label">School Phone:</div>
-                                                <div class="col-sm-8 info-value"><?php echo htmlspecialchars($user_data['school_phone'] ?? 'N/A'); ?></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-lg-12 mb-4">
-                                    <div class="card shadow">
-                                        <div class="card-header py-3">
-                                            <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-users"></i> Parent Information</h6>
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="row">
-                                                <div class="col-md-6">
-                                                    <div class="row">
-                                                        <div class="col-sm-4 font-weight-bold">Father's Name:</div>
-                                                        <div class="col-sm-8"><?php echo htmlspecialchars($user_data['father_name'] ?? 'N/A'); ?></div>
-                                                    </div>
-                                                    <hr>
-                                                    <div class="row">
-                                                        <div class="col-sm-4 font-weight-bold">Father's Phone:</div>
-                                                        <div class="col-sm-8"><?php echo htmlspecialchars($user_data['father_phone'] ?? 'N/A'); ?></div>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <div class="row">
-                                                        <div class="col-sm-4 font-weight-bold">Mother's Name:</div>
-                                                        <div class="col-sm-8"><?php echo htmlspecialchars($user_data['mother_name'] ?? 'N/A'); ?></div>
-                                                    </div>
-                                                    <hr>
-                                                    <div class="row">
-                                                        <div class="col-sm-4 font-weight-bold">Mother's Phone:</div>
-                                                        <div class="col-sm-8"><?php echo htmlspecialchars($user_data['mother_phone'] ?? 'N/A'); ?></div>
+                                            <div class="card-body">
+                                                <div class="row">
+                                                    <div class="col-md-12">
+                                                        <div class="row info-row">
+                                                            <div class="col-sm-4 info-label">Mode of Transport:</div>
+                                                            <div class="col-sm-8 info-value"><?php echo htmlspecialchars($user_data['transport_mode'] ?? 'N/A'); ?></div>
+                                                        </div>
+                                                        <?php if ($user_data['transport_mode'] === 'School Transport'): ?>
+                                                            <hr>
+                                                            <div class="row info-row">
+                                                                <div class="col-sm-4 info-label">Route:</div>
+                                                                <div class="col-sm-8 info-value"><?php echo htmlspecialchars($user_data['route_name'] ?? 'N/A'); ?></div>
+                                                            </div>
+                                                            <hr>
+                                                            <div class="row info-row">
+                                                                <div class="col-sm-4 info-label">Stop:</div>
+                                                                <div class="col-sm-8 info-value"><?php echo htmlspecialchars($user_data['stop_name'] ?? 'N/A'); ?></div>
+                                                            </div>
+                                                        <?php elseif ($user_data['transport_mode'] === 'Self Transport'): ?>
+                                                            <hr>
+                                                            <div class="row info-row">
+                                                                <div class="col-sm-4 info-label">Self Transport Mode:</div>
+                                                                <div class="col-sm-8 info-value"><?php echo htmlspecialchars($user_data['self_transport_mode'] ?? 'N/A'); ?></div>
+                                                            </div>
+                                                            <?php if (isset($user_data['self_transport_mode']) && ($user_data['self_transport_mode'] === 'Bike' || $user_data['self_transport_mode'] === 'Car')): ?>
+                                                                <hr>
+                                                                <div class="row info-row">
+                                                                    <div class="col-sm-4 info-label">Vehicle Number:</div>
+                                                                    <div class="col-sm-8 info-value"><?php echo htmlspecialchars($user_data['vehicle_number'] ?? 'N/A'); ?></div>
+                                                                </div>
+                                                                <hr>
+                                                                <div class="row info-row">
+                                                                    <div class="col-sm-4 info-label">License Number:</div>
+                                                                    <div class="col-sm-8 info-value"><?php echo htmlspecialchars($user_data['license_number'] ?? 'N/A'); ?></div>
+                                                                </div>
+                                                            <?php endif; ?>
+                                                        <?php endif; ?>
                                                     </div>
                                                 </div>
                                             </div>

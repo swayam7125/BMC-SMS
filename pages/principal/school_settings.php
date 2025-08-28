@@ -23,10 +23,12 @@ try {
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $passing_percentage = $_POST['passing_percentage'];
+        $minimum_attendance_percentage = $_POST['minimum_attendance_percentage']; // New field
 
-        $update_stmt = $conn->prepare("UPDATE school SET passing_percentage = ? WHERE id = ?");
+        // Modified UPDATE query to include the new attendance setting
+        $update_stmt = $conn->prepare("UPDATE school SET passing_percentage = ?, minimum_attendance_percentage = ? WHERE id = ?");
 
-        if ($update_stmt->execute([$passing_percentage, $school_id])) {
+        if ($update_stmt->execute([$passing_percentage, $minimum_attendance_percentage, $school_id])) {
             $successMessage = "School settings have been updated successfully!";
         } else {
             $errorMessage = "Failed to update settings. Please try again.";
@@ -88,6 +90,22 @@ if (!is_ajax_request()) {
                                 </div>
                             </div>
                         </div>
+
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Attendance Settings</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group row">
+                                    <label for="minimum_attendance_percentage" class="col-sm-4 col-form-label">Minimum Attendance Percentage (%)</label>
+                                    <div class="col-sm-8">
+                                        <input type="number" class="form-control" id="minimum_attendance_percentage" name="minimum_attendance_percentage" value="<?php echo htmlspecialchars($school_settings['minimum_attendance_percentage'] ?? '75.00'); ?>" step="0.01" min="0" max="100" required>
+                                        <small class="form-text text-muted">e.g., 75.00. Used for student eligibility for exams.</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="form-group row">
                             <div class="col-sm-12"><button type="submit" class="btn btn-primary">Save All Settings</button></div>
                         </div>

@@ -309,7 +309,7 @@ if (isset($conn) && $user_id) {
             $teacher_pages = ['teacher_enrollment.php', 'teacher_list.php', 'teacher_attendence.php', 'view_teacher_attendence.php'];
             $librarian_pages = ['librarian_enrollment.php', 'librarian_list.php', 'librarian_attendance.php', 'view_librarian_attendance.php'];
             $student_pages = ['student_enrollment.php', 'student_list.php', 'generate_lc.php'];
-            $payroll_pages = ['payroll_enrollment.php', 'payroll_list.php']; 
+            $payroll_pages = ['payroll_enrollment.php', 'payroll_list.php', 'payroll_attendance.php', 'view_payroll_attendance.php']; 
             $notice_pages = ['send_notice.php', 'send_notice_to_bmc.php', 'send_notice_to_librarian.php', 'view_notice.php'];
             $academics_pages = ['manage_subjects.php', 'manage_timetable.php', 'send_exam_timetable.php', 'manage_holidays.php'];
             $past_data_pages_principal = ['past_teacher.php', 'past_librarian.php', 'past_student.php'];
@@ -403,6 +403,10 @@ if (isset($conn) && $user_id) {
                     href="<?php echo BASE_WEB_PATH; ?>includes/forms/payroll_enrollment.php">Enroll Payroll User</a>
                 <a class="collapse-item <?php echo ($current_page == 'payroll_list.php') ? 'active' : ''; ?>"
                     href="<?php echo BASE_WEB_PATH; ?>pages/payroll/payroll_list.php">Payroll User List</a>
+                <a class="collapse-item <?php echo ($current_page == 'payroll_attendance.php') ? 'active' : ''; ?>"
+                    href="<?php echo BASE_WEB_PATH; ?>pages/principal/payroll_attendance.php">Payroll Attendance</a>
+                <a class="collapse-item <?php echo ($current_page == 'view_payroll_attendance.php') ? 'active' : ''; ?>"
+                    href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_payroll_attendance.php">View Payroll Attendance</a>
             </div>
         </div>
     </li>
@@ -511,7 +515,7 @@ if (isset($conn) && $user_id) {
     <li class="nav-item <?php echo ($current_page == 'school_settings.php') ? 'active' : ''; ?>">
         <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/principal/school_settings.php">
             <div><i class="fas fa-fw fa-cogs"></i>
-                <span>Passing Criteria</span>
+                <span>School Settings</span>
             </div>
         </a>
     </li>
@@ -1086,6 +1090,12 @@ if (isset($conn) && $user_id) {
                     <span>Manage Incentives</span></div>
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/BMC-SMS/pages/payroll/view_my_attendance.php">
+                    <div><i class="fas fa-fw fa-user-check"></i>
+                    <span>My Attendance</span></div>
+                </a>
+             </li>
             <li class="nav-item <?php echo ($current_page == 'process_teacher_salary.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/payroll/process_teacher_salary.php">
                     <div><i class="fas fa-file-invoice-dollar"></i>

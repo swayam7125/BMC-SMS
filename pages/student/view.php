@@ -22,9 +22,10 @@ if ($student_id <= 0) {
     exit;
 }
 
-// Fetch student data with school and TRANSPORT information
+// Fetch student data with related information
+// MODIFIED: Added self_transport_mode, vehicle_number, and license_number to the SELECT query.
 $query = "SELECT s.*, sc.school_name, sc.address as school_address, sc.email as school_email, sc.phone as school_phone,
-                st.stop_name, r.route_name, v.vehicle_number
+                st.stop_name, r.route_name, v.vehicle_number as school_vehicle_number
         FROM student s 
         LEFT JOIN school sc ON s.school_id = sc.id
         LEFT JOIN stops st ON s.stop_id = st.id
@@ -45,92 +46,29 @@ try {
     // PDO Change: Use fetch() to get the result
     $student = $stmt->fetch(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    // It's a good practice to log the error message for debugging
-    // error_log("Database error in view.php: " . $e->getMessage());
+    error_log("Database error in view.php: " . $e->getMessage());
     header("Location: student_list.php?error=An error occurred");
     exit;
 }
 
-
-// --- Robust Photo/Logo Handling Logic ---
-// This function assumes the image_path stored in the DB is relative to your project's web root (e.g., 'pages/student/uploads/photo.jpg')
-function getWebAccessibleImagePath($db_image_path, $base_web_path, $default_sub_folder = '')
-{
-    if (empty($db_image_path)) {
-        return null;
-    }
-
-    // Attempt to make it a full web-accessible path
-    $full_web_path = $base_web_path . ltrim($db_image_path, '/');
-
-    // Check if the file actually exists on the filesystem from the DOCUMENT_ROOT
-    $filesystem_path = $_SERVER['DOCUMENT_ROOT'] . $full_web_path;
-
-    if (file_exists($filesystem_path) && is_file($filesystem_path)) {
-        return $full_web_path;
-    }
-
-    // Fallback: If DB path is just a filename, try common upload locations
-    // This part is for backward compatibility or if your initial uploads were just filenames
-    $possible_locations = [
-        "pages/{$default_sub_folder}/uploads/",
-        "uploads/{$default_sub_folder}s/",
-        "uploads/",
-    ];
-
-    foreach ($possible_locations as $location) {
-        // Construct full web path for testing
-        $test_path = $base_web_path . $location . basename($db_image_path);
-        // Construct full filesystem path to check existence
-        $test_filesystem_path = $_SERVER['DOCUMENT_ROOT'] . $test_path;
-
-        if (file_exists($test_filesystem_path) && is_file($test_filesystem_path)) {
-            return $test_path; // Return the web-accessible path
-        }
-    }
-
-    return null; // No photo found
-}
-
-function getDefaultImagePath($type = 'user', $base_web_path)
-{
-    // Define BASE_WEB_PATH if it's not already defined (e.g., if this script is accessed directly)
-    if (!defined('BASE_WEB_PATH')) {
-        define('BASE_WEB_PATH', '/BMC-SMS/'); // Adjust as per your actual project setup
-    }
-
-    $default_paths = [
-        "assets/images/unisex.png", // Try default-student.jpg
-        "assets/images/unisex.png",    // Try default-student.jpg
-        "assets/images/unisex.png",    // Generic user default
-        "assets/images/unisex.png",       // Generic user default
-        "assets/images/unisex.png",        // General no photo
-        "assets/images/unisex.png"            // General no photo
-    ];
-
-    foreach ($default_paths as $path) {
-        $full_web_path = $base_web_path . $path;
-        $filesystem_path = $_SERVER['DOCUMENT_ROOT'] . $full_web_path;
-        if (file_exists($filesystem_path) && is_file($filesystem_path)) {
-            return $full_web_path;
-        }
-    }
-
-    // Fallback to a base64 encoded SVG if no file found
-    return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 150 150'%3E%3Crect width='150' height='150' fill='%23f8f9fc'/%3E%3Ctext x='75' y='75' text-anchor='middle' dy='0.35em' fill='%23858796' font-family='Arial' font-size='14'%3ENo Photo%3C/text%3E%3C/svg%3E";
-}
-
-// Ensure BASE_WEB_PATH is defined for this script (it should be in header.php, but define here for safety)
+// Define BASE_WEB_PATH if not already
 if (!defined('BASE_WEB_PATH')) {
-    define('BASE_WEB_PATH', '/BMC-SMS/'); // Adjust as per your actual project setup
+    define('BASE_WEB_PATH', '/BMC-SMS/');
 }
 
-// Get the actual photo path
-$photo_path = getWebAccessibleImagePath($student['student_image'], BASE_WEB_PATH, 'student');
-$default_photo = getDefaultImagePath('student', BASE_WEB_PATH);
+// --- Simplified Photo Handling Logic ---
+$photo_path = $student['student_image'];
+$default_photo = BASE_WEB_PATH . 'assets/images/unisex.png';
+
+$full_filesystem_path = $_SERVER['DOCUMENT_ROOT'] . $photo_path;
+
+if (!empty($photo_path) && file_exists($full_filesystem_path) && is_file($full_filesystem_path)) {
+    $display_photo = $photo_path;
+} else {
+    $display_photo = $default_photo;
+}
 
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 
@@ -141,32 +79,24 @@ $default_photo = getDefaultImagePath('student', BASE_WEB_PATH);
     <title>View Student - <?php echo htmlspecialchars($student['student_name']); ?></title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i"
         rel="stylesheet">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-
     <link rel="stylesheet" href="../../assets/css/profile.css">
     <link rel="stylesheet" href="../../assets/css/student_view.css">
-
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-
 </head>
 
 <body id="page-top">
     <div id="wrapper">
-
         <?php include '../../includes/sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
-
             <div id="content">
-
                 <?php include_once '../../includes/header.php'; ?>
                 <div class="container-fluid">
-
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Student's Details</h1>
                         <div>
@@ -182,7 +112,6 @@ $default_photo = getDefaultImagePath('student', BASE_WEB_PATH);
                     </div>
 
                     <div class="row">
-
                         <div class="col-lg-4 mb-4">
                             <div class="card shadow h-100">
                                 <div class="card-header py-3">
@@ -192,16 +121,10 @@ $default_photo = getDefaultImagePath('student', BASE_WEB_PATH);
                                 </div>
                                 <div class="card-body">
                                     <div class="photo-container">
-                                        <?php if ($photo_path): // Check if a valid web-accessible path was found 
-                                        ?>
-                                            <img src="<?php echo htmlspecialchars($photo_path); ?>"
-                                                alt="<?php echo htmlspecialchars($student['student_name']); ?>"
-                                                class="profile-photo mb-3 mt-3 h-50 w-50"
-                                                onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($default_photo); ?>';">
-                                        <?php else: ?>
-                                            <img src="<?php echo htmlspecialchars($default_photo); ?>"
-                                                alt="Default Student Avatar" class="student-photo" style="opacity: 0.7;">
-                                        <?php endif; ?>
+                                        <img src="<?php echo htmlspecialchars($display_photo); ?>"
+                                            alt="<?php echo htmlspecialchars($student['student_name']); ?>"
+                                            class="profile-photo mb-3 mt-3 h-50 w-50"
+                                            onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($default_photo); ?>';">
                                     </div>
                                     <div class="text-center">
                                         <h4 class="font-weight-bold text-gray-800 mt-2"><?php echo htmlspecialchars($student['student_name']); ?></h4>
@@ -444,14 +367,29 @@ $default_photo = getDefaultImagePath('student', BASE_WEB_PATH);
                                                     <div class="col-lg-4">
                                                         <div class="row">
                                                             <div class="col-sm-5 font-weight-bold">Vehicle:</div>
-                                                            <div class="col-sm-7"><?php echo htmlspecialchars($student['vehicle_number'] ?? 'N/A'); ?></div>
+                                                            <div class="col-sm-7"><?php echo htmlspecialchars($student['school_vehicle_number'] ?? 'N/A'); ?></div>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        <?php elseif (isset($student['transport_mode']) && $student['transport_mode'] === 'Self'): ?>
+                                        <?php elseif (isset($student['transport_mode']) && $student['transport_mode'] === 'Self Transport'): ?>
                                             <div class="col-md-8">
-                                                <div class="text-muted">Student uses their own transport.</div>
+                                                <div class="row">
+                                                    <div class="col-sm-4 font-weight-bold">Self Transport Mode:</div>
+                                                    <div class="col-sm-8"><?php echo htmlspecialchars($student['self_transport_mode'] ?? 'N/A'); ?></div>
+                                                </div>
+                                                <?php if (isset($student['self_transport_mode']) && ($student['self_transport_mode'] === 'Bike' || $student['self_transport_mode'] === 'Car')): ?>
+                                                    <hr>
+                                                    <div class="row">
+                                                        <div class="col-sm-4 font-weight-bold">Vehicle Number:</div>
+                                                        <div class="col-sm-8"><?php echo htmlspecialchars($student['vehicle_number'] ?? 'N/A'); ?></div>
+                                                    </div>
+                                                    <hr>
+                                                    <div class="row">
+                                                        <div class="col-sm-4 font-weight-bold">License Number:</div>
+                                                        <div class="col-sm-8"><?php echo htmlspecialchars($student['license_number'] ?? 'N/A'); ?></div>
+                                                    </div>
+                                                <?php endif; ?>
                                             </div>
                                         <?php endif; ?>
                                     </div>

@@ -40,12 +40,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $payroll_name = trim($_POST['payroll_name'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
+    $salary = trim($_POST['salary'] ?? ''); // New salary field
     $school_id = $admin_school_id; // The school is fixed to the principal's school
 
     // --- Validation ---
     if (empty($payroll_name)) $errors[] = "Payroll user's name is required.";
     if (empty($email)) $errors[] = "Email is required.";
     if (empty($password)) $errors[] = "Password is required.";
+    if (!is_numeric($salary) || $salary < 0) $errors[] = "Please enter a valid salary."; // Validate salary
     if (empty($school_id)) $errors[] = "Could not determine the school. Please log in again.";
 
     // --- Database Insertion ---
@@ -55,14 +57,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
             $user_role = 'payroll';
 
-            // 1. Insert into the main 'users' table (without school_id)
+            // 1. Insert into the main 'users' table
             $stmt_user = $conn->prepare('INSERT INTO "users" ("role", "email", "password") VALUES (?, ?, ?)');
             $stmt_user->execute([$user_role, $email, $hashed_password]);
             $new_user_id = $conn->lastInsertId();
 
-            // 2. Insert into the new 'payroll' table with the school_id
-            $stmt_payroll = $conn->prepare('INSERT INTO "payroll" (id, school_id, payroll_name) VALUES (?, ?, ?)');
-            $stmt_payroll->execute([$new_user_id, $school_id, $payroll_name]);
+            // 2. Insert into the 'payroll' table with the school_id and new salary
+            $stmt_payroll = $conn->prepare('INSERT INTO "payroll" (id, school_id, payroll_name, salary) VALUES (?, ?, ?, ?)');
+            $stmt_payroll->execute([$new_user_id, $school_id, $payroll_name, $salary]);
 
             $conn->commit();
             header("Location: ../../pages/payroll/payroll_list.php?success=Payroll user enrolled successfully");
@@ -118,9 +120,13 @@ if (!is_ajax_request()) {
                         <div class="card-body">
                             <form method="POST">
                                 <div class="form-row">
-                                    <div class="form-group col-md-12">
+                                    <div class="form-group col-md-6">
                                         <label for="payroll_name">Full Name *</label>
                                         <input type="text" class="form-control" id="payroll_name" name="payroll_name" value="<?php echo htmlspecialchars($_POST['payroll_name'] ?? ''); ?>" required>
+                                    </div>
+                                    <div class="form-group col-md-6">
+                                        <label for="salary">Salary (Monthly) *</label>
+                                        <input type="number" class="form-control" id="salary" name="salary" step="0.01" value="<?php echo htmlspecialchars($_POST['salary'] ?? ''); ?>" required>
                                     </div>
                                 </div>
                                 <div class="form-row">

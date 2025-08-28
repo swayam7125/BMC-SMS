@@ -132,6 +132,8 @@ $totalLibraryMembers = 0;
 $monthly_present_days = 0;
 $librarian_total_absent = 0;
 $librarian_deduction_amount = 0;
+$attendance_percentage = 0; 
+$minimum_attendance_percentage = 75.00; // Fallback for student role
 
 // --- START OF PAYROLL ROLE ADDITION ---
 $totalSalaryDisbursed = 0;
@@ -323,13 +325,53 @@ try {
             break;
 
         case 'student':
+            // Get student's school_id to fetch school settings
+            $stmt_school = $conn->prepare('SELECT "school_id" FROM "student" WHERE "id" = ?');
+            $stmt_school->execute([$userId]);
+            $student_data = $stmt_school->fetch(PDO::FETCH_ASSOC);
+            $schoolId = $student_data['school_id'] ?? null;
+
+            // Fetch the minimum attendance percentage required by the school
+            if ($schoolId) {
+                $stmt_min_att = $conn->prepare('SELECT "minimum_attendance_percentage" FROM "school" WHERE "id" = ?');
+                $stmt_min_att->execute([$schoolId]);
+                $min_att_data = $stmt_min_att->fetch(PDO::FETCH_ASSOC);
+                if ($min_att_data && isset($min_att_data['minimum_attendance_percentage'])) {
+                    $minimum_attendance_percentage = (float)$min_att_data['minimum_attendance_percentage'];
+                }
+            }
+
+            // Calculation for the "Attendance" card (Current Year)
+            $current_year = date('Y');
+            $attendance_percentage = 0;
+
+            // Get total present days for the current year
+            $present_yearly_stmt = $conn->prepare("SELECT COUNT(*) FROM \"attendance\" WHERE \"student_id\" = ? AND \"status\" = 'Present' AND EXTRACT(YEAR FROM \"attendance_date\") = ?");
+            $present_yearly_stmt->execute([$userId, $current_year]);
+            $yearly_present_count = (int)$present_yearly_stmt->fetchColumn();
+
+            // Get total attendance days for the current year
+            $total_yearly_stmt = $conn->prepare("SELECT COUNT(*) FROM \"attendance\" WHERE \"student_id\" = ? AND EXTRACT(YEAR FROM \"attendance_date\") = ?");
+            $total_yearly_stmt->execute([$userId, $current_year]);
+            $yearly_total_count = (int)$total_yearly_stmt->fetchColumn();
+
+            if ($yearly_total_count > 0) {
+                $attendance_percentage = round(($yearly_present_count / $yearly_total_count) * 100, 2);
+            }
+
+            // Calculations for existing cards (All time totals)
             $presentStmt = $conn->prepare("SELECT COUNT(DISTINCT \"attendance_date\") FROM \"attendance\" WHERE \"student_id\" = ? AND \"status\" = 'Present'");
             $presentStmt->execute([$userId]);
             $totalPresent = $presentStmt->fetchColumn();
+
             $absentStmt = $conn->prepare("SELECT COUNT(*) FROM \"attendance\" WHERE \"student_id\" = ? AND \"status\" = 'Absent'");
             $absentStmt->execute([$userId]);
             $totalAbsent = $absentStmt->fetchColumn();
-            $totalLeaves = 0;
+
+            // FIX for Leaves card
+            $leavesStmt = $conn->prepare("SELECT COUNT(*) FROM \"attendance\" WHERE \"student_id\" = ? AND \"status\" = 'Leave'");
+            $leavesStmt->execute([$userId]);
+            $totalLeaves = $leavesStmt->fetchColumn();
             break;
     }
 } catch (PDOException $e) {
@@ -707,25 +749,23 @@ if ($userId && isset($conn)) {
                                 </div>
                             <?php elseif ($role == 'student') : ?>
                                 <div class="col-xl-3 col-md-6 mb-4">
-                                    <a class="card-link" href="dashboard.php">
+                                    <a class="card-link" href="pages/student/view_lecture_attendance.php">
                                         <div class="card border-left-primary shadow h-100 py-2">
                                             <div class="card-body">
                                                 <div class="row no-gutters align-items-center">
                                                     <div class="col mr-2">
-                                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">My Standard</div>
-                                                        <div class="h5 mb-0 font-weight-bold text-gray-800"><?php
-                                                                                                            $student_std = 'N/A';
-                                                                                                            if ($userId && isset($conn)) {
-                                                                                                                $stmt_std = $conn->prepare('SELECT "std" FROM "student" WHERE "id" = ?');
-                                                                                                                $stmt_std->execute([$userId]);
-                                                                                                                if ($std_data = $stmt_std->fetch(PDO::FETCH_ASSOC)) {
-                                                                                                                    $student_std = htmlspecialchars($std_data['std']);
-                                                                                                                }
-                                                                                                            }
-                                                                                                            echo $student_std;
-                                                                                                            ?></div>
+                                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Attendance (This Year)</div>
+                                                        <?php
+                                                        // Determine the color class based on attendance percentage
+                                                        $color_class = ($attendance_percentage < $minimum_attendance_percentage) ? 'text-danger' : 'text-gray-800';
+                                                        ?>
+                                                        <div class="h5 mb-0 font-weight-bold <?php echo $color_class; ?>">
+                                                            <?php echo $attendance_percentage; ?>%
+                                                        </div>
                                                     </div>
-                                                    <div class="col-auto"><i class="fas fa-book-open fa-2x text-gray-300"></i></div>
+                                                    <div class="col-auto">
+                                                        <i class="fas fa-clipboard-check fa-2x text-gray-300"></i>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
