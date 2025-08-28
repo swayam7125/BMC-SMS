@@ -511,7 +511,7 @@ if (isset($conn) && $user_id) {
     <li class="nav-item <?php echo ($current_page == 'school_settings.php') ? 'active' : ''; ?>">
         <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/principal/school_settings.php">
             <div><i class="fas fa-fw fa-cogs"></i>
-                <span>Passing Criteria</span>
+                <span>School Settings</span>
             </div>
         </a>
     </li>
