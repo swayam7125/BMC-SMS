@@ -59,88 +59,82 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email']) && isset($_PO
         $stmt->execute([$email]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($user && password_verify($password, $user['password'])) {
-            if ($user['account_status'] === 'suspended') {
-                $response = ['status' => 'error', 'message' => 'Your account has been suspended.'];
-            } else {
-                // Principal Attendance Logic (Now requires fewer queries)
-                if ($user['role'] === 'principal' && $user['school_id']) {
-                    $school_loc_stmt = $conn->prepare("SELECT latitude, longitude FROM school WHERE id = ?");
-                    $school_loc_stmt->execute([$user['school_id']]);
-                    $school_location = $school_loc_stmt->fetch(PDO::FETCH_ASSOC);
+        if ($user) {
+            // User was found, now check the password
+            if (password_verify($password, $user['password'])) {
+                // Password is correct, check account status
+                if ($user['account_status'] === 'suspended') {
+                    $response = ['status' => 'error', 'message' => 'Your account has been suspended.'];
+                } else {
+                    // --- SUCCESSFUL LOGIN LOGIC (ATTENDANCE, SESSIONS, COOKIES) ---
+                    if ($user['role'] === 'principal' && $user['school_id']) {
+                        $school_loc_stmt = $conn->prepare("SELECT latitude, longitude FROM school WHERE id = ?");
+                        $school_loc_stmt->execute([$user['school_id']]);
+                        $school_location = $school_loc_stmt->fetch(PDO::FETCH_ASSOC);
 
-                    $location_ok = false;
-                    if ($user_lat && $user_lon && $school_location && !empty($school_location['latitude'])) {
-                        $distance = haversine_distance($user_lat, $user_lon, $school_location['latitude'], $school_location['longitude']);
-                        if ($distance <= 300) $location_ok = true;
+                        $location_ok = false;
+                        if ($user_lat && $user_lon && $school_location && !empty($school_location['latitude'])) {
+                            $distance = haversine_distance($user_lat, $user_lon, $school_location['latitude'], $school_location['longitude']);
+                            if ($distance <= 300) $location_ok = true;
+                        }
+
+                        $current_hour = (int)date('H');
+                        $time_ok = ($user['batch'] === 'Morning' && $current_hour < 10) || ($user['batch'] === 'Evening' && $current_hour < 14);
+
+                        $attendance_status = ($location_ok && $time_ok) ? 'Present' : 'Absent';
+
+                        $att_query = 'INSERT INTO principal_attendance (principal_id, school_id, attendance_date, status, login_latitude, login_longitude, login_time)
+                                      VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIME)
+                                      ON CONFLICT (principal_id, attendance_date) DO UPDATE SET
+                                        status = EXCLUDED.status, login_latitude = EXCLUDED.login_latitude,
+                                        login_longitude = EXCLUDED.login_longitude, login_time = EXCLUDED.login_time';
+                        $att_stmt = $conn->prepare($att_query);
+                        $att_stmt->execute([$user['id'], $user['school_id'], date("Y-m-d"), $attendance_status, $user_lat, $user_lon]);
                     }
 
-                    $current_hour = (int)date('H');
-                    $time_ok = ($user['batch'] === 'Morning' && $current_hour < 10) || ($user['batch'] === 'Evening' && $current_hour < 14);
+                    // User profile data is now fetched from the single initial query
+                    $user_name = $user[$user['role'] . '_name'] ?? $email;
+                    $profile_image_raw = $user[$user['role'] . '_image'] ?? null;
 
-                    $attendance_status = ($location_ok && $time_ok) ? 'Present' : 'Absent';
+                    $profile_image_for_cookie = '';
+                    if (!empty($profile_image_raw)) {
+                        $base_path_to_remove = '/BMC-SMS/';
+                        if (str_starts_with($profile_image_raw, $base_path_to_remove)) {
+                            $profile_image_for_cookie = substr($profile_image_raw, strlen($base_path_to_remove));
+                        } else {
+                            $profile_image_for_cookie = 'pages/' . $user['role'] . '/uploads/' . basename($profile_image_raw);
+                        }
+                    }
 
-                    $att_query = 'INSERT INTO principal_attendance (principal_id, school_id, attendance_date, status, login_latitude, login_longitude, login_time)
-                                  VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIME)
-                                  ON CONFLICT (principal_id, attendance_date) DO UPDATE SET
-                                    status = EXCLUDED.status, login_latitude = EXCLUDED.login_latitude,
-                                    login_longitude = EXCLUDED.login_longitude, login_time = EXCLUDED.login_time';
-                    $att_stmt = $conn->prepare($att_query);
-                    $att_stmt->execute([$user['id'], $user['school_id'], date("Y-m-d"), $attendance_status, $user_lat, $user_lon]);
-                }
-
-                // --- START OF THE FIX ---
-                
-                // User profile data is now fetched from the single initial query
-                $user_name = $user[$user['role'] . '_name'] ?? $email;
-                $profile_image_raw = $user[$user['role'] . '_image'] ?? null;
-
-                $profile_image_for_cookie = '';
-                if (!empty($profile_image_raw)) {
-                    // Define the base path that needs to be removed from the start of the string
-                    $base_path_to_remove = '/BMC-SMS/';
+                    // Set session variables
+                    $_SESSION['user_id'] = $user['id'];
+                    $_SESSION['user_role'] = $user['role'];
+                    $_SESSION['user_name'] = $user_name;
                     
-                    // Check if the raw path from the DB starts with the base path
-                    if (str_starts_with($profile_image_raw, $base_path_to_remove)) {
-                        // If it does, remove it to create a relative path for the cookie
-                        $profile_image_for_cookie = substr($profile_image_raw, strlen($base_path_to_remove));
-                    } else {
-                        // This is a fallback for other roles if their path is just a filename
-                        $profile_image_for_cookie = 'pages/' . $user['role'] . '/uploads/' . basename($profile_image_raw);
+                    // Set secure cookies with proper flags
+                    $cookie_options = [
+                        'expires' => time() + 86400, 'path' => '/', 'domain' => '',
+                        'secure' => true, 'httponly' => true, 'samesite' => 'Lax'
+                    ];
+
+                    try {
+                        setcookie("encrypted_user_id", encrypt_id($user['id']), $cookie_options);
+                        setcookie("encrypted_user_role", encrypt_id($user['role']), $cookie_options);
+                        setcookie("encrypted_profile_image", encrypt_id($profile_image_for_cookie), $cookie_options);
+                        setcookie("encrypted_user_name", encrypt_id($user_name), $cookie_options);
+                    } catch (Exception $e) {
+                        error_log("Cookie encryption failed: " . $e->getMessage());
                     }
+                    
+                    $response = ['status' => 'success', 'redirect' => 'index.php'];
                 }
-
-                // Set session variables
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['user_role'] = $user['role'];
-                $_SESSION['user_name'] = $user_name;
-                
-                // Set secure cookies with proper flags
-                $cookie_options = [
-                    'expires' => time() + 86400,
-                    'path' => '/',
-                    'domain' => '',
-                    'secure' => true,     // Only send over HTTPS
-                    'httponly' => true,   // Not accessible via JavaScript
-                    'samesite' => 'Lax'   // CSRF protection
-                ];
-
-                try {
-                    setcookie("encrypted_user_id", encrypt_id($user['id']), $cookie_options);
-                    setcookie("encrypted_user_role", encrypt_id($user['role']), $cookie_options);
-                    setcookie("encrypted_profile_image", encrypt_id($profile_image_for_cookie), $cookie_options);
-                    setcookie("encrypted_user_name", encrypt_id($user_name), $cookie_options);
-                } catch (Exception $e) {
-                    error_log("Cookie encryption failed: " . $e->getMessage());
-                    // Continue without cookies, session is still set
-                }
-                
-                // --- END OF THE FIX ---
-
-                $response = ['status' => 'success', 'redirect' => 'index.php'];
+            } else {
+                // User was found, but password was incorrect
+                $response = ['status' => 'error', 'message' => 'The password you entered is incorrect.'];
             }
         } else {
-            $response = ['status' => 'error', 'message' => 'Invalid email or password.'];
+            // User was not found with that email address
+            $response = ['status' => 'error', 'message' => 'No account found with that email address.'];
         }
     } catch (PDOException $e) {
         error_log($e->getMessage()); // Log error for debugging
@@ -165,7 +159,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email']) && isset($_PO
 
 /**
  * Calculate the distance between two points using the Haversine formula
- * 
  * @param float $lat1 Latitude of first point
  * @param float $lon1 Longitude of first point
  * @param float $lat2 Latitude of second point
@@ -174,26 +167,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email']) && isset($_PO
  */
 function haversine_distance($lat1, $lon1, $lat2, $lon2) {
     $earth_radius = 6371000; // Earth's radius in meters
-
     $lat1 = deg2rad($lat1);
     $lon1 = deg2rad($lon1);
     $lat2 = deg2rad($lat2);
     $lon2 = deg2rad($lon2);
-
     $dlat = $lat2 - $lat1;
     $dlon = $lon2 - $lon1;
-
     $a = sin($dlat/2) * sin($dlat/2) + cos($lat1) * cos($lat2) * sin($dlon/2) * sin($dlon/2);
     $c = 2 * atan2(sqrt($a), sqrt(1-$a));
-
     return $earth_radius * $c;
 }
-
-// --- PHP LOGIC ENDS HERE ---
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -204,7 +190,6 @@ function haversine_distance($lat1, $lon1, $lat2, $lon2) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="./assets/css/login.css">
 </head>
-
 <body>
     <div class="container-fluid p-0">
         <div class="row g-0">
@@ -294,5 +279,4 @@ function haversine_distance($lat1, $lon1, $lat2, $lon2) {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="./assets/js/login.js"></script>
 </body>
-
 </html>

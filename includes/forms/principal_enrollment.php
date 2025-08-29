@@ -61,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if (empty($file_errors)) {
-            $upload_dir_relative = 'uploads/principal_images/';
+            $upload_dir_relative = '/pages/principal/uploads/';
             $upload_dir_physical = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . BASE_URL . $upload_dir_relative;
             if (!is_dir($upload_dir_physical)) {
                 mkdir($upload_dir_physical, 0777, true);
