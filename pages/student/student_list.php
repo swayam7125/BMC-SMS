@@ -250,13 +250,14 @@ if (!is_ajax_request()) {
     </div>
     <?php if (($role === 'principal' || $role === 'teacher') && !empty($availableStandards)): ?>
         <div id="standardFilterWrapper" class="d-none">
-            <label for="standardFilter" class="form-label font-weight-bold m-0 mr-2">Filter by Standard:</label>
-            <select id="standardFilter" class="form-control form-control-sm">
-                <option value="all">All Standards</option>
-                <?php foreach ($availableStandards as $std): ?>
-                    <option value="<?php echo htmlspecialchars(trim($std)); ?>" <?php echo ($selectedStd == trim($std)) ? 'selected' : ''; ?>>Standard <?php echo htmlspecialchars(trim($std)); ?></option>
-                <?php endforeach; ?>
-            </select>
+            <label class="mr-3">Filter by Standard: 
+                <select id="standardFilter" class="form-control form-control-sm d-inline-block w-auto">
+                    <option value="all">All Standards</option>
+                    <?php foreach ($availableStandards as $std): ?>
+                        <option value="<?php echo htmlspecialchars(trim($std)); ?>" <?php echo ($selectedStd == trim($std)) ? 'selected' : ''; ?>>Standard <?php echo htmlspecialchars(trim($std)); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
         </div>
     <?php endif; ?>
 
@@ -276,9 +277,16 @@ if (!is_ajax_request()) {
             var standardFilterWrapper = $('#standardFilterWrapper');
 
             if (filterContainer.length > 0 && standardFilterWrapper.length > 0) {
-                standardFilterWrapper.removeClass('d-none');
-                filterContainer.prepend(standardFilterWrapper);
+                // Extract the content (the label) from the wrapper div
+                var filterContent = standardFilterWrapper.html();
                 
+                // Prepend the actual content, not the div, to the search area
+                filterContainer.prepend(filterContent);
+
+                // Remove the now-empty wrapper from the page
+                standardFilterWrapper.remove();
+                
+                // Attach the event handler to the newly added dropdown
                 $('#standardFilter').on('change', function() {
                     window.location.href = 'student_list.php?std=' + this.value;
                 });

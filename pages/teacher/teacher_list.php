@@ -78,6 +78,15 @@ try {
     die("A database error occurred while fetching the teacher list.");
 }
 
+$filter_html = '<label class="mr-3">Filter by Standard: ';
+$filter_html .= '<select class="form-control form-control-sm d-inline-block w-auto" id="standard-filter" name="std" onchange="window.location.href=\'teacher_list.php?std=\' + this.value">';
+$filter_html .= '<option value="">All</option>';
+foreach ($all_standards as $standard) {
+    $selected = ($standard == $selected_standard) ? 'selected' : '';
+    $filter_html .= "<option value='" . htmlspecialchars($standard) . "' $selected>" . htmlspecialchars($standard) . "</option>";
+}
+$filter_html .= '</select></label>';
+
 if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
@@ -118,20 +127,6 @@ if (!is_ajax_request()) {
                             <a href="/BMC-SMS/includes/forms/teacher_enrollment.php" class="btn btn-primary btn-icon-split btn-sm"><span class="icon text-white-50"><i class="fas fa-plus"></i></span><span class="text">Add New Teacher</span></a>
                         </div>
                         <div class="card-body">
-                            <div class="d-flex justify-content-end align-items-center mb-3">
-                                <form method="GET" action="teacher_list.php" class="form-inline">
-                                    <label for="standard-filter" class="mr-2">Filter by Standard:</label>
-                                    <select class="form-control" id="standard-filter" name="std" onchange="this.form.submit()">
-                                        <option value="">All</option>
-                                        <?php
-                                            foreach ($all_standards as $standard) {
-                                                $selected = ($standard == $selected_standard) ? 'selected' : '';
-                                                echo "<option value='" . htmlspecialchars($standard) . "' $selected>" . htmlspecialchars($standard) . "</option>";
-                                            }
-                                        ?>
-                                    </select>
-                                </form>
-                            </div>
                             <div class="table-responsive">
                                 <table class="table table-bordered" id="teacherListTable" width="100%" cellspacing="0">
                                     <thead>
@@ -227,22 +222,26 @@ if (!is_ajax_request()) {
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
     <script>
-        $(document).ready(function() {
-            $('#teacherListTable').DataTable();
-        });
+    $(document).ready(function() {
+        $('#teacherListTable').DataTable();
 
-        function confirmAction(url, actionText) {
-            $('#actionModalBody').text('Are you sure you want to ' + actionText + '?');
-            $('#confirmActionBtn').attr('href', url);
-            $('#actionModal').modal('show');
-        }
+        // Inject the custom filter into the search area
+        var filterHtml = '<?php echo addslashes($filter_html); ?>';
+        $('#teacherListTable_filter').prepend(filterHtml);
+    });
 
-        function confirmDelete(id) {
-            var deleteUrl = `../../pages/teacher/delete.php?id=${id}`;
-            $('#confirmDeleteBtn').attr('href', deleteUrl);
-            $('#deleteModal').modal('show');
-        }
-    </script>
+    function confirmAction(url, actionText) {
+        $('#actionModalBody').text('Are you sure you want to ' + actionText + '?');
+        $('#confirmActionBtn').attr('href', url);
+        $('#actionModal').modal('show');
+    }
+
+    function confirmDelete(id) {
+        var deleteUrl = `../../pages/teacher/delete.php?id=${id}`;
+        $('#confirmDeleteBtn').attr('href', deleteUrl);
+        $('#deleteModal').modal('show');
+    }
+</script>
 </body>
 
 </html>
