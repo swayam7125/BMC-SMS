@@ -558,6 +558,18 @@ CREATE TYPE realtime.wal_rls AS (
 ALTER TYPE realtime.wal_rls OWNER TO supabase_admin;
 
 --
+-- Name: buckettype; Type: TYPE; Schema: storage; Owner: supabase_storage_admin
+--
+
+CREATE TYPE storage.buckettype AS ENUM (
+    'STANDARD',
+    'ANALYTICS'
+);
+
+
+ALTER TYPE storage.buckettype OWNER TO supabase_storage_admin;
+
+--
 -- Name: email(); Type: FUNCTION; Schema: auth; Owner: supabase_auth_admin
 --
 
@@ -1683,6 +1695,28 @@ $$;
 ALTER FUNCTION realtime.topic() OWNER TO supabase_realtime_admin;
 
 --
+-- Name: add_prefixes(text, text); Type: FUNCTION; Schema: storage; Owner: supabase_storage_admin
+--
+
+CREATE FUNCTION storage.add_prefixes(_bucket_id text, _name text) RETURNS void
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+    prefixes text[];
+BEGIN
+    prefixes := "storage"."get_prefixes"("_name");
+
+    IF array_length(prefixes, 1) > 0 THEN
+        INSERT INTO storage.prefixes (name, bucket_id)
+        SELECT UNNEST(prefixes) as name, "_bucket_id" ON CONFLICT DO NOTHING;
+    END IF;
+END;
+$$;
+
+
+ALTER FUNCTION storage.add_prefixes(_bucket_id text, _name text) OWNER TO supabase_storage_admin;
+
+--
 -- Name: can_insert_object(text, text, uuid, jsonb); Type: FUNCTION; Schema: storage; Owner: supabase_storage_admin
 --
 
@@ -1702,20 +1736,98 @@ $$;
 ALTER FUNCTION storage.can_insert_object(bucketid text, name text, owner uuid, metadata jsonb) OWNER TO supabase_storage_admin;
 
 --
+-- Name: delete_prefix(text, text); Type: FUNCTION; Schema: storage; Owner: supabase_storage_admin
+--
+
+CREATE FUNCTION storage.delete_prefix(_bucket_id text, _name text) RETURNS boolean
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+BEGIN
+    -- Check if we can delete the prefix
+    IF EXISTS(
+        SELECT FROM "storage"."prefixes"
+        WHERE "prefixes"."bucket_id" = "_bucket_id"
+          AND level = "storage"."get_level"("_name") + 1
+          AND "prefixes"."name" COLLATE "C" LIKE "_name" || '/%'
+        LIMIT 1
+    )
+    OR EXISTS(
+        SELECT FROM "storage"."objects"
+        WHERE "objects"."bucket_id" = "_bucket_id"
+          AND "storage"."get_level"("objects"."name") = "storage"."get_level"("_name") + 1
+          AND "objects"."name" COLLATE "C" LIKE "_name" || '/%'
+        LIMIT 1
+    ) THEN
+    -- There are sub-objects, skip deletion
+    RETURN false;
+    ELSE
+        DELETE FROM "storage"."prefixes"
+        WHERE "prefixes"."bucket_id" = "_bucket_id"
+          AND level = "storage"."get_level"("_name")
+          AND "prefixes"."name" = "_name";
+        RETURN true;
+    END IF;
+END;
+$$;
+
+
+ALTER FUNCTION storage.delete_prefix(_bucket_id text, _name text) OWNER TO supabase_storage_admin;
+
+--
+-- Name: delete_prefix_hierarchy_trigger(); Type: FUNCTION; Schema: storage; Owner: supabase_storage_admin
+--
+
+CREATE FUNCTION storage.delete_prefix_hierarchy_trigger() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    prefix text;
+BEGIN
+    prefix := "storage"."get_prefix"(OLD."name");
+
+    IF coalesce(prefix, '') != '' THEN
+        PERFORM "storage"."delete_prefix"(OLD."bucket_id", prefix);
+    END IF;
+
+    RETURN OLD;
+END;
+$$;
+
+
+ALTER FUNCTION storage.delete_prefix_hierarchy_trigger() OWNER TO supabase_storage_admin;
+
+--
+-- Name: enforce_bucket_name_length(); Type: FUNCTION; Schema: storage; Owner: supabase_storage_admin
+--
+
+CREATE FUNCTION storage.enforce_bucket_name_length() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+    if length(new.name) > 100 then
+        raise exception 'bucket name "%" is too long (% characters). Max is 100.', new.name, length(new.name);
+    end if;
+    return new;
+end;
+$$;
+
+
+ALTER FUNCTION storage.enforce_bucket_name_length() OWNER TO supabase_storage_admin;
+
+--
 -- Name: extension(text); Type: FUNCTION; Schema: storage; Owner: supabase_storage_admin
 --
 
 CREATE FUNCTION storage.extension(name text) RETURNS text
-    LANGUAGE plpgsql
+    LANGUAGE plpgsql IMMUTABLE
     AS $$
 DECLARE
-_parts text[];
-_filename text;
+    _parts text[];
+    _filename text;
 BEGIN
-	select string_to_array(name, '/') into _parts;
-	select _parts[array_length(_parts,1)] into _filename;
-	-- @todo return the last part instead of 2
-	return reverse(split_part(reverse(_filename), '.', 1));
+    SELECT string_to_array(name, '/') INTO _parts;
+    SELECT _parts[array_length(_parts,1)] INTO _filename;
+    RETURN reverse(split_part(reverse(_filename), '.', 1));
 END
 $$;
 
@@ -1745,13 +1857,15 @@ ALTER FUNCTION storage.filename(name text) OWNER TO supabase_storage_admin;
 --
 
 CREATE FUNCTION storage.foldername(name text) RETURNS text[]
-    LANGUAGE plpgsql
+    LANGUAGE plpgsql IMMUTABLE
     AS $$
 DECLARE
-_parts text[];
+    _parts text[];
 BEGIN
-	select string_to_array(name, '/') into _parts;
-	return _parts[1:array_length(_parts,1)-1];
+    -- Split on "/" to get path segments
+    SELECT string_to_array(name, '/') INTO _parts;
+    -- Return everything except the last segment
+    RETURN _parts[1 : array_length(_parts,1) - 1];
 END
 $$;
 
@@ -1759,15 +1873,75 @@ $$;
 ALTER FUNCTION storage.foldername(name text) OWNER TO supabase_storage_admin;
 
 --
+-- Name: get_level(text); Type: FUNCTION; Schema: storage; Owner: supabase_storage_admin
+--
+
+CREATE FUNCTION storage.get_level(name text) RETURNS integer
+    LANGUAGE sql IMMUTABLE STRICT
+    AS $$
+SELECT array_length(string_to_array("name", '/'), 1);
+$$;
+
+
+ALTER FUNCTION storage.get_level(name text) OWNER TO supabase_storage_admin;
+
+--
+-- Name: get_prefix(text); Type: FUNCTION; Schema: storage; Owner: supabase_storage_admin
+--
+
+CREATE FUNCTION storage.get_prefix(name text) RETURNS text
+    LANGUAGE sql IMMUTABLE STRICT
+    AS $_$
+SELECT
+    CASE WHEN strpos("name", '/') > 0 THEN
+             regexp_replace("name", '[\/]{1}[^\/]+\/?$', '')
+         ELSE
+             ''
+        END;
+$_$;
+
+
+ALTER FUNCTION storage.get_prefix(name text) OWNER TO supabase_storage_admin;
+
+--
+-- Name: get_prefixes(text); Type: FUNCTION; Schema: storage; Owner: supabase_storage_admin
+--
+
+CREATE FUNCTION storage.get_prefixes(name text) RETURNS text[]
+    LANGUAGE plpgsql IMMUTABLE STRICT
+    AS $$
+DECLARE
+    parts text[];
+    prefixes text[];
+    prefix text;
+BEGIN
+    -- Split the name into parts by '/'
+    parts := string_to_array("name", '/');
+    prefixes := '{}';
+
+    -- Construct the prefixes, stopping one level below the last part
+    FOR i IN 1..array_length(parts, 1) - 1 LOOP
+            prefix := array_to_string(parts[1:i], '/');
+            prefixes := array_append(prefixes, prefix);
+    END LOOP;
+
+    RETURN prefixes;
+END;
+$$;
+
+
+ALTER FUNCTION storage.get_prefixes(name text) OWNER TO supabase_storage_admin;
+
+--
 -- Name: get_size_by_bucket(); Type: FUNCTION; Schema: storage; Owner: supabase_storage_admin
 --
 
 CREATE FUNCTION storage.get_size_by_bucket() RETURNS TABLE(size bigint, bucket_id text)
-    LANGUAGE plpgsql
+    LANGUAGE plpgsql STABLE
     AS $$
 BEGIN
     return query
-        select sum((metadata->>'size')::int) as size, obj.bucket_id
+        select sum((metadata->>'size')::bigint) as size, obj.bucket_id
         from "storage".objects as obj
         group by obj.bucket_id;
 END
@@ -1871,6 +2045,68 @@ $_$;
 ALTER FUNCTION storage.list_objects_with_delimiter(bucket_id text, prefix_param text, delimiter_param text, max_keys integer, start_after text, next_token text) OWNER TO supabase_storage_admin;
 
 --
+-- Name: objects_insert_prefix_trigger(); Type: FUNCTION; Schema: storage; Owner: supabase_storage_admin
+--
+
+CREATE FUNCTION storage.objects_insert_prefix_trigger() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    PERFORM "storage"."add_prefixes"(NEW."bucket_id", NEW."name");
+    NEW.level := "storage"."get_level"(NEW."name");
+
+    RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION storage.objects_insert_prefix_trigger() OWNER TO supabase_storage_admin;
+
+--
+-- Name: objects_update_prefix_trigger(); Type: FUNCTION; Schema: storage; Owner: supabase_storage_admin
+--
+
+CREATE FUNCTION storage.objects_update_prefix_trigger() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    old_prefixes TEXT[];
+BEGIN
+    -- Ensure this is an update operation and the name has changed
+    IF TG_OP = 'UPDATE' AND (NEW."name" <> OLD."name" OR NEW."bucket_id" <> OLD."bucket_id") THEN
+        -- Retrieve old prefixes
+        old_prefixes := "storage"."get_prefixes"(OLD."name");
+
+        -- Remove old prefixes that are only used by this object
+        WITH all_prefixes as (
+            SELECT unnest(old_prefixes) as prefix
+        ),
+        can_delete_prefixes as (
+             SELECT prefix
+             FROM all_prefixes
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM "storage"."objects"
+                 WHERE "bucket_id" = OLD."bucket_id"
+                   AND "name" <> OLD."name"
+                   AND "name" LIKE (prefix || '%')
+             )
+         )
+        DELETE FROM "storage"."prefixes" WHERE name IN (SELECT prefix FROM can_delete_prefixes);
+
+        -- Add new prefixes
+        PERFORM "storage"."add_prefixes"(NEW."bucket_id", NEW."name");
+    END IF;
+    -- Set the new level
+    NEW."level" := "storage"."get_level"(NEW."name");
+
+    RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION storage.objects_update_prefix_trigger() OWNER TO supabase_storage_admin;
+
+--
 -- Name: operation(); Type: FUNCTION; Schema: storage; Owner: supabase_storage_admin
 --
 
@@ -1886,49 +2122,91 @@ $$;
 ALTER FUNCTION storage.operation() OWNER TO supabase_storage_admin;
 
 --
+-- Name: prefixes_insert_trigger(); Type: FUNCTION; Schema: storage; Owner: supabase_storage_admin
+--
+
+CREATE FUNCTION storage.prefixes_insert_trigger() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    PERFORM "storage"."add_prefixes"(NEW."bucket_id", NEW."name");
+    RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION storage.prefixes_insert_trigger() OWNER TO supabase_storage_admin;
+
+--
 -- Name: search(text, text, integer, integer, integer, text, text, text); Type: FUNCTION; Schema: storage; Owner: supabase_storage_admin
 --
 
 CREATE FUNCTION storage.search(prefix text, bucketname text, limits integer DEFAULT 100, levels integer DEFAULT 1, offsets integer DEFAULT 0, search text DEFAULT ''::text, sortcolumn text DEFAULT 'name'::text, sortorder text DEFAULT 'asc'::text) RETURNS TABLE(name text, id uuid, updated_at timestamp with time zone, created_at timestamp with time zone, last_accessed_at timestamp with time zone, metadata jsonb)
+    LANGUAGE plpgsql
+    AS $$
+declare
+    can_bypass_rls BOOLEAN;
+begin
+    SELECT rolbypassrls
+    INTO can_bypass_rls
+    FROM pg_roles
+    WHERE rolname = coalesce(nullif(current_setting('role', true), 'none'), current_user);
+
+    IF can_bypass_rls THEN
+        RETURN QUERY SELECT * FROM storage.search_v1_optimised(prefix, bucketname, limits, levels, offsets, search, sortcolumn, sortorder);
+    ELSE
+        RETURN QUERY SELECT * FROM storage.search_legacy_v1(prefix, bucketname, limits, levels, offsets, search, sortcolumn, sortorder);
+    END IF;
+end;
+$$;
+
+
+ALTER FUNCTION storage.search(prefix text, bucketname text, limits integer, levels integer, offsets integer, search text, sortcolumn text, sortorder text) OWNER TO supabase_storage_admin;
+
+--
+-- Name: search_legacy_v1(text, text, integer, integer, integer, text, text, text); Type: FUNCTION; Schema: storage; Owner: supabase_storage_admin
+--
+
+CREATE FUNCTION storage.search_legacy_v1(prefix text, bucketname text, limits integer DEFAULT 100, levels integer DEFAULT 1, offsets integer DEFAULT 0, search text DEFAULT ''::text, sortcolumn text DEFAULT 'name'::text, sortorder text DEFAULT 'asc'::text) RETURNS TABLE(name text, id uuid, updated_at timestamp with time zone, created_at timestamp with time zone, last_accessed_at timestamp with time zone, metadata jsonb)
     LANGUAGE plpgsql STABLE
     AS $_$
 declare
-  v_order_by text;
-  v_sort_order text;
+    v_order_by text;
+    v_sort_order text;
 begin
-  case
-    when sortcolumn = 'name' then
-      v_order_by = 'name';
-    when sortcolumn = 'updated_at' then
-      v_order_by = 'updated_at';
-    when sortcolumn = 'created_at' then
-      v_order_by = 'created_at';
-    when sortcolumn = 'last_accessed_at' then
-      v_order_by = 'last_accessed_at';
-    else
-      v_order_by = 'name';
-  end case;
+    case
+        when sortcolumn = 'name' then
+            v_order_by = 'name';
+        when sortcolumn = 'updated_at' then
+            v_order_by = 'updated_at';
+        when sortcolumn = 'created_at' then
+            v_order_by = 'created_at';
+        when sortcolumn = 'last_accessed_at' then
+            v_order_by = 'last_accessed_at';
+        else
+            v_order_by = 'name';
+        end case;
 
-  case
-    when sortorder = 'asc' then
-      v_sort_order = 'asc';
-    when sortorder = 'desc' then
-      v_sort_order = 'desc';
-    else
-      v_sort_order = 'asc';
-  end case;
+    case
+        when sortorder = 'asc' then
+            v_sort_order = 'asc';
+        when sortorder = 'desc' then
+            v_sort_order = 'desc';
+        else
+            v_sort_order = 'asc';
+        end case;
 
-  v_order_by = v_order_by || ' ' || v_sort_order;
+    v_order_by = v_order_by || ' ' || v_sort_order;
 
-  return query execute
-    'with folders as (
-       select path_tokens[$1] as folder
-       from storage.objects
-         where objects.name ilike $2 || $3 || ''%''
-           and bucket_id = $4
-           and array_length(objects.path_tokens, 1) <> $1
-       group by folder
-       order by folder ' || v_sort_order || '
+    return query execute
+        'with folders as (
+           select path_tokens[$1] as folder
+           from storage.objects
+             where objects.name ilike $2 || $3 || ''%''
+               and bucket_id = $4
+               and array_length(objects.path_tokens, 1) <> $1
+           group by folder
+           order by folder ' || v_sort_order || '
      )
      (select folder as "name",
             null as id,
@@ -1954,7 +2232,126 @@ end;
 $_$;
 
 
-ALTER FUNCTION storage.search(prefix text, bucketname text, limits integer, levels integer, offsets integer, search text, sortcolumn text, sortorder text) OWNER TO supabase_storage_admin;
+ALTER FUNCTION storage.search_legacy_v1(prefix text, bucketname text, limits integer, levels integer, offsets integer, search text, sortcolumn text, sortorder text) OWNER TO supabase_storage_admin;
+
+--
+-- Name: search_v1_optimised(text, text, integer, integer, integer, text, text, text); Type: FUNCTION; Schema: storage; Owner: supabase_storage_admin
+--
+
+CREATE FUNCTION storage.search_v1_optimised(prefix text, bucketname text, limits integer DEFAULT 100, levels integer DEFAULT 1, offsets integer DEFAULT 0, search text DEFAULT ''::text, sortcolumn text DEFAULT 'name'::text, sortorder text DEFAULT 'asc'::text) RETURNS TABLE(name text, id uuid, updated_at timestamp with time zone, created_at timestamp with time zone, last_accessed_at timestamp with time zone, metadata jsonb)
+    LANGUAGE plpgsql STABLE
+    AS $_$
+declare
+    v_order_by text;
+    v_sort_order text;
+begin
+    case
+        when sortcolumn = 'name' then
+            v_order_by = 'name';
+        when sortcolumn = 'updated_at' then
+            v_order_by = 'updated_at';
+        when sortcolumn = 'created_at' then
+            v_order_by = 'created_at';
+        when sortcolumn = 'last_accessed_at' then
+            v_order_by = 'last_accessed_at';
+        else
+            v_order_by = 'name';
+        end case;
+
+    case
+        when sortorder = 'asc' then
+            v_sort_order = 'asc';
+        when sortorder = 'desc' then
+            v_sort_order = 'desc';
+        else
+            v_sort_order = 'asc';
+        end case;
+
+    v_order_by = v_order_by || ' ' || v_sort_order;
+
+    return query execute
+        'with folders as (
+           select (string_to_array(name, ''/''))[level] as name
+           from storage.prefixes
+             where lower(prefixes.name) like lower($2 || $3) || ''%''
+               and bucket_id = $4
+               and level = $1
+           order by name ' || v_sort_order || '
+     )
+     (select name,
+            null as id,
+            null as updated_at,
+            null as created_at,
+            null as last_accessed_at,
+            null as metadata from folders)
+     union all
+     (select path_tokens[level] as "name",
+            id,
+            updated_at,
+            created_at,
+            last_accessed_at,
+            metadata
+     from storage.objects
+     where lower(objects.name) like lower($2 || $3) || ''%''
+       and bucket_id = $4
+       and level = $1
+     order by ' || v_order_by || ')
+     limit $5
+     offset $6' using levels, prefix, search, bucketname, limits, offsets;
+end;
+$_$;
+
+
+ALTER FUNCTION storage.search_v1_optimised(prefix text, bucketname text, limits integer, levels integer, offsets integer, search text, sortcolumn text, sortorder text) OWNER TO supabase_storage_admin;
+
+--
+-- Name: search_v2(text, text, integer, integer, text); Type: FUNCTION; Schema: storage; Owner: supabase_storage_admin
+--
+
+CREATE FUNCTION storage.search_v2(prefix text, bucket_name text, limits integer DEFAULT 100, levels integer DEFAULT 1, start_after text DEFAULT ''::text) RETURNS TABLE(key text, name text, id uuid, updated_at timestamp with time zone, created_at timestamp with time zone, metadata jsonb)
+    LANGUAGE plpgsql STABLE
+    AS $_$
+BEGIN
+    RETURN query EXECUTE
+        $sql$
+        SELECT * FROM (
+            (
+                SELECT
+                    split_part(name, '/', $4) AS key,
+                    name || '/' AS name,
+                    NULL::uuid AS id,
+                    NULL::timestamptz AS updated_at,
+                    NULL::timestamptz AS created_at,
+                    NULL::jsonb AS metadata
+                FROM storage.prefixes
+                WHERE name COLLATE "C" LIKE $1 || '%'
+                AND bucket_id = $2
+                AND level = $4
+                AND name COLLATE "C" > $5
+                ORDER BY prefixes.name COLLATE "C" LIMIT $3
+            )
+            UNION ALL
+            (SELECT split_part(name, '/', $4) AS key,
+                name,
+                id,
+                updated_at,
+                created_at,
+                metadata
+            FROM storage.objects
+            WHERE name COLLATE "C" LIKE $1 || '%'
+                AND bucket_id = $2
+                AND level = $4
+                AND name COLLATE "C" > $5
+            ORDER BY name COLLATE "C" LIMIT $3)
+        ) obj
+        ORDER BY name COLLATE "C" LIMIT $3;
+        $sql$
+        USING prefix, bucket_name, limits, levels, start_after;
+END;
+$_$;
+
+
+ALTER FUNCTION storage.search_v2(prefix text, bucket_name text, limits integer, levels integer, start_after text) OWNER TO supabase_storage_admin;
 
 --
 -- Name: update_updated_at_column(); Type: FUNCTION; Schema: storage; Owner: supabase_storage_admin
@@ -4372,7 +4769,8 @@ CREATE TABLE storage.buckets (
     avif_autodetection boolean DEFAULT false,
     file_size_limit bigint,
     allowed_mime_types text[],
-    owner_id text
+    owner_id text,
+    type storage.buckettype DEFAULT 'STANDARD'::storage.buckettype NOT NULL
 );
 
 
@@ -4384,6 +4782,21 @@ ALTER TABLE storage.buckets OWNER TO supabase_storage_admin;
 
 COMMENT ON COLUMN storage.buckets.owner IS 'Field is deprecated, use owner_id instead';
 
+
+--
+-- Name: buckets_analytics; Type: TABLE; Schema: storage; Owner: supabase_storage_admin
+--
+
+CREATE TABLE storage.buckets_analytics (
+    id text NOT NULL,
+    type storage.buckettype DEFAULT 'ANALYTICS'::storage.buckettype NOT NULL,
+    format text DEFAULT 'ICEBERG'::text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE storage.buckets_analytics OWNER TO supabase_storage_admin;
 
 --
 -- Name: migrations; Type: TABLE; Schema: storage; Owner: supabase_storage_admin
@@ -4415,7 +4828,8 @@ CREATE TABLE storage.objects (
     path_tokens text[] GENERATED ALWAYS AS (string_to_array(name, '/'::text)) STORED,
     version text,
     owner_id text,
-    user_metadata jsonb
+    user_metadata jsonb,
+    level integer
 );
 
 
@@ -4427,6 +4841,21 @@ ALTER TABLE storage.objects OWNER TO supabase_storage_admin;
 
 COMMENT ON COLUMN storage.objects.owner IS 'Field is deprecated, use owner_id instead';
 
+
+--
+-- Name: prefixes; Type: TABLE; Schema: storage; Owner: supabase_storage_admin
+--
+
+CREATE TABLE storage.prefixes (
+    bucket_id text NOT NULL,
+    name text NOT NULL COLLATE pg_catalog."C",
+    level integer GENERATED ALWAYS AS (storage.get_level(name)) STORED NOT NULL,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+ALTER TABLE storage.prefixes OWNER TO supabase_storage_admin;
 
 --
 -- Name: s3_multipart_uploads; Type: TABLE; Schema: storage; Owner: supabase_storage_admin
@@ -4732,23 +5161,6 @@ COPY auth.users (instance_id, id, aud, role, email, encrypted_password, email_co
 --
 
 COPY public.assignment_submissions (id, assignment_id, student_id, file_path, original_filename, status, rejection_reason, submitted_at, evaluated_at, rejection_count) FROM stdin;
-1	14	15	/BMC-SMS/pages/assignments/submit/sub_6895bef2a27e08.59226959_Play-Nation.html	Play-Nation.html	Submitted	\N	2025-08-08 09:10:11.088305+00	\N	0
-3	5	15	/BMC-SMS/pages/assignments/submit/sub_6895c0eb995f48.66975532_Screenshot 2025-08-07 150502.png	Screenshot 2025-08-07 150502.png	Submitted	\N	2025-08-08 09:18:35.210693+00	\N	0
-4	7	15	/BMC-SMS/pages/assignments/submit/sub_6895c24b51c508.97169376_Screenshot 2025-03-25 200223.png	Screenshot 2025-03-25 200223.png	Accepted	\N	2025-08-08 09:24:26.89586+00	2025-08-08 09:24:42.051933+00	0
-5	18	62	/BMC-SMS/pages/assignments/submit/sub_689db3bcbd59c1.53618446_Leaving_Certificate_Ashutosh Sharma.pdf	Leaving_Certificate_Ashutosh Sharma.pdf	Accepted	\N	2025-08-14 10:00:27.367447+00	2025-08-14 10:01:39.998901+00	0
-6	19	15	/BMC-SMS/pages/assignments/submit/sub_689db548997154.58077085_Leaving_Certificate_Ashutosh Sharma.pdf	Leaving_Certificate_Ashutosh Sharma.pdf	Accepted	\N	2025-08-14 10:07:03.248672+00	2025-08-14 10:08:02.87649+00	0
-7	20	15	/BMC-SMS/pages/assignments/submit/sub_689db79d13b429.30555156_bmc-sms_file structure.png	bmc-sms_file structure.png	Accepted	\N	2025-08-14 10:16:59.708313+00	2025-08-14 10:17:58.374028+00	1
-2	13	15	/BMC-SMS/pages/assignments/submit/sub_689dc17c977867.27557707_student_girl_2.jpg	student_girl_2.jpg	Accepted	\N	2025-08-14 10:59:07.330352+00	2025-08-14 11:14:28.818592+00	1
-8	21	15	/BMC-SMS/pages/assignments/submit/sub_689dc9ab029d16.02649346_principal enroll.txt	principal enroll.txt	Accepted	\N	2025-08-14 11:34:03.141184+00	2025-08-14 11:34:32.052562+00	0
-9	22	15	/BMC-SMS/pages/assignments/submit/sub_689dcbe2061bb5.52914583_sidebar.txt	sidebar.txt	Accepted	\N	2025-08-14 11:43:29.993053+00	2025-08-14 11:43:56.634396+00	0
-10	1	15	/BMC-SMS/pages/assignments/submit/sub_689dd10b931ac3.39749759_Screenshot 2025-08-14 153932.png	Screenshot 2025-08-14 153932.png	Accepted	\N	2025-08-14 12:05:31.998803+00	2025-08-14 12:06:11.643515+00	0
-11	2	15	/BMC-SMS/pages/assignments/submit/sub_68a2d709010f37.69626351_Screenshot 2025-03-25 200223.png	Screenshot 2025-03-25 200223.png	Accepted	\N	2025-08-18 07:32:22.852128+00	2025-08-18 07:32:51.700342+00	0
-12	3	15	/BMC-SMS/pages/assignments/submit/sub_68a2f52d04b3f6.33338545_principal enroll.txt	principal enroll.txt	Accepted	\N	2025-08-18 09:40:58.481819+00	2025-08-18 09:45:52.464116+00	0
-13	9	15	/BMC-SMS/pages/assignments/submit/sub_68a2f780d7b9c5.14555232_sidebar.txt	sidebar.txt	Submitted	\N	2025-08-18 09:50:54.491208+00	\N	0
-14	8	15	/BMC-SMS/pages/assignments/submit/sub_68a2f871adb0a9.75818893_principal enroll.txt	principal enroll.txt	Submitted	\N	2025-08-18 09:54:55.177789+00	\N	0
-15	11	15	/BMC-SMS/pages/assignments/submit/sub_68a2fd261ed1c8.10676288_messages.sql	messages.sql	Accepted	\N	2025-08-18 10:14:59.603468+00	2025-08-18 10:20:40.692058+00	0
-16	24	15	/BMC-SMS/pages/assignments/submit/sub_68ad9a9ab2aab6.07390931_Play Nation.pptx	Play Nation.pptx	Rejected	<strong>Feedback on 26-08-2025 01:29 PM:</strong><br>galat he	2025-08-26 11:29:30.379045+00	2025-08-26 11:29:57.517843+00	1
-17	23	15	/BMC-SMS/pages/assignments/submit/sub_68ad9af8ca3981.21498136_Play Nation.pptx	Play Nation.pptx	Accepted	\N	2025-08-26 11:31:04.447924+00	2025-08-26 11:31:27.487097+00	0
 \.
 
 
@@ -4804,13 +5216,8 @@ COPY public.attendance (student_id, teacher_id, school_id, standard, subject, pe
 --
 
 COPY public.book_requests (request_id, requester_id, requester_role, school_id, book_title, author, reason, status, created_at) FROM stdin;
-1	15	student	4	Harry	Devam	i want it	Approved	2025-08-08 10:29:54.945408+00
 3	6	teacher	4	swayam	swayam	read	Approved	2025-08-08 10:48:33.422181+00
 2	6	teacher	4	maharbharat	Ved Vyas	I want to read	Approved	2025-08-08 10:40:43.407814+00
-4	15	student	4	50 Shades of Grey	Swayam Shah	I like Dirty	Approved	2025-08-08 10:52:11.678618+00
-5	15	student	4	50 Shades of Grey	Swayam Shah	I like Dirty and Wet	Approved	2025-08-08 11:28:07.211595+00
-6	15	student	4	50 Shades of Grey	Swayam Shah	I like Wet ,Dirty	Approved	2025-08-08 11:45:07.639366+00
-7	15	student	4	50 Shades of Grey	Swayam Shah	I like Wet ,Dirty	Approved	2025-08-08 11:45:32.319197+00
 8	6	teacher	4	Meet me	devam	i want	Rejected	2025-08-08 11:52:07.960265+00
 9	6	teacher	4	Testing by Meet	Meet Patel	This book helps us to solve the notification issues	Approved	2025-08-11 09:10:37.01456+00
 10	6	teacher	4	Testing II by Meet	MSD	my wish	Rejected	2025-08-11 09:28:24.762984+00
@@ -4842,15 +5249,8 @@ COPY public.borrow_requests (request_id, book_id, school_id, borrower_id, borrow
 1	2	4	6	teacher	2025-08-17	2025-08-07 17:14:13.143276+00	Approved	\N	2025-08-07 17:25:31.757647+00	\N	2025-08-21
 2	2	4	6	teacher	2025-08-17	2025-08-07 17:28:55.918004+00	Approved	\N	2025-08-07 17:30:10.456331+00	\N	2025-08-21
 6	2	4	6	teacher	2025-08-17	2025-08-07 17:41:27.982507+00	Approved	\N	2025-08-07 17:42:03.323022+00	\N	2025-08-17
-8	2	4	15	student	2025-08-17	2025-08-07 17:54:45.021467+00	Approved	\N	2025-08-07 17:55:14.101793+00	\N	2025-08-17
 7	2	4	6	teacher	2025-08-17	2025-08-07 17:54:09.603121+00	Approved	\N	2025-08-07 17:55:20.546755+00	\N	2025-08-17
-9	2	4	15	student	2025-08-08	2025-08-08 10:40:39.520495+00	Approved	36	2025-08-08 10:40:59.840023+00	\N	2025-08-08
-10	2	4	15	student	2025-08-08	2025-08-08 10:49:01.748739+00	Approved	36	2025-08-08 10:49:13.792742+00	\N	2025-08-08
-11	2	4	15	student	2025-08-09	2025-08-08 11:21:08.348759+00	Approved	36	2025-08-08 11:21:30.562467+00	\N	2025-08-09
-12	2	4	15	student	2025-08-08	2025-08-08 11:22:06.106929+00	Approved	36	2025-08-08 11:22:23.330708+00	\N	2025-08-08
-13	2	4	15	student	2025-08-08	2025-08-08 11:26:10.349137+00	Approved	36	2025-08-08 11:26:31.466137+00	\N	2025-08-08
 14	2	4	6	teacher	2025-08-09	2025-08-08 11:29:34.182816+00	Approved	36	2025-08-08 11:29:48.643384+00	\N	2025-08-09
-15	2	4	15	student	2025-08-08	2025-08-08 11:46:39.747444+00	Approved	36	2025-08-08 11:46:54.302011+00	\N	2025-08-08
 16	2	4	6	teacher	2025-08-09	2025-08-08 11:48:22.396444+00	Approved	36	2025-08-08 11:48:33.815533+00	\N	2025-08-09
 17	2	4	6	teacher	2025-08-09	2025-08-08 11:51:03.626265+00	Approved	36	2025-08-08 11:51:12.823561+00	\N	2025-08-09
 18	2	4	6	teacher	2025-08-18	2025-08-11 09:11:02.803856+00	Approved	36	2025-08-11 09:12:06.088446+00	\N	2025-08-18
@@ -4869,16 +5269,9 @@ COPY public.borrowing_records (record_id, book_id, borrower_id, borrower_role, c
 5	2	6	teacher	2025-08-07	2025-08-21	2025-08-07	t	0.00	Unpaid
 6	2	6	teacher	2025-08-07	2025-08-17	2025-08-07	t	0.00	Unpaid
 7	2	6	teacher	2025-08-07	2025-08-21	2025-08-07	t	0.00	Unpaid
-8	2	15	student	2025-08-07	2025-08-17	2025-08-07	t	0.00	Unpaid
 9	2	6	teacher	2025-08-07	2025-08-17	2025-08-07	t	0.00	Unpaid
 10	2	6	teacher	2025-08-07	2025-08-21	2025-08-07	t	0.00	Unpaid
-11	2	15	student	2025-08-08	2025-08-08	2025-08-08	t	0.00	Unpaid
-12	2	15	student	2025-08-08	2025-08-08	2025-08-08	t	0.00	Unpaid
-13	2	15	student	2025-08-08	2025-08-09	2025-08-08	t	0.00	Unpaid
-14	2	15	student	2025-08-08	2025-08-08	2025-08-08	t	0.00	Unpaid
-15	2	15	student	2025-08-08	2025-08-08	2025-08-08	t	0.00	Unpaid
 16	2	6	teacher	2025-08-08	2025-08-09	2025-08-08	t	0.00	Unpaid
-17	2	15	student	2025-08-08	2025-08-08	2025-08-08	t	0.00	Unpaid
 18	2	6	teacher	2025-08-08	2025-08-09	2025-08-08	t	0.00	Unpaid
 19	2	6	teacher	2025-08-08	2025-08-09	2025-08-08	t	0.00	Unpaid
 20	2	6	teacher	2025-08-11	2025-08-18	2025-08-13	t	0.00	Unpaid
@@ -5140,8 +5533,8 @@ COPY public.librarian (id, librarian_image, librarian_name, school_id, email, pa
 53	/BMC-SMS/pages/librarian/uploads/librarian_6895b77a58c4d1.07997847.jpg	Rohit Singh	1	rohit@gmail.com	$2y$10$CX5ZFB02c4ncgdCCy9WplezqcHT0jAEaAAaI6uqr6fQHvj0FoSL8m	7412036985	2021-12-12	Male	O-	abcdefg	MBA	12000.00	Morning	\N	\N	\N	\N	\N	\N
 107	\N	Prakash Jadav	1	prakash@gmail.com	$2y$10$pub4gPRk6EW7Il4jxjo2Ouc4F87zBPcLdf9p12/FYFppQYSX8yTai	9622001456	1998-08-12	Male	A-	101, Shivalik Row House, Surat	B.A	15000.00	Evening	\N	\N	\N	\N	\N	\N
 108	/BMC-SMS/pages/librarian/uploads/librarian_68a47ee5dd0421.90308632.jpg	Santosh Pandit	6	santosh@gmai.com	$2y$10$JM1uBHaBUqobLR9miaICKO8tuD7q2LKAQysccyTcY7Tt0SH5sUAK.	8420369874	1997-04-03	Male	AB-	abcd	B.A.	12500.00	Morning	\N	\N	\N	\N	\N	\N
-147	/BMC-SMS/pages/librarian/uploads/librarian_68b02ffe2caf8.jpg	Dinesh Karthik	4	dinesh@gmail.com	$2y$10$e/ba0l3WZPzpCiKblkuMLOmVYTrB4k5WyrK/Zpe8WzyfoylNbCuIq	9852317789	1998-02-02	Male	O-	nkm	M.Lib.I.Sc.	12500.00	Evening	2025-08-29	Self Transport	Public Transport	\N	\N	\N
-36	/BMC-SMS/pages/librarian/uploads/librarian_36_68a4701db446f.jpeg	Devang Odedra	4	devang@gmail.com	$2y$10$zmDytTauKLi/cqAY89QgT.CyVW7b4lgK.rwFVPdJbZf4zIsHGyYdu	9187567898	1981-01-01	Male	A+	Canal Road	B.A	40000.00	Morning	\N	Self Transport	Bike	GJ-21-CE-1115	GJ-2120128523014	\N
+36	/BMC-SMS/pages/librarian/uploads/librarian_68b16e61daea87.50245944.jpeg	Devang Odedra	4	devang@gmail.com	$2y$10$zmDytTauKLi/cqAY89QgT.CyVW7b4lgK.rwFVPdJbZf4zIsHGyYdu	9187567898	1981-01-01	Male	A+	Canal Road	B.A	40000.00	Morning	\N	Self Transport	Bike	GJ-21-CE-1115	GJ-2120128523014	\N
+147	/BMC-SMS/pages/librarian/uploads/librarian_68b16ee1e8ebe8.42276774.jpg	Dinesh Karthik	4	dinesh@gmail.com	$2y$10$e/ba0l3WZPzpCiKblkuMLOmVYTrB4k5WyrK/Zpe8WzyfoylNbCuIq	9852317789	1998-02-02	Male	O-	nkm	M.Lib.I.Sc.	12500.00	Evening	2025-08-29	Self Transport	Public Transport	\N	\N	\N
 \.
 
 
@@ -5267,60 +5660,6 @@ COPY public.librarian_timings (timing_id, librarian_id, day_of_week, opens_at, c
 --
 
 COPY public.messages (id, sender_id, receiver_id, message_text, "timestamp", is_read) FROM stdin;
-125	6	65	Did you get notification?	2025-08-12 05:52:57.138461+00	t
-127	65	6	Do you got my message notification?	2025-08-12 05:53:55.055566+00	t
-129	6	65	but still we are not getting notification in header's "message icon"	2025-08-12 05:54:53.851646+00	t
-131	65	6	No sir still not getting it	2025-08-12 06:01:00.591347+00	t
-133	15	54	bolo	2025-08-12 06:46:15.11123+00	t
-135	15	6	hii meet	2025-08-12 09:09:46.436093+00	t
-137	15	6	hyy	2025-08-12 11:47:30.417977+00	t
-139	6	15	h	2025-08-13 13:16:28.392185+00	t
-104	6	15	hyy	2025-08-10 09:51:31.72205+00	t
-108	54	15	Hey, How are you?	2025-08-11 10:29:15.723157+00	t
-110	54	15	teacher-> message.php	2025-08-11 10:31:55.565951+00	t
-112	54	15	inclues-> msg_api.php	2025-08-11 10:32:37.970527+00	t
-114	54	15	for refrence header.php for photo viewing	2025-08-11 10:33:28.418376+00	t
-116	54	59	testing, photo bug solved	2025-08-11 11:59:18.631968+00	t
-106	6	65	hiiii	2025-08-11 08:57:48.029461+00	t
-122	6	65	Hi Nirmit	2025-08-12 05:39:36.518909+00	t
-124	65	6	Ok Sir, do it	2025-08-12 05:40:32.905949+00	t
-120	6	62	bye	2025-08-11 15:57:18.232636+00	t
-141	62	6	hello sir	2025-08-14 10:02:14.486192+00	t
-143	63	6	Hi Sir, photo is coming properly	2025-08-25 11:56:36.064766+00	t
-145	6	15	hi	2025-08-25 12:29:11.384391+00	t
-147	15	6	ok sir thank you	2025-08-25 17:32:05.472353+00	t
-151	15	54	meet	2025-08-26 09:13:28.813259+00	f
-149	15	6	hy	2025-08-26 09:12:16.838629+00	t
-153	6	15	hy	2025-08-26 09:16:32.013656+00	t
-155	15	6	Hii	2025-08-28 08:05:28.597889+00	t
-157	6	15	Kem?	2025-08-28 08:06:40.141293+00	t
-126	65	6	Yes sir, i got notificiation	2025-08-12 05:53:44.17014+00	t
-128	6	65	Yes beta, i also got	2025-08-12 05:54:28.719786+00	t
-130	6	65	Confirm, if now you can see the notification or not?	2025-08-12 06:00:04.014087+00	t
-132	54	15	Hi	2025-08-12 06:45:45.690273+00	t
-134	6	15	Hi, Harsh	2025-08-12 09:08:51.66234+00	t
-136	15	6	kem cho devang sir	2025-08-12 09:10:11.153284+00	t
-138	6	15	date pe chaloge?	2025-08-12 11:49:41.708645+00	t
-140	15	6	hii	2025-08-13 13:16:57.343686+00	t
-105	15	6	hyy	2025-08-10 09:52:20.789266+00	t
-107	6	15	hii	2025-08-11 08:58:01.637201+00	t
-109	15	54	I am fine ma'am	2025-08-11 10:30:16.107091+00	t
-111	54	15	student-> message.php	2025-08-11 10:32:04.711482+00	t
-113	54	15	assests>js>message.js	2025-08-11 10:33:00.216357+00	t
-115	54	59	hi	2025-08-11 10:51:55.238676+00	t
-117	6	15	how are you?	2025-08-11 15:56:58.992136+00	t
-123	6	65	Implementing notifications	2025-08-12 05:39:56.192998+00	t
-121	6	63	ooooo	2025-08-11 15:57:22.371224+00	t
-142	6	63	Hi	2025-08-25 11:35:59.707088+00	t
-144	6	15	hi	2025-08-25 12:01:27.610259+00	t
-146	6	15	Hyy, today's date is 25 august	2025-08-25 17:30:47.136358+00	t
-148	6	15	Hyy	2025-08-26 08:40:12.549386+00	t
-152	15	54	patel	2025-08-26 09:13:38.409457+00	f
-150	15	6	bye	2025-08-26 09:12:49.232306+00	t
-156	6	15	hii	2025-08-28 08:05:47.744552+00	t
-119	6	59	hyy	2025-08-11 15:57:13.423359+00	t
-154	6	59	hyy	2025-08-26 09:16:48.895197+00	t
-158	59	6	hii	2025-08-28 08:07:36.184264+00	t
 \.
 
 
@@ -5393,23 +5732,16 @@ COPY public.notifications (id, user_id, message, link, is_read, created_at, type
 440	70	New notice from Principal: Checking...	pages/teacher/view_notice.php	f	2025-08-14 08:51:46.93638+00	school_notice
 441	49	New notice from Principal: Checking...	pages/teacher/view_notice.php	f	2025-08-14 08:51:49.402466+00	school_notice
 443	12	New notice from Principal: Checking...	pages/teacher/view_notice.php	f	2025-08-14 08:51:55.720978+00	school_notice
-450	59	New notice from Principal: Checking...	pages/student/view_notice.php	f	2025-08-14 08:52:13.572174+00	school_notice
-466	15	New Exam Timetable: Term 2 Exam Timetable	pages/student/view_exam_timetable.php	t	2025-08-14 09:01:41.931191+00	exam_timetable
-470	62	New Exam Timetable: Term 2 Exam Timetable	pages/student/view_exam_timetable.php	t	2025-08-14 09:01:41.931191+00	exam_timetable
-447	15	New notice from Principal: Checking...	pages/student/view_notice.php	t	2025-08-14 08:52:05.967002+00	school_notice
 442	6	New notice from Principal: Checking...	pages/teacher/view_notice.php	t	2025-08-14 08:51:52.539509+00	school_notice
-451	62	New notice from Principal: Checking...	pages/student/view_notice.php	t	2025-08-14 08:52:16.123335+00	school_notice
 452	10	New leave request from Meet Patel	pages/principal/teacher_leave_management.php	t	2025-08-14 08:54:29.627549+00	leave_request
 453	6	Your leave application has been Approved.	pages/teacher/teacher_leave_management.php	t	2025-08-14 08:55:39.715223+00	leave_status
 454	10	New leave request from Meet Patel	pages/principal/teacher_leave_management.php	t	2025-08-14 08:57:14.360654+00	leave_request
 459	70	New Exam Timetable: Term 2 Exam Timetable	pages/teacher/view_exam_timetable.php	f	2025-08-14 09:01:41.931191+00	exam_timetable
 460	49	New Exam Timetable: Term 2 Exam Timetable	pages/teacher/view_exam_timetable.php	f	2025-08-14 09:01:41.931191+00	exam_timetable
 462	12	New Exam Timetable: Term 2 Exam Timetable	pages/teacher/view_exam_timetable.php	f	2025-08-14 09:01:41.931191+00	exam_timetable
-469	59	New Exam Timetable: Term 2 Exam Timetable	pages/student/view_exam_timetable.php	f	2025-08-14 09:01:41.931191+00	exam_timetable
 474	70	New Exam Timetable: Final Exam Timetable	pages/teacher/view_exam_timetable.php	f	2025-08-14 09:25:09.722633+00	exam_timetable
 475	49	New Exam Timetable: Final Exam Timetable	pages/teacher/view_exam_timetable.php	f	2025-08-14 09:25:09.722633+00	exam_timetable
 477	12	New Exam Timetable: Final Exam Timetable	pages/teacher/view_exam_timetable.php	f	2025-08-14 09:25:09.722633+00	exam_timetable
-481	15	New Exam Timetable: Final Exam Timetable	pages/student/view_exam_timetable.php	t	2025-08-14 09:25:09.722633+00	exam_timetable
 439	54	New notice from Principal: Checking...	pages/teacher/view_notice.php	t	2025-08-14 08:51:44.463406+00	school_notice
 458	54	New Exam Timetable: Term 2 Exam Timetable	pages/teacher/view_exam_timetable.php	t	2025-08-14 09:01:41.931191+00	exam_timetable
 473	54	New Exam Timetable: Final Exam Timetable	pages/teacher/view_exam_timetable.php	t	2025-08-14 09:25:09.722633+00	exam_timetable
@@ -5419,18 +5751,9 @@ COPY public.notifications (id, user_id, message, link, is_read, created_at, type
 438	51	New notice from Principal: Checking...	pages/teacher/view_notice.php	t	2025-08-14 08:51:41.319196+00	school_notice
 472	51	New Exam Timetable: Final Exam Timetable	pages/teacher/view_exam_timetable.php	t	2025-08-14 09:25:09.722633+00	exam_timetable
 457	51	New Exam Timetable: Term 2 Exam Timetable	pages/teacher/view_exam_timetable.php	t	2025-08-14 09:01:41.931191+00	exam_timetable
-446	65	New notice from Principal: Checking...	pages/student/view_notice.php	t	2025-08-14 08:52:03.403483+00	school_notice
-465	65	New Exam Timetable: Term 2 Exam Timetable	pages/student/view_exam_timetable.php	t	2025-08-14 09:01:41.931191+00	exam_timetable
-480	65	New Exam Timetable: Final Exam Timetable	pages/student/view_exam_timetable.php	t	2025-08-14 09:25:09.722633+00	exam_timetable
-445	63	New notice from Principal: Checking...	pages/student/view_notice.php	t	2025-08-14 08:52:00.896971+00	school_notice
-464	63	New Exam Timetable: Term 2 Exam Timetable	pages/student/view_exam_timetable.php	t	2025-08-14 09:01:41.931191+00	exam_timetable
-479	63	New Exam Timetable: Final Exam Timetable	pages/student/view_exam_timetable.php	t	2025-08-14 09:25:09.722633+00	exam_timetable
-484	59	New Exam Timetable: Final Exam Timetable	pages/student/view_exam_timetable.php	f	2025-08-14 09:25:09.722633+00	exam_timetable
 489	70	New Exam Timetable: Term 2 Exam Timetable	pages/teacher/view_exam_timetable.php	f	2025-08-14 09:25:50.650348+00	exam_timetable
 490	49	New Exam Timetable: Term 2 Exam Timetable	pages/teacher/view_exam_timetable.php	f	2025-08-14 09:25:50.650348+00	exam_timetable
 492	12	New Exam Timetable: Term 2 Exam Timetable	pages/teacher/view_exam_timetable.php	f	2025-08-14 09:25:50.650348+00	exam_timetable
-499	59	New Exam Timetable: Term 2 Exam Timetable	pages/student/view_exam_timetable.php	f	2025-08-14 09:25:50.650348+00	exam_timetable
-496	15	New Exam Timetable: Term 2 Exam Timetable	pages/student/view_exam_timetable.php	t	2025-08-14 09:25:50.650348+00	exam_timetable
 520	6	Your leave application has been Approved.	pages/teacher/teacher_leave_management.php	t	2025-08-14 09:33:02.263553+00	leave_status
 501	6	New notice from Principal: Hiii...	pages/teacher/view_notice.php	t	2025-08-14 09:25:54.991901+00	school_notice
 521	10	New leave request from Meet Patel	pages/principal/teacher_leave_management.php	t	2025-08-14 09:35:12.904105+00	leave_request
@@ -5438,24 +5761,17 @@ COPY public.notifications (id, user_id, message, link, is_read, created_at, type
 505	70	New Exam Timetable: Term 1 Exam Timetable	pages/teacher/view_exam_timetable.php	f	2025-08-14 09:26:49.835349+00	exam_timetable
 506	49	New Exam Timetable: Term 1 Exam Timetable	pages/teacher/view_exam_timetable.php	f	2025-08-14 09:26:49.835349+00	exam_timetable
 508	12	New Exam Timetable: Term 1 Exam Timetable	pages/teacher/view_exam_timetable.php	f	2025-08-14 09:26:49.835349+00	exam_timetable
-515	59	New Exam Timetable: Term 1 Exam Timetable	pages/student/view_exam_timetable.php	f	2025-08-14 09:26:49.835349+00	exam_timetable
-512	15	New Exam Timetable: Term 1 Exam Timetable	pages/student/view_exam_timetable.php	t	2025-08-14 09:26:49.835349+00	exam_timetable
-518	59	New notice from Principal: Meet...	pages/student/view_notice.php	f	2025-08-14 09:29:10.751023+00	school_notice
 522	6	Your leave application has been Approved.	pages/teacher/teacher_leave_management.php	t	2025-08-14 09:36:04.231845+00	leave_status
-517	15	New notice from Principal: Meet...	pages/student/view_notice.php	t	2025-08-14 09:29:07.269685+00	school_notice
 507	6	New Exam Timetable: Term 1 Exam Timetable	pages/teacher/view_exam_timetable.php	t	2025-08-14 09:26:49.835349+00	exam_timetable
 519	10	New leave request from Meet Patel	pages/principal/teacher_leave_management.php	t	2025-08-14 09:32:44.540648+00	leave_request
 523	10	New leave request from Meet Patel	pages/principal/teacher_leave_management.php	t	2025-08-14 09:38:35.323463+00	leave_request
 525	6	New notice from Principal: HIIIIIIIIII...	pages/teacher/view_notice.php	t	2025-08-14 09:39:21.126868+00	school_notice
 532	6	New notice from Principal: fenil...	pages/teacher/view_notice.php	t	2025-08-14 09:41:32.241499+00	school_notice
-485	62	New Exam Timetable: Final Exam Timetable	pages/student/view_exam_timetable.php	t	2025-08-14 09:25:09.722633+00	exam_timetable
 524	6	Your leave application has been Rejected.	pages/teacher/teacher_leave_management.php	t	2025-08-14 09:39:13.953817+00	leave_status
 526	6	New notice from Principal: How are You...	pages/teacher/view_notice.php	t	2025-08-14 09:40:11.523008+00	school_notice
 530	70	New notice from Principal: fenil...	pages/teacher/view_notice.php	f	2025-08-14 09:41:24.6046+00	school_notice
 531	49	New notice from Principal: fenil...	pages/teacher/view_notice.php	f	2025-08-14 09:41:28.360917+00	school_notice
 533	12	New notice from Principal: fenil...	pages/teacher/view_notice.php	f	2025-08-14 09:41:35.38161+00	school_notice
-500	62	New Exam Timetable: Term 2 Exam Timetable	pages/student/view_exam_timetable.php	t	2025-08-14 09:25:50.650348+00	exam_timetable
-516	62	New Exam Timetable: Term 1 Exam Timetable	pages/student/view_exam_timetable.php	t	2025-08-14 09:26:49.835349+00	exam_timetable
 488	54	New Exam Timetable: Term 2 Exam Timetable	pages/teacher/view_exam_timetable.php	t	2025-08-14 09:25:50.650348+00	exam_timetable
 504	54	New Exam Timetable: Term 1 Exam Timetable	pages/teacher/view_exam_timetable.php	t	2025-08-14 09:26:49.835349+00	exam_timetable
 529	54	New notice from Principal: fenil...	pages/teacher/view_notice.php	t	2025-08-14 09:41:21.397639+00	school_notice
@@ -5465,26 +5781,14 @@ COPY public.notifications (id, user_id, message, link, is_read, created_at, type
 487	51	New Exam Timetable: Term 2 Exam Timetable	pages/teacher/view_exam_timetable.php	t	2025-08-14 09:25:50.650348+00	exam_timetable
 503	51	New Exam Timetable: Term 1 Exam Timetable	pages/teacher/view_exam_timetable.php	t	2025-08-14 09:26:49.835349+00	exam_timetable
 528	51	New notice from Principal: fenil...	pages/teacher/view_notice.php	t	2025-08-14 09:41:18.188366+00	school_notice
-495	65	New Exam Timetable: Term 2 Exam Timetable	pages/student/view_exam_timetable.php	t	2025-08-14 09:25:50.650348+00	exam_timetable
-511	65	New Exam Timetable: Term 1 Exam Timetable	pages/student/view_exam_timetable.php	t	2025-08-14 09:26:49.835349+00	exam_timetable
-494	63	New Exam Timetable: Term 2 Exam Timetable	pages/student/view_exam_timetable.php	t	2025-08-14 09:25:50.650348+00	exam_timetable
-510	63	New Exam Timetable: Term 1 Exam Timetable	pages/student/view_exam_timetable.php	t	2025-08-14 09:26:49.835349+00	exam_timetable
-540	59	New notice from Principal: fenil...	pages/student/view_notice.php	f	2025-08-14 09:42:00.346568+00	school_notice
 558	54	Harsh Shah has submitted an assignment.	pages/assignments/view_submissions.php?id=20	t	2025-08-14 10:16:59.773629+00	assignment_submission
-537	15	New notice from Principal: fenil...	pages/student/view_notice.php	t	2025-08-14 09:41:50.165292+00	school_notice
-544	62	New Assignment: dg...	pages/assignments/view_assignments.php	t	2025-08-14 09:57:09.594333+00	new_assignment
-541	62	New notice from Principal: fenil...	pages/student/view_notice.php	t	2025-08-14 09:42:04.108109+00	school_notice
 545	6	New notice from Principal: HIII...	pages/teacher/view_notice.php	t	2025-08-14 09:59:48.817463+00	school_notice
 546	6	Rohini Seth has submitted an assignment.	pages/assignments/view_submissions.php?id=18	t	2025-08-14 10:00:27.435849+00	assignment_submission
-548	59	New Assignment: etr...	pages/assignments/view_assignments.php	f	2025-08-14 10:05:52.27621+00	new_assignment
-547	15	New Assignment: etr...	pages/assignments/view_assignments.php	t	2025-08-14 10:05:52.27621+00	new_assignment
 549	6	New notice from Principal: hiiiii...	pages/teacher/view_notice.php	t	2025-08-14 10:06:23.336013+00	school_notice
 550	6	Harsh Shah has submitted an assignment.	pages/assignments/view_submissions.php?id=19	t	2025-08-14 10:07:03.320111+00	assignment_submission
 551	10	New leave request from Meet Patel	pages/principal/teacher_leave_management.php	t	2025-08-14 10:07:15.58367+00	leave_request
 576	36	Meet Patel has requested to borrow a book.	pages/librarian/borrow_requests.php	t	2025-08-14 11:37:33.429495+00	borrow_request
 552	6	Your leave application has been Approved.	pages/teacher/teacher_leave_management.php	t	2025-08-14 10:07:41.47693+00	leave_status
-554	59	New Assignment: Biology Assignment...	pages/assignments/view_assignments.php	f	2025-08-14 10:13:51.331446+00	new_assignment
-553	15	New Assignment: Biology Assignment...	pages/assignments/view_assignments.php	t	2025-08-14 10:13:51.331446+00	new_assignment
 556	10	New leave request from Meet Patel	pages/principal/teacher_leave_management.php	t	2025-08-14 10:15:11.369011+00	leave_request
 555	54	Harsh Shah has submitted an assignment.	pages/assignments/view_submissions.php?id=20	t	2025-08-14 10:14:59.458794+00	assignment_submission
 557	6	Your leave application has been Approved.	pages/teacher/teacher_leave_management.php	t	2025-08-14 10:15:28.71019+00	leave_status
@@ -5498,12 +5802,8 @@ COPY public.notifications (id, user_id, message, link, is_read, created_at, type
 570	42	New notice from BMC: ASAP	pages/principal/view_notice.php	f	2025-08-14 11:07:11.865209+00	new_notice
 563	36	New Notice from Principal Fenil Pastagia	pages/librarian/view_principal_notices.php	t	2025-08-14 11:05:48.185076+00	principal_to_librarian_notice
 561	6	Harsh Shah has submitted an assignment.	pages/assignments/view_submissions.php?id=13	t	2025-08-14 10:59:07.40346+00	assignment_submission
-572	59	New Assignment: HIII...	pages/assignments/view_assignments.php	f	2025-08-14 11:33:28.317677+00	new_assignment
-571	15	New Assignment: HIII...	pages/assignments/view_assignments.php	t	2025-08-14 11:33:28.317677+00	new_assignment
 573	6	Harsh Shah has submitted an assignment.	pages/assignments/view_submissions.php?id=21	t	2025-08-14 11:34:03.959213+00	assignment_submission
 574	36	New book acquisition request from Meet Patel for "Coding Basics".	pages/librarian/book_requests.php	t	2025-08-14 11:36:29.091594+00	acquisition_request
-580	59	New Assignment: HII...	pages/assignments/view_assignments.php	f	2025-08-14 11:42:48.473999+00	new_assignment
-579	15	New Assignment: HII...	pages/assignments/view_assignments.php	t	2025-08-14 11:42:48.473999+00	new_assignment
 581	6	Harsh Shah has submitted an assignment.	pages/assignments/view_submissions.php?id=22	t	2025-08-14 11:43:27.362197+00	assignment_submission
 582	6	Harsh Shah has submitted an assignment.	pages/assignments/view_submissions.php?id=22	t	2025-08-14 11:43:30.178076+00	assignment_submission
 577	6	Your request for 'The Ramayana' has been approved. Please collect it from the library.	/pages/teacher/my_library_record.php	t	2025-08-14 11:38:27.811073+00	borrow_status
@@ -5514,10 +5814,6 @@ COPY public.notifications (id, user_id, message, link, is_read, created_at, type
 585	39	New notice from BMC: HII	pages/principal/view_notice.php	f	2025-08-18 07:31:15.795683+00	new_notice
 586	40	New notice from BMC: HII	pages/principal/view_notice.php	f	2025-08-18 07:31:15.795683+00	new_notice
 587	64	New notice from BMC: HII	pages/principal/view_notice.php	f	2025-08-18 07:31:15.795683+00	new_notice
-543	65	New Assignment: dg...	pages/assignments/view_assignments.php	t	2025-08-14 09:57:09.594333+00	new_assignment
-536	65	New notice from Principal: fenil...	pages/student/view_notice.php	t	2025-08-14 09:41:46.380559+00	school_notice
-535	63	New notice from Principal: fenil...	pages/student/view_notice.php	t	2025-08-14 09:41:42.581121+00	school_notice
-542	63	New Assignment: dg...	pages/assignments/view_assignments.php	t	2025-08-14 09:57:09.594333+00	new_assignment
 589	42	New notice from BMC: HII	pages/principal/view_notice.php	f	2025-08-18 07:31:15.795683+00	new_notice
 588	10	New notice from BMC: HII	pages/principal/view_notice.php	t	2025-08-18 07:31:15.795683+00	new_notice
 590	6	Harsh Shah has submitted an assignment.	pages/assignments/view_submissions.php?id=2	t	2025-08-18 07:32:23.032019+00	assignment_submission
@@ -5570,20 +5866,8 @@ COPY public.notifications (id, user_id, message, link, is_read, created_at, type
 636	6	New notice from Principal: wdfsc...	pages/teacher/view_notice.php	t	2025-08-21 12:25:58.435105+00	school_notice
 600	12	Your salary for August 2025 amounting to ₹5,652.17 has been processed.	pages/teacher/view_salary_history.php	t	2025-08-19 08:29:27.155238+00	salary
 640	124	New notice from Principal: wdfsc...	pages/teacher/view_notice.php	f	2025-08-21 12:26:11.665617+00	school_notice
-641	111	New notice from Principal: wdfsc...	pages/student/view_notice.php	f	2025-08-21 12:26:18.298167+00	school_notice
-642	109	New notice from Principal: wdfsc...	pages/student/view_notice.php	f	2025-08-21 12:26:23.802628+00	school_notice
-643	62	New notice from Principal: wdfsc...	pages/student/view_notice.php	f	2025-08-21 12:26:26.283113+00	school_notice
-644	110	New notice from Principal: wdfsc...	pages/student/view_notice.php	f	2025-08-21 12:26:34.64017+00	school_notice
-646	59	New notice from Principal: wdfsc...	pages/student/view_notice.php	f	2025-08-21 12:26:42.205143+00	school_notice
-647	93	New notice from Principal: wdfsc...	pages/student/view_notice.php	f	2025-08-21 12:26:44.006943+00	school_notice
-649	91	New notice from Principal: wdfsc...	pages/student/view_notice.php	f	2025-08-21 12:26:55.740835+00	school_notice
-650	112	New notice from Principal: wdfsc...	pages/student/view_notice.php	f	2025-08-21 12:27:03.862903+00	school_notice
-653	131	New notice from Principal: wdfsc...	pages/student/view_notice.php	f	2025-08-21 12:27:12.471731+00	school_notice
-654	132	New notice from Principal: wdfsc...	pages/student/view_notice.php	f	2025-08-21 12:27:14.347103+00	school_notice
-652	15	New notice from Principal: wdfsc...	pages/student/view_notice.php	t	2025-08-21 12:27:10.261562+00	school_notice
 655	36	New Notice from Principal Fenil Pastagia	pages/librarian/view_principal_notices.php	t	2025-08-21 12:27:28.086334+00	principal_to_librarian_notice
 657	114	New leave request from Devang Odedra	pages/principal/librarian_leave_management.php	f	2025-08-21 13:03:55.056673+00	librarian_leave_request
-648	65	New notice from Principal: wdfsc...	pages/student/view_notice.php	t	2025-08-21 12:26:49.889065+00	school_notice
 658	13	New notice from BMC: hii	pages/principal/view_notice.php	f	2025-08-25 08:05:17.076391+00	new_notice
 659	39	New notice from BMC: hii	pages/principal/view_notice.php	f	2025-08-25 08:05:17.076391+00	new_notice
 660	40	New notice from BMC: hii	pages/principal/view_notice.php	f	2025-08-25 08:05:17.076391+00	new_notice
@@ -5617,8 +5901,6 @@ COPY public.notifications (id, user_id, message, link, is_read, created_at, type
 688	115	New notice from BMC: Annual General Meeting	pages/principal/view_notice.php	f	2025-08-25 10:45:55.836037+00	new_notice
 689	121	New notice from BMC: Annual General Meeting	pages/principal/view_notice.php	f	2025-08-25 10:45:55.836037+00	new_notice
 690	122	New notice from BMC: Annual General Meeting	pages/principal/view_notice.php	f	2025-08-25 10:45:55.836037+00	new_notice
-651	113	New notice from Principal: wdfsc...	pages/student/view_notice.php	t	2025-08-21 12:27:07.660556+00	school_notice
-645	63	New notice from Principal: wdfsc...	pages/student/view_notice.php	t	2025-08-21 12:26:38.068213+00	school_notice
 691	10	New notice from BMC: Annual General Meeting	pages/principal/view_notice.php	t	2025-08-25 10:45:55.836037+00	new_notice
 692	13	New notice from BMC: Re-scheduling AGM	pages/principal/view_notice.php	f	2025-08-25 10:58:07.693808+00	new_notice
 693	39	New notice from BMC: Re-scheduling AGM	pages/principal/view_notice.php	f	2025-08-25 10:58:07.693808+00	new_notice
@@ -5634,18 +5916,6 @@ COPY public.notifications (id, user_id, message, link, is_read, created_at, type
 703	12	Your salary for August 2025 amounting to ₹7,156.52 has been processed.	pages/teacher/view_salary_history.php	t	2025-08-26 08:17:00.084272+00	salary
 704	119	Your salary for August 2025 amounting to ₹1,203.48 has been processed.	pages/teacher/view_salary_history.php	t	2025-08-26 08:37:56.736531+00	salary
 705	36	Your salary for August 2025 amounting to ₹32,365.22 has been processed.	pages/librarian/view_salary_history.php	t	2025-08-26 08:39:47.997126+00	librarian_salary
-707	111	New Assignment: hellooo...	pages/assignments/view_assignments.php	f	2025-08-26 11:25:37.506675+00	new_assignment
-708	59	New Assignment: hellooo...	pages/assignments/view_assignments.php	f	2025-08-26 11:25:37.506675+00	new_assignment
-709	112	New Assignment: hellooo...	pages/assignments/view_assignments.php	f	2025-08-26 11:25:37.506675+00	new_assignment
-710	113	New Assignment: hellooo...	pages/assignments/view_assignments.php	f	2025-08-26 11:25:37.506675+00	new_assignment
-711	15	New Assignment: hellooo...	pages/assignments/view_assignments.php	t	2025-08-26 11:25:37.506675+00	new_assignment
-712	142	New Assignment: hellooo...	pages/assignments/view_assignments.php	t	2025-08-26 11:25:37.506675+00	new_assignment
-713	111	New Assignment: assignment from swayam...	pages/assignments/view_assignments.php	f	2025-08-26 11:27:54.452762+00	new_assignment
-714	59	New Assignment: assignment from swayam...	pages/assignments/view_assignments.php	f	2025-08-26 11:27:54.452762+00	new_assignment
-715	112	New Assignment: assignment from swayam...	pages/assignments/view_assignments.php	f	2025-08-26 11:27:54.452762+00	new_assignment
-716	113	New Assignment: assignment from swayam...	pages/assignments/view_assignments.php	f	2025-08-26 11:27:54.452762+00	new_assignment
-717	15	New Assignment: assignment from swayam...	pages/assignments/view_assignments.php	t	2025-08-26 11:27:54.452762+00	new_assignment
-718	142	New Assignment: assignment from swayam...	pages/assignments/view_assignments.php	t	2025-08-26 11:27:54.452762+00	new_assignment
 719	6	Harsh Shah has submitted an assignment.	pages/assignments/view_submissions.php?id=24	t	2025-08-26 11:29:30.508949+00	assignment_submission
 720	6	Harsh Shah has submitted an assignment.	pages/assignments/view_submissions.php?id=23	t	2025-08-26 11:31:04.608289+00	assignment_submission
 \.
@@ -5732,6 +6002,7 @@ COPY public.principal_attendance (id, principal_id, school_id, attendance_date, 
 289	10	4	2025-08-28	Absent	\N	\N	13:24:45.530753	2025-08-28 07:58:48.137937+00
 107	42	8	2025-08-13	Absent	\N	\N	19:02:43.848609	2025-08-13 19:02:43.848609+00
 76	10	4	2025-08-13	Absent	\N	\N	19:05:07.836238	2025-08-13 08:53:01.325826+00
+313	10	4	2025-08-29	Absent	21.20137567	72.79833517	09:16:49.99084	2025-08-29 07:57:40.798962+00
 256	10	4	2025-08-25	Absent	\N	\N	16:18:05.726122	2025-08-25 07:32:20.190986+00
 274	10	4	2025-08-26	Absent	\N	\N	17:16:36.170339	2025-08-26 07:40:39.213264+00
 \.
@@ -6332,28 +6603,6 @@ COPY public.stops (id, route_id, stop_name, stop_fee) FROM stdin;
 --
 
 COPY public.student (id, student_image, student_name, rollno, std, email, password, academic_year, school_id, dob, gender, blood_group, address, father_name, father_phone, mother_name, mother_phone, stop_id, transport_mode, date_of_joining, self_transport_mode, vehicle_number, license_number) FROM stdin;
-111	/BMC-SMS/pages/student/uploads/student_68a4ba9f807023.07057012.jpg	Rachit Singh	3	11	rachit@gmail.com	$2y$10$oOyZF2kAaFJob94dgh1Kbu2lNCf.4g6kGM3Zh/vNiz0ho04HXKSUO	2025-2026	4	2025-05-03	Male	O-	abcd	Ram Singh	9620369852	Sita Singh	8520136987	7	Self Transport	\N	\N	\N	\N
-109	/BMC-SMS/pages/student/uploads/student_68a4baef9c1d75.65195683.jpg	Jitesh Sharma	3	12	jitesh@gmail.com	$2y$10$nFP865Ot8uZAlkQwLSzqaO.LkiFXzW0hU43yplBd4CR7WxLL7F2AW	2025-2026	4	2004-05-01	Male	O-	Park Street, Surat	Sukesh Sharma	7410325698	Babita Sharma	8400369852	\N	Self Transport	\N	\N	\N	\N
-110	/BMC-SMS/pages/student/uploads/student_68a485a28b1a31.89403428.jpg	Anurag Dubey	4	12	anurag@gmail.com	$2y$10$xzSPDOyDb1IgaiEHJ6tc.ObKAgNkgjcwF0wfx1xok6BSYd9B8isVe	2025-2026	4	2004-05-05	Male	O+	Park Street-II, Surat	Smith Dubey	9820123698	Madhavi Dubey	7410369852	6	Self Transport	\N	\N	\N	\N
-62	/BMC-SMS/pages/student/uploads/student_6899d975d80ec5.41662262.jpg	Rohini Seth	1	10	rohini@gmail.com	$2y$10$EwOxMjekgzy6aDjXVu3mzuMclnndH8SkAGmI7kR8QyNCX0s/VXD8.	2025-2026	4	2011-12-12	Female	O-	abcd	Dharmesh	7410256308	Palavi	8741023698	4	School Transport	\N	\N	\N	\N
-63	/BMC-SMS/pages/student/uploads/student_6899d996702522.01022998.jpg	Aryan Vagasiya	2	10	aryan@gmail.com	$2y$10$j4hJUCq2vnq9DPZgjsURPuykO431DocaV8R/iR7eV3Xbh29am9NEW	2025-2026	4	2011-12-12	Male	A+	abcd	Rohit	7459823056	Anushka	8752309987	2	Self Transport	\N	\N	\N	\N
-140	/BMC-SMS/pages/student/uploads/student_68adb83359d058.10553451.jpg	Surbhi Roy	4	10	surbhi@gmail.com	$2y$10$kcoIWDueMv02/Ta3gJjX8.dVG1q7svT7oWyxzrOHkNd2yrlcNWv.i	2025-2026	4	2008-01-05	Female	B-	abcde	Ranjikant Roy	7410256502	Mukti Roy	8741023691	\N	Self Transport	2025-08-27	Bike	GJ-05-KL-7430	GJ-0520219635203
-131	/BMC-SMS/pages/student/uploads/student_68b01e60e690a9.20828980.jpg	Kriti Sanon	1	8	kriti@gmail.com	$2y$10$CtCTzRF3M5HYZXB3nGclDOgWgT42ZxtSlhFe5lCU1xBvumo.Fae/S	2025-2026	4	2010-02-02	Female	O+	Green Park, Surat	Akash Sanon	8742300142	Amrita Sanon	8741023696	7	School Transport	2025-08-22	\N	\N	\N
-132	/BMC-SMS/pages/student/uploads/student_68b01e810d5950.82829981.jpg	Nupur Sanon	2	8	nupur@gmail.com	$2y$10$rWf7Fxr9PflkuPE9YccyieI0Y7rdcsHtmXCVwdtdtG6lKPJwtmP2K	2025-2026	4	2010-02-02	Female	O-	Green Park II, Surat	Vikrant Sanon	9852103656	Daya Sanon	8741023697	5	School Transport	2025-08-22	\N	\N	\N
-15	/BMC-SMS/pages/student/uploads/student_6899d870ccf7b8.64617169.jpeg	Harsh Shah	2	11	shh.260105@gmail.com	$2y$10$ElcA7CdXPNbx4NeZSme2jufbadSqx1n/uhjR2/fk7uzXG859y6UnK	2025-2026	4	2005-01-26	Male	O-	Adajan, Surat, Gujarat, India	hemant shah	8520321499	sunita shah	6547852366	2	School Transport	\N	\N	\N	\N
-59	/BMC-SMS/pages/student/uploads/student_6899d928c77828.82147183.jpg	Palak Bhalala	1	11	palak@gmail.com	$2y$10$xZCSp8C5gIwJG80XutwShuTmjYGvyzHPXy7W9JEHyAPR01r/tY0iG	2025-2026	4	2005-12-12	Female	O-	abcd	Harish	9632145698	Reema	8741023658	1	Self Transport	\N	\N	\N	\N
-93	/BMC-SMS/pages/student/uploads/student_689de0b808b1d.jpg	Gaurav Taneja	2	12	gaurav@gmail.com	$2y$10$J24gQGIynEYCdmNLx0Y26efqamPU.rSIAk/HD4i.zyjoIItUB4.hy	2025-2026	4	2004-03-02	Male	O+	G-201, Sai Milan Residency, Near Aai Mata Road, Parvat Patiya, Surat	Shardul Taneja	8741002365	Jasmine Taneja	7410332569	4	Self Transport	\N	\N	\N	\N
-65	/BMC-SMS/pages/student/uploads/student_68a4b9d76e42d9.84846585.jpg	Nirmit Kathiriya	3	10	nirmit@gmail.com	$2y$10$Le0lK1AHaxgfdiA0tTQ12eQTxvgJEg57jWUXdvDX0P/Xv/k0jvsBS	2025-2026	4	2005-07-18	Male	A+	B-101. Dharma Nandan Society, Motavarachha, Surat	Sanjay	8742300146	Sunita	7410233369	\N	Self Transport	\N	\N	\N	\N
-139	/BMC-SMS/pages/student/uploads/student_68ad8b2538dae0.39387097.jpg	Nikhil Singh	5	8	nikhil@gmail.com	$2y$10$Nqv3SZxxcjGz7vNr2uoMJe1uYFCygi5XePPlDMlrLLUVqcsGfqobG	2025-2026	4	2010-07-08	Male	AB-	abcdd	Himalaya Singh	9632145697	Priti Singh	8741002370	1	School Transport	2025-08-27	\N	\N	\N
-91	/BMC-SMS/pages/student/uploads/student_68a4bacc067ad8.55092387.jpg	Neel Vora	1	12	neel@gmail.com	$2y$10$L8rCGqDm656dtXMbarz8dOJFMdO1atMHKPhmpIC95.UF.UHqa17e.	2025-2026	4	2004-12-06	Male	O-	Ved Road, Katargam, Surat	Sushant Vora	8521004793	Neelam Vora	6852301478	\N	Self Transport	\N	\N	\N	\N
-112	/BMC-SMS/pages/student/uploads/student_68a4be54375bd1.36401912.jpg	Axar Patel	4	11	axar@gmail.com	$2y$10$56w4cCDqsO8r1k7/7BDXguiS1o0rFYCF6nBqNau1gI5bFNfSVbCKa	2025-2026	4	2005-03-04	Male	AB-	B-202, Aparshakti Heights, Surat	Sukesh Patel	8500123698	Meha Patel	7456320019	\N	Self Transport	\N	\N	\N	\N
-113	/BMC-SMS/pages/student/uploads/student_68a4bf3ae22cb5.26265767.jpg	Sumeet Gohil	5	11	sumeet@gmail.com	$2y$10$j7nsSInl3GKBU7y5F6ke8.sIXr4Xvj2TicpjD7JH2S/fAGeND9xS.	2025-2026	4	2005-04-09	Male	A+	abcd	Mukesh Gohil	7456328970	Ankita Gohil	8520369741	6	Self Transport	\N	\N	\N	\N
-138	/BMC-SMS/pages/student/uploads/student_68ad7a2b5b5481.34666509.jpg	Bhavin Parmar	4	8	bhavin@gmail.com	$2y$10$CxSrWAJVSlNpOH7hctyFn.JxE6xok9YVHRyTkGXS80CN00n4mgeH6	2025-2026	4	2010-04-08	Male	O-	abcde	Jayesh Parmar	7410256501	Bhavna Parmar	8400369857	\N	Self Transport	2025-08-27	Bike	GJ-05-JE-4129	GJ-0520219632011
-142	/BMC-SMS/pages/student/uploads/student_68ad9257d8b842.04642097.jpg	Mihil Hirpara	6	11	mihil@gmail.com	$2y$10$QtB4smfb.NER6nC.8ZiVD.naUe9bKnnbeDGE1ZSg42Ha8cIJ.SbIi	2025-2026	4	2004-02-12	Male	A+	fd	Hitesh Hirpara	7410023698	Asha Hirpara	8520147893	\N	Self Transport	2025-08-27	Car	GJ-23-HC-2153	GJ-0520219732011
-136	/BMC-SMS/pages/student/uploads/student_68ad92a1884c01.69420538.jpg	Anurag Kashyap	3	8	anuragk@gmail.com	$2y$10$6bYBEJIY/EgHwulRl/sslen0XshYsDTTRXX7UJLCKZJKEk6VWfi2.	2025-2026	4	2010-02-04	Male	O-	abcd	Dhrumil Kashyap	7410256307	Dhruti Kashyap	8741023699	\N	Self Transport	2025-08-27	Walking	\N	\N
-143	/BMC-SMS/pages/student/uploads/student_68ad95c2c75b21.34404751.jpg	Aakrut Shukla	5	12	aakrut@gmail.com	$2y$10$K68LghEAbzMDMgwlmE9XNuRTxP8xaObhdVNVxmXROQA4jPGoUWw4a	2025-2026	4	2004-02-02	Male	AB-	uh	Jaydeep Shukla	9874500052	Susmita Shukla	7410246589	\N	Self Transport	2025-08-27	Parents	\N	\N
-144	/BMC-SMS/pages/student/uploads/student_68ad9dbfb39a18.78587850.jpg	Bhavi Pastagia	6	12	bhavi@gmail.com	$2y$10$z9t2m3XyxxQkvbg33XLKierwg9jBWZoPwPf625xC7CrsodbhuPDnq	2025-2026	4	2004-01-06	Female	O+	sdf	Nilesh Pastagia	7410256301	Kamla Pastagia	7410236587	\N	Self Transport	2025-08-27	Bike	GJ-05-RV-6667	GJ-0520219637012
-145	/BMC-SMS/pages/student/uploads/student_68b0145b168e19.64598282.jpg	Janki Bodiwala	7	12	janki@gmail.com	$2y$10$cQMlSAfq8E6M4h1spa1oQuAV9AmnA5NB2VykiyaLKLjRhVuQ9WoHe	2025-2026	4	2004-02-12	Female	O+	abcd	Himesh Bodiwala	8520321451	Nirmala Bodiwala	8741023690	\N	Self Transport	2025-08-29	Public Transport	\N	\N
 \.
 
 
@@ -6362,59 +6611,6 @@ COPY public.student (id, student_image, student_name, rollno, std, email, passwo
 --
 
 COPY public.student_marks (mark_id, student_id, school_id, academic_year, std, exam_type, subject_name, marks_obtained, total_marks, entry_date, entered_by_user_id) FROM stdin;
-3	15	4	2025-2026	11	final_exam	Computer Science	80.00	100.00	2025-08-08 09:40:26.020263+00	6
-4	15	4	2025-2026	11	final_exam	English	5.00	100.00	2025-08-08 09:40:26.020263+00	6
-5	15	4	2025-2026	11	final_exam	Mathematics	20.00	100.00	2025-08-08 09:40:26.020263+00	6
-6	15	4	2025-2026	11	final_exam	Physical Education	20.00	100.00	2025-08-08 09:40:26.020263+00	6
-7	15	4	2025-2026	11	final_exam	Sanskrit	90.00	100.00	2025-08-08 09:40:26.020263+00	6
-8	15	4	2025-2026	11	final_exam	Science	70.00	100.00	2025-08-08 09:40:26.020263+00	6
-9	15	4	2025-2026	11	final_exam	Social Studies	40.00	100.00	2025-08-08 09:40:26.020263+00	6
-15	15	4	2025-2026	11	term_1	Science	99.00	100.00	2025-08-08 10:06:56.508872+00	6
-26	59	4	2025-2026	11	term_1	Biology	50.00	100.00	2025-08-12 09:10:01.331167+00	6
-27	59	4	2025-2026	11	term_1	Chemistry	10.00	100.00	2025-08-12 09:10:01.331167+00	6
-28	59	4	2025-2026	11	term_1	Computer Science	50.00	100.00	2025-08-12 09:10:01.331167+00	6
-29	59	4	2025-2026	11	term_1	English	60.00	100.00	2025-08-12 09:10:01.331167+00	6
-30	59	4	2025-2026	11	term_1	Mathematics	50.00	100.00	2025-08-12 09:10:01.331167+00	6
-31	59	4	2025-2026	11	term_1	Physical Education	50.00	100.00	2025-08-12 09:10:01.331167+00	6
-32	59	4	2025-2026	11	term_1	Physics	50.00	100.00	2025-08-12 09:10:01.331167+00	6
-33	59	4	2025-2026	11	term_1	Sanskrit	50.00	100.00	2025-08-12 09:10:01.331167+00	6
-34	59	4	2025-2026	11	term_1	Social Studies	50.00	100.00	2025-08-12 09:10:01.331167+00	6
-17	15	4	2025-2026	11	term_1	Biology	40.00	100.00	2025-08-12 09:10:01.331167+00	6
-18	15	4	2025-2026	11	term_1	Chemistry	50.00	100.00	2025-08-12 09:10:01.331167+00	6
-10	15	4	2025-2026	11	term_1	Computer Science	50.00	100.00	2025-08-08 10:06:56.508872+00	6
-11	15	4	2025-2026	11	term_1	English	80.00	100.00	2025-08-08 10:06:56.508872+00	6
-12	15	4	2025-2026	11	term_1	Mathematics	82.00	100.00	2025-08-08 10:06:56.508872+00	6
-13	15	4	2025-2026	11	term_1	Physical Education	92.00	100.00	2025-08-08 10:06:56.508872+00	6
-23	15	4	2025-2026	11	term_1	Physics	50.00	100.00	2025-08-12 09:10:01.331167+00	6
-14	15	4	2025-2026	11	term_1	Sanskrit	99.00	100.00	2025-08-08 10:06:56.508872+00	6
-16	15	4	2025-2026	11	term_1	Social Studies	95.00	100.00	2025-08-08 10:06:56.508872+00	6
-53	111	4	2025-2026	11	term_1	Biology	70.00	100.00	2025-08-25 11:38:32.057467+00	6
-54	111	4	2025-2026	11	term_1	Chemistry	40.00	100.00	2025-08-25 11:38:32.057467+00	6
-55	111	4	2025-2026	11	term_1	Computer Science	65.00	100.00	2025-08-25 11:38:32.057467+00	6
-56	111	4	2025-2026	11	term_1	English	19.00	100.00	2025-08-25 11:38:32.057467+00	6
-57	111	4	2025-2026	11	term_1	Mathematics	50.00	100.00	2025-08-25 11:38:32.057467+00	6
-58	111	4	2025-2026	11	term_1	Physical Education	61.00	100.00	2025-08-25 11:38:32.057467+00	6
-59	111	4	2025-2026	11	term_1	Physics	48.00	100.00	2025-08-25 11:38:32.057467+00	6
-60	111	4	2025-2026	11	term_1	Sanskrit	61.00	100.00	2025-08-25 11:38:32.057467+00	6
-61	111	4	2025-2026	11	term_1	Social Studies	77.00	100.00	2025-08-25 11:38:32.057467+00	6
-62	112	4	2025-2026	11	term_1	Biology	66.00	100.00	2025-08-25 11:38:32.057467+00	6
-63	112	4	2025-2026	11	term_1	Chemistry	87.00	100.00	2025-08-25 11:38:32.057467+00	6
-64	112	4	2025-2026	11	term_1	Computer Science	92.00	100.00	2025-08-25 11:38:32.057467+00	6
-65	112	4	2025-2026	11	term_1	English	52.00	100.00	2025-08-25 11:38:32.057467+00	6
-66	112	4	2025-2026	11	term_1	Mathematics	78.00	100.00	2025-08-25 11:38:32.057467+00	6
-67	112	4	2025-2026	11	term_1	Physical Education	54.00	100.00	2025-08-25 11:38:32.057467+00	6
-68	112	4	2025-2026	11	term_1	Physics	50.00	100.00	2025-08-25 11:38:32.057467+00	6
-69	112	4	2025-2026	11	term_1	Sanskrit	80.00	100.00	2025-08-25 11:38:32.057467+00	6
-70	112	4	2025-2026	11	term_1	Social Studies	45.00	100.00	2025-08-25 11:38:32.057467+00	6
-71	113	4	2025-2026	11	term_1	Biology	62.00	100.00	2025-08-25 11:38:32.057467+00	6
-72	113	4	2025-2026	11	term_1	Chemistry	77.00	100.00	2025-08-25 11:38:32.057467+00	6
-73	113	4	2025-2026	11	term_1	Computer Science	82.00	100.00	2025-08-25 11:38:32.057467+00	6
-74	113	4	2025-2026	11	term_1	English	87.00	100.00	2025-08-25 11:38:32.057467+00	6
-75	113	4	2025-2026	11	term_1	Mathematics	83.00	100.00	2025-08-25 11:38:32.057467+00	6
-76	113	4	2025-2026	11	term_1	Physical Education	91.00	100.00	2025-08-25 11:38:32.057467+00	6
-77	113	4	2025-2026	11	term_1	Physics	52.00	100.00	2025-08-25 11:38:32.057467+00	6
-78	113	4	2025-2026	11	term_1	Sanskrit	47.00	100.00	2025-08-25 11:38:32.057467+00	6
-79	113	4	2025-2026	11	term_1	Social Studies	63.00	100.00	2025-08-25 11:38:32.057467+00	6
 \.
 
 
@@ -6456,19 +6652,19 @@ COPY public.teacher (id, teacher_image, teacher_name, phone, school_id, dob, gen
 12	/BMC-SMS/pages/teacher/uploads/teacher_6899d4a35ee540.89855330.jpg	Jay Shah	9874522589	4	2025-08-13	Male	AB+	canal road	jay@gmail.com	$2y$10$TUf4M/5ENm2A6oun27EuAuAz8Wlr8e8Ub8xwCR3w9i09nTBhFEWMO	M.A	maths	english,gujarati	10000	{9,10,11}	10	Morning	f	\N	\N	\N	\N	\N	\N	\N
 119	/BMC-SMS/pages/teacher/uploads/teacher_68a5ba3a14678.jpg	Andrew Garfield	9156787656	4	1980-08-20	Male	AB-	new york	andrew@gmail.com	$2y$10$Oeaq9x.uF0kq44nr44WUPOiczSWeXw5h3EfAbN9A/Rttn.NIDLpLK	M.A	Science	English	8000	{10,11,12}	20	Morning	t	12	\N	\N	\N	\N	\N	\N
 52	/BMC-SMS/pages/teacher/uploads/teacher_6899d4fd0d4961.85441737.jpg	Tara Sutaria	8514789630	4	2021-07-12	Male	O-	ancdefgh	tara@gmail.com	$2y$10$sjbggi23JLfNjwuNGmvKY.EvgUgWS9.nh7pA3vv5QjJGP75YBBxDO	BBA	Sanskrit	Hindi	25000	{11}	5	Evening	f	\N	\N	\N	\N	\N	\N	\N
-54	/BMC-SMS/pages/teacher/uploads/teacher_6899dace940677.99622641.jpg	Tia Dholakia	9853200014	4	2005-08-08	Male	O+	Katargam	tia@gmail.com	$2y$10$qtWaXyrRnRYI72QYxah1QOa9VXCChAc0/aFadc2i1m2x.ZEq6Euha	BCA	Biology	English, Hindi, Gujarati	12500	{11}	5	Morning	f	\N	\N	\N	\N	\N	\N	\N
 105	/BMC-SMS/pages/teacher/uploads/teacher_68a473cbb05398.98905019.jpg	Sapna Trivedi	6923001456	4	1997-02-06	Female	O+	G-02, Roman Row House, Near H.K. Marg, Piplod, Surat	sapna@gmail.com	$2y$10$wpEpcFBLJ7Msu0z60MmiQu6n2q.FJ9QY1rl1SPH67b5uaixJl0gNG	C.A.	Accounts	English, Hindi, Gujarati	52000	{12}	5	Morning	f	\N	\N	\N	\N	\N	\N	\N
 70	/BMC-SMS/pages/teacher/uploads/teacher_689c61f5e28d4.jpg	Rahul	9523001459	4	1997-08-12	Male	AB+	sd	rahul@gmail.com	$2y$10$QjT3TSvtutmr1Jl2REhPBuJ4c6B34xrmOkAOe7GwI0ms3sB7Ov.iW	B.C.A	Hindi	Hindi	50000	{8}	8	Morning	f	\N	\N	\N	\N	\N	\N	\N
 106	/BMC-SMS/pages/teacher/uploads/teacher_68a47ae3e1e34.jpg	Yug Pandya	7410025633	4	1997-06-07	Male	B+	V-101, Amrut Heights, Jakatnaka, Surat	yug@gmail.com	$2y$10$8.d4YkdwLMfcBmHQWizcLObYGeBopqGAqTQarYOrO6SALDwDgAFRq	B.A.	Business Studies	English, Hindi, Gujarati	23000	{12}	3	Morning	f	\N	\N	\N	\N	\N	\N	\N
 141	/BMC-SMS/pages/teacher/uploads/teacher_141_68ad8f5f6a06f.jpg	Tina Sen	8576548525	4	1991-01-06	Female	O-	acbd	tina@gmail.com	$2y$10$NWErAseL5ni2z8d4xUwPg.CKdUtjK6bAm8uL331Gek/xC7eLfmc3i	M.A. M.Ed	Music	English, Hindi	12400	{8}	2	Morning	f	\N	2025-08-27	\N	\N	\N	\N	\N
 92	/BMC-SMS/pages/teacher/uploads/teacher_689dd8764d7f4.jpg	Meera Rajput	8741203698	4	1997-01-05	Female	A+	J-501, Shivam Heights, Ankur Char Rasta, Udhana, Surat	meera@gmail.com	$2y$10$8rmmBKRvJBYB3g0Ct1iIIOiZ.o1pBFnqsjXqfbcnO0qbaJ.QIu7a6	MCA	Social Studies	English, Hindi, Gujarati	25000	{12}	5	Morning	f	\N	\N	\N	\N	\N	\N	\N
 123	/BMC-SMS/pages/teacher/uploads/teacher_68a6eb2f3f240.jpg	Viraj Gelani	9852142011	4	1997-01-01	Male	O-	abcd	viraj@gmail.com	$2y$10$5I8lVaVWXFV0tQeB2o/ig.QnfyhDmtW3oeGe3oQGP7pdqfxn.6mKW	B.tech	Gujarati	English, Hindi, Gujarati	23000	{12}	5	Evening	t	12	\N	\N	\N	\N	\N	\N
-51	/BMC-SMS/pages/teacher/uploads/teacher_68a46e8a9b32e0.13131507.jpg	Ravindra Jadeja	7456321062	4	1987-02-01	Male	A-	J-801, Shurveer Bunglows, Near HK Road, Udhana, Surat	jadeja@gmail.com	$2y$10$yzEERP8pUf.GaSHQrRtc6uLlzjr.ft1N6j/BS2KGqQzoykf289BGS	MCA	Physical Education	English	15000	{11,12}	3	Evening	f	\N	\N	\N	\N	\N	\N	\N
 124	/BMC-SMS/pages/teacher/uploads/teacher_68a6f372d1cc7.jpg	Ranjit Chaudhari	9852142012	4	1999-02-02	Male	O-	abcd	ranjit@gmail.com	$2y$10$JzR2jkc6zlkIUC4GGN3BSO9wZBmNf1AvegpuGpAfTfMPh7Igz9sIi	B.ed	Sanskrit	Hindi, Sanskrit	21500	{8}	4	Morning	f	\N	2025-08-22	\N	\N	\N	\N	\N
 137	/BMC-SMS/pages/teacher/uploads/teacher_68ad76a1bb684.jpg	Avantika Sironi	9924976504	4	1988-12-04	Female	O+	pqrs	avantika@gmail.com	$2y$10$IRXNzxfDGlWgQdjvuouM7O2xLcZ5Wf3hMMBbq6aHtgg0O64n1i5H6	M.A. M.Ed	English	English, Gujarati	21000	{8}	4	Morning	f	\N	2025-08-27	\N	\N	\N	\N	\N
 146	/BMC-SMS/pages/teacher/uploads/teacher_68b0199dba9b3.jpg	Prince Parmar	7410235897	4	1997-02-06	Male	O-	pqrs	prince@gmail.com	$2y$10$YkLGFwPGHlW8DnoImfyOwOIoiOrHuDKSYiiJvf94lKQuISEuTxO3q	M.A. M.Ed	Economics	English, Hindi, Gujarati	33000	{12}	4	Morning	f	\N	2025-08-29	Self Transport	Bike	GJ-05-RV-4084	GJ-0520219635209	\N
 6	/BMC-SMS/pages/teacher/uploads/teacher_6_68ad86ca00f07.jpg	Meet Patel	9852142016	4	2005-09-04	Male	AB+	Motavarachha	meet@gmail.com	$2y$10$sdz4DZ5oaMJNrUA9mld44uiBNIIkAQCPjs2XrrnUcl.Bp6wlzYz1a	B.C.A	Maths, Chemistry	english	100000	{10,11}	10	Evening	t	11	\N	Self Transport	Car	GJ-05-RU-5556	GJ-1987119635203	\N
 49	/BMC-SMS/pages/teacher/uploads/teacher_49_689c643ced517.jpg	Ayushi Patil	8745632100	4	1980-12-12	Male	B+	abcd	ayushi@gmail.com	$2y$10$Vo893uZp26VV4sCkTWFXSePR9UxOVhLRZlnVtYthhIgdrm4kdIslO	B.C.A	Computer Science	English, Hindi, Gujarati	20000	{10,11}	2	Morning	f	\N	\N	School Transport	\N	\N	\N	5
+51	/BMC-SMS/pages/teacher/uploads/teacher_68a46e8a9b32e0.13131507.jpg	Ravindra Jadeja	7456321062	4	1987-02-01	Male	A-	J-801, Shurveer Bunglows, Near HK Road, Udhana, Surat	jadeja@gmail.com	$2y$10$yzEERP8pUf.GaSHQrRtc6uLlzjr.ft1N6j/BS2KGqQzoykf289BGS	MCA	Physical Education	English	15000	{11,12}	3	Evening	f	\N	\N	Self Transport	Public Transport	\N	\N	\N
+54	/BMC-SMS/pages/teacher/uploads/teacher_6899dace940677.99622641.jpg	Tia Dholakia	9853200014	4	2005-08-08	Male	O+	Katargam	tia@gmail.com	$2y$10$qtWaXyrRnRYI72QYxah1QOa9VXCChAc0/aFadc2i1m2x.ZEq6Euha	BCA	Biology	English, Hindi, Gujarati	12500	{11}	5	Morning	f	\N	\N	School Transport	\N	\N	\N	2
 \.
 
 
@@ -6710,12 +6906,6 @@ COPY public.teacher_payroll (id, teacher_id, payroll_user_id, school_id, salary_
 --
 
 COPY public.teacher_timings (timing_id, teacher_id, day_of_week, opens_at, closes_at, is_closed) FROM stdin;
-107	54	Tuesday	10:00:00	18:00:00	f
-108	54	Wednesday	10:00:00	18:00:00	f
-109	54	Thursday	10:00:00	18:00:00	f
-110	54	Friday	10:00:00	18:00:00	f
-111	54	Saturday	10:00:00	18:00:00	f
-112	54	Sunday	\N	\N	t
 1	6	Monday	10:00:00	18:00:00	f
 15	12	Monday	10:00:00	18:00:00	f
 16	12	Tuesday	10:00:00	18:00:00	f
@@ -6765,21 +6955,27 @@ COPY public.teacher_timings (timing_id, teacher_id, day_of_week, opens_at, close
 229	70	Friday	10:00:00	18:00:00	f
 230	70	Saturday	10:00:00	18:00:00	f
 231	70	Sunday	\N	\N	t
+71	51	Monday	10:00:00	18:00:00	f
 389	124	Thursday	10:00:00	18:00:00	f
 310	106	Tuesday	07:00:00	13:00:00	f
 311	106	Wednesday	07:00:00	13:00:00	f
 312	106	Thursday	07:00:00	13:00:00	f
 313	106	Friday	07:00:00	13:00:00	f
 314	106	Saturday	19:00:00	13:00:00	f
-71	51	Monday	10:00:00	18:00:00	f
 106	54	Monday	10:00:00	18:00:00	f
-315	106	Sunday	07:00:00	13:00:00	f
 72	51	Tuesday	10:00:00	18:00:00	f
 73	51	Wednesday	10:00:00	18:00:00	f
 74	51	Thursday	10:00:00	18:00:00	f
 75	51	Friday	10:00:00	18:00:00	f
 76	51	Saturday	10:00:00	18:00:00	f
 77	51	Sunday	\N	\N	t
+315	106	Sunday	07:00:00	13:00:00	f
+107	54	Tuesday	10:00:00	18:00:00	f
+108	54	Wednesday	10:00:00	18:00:00	f
+109	54	Thursday	10:00:00	18:00:00	f
+110	54	Friday	10:00:00	18:00:00	f
+111	54	Saturday	10:00:00	18:00:00	f
+112	54	Sunday	\N	\N	t
 351	119	Monday	10:00:00	18:00:00	f
 352	119	Tuesday	10:00:00	18:00:00	f
 353	119	Wednesday	10:00:00	18:00:00	f
@@ -6841,36 +7037,22 @@ COPY public.timetables (id, school_id, standard, class_teacher_id, timetable_fil
 COPY public.users (id, role, email, password, account_status, otp_hash, otp_expires_at) FROM stdin;
 8	superadmin	shahswayam7125@gmail.com	$2y$10$T74F9Gb05l.StKcZg2sy/ub6PHeH.l3tT3Lv1JwOZzioXJCdEN0zO	active	\N	\N
 51	teacher	jadeja@gmail.com	$2y$10$yzEERP8pUf.GaSHQrRtc6uLlzjr.ft1N6j/BS2KGqQzoykf289BGS	active	\N	\N
-36	librarian	devang@gmail.com	$2y$10$zmDytTauKLi/cqAY89QgT.CyVW7b4lgK.rwFVPdJbZf4zIsHGyYdu	active	\N	\N
-15	student	shh.260105@gmail.com	$2y$10$ElcA7CdXPNbx4NeZSme2jufbadSqx1n/uhjR2/fk7uzXG859y6UnK	active	\N	\N
-59	student	palak@gmail.com	$2y$10$xZCSp8C5gIwJG80XutwShuTmjYGvyzHPXy7W9JEHyAPR01r/tY0iG	active	\N	\N
-62	student	rohini@gmail.com	$2y$10$EwOxMjekgzy6aDjXVu3mzuMclnndH8SkAGmI7kR8QyNCX0s/VXD8.	active	\N	\N
-63	student	aryan@gmail.com	$2y$10$j4hJUCq2vnq9DPZgjsURPuykO431DocaV8R/iR7eV3Xbh29am9NEW	active	\N	\N
+147	librarian	dinesh@gmail.com	$2y$10$e/ba0l3WZPzpCiKblkuMLOmVYTrB4k5WyrK/Zpe8WzyfoylNbCuIq	active	\N	\N
 105	teacher	sapna@gmail.com	$2y$10$wpEpcFBLJ7Msu0z60MmiQu6n2q.FJ9QY1rl1SPH67b5uaixJl0gNG	active	\N	\N
 106	teacher	yug@gmail.com	$2y$10$8.d4YkdwLMfcBmHQWizcLObYGeBopqGAqTQarYOrO6SALDwDgAFRq	active	\N	\N
 107	librarian	prakash@gmail.com	$2y$10$pub4gPRk6EW7Il4jxjo2Ouc4F87zBPcLdf9p12/FYFppQYSX8yTai	active	\N	\N
 108	librarian	santosh@gmai.com	$2y$10$JM1uBHaBUqobLR9miaICKO8tuD7q2LKAQysccyTcY7Tt0SH5sUAK.	active	\N	\N
 13	principal	dhaval@gmail.com	$2y$10$/PhOzkuBDiabEZAW5eIZKuEr9Gcr0NTvpE7mGegA1Z6oNalzKXQcW	active	\N	\N
-109	student	jitesh@gmail.com	$2y$10$nFP865Ot8uZAlkQwLSzqaO.LkiFXzW0hU43yplBd4CR7WxLL7F2AW	active	\N	\N
 54	teacher	tia@gmail.com	$2y$10$qtWaXyrRnRYI72QYxah1QOa9VXCChAc0/aFadc2i1m2x.ZEq6Euha	active	\N	\N
-110	student	anurag@gmail.com	$2y$10$xzSPDOyDb1IgaiEHJ6tc.ObKAgNkgjcwF0wfx1xok6BSYd9B8isVe	active	\N	\N
 39	principal	sunny@gmail.com	$2y$10$B4ISjcDHMlF.dJwZ0X.LlOQT6ZKgHPQy.odp78wc8cEahPpkhMKKm	active	\N	\N
-91	student	neel@gmail.com	$2y$10$L8rCGqDm656dtXMbarz8dOJFMdO1atMHKPhmpIC95.UF.UHqa17e.	active	\N	\N
 92	teacher	meera@gmail.com	$2y$10$8rmmBKRvJBYB3g0Ct1iIIOiZ.o1pBFnqsjXqfbcnO0qbaJ.QIu7a6	active	\N	\N
 40	principal	viral@gmail.com	$2y$10$jKjdp7PnB3Ys3M7TnrfQtO97DNw8WPvNtldu7M1rX/ckGXx.P/9QW	active	\N	\N
-93	student	gaurav@gmail.com	$2y$10$J24gQGIynEYCdmNLx0Y26efqamPU.rSIAk/HD4i.zyjoIItUB4.hy	active	\N	\N
 64	principal	pqrs@gmail.com	$2y$10$.Nu9UqZeGtKi.A1fJd1VQOMIRiwiqWstqDRIoj2SoFdy/gsmY4cx2	active	\N	\N
-65	student	nirmit@gmail.com	$2y$10$Le0lK1AHaxgfdiA0tTQ12eQTxvgJEg57jWUXdvDX0P/Xv/k0jvsBS	active	\N	\N
-111	student	rachit@gmail.com	$2y$10$oOyZF2kAaFJob94dgh1Kbu2lNCf.4g6kGM3Zh/vNiz0ho04HXKSUO	active	\N	\N
-112	student	axar@gmail.com	$2y$10$56w4cCDqsO8r1k7/7BDXguiS1o0rFYCF6nBqNau1gI5bFNfSVbCKa	active	\N	\N
-113	student	sumeet@gmail.com	$2y$10$j7nsSInl3GKBU7y5F6ke8.sIXr4Xvj2TicpjD7JH2S/fAGeND9xS.	active	\N	\N
 114	principal	hardik@gmail.com	$2y$10$viDn0Uqmw5uHxjRW09Hg.eadmQ5RIft8UyBcEkzO0cs1amrrW4FXi	active	\N	\N
 12	teacher	jay@gmail.com	$2y$10$TUf4M/5ENm2A6oun27EuAuAz8Wlr8e8Ub8xwCR3w9i09nTBhFEWMO	active	\N	\N
 52	teacher	tara@gmail.com	$2y$10$sjbggi23JLfNjwuNGmvKY.EvgUgWS9.nh7pA3vv5QjJGP75YBBxDO	active	\N	\N
 49	teacher	ayushi@gmail.com	$2y$10$Vo893uZp26VV4sCkTWFXSePR9UxOVhLRZlnVtYthhIgdrm4kdIslO	active	\N	\N
 70	teacher	rahul@gmail.com	$2y$10$QjT3TSvtutmr1Jl2REhPBuJ4c6B34xrmOkAOe7GwI0ms3sB7Ov.iW	active	\N	\N
-131	student	kriti@gmail.com	$2y$10$CtCTzRF3M5HYZXB3nGclDOgWgT42ZxtSlhFe5lCU1xBvumo.Fae/S	active	\N	\N
-132	student	nupur@gmail.com	$2y$10$rWf7Fxr9PflkuPE9YccyieI0Y7rdcsHtmXCVwdtdtG6lKPJwtmP2K	active	\N	\N
 42	principal	akshat@gmail.com	$2y$10$YW7sWUGqVcbuiHzwxwjShOajCzOXNSbqML9zPAzrM8.RWml.41iXW	active	\N	\N
 141	teacher	tina@gmail.com	$2y$10$NWErAseL5ni2z8d4xUwPg.CKdUtjK6bAm8uL331Gek/xC7eLfmc3i	active	\N	\N
 133	principal	viken@gmail.com	$2y$10$j4Qz1IbrFpsR8FbzluTBueDH7pjxZvGefShnN3O9ZF7TFt90lNZgG	active	\N	\N
@@ -6884,18 +7066,10 @@ COPY public.users (id, role, email, password, account_status, otp_hash, otp_expi
 10	principal	17fenill@gmail.com	$2y$10$EP56edKNSOvDiPXCub4iZuAI5sEVX3XjU1tnqJu8a4f.VS58QO5de	active	\N	\N
 123	teacher	viraj@gmail.com	$2y$10$5I8lVaVWXFV0tQeB2o/ig.QnfyhDmtW3oeGe3oQGP7pdqfxn.6mKW	active	\N	\N
 124	teacher	ranjit@gmail.com	$2y$10$JzR2jkc6zlkIUC4GGN3BSO9wZBmNf1AvegpuGpAfTfMPh7Igz9sIi	active	\N	\N
-136	student	anuragk@gmail.com	$2y$10$6bYBEJIY/EgHwulRl/sslen0XshYsDTTRXX7UJLCKZJKEk6VWfi2.	active	\N	\N
 137	teacher	avantika@gmail.com	$2y$10$IRXNzxfDGlWgQdjvuouM7O2xLcZ5Wf3hMMBbq6aHtgg0O64n1i5H6	active	\N	\N
-138	student	bhavin@gmail.com	$2y$10$CxSrWAJVSlNpOH7hctyFn.JxE6xok9YVHRyTkGXS80CN00n4mgeH6	active	\N	\N
-139	student	nikhil@gmail.com	$2y$10$Nqv3SZxxcjGz7vNr2uoMJe1uYFCygi5XePPlDMlrLLUVqcsGfqobG	active	\N	\N
-142	student	mihil@gmail.com	$2y$10$QtB4smfb.NER6nC.8ZiVD.naUe9bKnnbeDGE1ZSg42Ha8cIJ.SbIi	active	\N	\N
-143	student	aakrut@gmail.com	$2y$10$K68LghEAbzMDMgwlmE9XNuRTxP8xaObhdVNVxmXROQA4jPGoUWw4a	active	\N	\N
-144	student	bhavi@gmail.com	$2y$10$z9t2m3XyxxQkvbg33XLKierwg9jBWZoPwPf625xC7CrsodbhuPDnq	active	\N	\N
-140	student	surbhi@gmail.com	$2y$10$kcoIWDueMv02/Ta3gJjX8.dVG1q7svT7oWyxzrOHkNd2yrlcNWv.i	active	\N	\N
-145	student	janki@gmail.com	$2y$10$cQMlSAfq8E6M4h1spa1oQuAV9AmnA5NB2VykiyaLKLjRhVuQ9WoHe	active	\N	\N
 146	teacher	prince@gmail.com	$2y$10$YkLGFwPGHlW8DnoImfyOwOIoiOrHuDKSYiiJvf94lKQuISEuTxO3q	active	\N	\N
-147	librarian	dinesh@gmail.com	$2y$10$e/ba0l3WZPzpCiKblkuMLOmVYTrB4k5WyrK/Zpe8WzyfoylNbCuIq	active	\N	\N
 148	principal	sachin@gmail.com	$2y$10$lZWWyyjvM1bn2nXavCGSfO7FMWbVDauhBLGifHIrEO090bOzernfe	active	\N	\N
+36	librarian	devang@gmail.com	$2y$10$zmDytTauKLi/cqAY89QgT.CyVW7b4lgK.rwFVPdJbZf4zIsHGyYdu	active	\N	\N
 \.
 
 
@@ -6994,7 +7168,15 @@ COPY realtime.subscription (id, subscription_id, entity, filters, claims, create
 -- Data for Name: buckets; Type: TABLE DATA; Schema: storage; Owner: supabase_storage_admin
 --
 
-COPY storage.buckets (id, name, owner, created_at, updated_at, public, avif_autodetection, file_size_limit, allowed_mime_types, owner_id) FROM stdin;
+COPY storage.buckets (id, name, owner, created_at, updated_at, public, avif_autodetection, file_size_limit, allowed_mime_types, owner_id, type) FROM stdin;
+\.
+
+
+--
+-- Data for Name: buckets_analytics; Type: TABLE DATA; Schema: storage; Owner: supabase_storage_admin
+--
+
+COPY storage.buckets_analytics (id, type, format, created_at, updated_at) FROM stdin;
 \.
 
 
@@ -7029,6 +7211,19 @@ COPY storage.migrations (id, name, hash, executed_at) FROM stdin;
 23	optimize-search-function	9d7e604cddc4b56a5422dc68c9313f4a1b6f132c	2025-08-06 08:12:54.626099
 24	operation-function	8312e37c2bf9e76bbe841aa5fda889206d2bf8aa	2025-08-06 08:12:54.63028
 25	custom-metadata	d974c6057c3db1c1f847afa0e291e6165693b990	2025-08-06 08:12:54.634482
+26	objects-prefixes	ef3f7871121cdc47a65308e6702519e853422ae2	2025-08-28 19:06:05.485933
+27	search-v2	33b8f2a7ae53105f028e13e9fcda9dc4f356b4a2	2025-08-28 19:06:06.076398
+28	object-bucket-name-sorting	ba85ec41b62c6a30a3f136788227ee47f311c436	2025-08-28 19:06:06.190375
+29	create-prefixes	a7b1a22c0dc3ab630e3055bfec7ce7d2045c5b7b	2025-08-28 19:06:06.281995
+30	update-object-levels	6c6f6cc9430d570f26284a24cf7b210599032db7	2025-08-28 19:06:06.378303
+31	objects-level-index	33f1fef7ec7fea08bb892222f4f0f5d79bab5eb8	2025-08-28 19:06:06.387725
+32	backward-compatible-index-on-objects	2d51eeb437a96868b36fcdfb1ddefdf13bef1647	2025-08-28 19:06:06.39984
+33	backward-compatible-index-on-prefixes	fe473390e1b8c407434c0e470655945b110507bf	2025-08-28 19:06:06.476479
+34	optimize-search-function-v1	82b0e469a00e8ebce495e29bfa70a0797f7ebd2c	2025-08-28 19:06:06.481559
+35	add-insert-trigger-prefixes	63bb9fd05deb3dc5e9fa66c83e82b152f0caf589	2025-08-28 19:06:06.494104
+36	optimise-existing-functions	81cf92eb0c36612865a18016a38496c530443899	2025-08-28 19:06:06.586041
+37	add-bucket-name-length-trigger	3944135b4e3e8b22d6d4cbb568fe3b0b51df15c1	2025-08-28 19:06:06.686739
+38	iceberg-catalog-flag-on-buckets	19a8bd89d5dfa69af7f222a46c726b7c41e462c5	2025-08-28 19:06:06.776795
 \.
 
 
@@ -7036,7 +7231,15 @@ COPY storage.migrations (id, name, hash, executed_at) FROM stdin;
 -- Data for Name: objects; Type: TABLE DATA; Schema: storage; Owner: supabase_storage_admin
 --
 
-COPY storage.objects (id, bucket_id, name, owner, created_at, updated_at, last_accessed_at, metadata, version, owner_id, user_metadata) FROM stdin;
+COPY storage.objects (id, bucket_id, name, owner, created_at, updated_at, last_accessed_at, metadata, version, owner_id, user_metadata, level) FROM stdin;
+\.
+
+
+--
+-- Data for Name: prefixes; Type: TABLE DATA; Schema: storage; Owner: supabase_storage_admin
+--
+
+COPY storage.prefixes (bucket_id, name, created_at, updated_at) FROM stdin;
 \.
 
 
@@ -7271,7 +7474,7 @@ SELECT pg_catalog.setval('public.payroll_attendance_id_seq', 1, true);
 -- Name: principal_attendance_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.principal_attendance_id_seq', 312, true);
+SELECT pg_catalog.setval('public.principal_attendance_id_seq', 318, true);
 
 
 --
@@ -7390,7 +7593,7 @@ SELECT pg_catalog.setval('public.teacher_payroll_id_seq', 2, true);
 -- Name: teacher_timings_timing_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.teacher_timings_timing_id_seq', 455, true);
+SELECT pg_catalog.setval('public.teacher_timings_timing_id_seq', 469, true);
 
 
 --
@@ -8326,6 +8529,14 @@ ALTER TABLE ONLY realtime.schema_migrations
 
 
 --
+-- Name: buckets_analytics buckets_analytics_pkey; Type: CONSTRAINT; Schema: storage; Owner: supabase_storage_admin
+--
+
+ALTER TABLE ONLY storage.buckets_analytics
+    ADD CONSTRAINT buckets_analytics_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: buckets buckets_pkey; Type: CONSTRAINT; Schema: storage; Owner: supabase_storage_admin
 --
 
@@ -8355,6 +8566,14 @@ ALTER TABLE ONLY storage.migrations
 
 ALTER TABLE ONLY storage.objects
     ADD CONSTRAINT objects_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: prefixes prefixes_pkey; Type: CONSTRAINT; Schema: storage; Owner: supabase_storage_admin
+--
+
+ALTER TABLE ONLY storage.prefixes
+    ADD CONSTRAINT prefixes_pkey PRIMARY KEY (bucket_id, level, name);
 
 
 --
@@ -8997,10 +9216,31 @@ CREATE INDEX idx_multipart_uploads_list ON storage.s3_multipart_uploads USING bt
 
 
 --
+-- Name: idx_name_bucket_level_unique; Type: INDEX; Schema: storage; Owner: supabase_storage_admin
+--
+
+CREATE UNIQUE INDEX idx_name_bucket_level_unique ON storage.objects USING btree (name COLLATE "C", bucket_id, level);
+
+
+--
 -- Name: idx_objects_bucket_id_name; Type: INDEX; Schema: storage; Owner: supabase_storage_admin
 --
 
 CREATE INDEX idx_objects_bucket_id_name ON storage.objects USING btree (bucket_id, name COLLATE "C");
+
+
+--
+-- Name: idx_objects_lower_name; Type: INDEX; Schema: storage; Owner: supabase_storage_admin
+--
+
+CREATE INDEX idx_objects_lower_name ON storage.objects USING btree ((path_tokens[level]), lower(name) text_pattern_ops, bucket_id, level);
+
+
+--
+-- Name: idx_prefixes_lower_name; Type: INDEX; Schema: storage; Owner: supabase_storage_admin
+--
+
+CREATE INDEX idx_prefixes_lower_name ON storage.prefixes USING btree (bucket_id, level, ((string_to_array(name, '/'::text))[level]), lower(name) text_pattern_ops);
 
 
 --
@@ -9011,10 +9251,59 @@ CREATE INDEX name_prefix_search ON storage.objects USING btree (name text_patter
 
 
 --
+-- Name: objects_bucket_id_level_idx; Type: INDEX; Schema: storage; Owner: supabase_storage_admin
+--
+
+CREATE UNIQUE INDEX objects_bucket_id_level_idx ON storage.objects USING btree (bucket_id, level, name COLLATE "C");
+
+
+--
 -- Name: subscription tr_check_filters; Type: TRIGGER; Schema: realtime; Owner: supabase_admin
 --
 
 CREATE TRIGGER tr_check_filters BEFORE INSERT OR UPDATE ON realtime.subscription FOR EACH ROW EXECUTE FUNCTION realtime.subscription_check_filters();
+
+
+--
+-- Name: buckets enforce_bucket_name_length_trigger; Type: TRIGGER; Schema: storage; Owner: supabase_storage_admin
+--
+
+CREATE TRIGGER enforce_bucket_name_length_trigger BEFORE INSERT OR UPDATE OF name ON storage.buckets FOR EACH ROW EXECUTE FUNCTION storage.enforce_bucket_name_length();
+
+
+--
+-- Name: objects objects_delete_delete_prefix; Type: TRIGGER; Schema: storage; Owner: supabase_storage_admin
+--
+
+CREATE TRIGGER objects_delete_delete_prefix AFTER DELETE ON storage.objects FOR EACH ROW EXECUTE FUNCTION storage.delete_prefix_hierarchy_trigger();
+
+
+--
+-- Name: objects objects_insert_create_prefix; Type: TRIGGER; Schema: storage; Owner: supabase_storage_admin
+--
+
+CREATE TRIGGER objects_insert_create_prefix BEFORE INSERT ON storage.objects FOR EACH ROW EXECUTE FUNCTION storage.objects_insert_prefix_trigger();
+
+
+--
+-- Name: objects objects_update_create_prefix; Type: TRIGGER; Schema: storage; Owner: supabase_storage_admin
+--
+
+CREATE TRIGGER objects_update_create_prefix BEFORE UPDATE ON storage.objects FOR EACH ROW WHEN (((new.name <> old.name) OR (new.bucket_id <> old.bucket_id))) EXECUTE FUNCTION storage.objects_update_prefix_trigger();
+
+
+--
+-- Name: prefixes prefixes_create_hierarchy; Type: TRIGGER; Schema: storage; Owner: supabase_storage_admin
+--
+
+CREATE TRIGGER prefixes_create_hierarchy BEFORE INSERT ON storage.prefixes FOR EACH ROW WHEN ((pg_trigger_depth() < 1)) EXECUTE FUNCTION storage.prefixes_insert_trigger();
+
+
+--
+-- Name: prefixes prefixes_delete_hierarchy; Type: TRIGGER; Schema: storage; Owner: supabase_storage_admin
+--
+
+CREATE TRIGGER prefixes_delete_hierarchy AFTER DELETE ON storage.prefixes FOR EACH ROW EXECUTE FUNCTION storage.delete_prefix_hierarchy_trigger();
 
 
 --
@@ -9729,6 +10018,14 @@ ALTER TABLE ONLY storage.objects
 
 
 --
+-- Name: prefixes prefixes_bucketId_fkey; Type: FK CONSTRAINT; Schema: storage; Owner: supabase_storage_admin
+--
+
+ALTER TABLE ONLY storage.prefixes
+    ADD CONSTRAINT "prefixes_bucketId_fkey" FOREIGN KEY (bucket_id) REFERENCES storage.buckets(id);
+
+
+--
 -- Name: s3_multipart_uploads s3_multipart_uploads_bucket_id_fkey; Type: FK CONSTRAINT; Schema: storage; Owner: supabase_storage_admin
 --
 
@@ -9867,6 +10164,12 @@ ALTER TABLE realtime.messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE storage.buckets ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: buckets_analytics; Type: ROW SECURITY; Schema: storage; Owner: supabase_storage_admin
+--
+
+ALTER TABLE storage.buckets_analytics ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: migrations; Type: ROW SECURITY; Schema: storage; Owner: supabase_storage_admin
 --
 
@@ -9877,6 +10180,12 @@ ALTER TABLE storage.migrations ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: prefixes; Type: ROW SECURITY; Schema: storage; Owner: supabase_storage_admin
+--
+
+ALTER TABLE storage.prefixes ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: s3_multipart_uploads; Type: ROW SECURITY; Schema: storage; Owner: supabase_storage_admin
@@ -11815,6 +12124,15 @@ GRANT ALL ON TABLE storage.buckets TO postgres WITH GRANT OPTION;
 
 
 --
+-- Name: TABLE buckets_analytics; Type: ACL; Schema: storage; Owner: supabase_storage_admin
+--
+
+GRANT ALL ON TABLE storage.buckets_analytics TO service_role;
+GRANT ALL ON TABLE storage.buckets_analytics TO authenticated;
+GRANT ALL ON TABLE storage.buckets_analytics TO anon;
+
+
+--
 -- Name: TABLE objects; Type: ACL; Schema: storage; Owner: supabase_storage_admin
 --
 
@@ -11822,6 +12140,15 @@ GRANT ALL ON TABLE storage.objects TO anon;
 GRANT ALL ON TABLE storage.objects TO authenticated;
 GRANT ALL ON TABLE storage.objects TO service_role;
 GRANT ALL ON TABLE storage.objects TO postgres WITH GRANT OPTION;
+
+
+--
+-- Name: TABLE prefixes; Type: ACL; Schema: storage; Owner: supabase_storage_admin
+--
+
+GRANT ALL ON TABLE storage.prefixes TO service_role;
+GRANT ALL ON TABLE storage.prefixes TO authenticated;
+GRANT ALL ON TABLE storage.prefixes TO anon;
 
 
 --

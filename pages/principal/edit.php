@@ -115,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         $allowed_exts = ['jpg', 'jpeg', 'png', 'gif'];
         if (in_array($file_ext, $allowed_exts)) {
-            $target_dir_relative = "uploads/principal_images/";
+            $target_dir_relative = "pages/principal/uploads/";
             $full_target_dir = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . BASE_URL . $target_dir_relative;
             if (!file_exists($full_target_dir)) mkdir($full_target_dir, 0777, true);
             $new_filename = 'principal_' . $principal_id . '_' . time() . '.' . $file_ext;
