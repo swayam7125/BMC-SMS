@@ -648,7 +648,7 @@ if (!is_ajax_request()) {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-lg-12 mb-4 mt-4">
+                        <div class="col-lg-12 mb-4 ">
                             <div class="card shadow">
                                 <div class="card-header py-3">
                                     <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-bus"></i> Transport Information</h6>
@@ -757,8 +757,8 @@ if (!is_ajax_request()) {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-lg-12 mb-4 ">
-                            <div class="card shadow">
+                        <div class="col-lg-6 mb-4">
+                            <div class="card shadow h-100">
                                 <div class="card-header py-3">
                                     <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-clock"></i> Batch & Timings</h6>
                                 </div>
@@ -800,8 +800,8 @@ if (!is_ajax_request()) {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-lg-12 mb-4 ">
-                            <div class="card shadow">
+                        <div class="col-lg-6 mb-4">
+                            <div class="card shadow h-100">
                                 <div class="card-header py-3">
                                     <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-bus"></i> Transport Information</h6>
                                 </div>
