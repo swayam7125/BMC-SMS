@@ -37,10 +37,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_transport'])) 
     $teacher_transport_data = $_POST['teacher_transport'] ?? [];
     $current_section = $_POST['current_section'] ?? 'school';
 
+    // A flag to determine if a mode change occurred that requires a tab switch
+    $redirect_section = $current_section;
+
     try {
         $conn->beginTransaction();
 
-        $stmt = $conn->prepare("UPDATE teacher SET transport_mode = ?, stop_id = ?, self_transport_mode = ?, vehicle_number = ?, license_number = ? WHERE id = ? AND school_id = ?");
+        $stmt_update = $conn->prepare("UPDATE teacher SET transport_mode = ?, stop_id = ?, self_transport_mode = ?, vehicle_number = ?, license_number = ? WHERE id = ? AND school_id = ?");
+        $stmt_fetch_original = $conn->prepare("SELECT transport_mode FROM teacher WHERE id = ?");
 
         foreach ($teacher_transport_data as $teacher_id => $data) {
             $transport_mode = $data['transport_mode'] ?? null;
@@ -48,6 +52,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_transport'])) 
             $self_transport_mode = null;
             $vehicle_number = null;
             $license_number = null;
+            
+            // Check if the transport mode was changed
+            $stmt_fetch_original->execute([(int)$teacher_id]);
+            $original_mode = $stmt_fetch_original->fetchColumn();
+
+            if ($original_mode !== $transport_mode) {
+                // If the mode changed, set the redirect section to the new mode
+                if ($transport_mode === 'Self Transport') {
+                    $redirect_section = 'self';
+                } else if ($transport_mode === 'School Transport') {
+                    $redirect_section = 'school';
+                }
+            }
 
             if ($transport_mode === 'School Transport') {
                 $stop_id = !empty($data['stop_id']) ? (int)$data['stop_id'] : null;
@@ -60,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_transport'])) 
                 }
             }
 
-            $stmt->execute([$transport_mode, $stop_id, $self_transport_mode, $vehicle_number, $license_number, (int)$teacher_id, $school_id]);
+            $stmt_update->execute([$transport_mode, $stop_id, $self_transport_mode, $vehicle_number, $license_number, (int)$teacher_id, $school_id]);
         }
         $conn->commit();
         $success = "Teacher transport information updated successfully!";
@@ -69,8 +86,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_transport'])) 
         $errors[] = "Database update failed: " . $e->getMessage();
     }
     
-    // Redirect to the same section after form submission, passing success/error messages
-    $redirect_url = "teacher_transport.php?section=" . urlencode($current_section);
+    // Redirect to the determined section after form submission, passing success/error messages
+    $redirect_url = "teacher_transport.php?section=" . urlencode($redirect_section);
     if (!empty($success)) {
         $redirect_url .= "&success=" . urlencode($success);
     }

@@ -141,10 +141,12 @@ if (!is_ajax_request()) {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php if (!empty($teachers)): foreach ($teachers as $row): ?>
+                                        <?php if (!empty($teachers)): foreach ($teachers as $row):
+                                            $teacher_std_for_url = htmlspecialchars(trim(str_replace(['{', '}'], '', $row['std'])));
+                                        ?>
                                                 <tr>
                                                     <td><?php echo htmlspecialchars($row['id']); ?></td>
-                                                    <td><a href="view.php?id=<?php echo $row['id']; ?>"><?php echo htmlspecialchars($row['teacher_name'] ?? 'N/A'); ?></a></td>
+                                                    <td><a href="view.php?id=<?php echo $row['id']; ?>&std=<?php echo $teacher_std_for_url; ?>&from_list_filter=<?php echo urlencode($selected_standard); ?>"><?php echo htmlspecialchars($row['teacher_name'] ?? 'N/A'); ?></a></td>
                                                     <td><?php echo htmlspecialchars($row['email'] ?? 'N/A'); ?></td>
                                                     <td><?php echo htmlspecialchars(trim(str_replace(['{', '}'], '', $row['std'])) ?? 'N/A'); ?></td>
                                                     <td><?php echo htmlspecialchars($row['school_name'] ?? 'N/A'); ?></td>
@@ -156,7 +158,7 @@ if (!is_ajax_request()) {
                                                         <?php endif; ?>
                                                     </td>
                                                     <td>
-                                                        <a href="view.php?id=<?php echo $row['id']; ?>" class="btn btn-info btn-sm" title="View"><i class="fas fa-eye"></i></a>
+                                                        <a href="view.php?id=<?php echo $row['id']; ?>&std=<?php echo $teacher_std_for_url; ?>&from_list_filter=<?php echo urlencode($selected_standard); ?>" class="btn btn-info btn-sm" title="View"><i class="fas fa-eye"></i></a>
                                                         <a href="edit.php?id=<?php echo $row['id']; ?>" class="btn btn-primary btn-sm" title="Edit"><i class="fas fa-edit"></i></a>
                                                         <?php if ($role === 'principal'):
                                                             $return_url = urlencode('/BMC-SMS/pages/teacher/teacher_list.php');

@@ -23,14 +23,27 @@ if (!$school_id) {
 $errors = [];
 $success = '';
 
+// Check for success/error messages from URL parameters
+if (isset($_GET['success'])) {
+    $success = htmlspecialchars($_GET['success']);
+}
+if (isset($_GET['errors'])) {
+    $errors = json_decode(urldecode($_GET['errors']), true);
+}
+
 // Handle updating librarian transport
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_transport'])) {
     $librarian_transport_data = $_POST['librarian_transport'] ?? [];
+    $current_section = $_POST['current_section'] ?? 'school';
+
+    // A flag to determine if a mode change occurred that requires a tab switch
+    $redirect_section = $current_section;
 
     try {
         $conn->beginTransaction();
 
-        $stmt = $conn->prepare("UPDATE librarian SET transport_mode = ?, stop_id = ?, self_transport_mode = ?, vehicle_number = ?, license_number = ? WHERE id = ? AND school_id = ?");
+        $stmt_update = $conn->prepare("UPDATE librarian SET transport_mode = ?, stop_id = ?, self_transport_mode = ?, vehicle_number = ?, license_number = ? WHERE id = ? AND school_id = ?");
+        $stmt_fetch_original = $conn->prepare("SELECT transport_mode FROM librarian WHERE id = ?");
 
         foreach ($librarian_transport_data as $librarian_id => $data) {
             $transport_mode = $data['transport_mode'] ?? null;
@@ -38,6 +51,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_transport'])) 
             $self_transport_mode = null;
             $vehicle_number = null;
             $license_number = null;
+            
+            // Check if the transport mode was changed
+            $stmt_fetch_original->execute([(int)$librarian_id]);
+            $original_mode = $stmt_fetch_original->fetchColumn();
+
+            if ($original_mode !== $transport_mode) {
+                // If the mode changed, set the redirect section to the new mode
+                if ($transport_mode === 'Self Transport') {
+                    $redirect_section = 'self';
+                } else if ($transport_mode === 'School Transport') {
+                    $redirect_section = 'school';
+                }
+            }
 
             if ($transport_mode === 'School Transport') {
                 $stop_id = !empty($data['stop_id']) ? (int)$data['stop_id'] : null;
@@ -50,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_transport'])) 
                 }
             }
 
-            $stmt->execute([$transport_mode, $stop_id, $self_transport_mode, $vehicle_number, $license_number, (int)$librarian_id, $school_id]);
+            $stmt_update->execute([$transport_mode, $stop_id, $self_transport_mode, $vehicle_number, $license_number, (int)$librarian_id, $school_id]);
         }
         $conn->commit();
         $success = "Librarian transport information updated successfully!";
@@ -58,6 +84,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_transport'])) 
         $conn->rollBack();
         $errors[] = "Database update failed: " . $e->getMessage();
     }
+
+    // Redirect to the determined section after form submission, passing success/error messages
+    $redirect_url = "librarian_transport.php?section=" . urlencode($redirect_section);
+    if (!empty($success)) {
+        $redirect_url .= "&success=" . urlencode($success);
+    }
+    if (!empty($errors)) {
+        $redirect_url .= "&errors=" . urlencode(json_encode($errors));
+    }
+
+    header("Location: " . $redirect_url);
+    exit();
 }
 
 // Fetch Data for Display
@@ -80,6 +118,8 @@ $school_transport_librarians = array_filter($librarians, function($l) {
 $self_transport_librarians = array_filter($librarians, function($l) {
     return $l['transport_mode'] === 'Self Transport' || $l['transport_mode'] === 'Self';
 });
+// Determine which section to show on page load
+$active_section = isset($_GET['section']) ? $_GET['section'] : 'school';
 ?>
 
 <!DOCTYPE html>
