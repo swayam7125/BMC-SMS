@@ -13,6 +13,8 @@ if (!$role) {
 }
 
 $teacher_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+// Read the filter value that was sent from the list page
+$from_list_filter = isset($_GET['from_list_filter']) ? $_GET['from_list_filter'] : ''; 
 
 if ($teacher_id <= 0) {
     header("Location: teacher_list.php?error=Invalid teacher ID");
@@ -89,7 +91,7 @@ if (!empty($photo_path)) {
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Teacher's Details</h1>
                         <div>
-                            <a href="teacher_list.php" class="btn btn-secondary btn-sm mr-2"><i class="fas fa-arrow-left fa-sm"></i> Back to List</a>
+                            <a href="teacher_list.php?std=<?php echo urlencode($from_list_filter); ?>" class="btn btn-secondary btn-sm mr-2"><i class="fas fa-arrow-left fa-sm"></i> Back to List</a>
                             <a href="edit.php?id=<?php echo $teacher['id']; ?>" class="btn btn-primary btn-sm"><i class="fas fa-edit fa-sm"></i> Edit Teacher</a>
                         </div>
                     </div>

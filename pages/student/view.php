@@ -14,8 +14,9 @@ if (!$role) {
     exit;
 }
 
-// Get student ID from URL
+// Get student ID and standard from URL
 $student_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+$selectedStd = isset($_GET['std']) ? $_GET['std'] : 'all';
 
 if ($student_id <= 0) {
     header("Location: student_list.php?error=Invalid student ID");
@@ -23,7 +24,6 @@ if ($student_id <= 0) {
 }
 
 // Fetch student data with related information
-// MODIFIED: Added self_transport_mode, vehicle_number, and license_number to the SELECT query.
 $query = "SELECT s.*, sc.school_name, sc.address as school_address, sc.email as school_email, sc.phone as school_phone,
                 st.stop_name, r.route_name, v.vehicle_number as school_vehicle_number
         FROM student s 
@@ -67,7 +67,6 @@ if (!empty($photo_path) && file_exists($full_filesystem_path) && is_file($full_f
 } else {
     $display_photo = $default_photo;
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -100,7 +99,7 @@ if (!empty($photo_path) && file_exists($full_filesystem_path) && is_file($full_f
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Student's Details</h1>
                         <div>
-                            <a href="student_list.php" class="btn btn-secondary btn-sm mr-2">
+                            <a href="student_list.php?std=<?php echo urlencode($selectedStd); ?>" class="btn btn-secondary btn-sm mr-2">
                                 <i class="fas fa-arrow-left"></i> Back to List
                             </a>
                             <?php if ($role === 'principal'): ?>

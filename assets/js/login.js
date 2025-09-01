@@ -53,6 +53,26 @@ document.addEventListener("DOMContentLoaded", function () {
   if (loginForm) {
     loginForm.addEventListener("submit", function (e) {
       e.preventDefault();
+
+      const emailInput = document.getElementById("email");
+      const passwordInput = document.getElementById("password");
+      alertPlaceholder.innerHTML = ""; // Clear previous alerts
+
+      if (emailInput.value.trim() === "" && passwordInput.value.trim() === "") {
+        showAlert("Please enter your email and password.", "danger", alertPlaceholder);
+        return; // Stop the function
+      }
+
+      if (emailInput.value.trim() === "") {
+        showAlert("Please provide your Email.", "danger", alertPlaceholder);
+        return; // Stop the function
+      }
+
+      if (passwordInput.value.trim() === "") {
+        showAlert("Please provide your Password.", "danger", alertPlaceholder);
+        return; // Stop the function
+      }
+
       const formData = new FormData(this);
       const originalButtonText = submitButton.innerHTML;
       submitButton.disabled = true;
@@ -80,7 +100,7 @@ document.addEventListener("DOMContentLoaded", function () {
         .catch((error) => {
           console.error("Login Error:", error);
           showAlert(
-            "An unexpected error occurred. Please check the console.",
+            "Please Enter Email-Id and Password!",
             "danger",
             alertPlaceholder
           );

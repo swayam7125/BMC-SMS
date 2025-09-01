@@ -1,5 +1,4 @@
 <?php
-// A single, unified message file for both teachers and students.
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
@@ -33,7 +32,7 @@ $contacts_title = ($current_user_role === 'teacher') ? "Students" : "Teachers";
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-    <link rel="stylesheet" href="../../assets/css/message.css?v=1.3">
+    <link rel="stylesheet" href="../../assets/css/message.css?v=1.4">
     </head>
 <body id="page-top">
     <div id="wrapper">
@@ -45,7 +44,7 @@ $contacts_title = ($current_user_role === 'teacher') ? "Students" : "Teachers";
                     <h1 class="h3 mb-4 text-gray-800"><?php echo htmlspecialchars($page_title); ?></h1>
                     <div class="row">
                         <div class="col-lg-4 mb-4">
-                            <div class="card shadow">
+                            <div class="card shadow h-100 d-flex flex-column">
                                 <div class="card-header py-3">
                                     <h6 class="m-0 font-weight-bold text-primary"><?php echo htmlspecialchars($contacts_title); ?></h6>
                                 </div>
@@ -59,7 +58,7 @@ $contacts_title = ($current_user_role === 'teacher') ? "Students" : "Teachers";
                             </div>
                         </div>
                         <div class="col-lg-8 mb-4">
-                            <div class="card shadow">
+                            <div class="card shadow h-100 d-flex flex-column">
                                 <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary" id="chat-with-name">Select a contact to start chatting</h6></div>
                                 <div class="card-body message-display" id="message-area">
                                      <div class="text-center h-100 d-flex flex-column justify-content-center align-items-center">
@@ -68,12 +67,29 @@ $contacts_title = ($current_user_role === 'teacher') ? "Students" : "Teachers";
                                     </div>
                                 </div>
                                 <div class="card-footer bg-white">
-                                    <div class="input-group">
-                                        <input type="text" id="message-text" class="form-control" placeholder="Type a message..." disabled>
-                                        <div class="input-group-append">
-                                            <button class="btn btn-primary" id="send-button" type="button" disabled><i class="fas fa-paper-plane"></i> Send</button>
+                                    <div id="file-preview-container" class="mb-2" style="display: none;">
+                                        <div class="d-flex align-items-center p-2 border rounded">
+                                            <i class="fas fa-file-alt fa-2x text-gray-500 mr-2"></i>
+                                            <span id="file-preview-name" class="text-truncate"></span>
+                                            <button id="cancel-file-button" type="button" class="close ml-auto" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                            </button>
                                         </div>
                                     </div>
+                                    <form id="message-form">
+                                        <input type="file" id="file-input" style="display: none;" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt">
+                                        <div class="input-group">
+                                            <div class="input-group-prepend">
+                                                <button class="btn btn-light" id="attach-file-button" type="button" disabled>
+                                                    <i class="fas fa-paperclip"></i>
+                                                </button>
+                                            </div>
+                                            <input type="text" id="message-text" class="form-control" placeholder="Type a message..." disabled>
+                                            <div class="input-group-append">
+                                                <button class="btn btn-primary" id="send-button" type="submit" disabled><i class="fas fa-paper-plane"></i> Send</button>
+                                            </div>
+                                        </div>
+                                    </form>
                                 </div>
                             </div>
                         </div>
@@ -88,11 +104,10 @@ $contacts_title = ($current_user_role === 'teacher') ? "Students" : "Teachers";
     <script src="/BMC-SMS/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="/BMC-SMS/assets/js/sb-admin-2.min.js"></script>
     <script>
-        // Pass PHP variables to JavaScript so the script knows who is logged in
         window.currentUserId = '<?php echo $current_user_id; ?>';
         window.currentUserRole = '<?php echo $current_user_role; ?>';
         window.base_url = '/BMC-SMS/';
     </script>
-    <script src="/BMC-SMS/assets/js/message.js"></script>
+    <script src="/BMC-SMS/assets/js/message.js?v=1.1"></script>
 </body>
 </html>

@@ -69,13 +69,12 @@ try {
         }
 
         if ($school_id) {
-            $where_clauses[] = "s.school_id = ?";
-            $params[] = $school_id;
-
             $stmt_standards = $conn->prepare("SELECT DISTINCT std FROM student WHERE school_id = ? ORDER BY std");
             $stmt_standards->execute([$school_id]);
             $all_school_standards = $stmt_standards->fetchAll(PDO::FETCH_COLUMN, 0);
             $availableStandards = $all_school_standards;
+            $where_clauses[] = "s.school_id = ?";
+            $params[] = $school_id;
         }
         
         $selectedStd = $_GET['std'] ?? 'all';
@@ -94,8 +93,8 @@ try {
             WHEN s.std = 'Nursery' THEN 1
             WHEN s.std = 'Junior' THEN 2
             WHEN s.std = 'Senior' THEN 3
-            WHEN s.std ~ '^[0-9]+$' THEN CAST(s.std AS INTEGER) + 3  -- Adds an offset to place numbers after the custom strings
-            ELSE 999  -- Catches any other standards and places them last
+            WHEN s.std ~ '^[0-9]+$' THEN CAST(s.std AS INTEGER) + 3
+            ELSE 999
         END, 
         s.rollno ASC";
 
@@ -176,7 +175,7 @@ if (!is_ajax_request()) {
                                             <?php foreach ($students as $row): ?>
                                                 <tr>
                                                     <td><?php echo htmlspecialchars($row['id']); ?></td>
-                                                    <td><a href="view.php?id=<?php echo $row['id']; ?>"><?php echo htmlspecialchars($row['student_name'] ?? 'N/A'); ?></a></td>
+                                                    <td><a href="view.php?id=<?php echo $row['id']; ?>&std=<?php echo htmlspecialchars($selectedStd); ?>"><?php echo htmlspecialchars($row['student_name'] ?? 'N/A'); ?></a></td>
                                                     <td><?php echo htmlspecialchars($row['rollno'] ?? 'N/A'); ?></td>
                                                     <td><?php echo htmlspecialchars($row['std'] ?? 'N/A'); ?></td>
                                                     <td>
@@ -187,7 +186,7 @@ if (!is_ajax_request()) {
                                                         <?php endif; ?>
                                                     </td>
                                                     <td>
-                                                        <a href="view.php?id=<?php echo $row['id']; ?>" class="btn btn-info btn-sm" title="View"><i class="fas fa-eye"></i></a>
+                                                        <a href="view.php?id=<?php echo $row['id']; ?>&std=<?php echo htmlspecialchars($selectedStd); ?>" class="btn btn-info btn-sm" title="View"><i class="fas fa-eye"></i></a>
 
                                                         <?php if ($role === 'principal'): ?>
                                                             <a href="edit.php?id=<?php echo $row['id']; ?>" class="btn btn-primary btn-sm" title="Edit"><i class="fas fa-edit"></i></a>
@@ -250,13 +249,14 @@ if (!is_ajax_request()) {
     </div>
     <?php if (($role === 'principal' || $role === 'teacher') && !empty($availableStandards)): ?>
         <div id="standardFilterWrapper" class="d-none">
-            <label for="standardFilter" class="form-label font-weight-bold m-0 mr-2">Filter by Standard:</label>
-            <select id="standardFilter" class="form-control form-control-sm">
-                <option value="all">All Standards</option>
-                <?php foreach ($availableStandards as $std): ?>
-                    <option value="<?php echo htmlspecialchars(trim($std)); ?>" <?php echo ($selectedStd == trim($std)) ? 'selected' : ''; ?>>Standard <?php echo htmlspecialchars(trim($std)); ?></option>
-                <?php endforeach; ?>
-            </select>
+            <label class="mr-3">Filter by Standard: 
+                <select id="standardFilter" class="form-control form-control-sm d-inline-block w-auto">
+                    <option value="all">All</option>
+                    <?php foreach ($availableStandards as $std): ?>
+                        <option value="<?php echo htmlspecialchars(trim($std)); ?>" <?php echo ($selectedStd == trim($std)) ? 'selected' : ''; ?>> <?php echo htmlspecialchars(trim($std)); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
         </div>
     <?php endif; ?>
 
@@ -276,9 +276,16 @@ if (!is_ajax_request()) {
             var standardFilterWrapper = $('#standardFilterWrapper');
 
             if (filterContainer.length > 0 && standardFilterWrapper.length > 0) {
-                standardFilterWrapper.removeClass('d-none');
-                filterContainer.prepend(standardFilterWrapper);
+                // Extract the content (the label) from the wrapper div
+                var filterContent = standardFilterWrapper.html();
                 
+                // Prepend the actual content, not the div, to the search area
+                filterContainer.prepend(filterContent);
+
+                // Remove the now-empty wrapper from the page
+                standardFilterWrapper.remove();
+                
+                // Attach the event handler to the newly added dropdown
                 $('#standardFilter').on('change', function() {
                     window.location.href = 'student_list.php?std=' + this.value;
                 });

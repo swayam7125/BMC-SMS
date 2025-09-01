@@ -17,7 +17,7 @@
     background: #cccccc;
 }
 
-/* --- ⭐ FIX: Better Active Contact Style ⭐ --- */
+/* --- FIX: Better Active Contact Style --- */
 .contact-item.active {
     background-color: #f0f5ff !important; /* A very light, subtle blue background */
     border-color: #e0e8f8 !important;   /* A light border color to match */
@@ -134,22 +134,19 @@
 /* Styling for date separators in chat */
 .date-separator {
     text-align: center;
-    margin: 1rem 0 0;
+    margin: 1.5rem 0 1rem;
 }
 .date-separator span {
     background-color: #e9eaeb;
-    color: #555;
-    padding: 5px 12px;
+    color: #5a5c69;
+    padding: 5px 15px;
     border-radius: 12px;
     font-size: 0.75rem;
-    font-weight: 500;
+    font-weight: 600;
     box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
 }
 
 /* --- UI Improvement: Enhanced Input Field Focus --- */
-#message-text {
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
 #message-text:focus {
     border-color: #80bdff;
     box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
@@ -167,4 +164,85 @@
 .animate-in {
     opacity: 0;
     transform: translateY(10px);
+}
+
+/* --- File Attachment & Preview Styles --- */
+#attach-file-button {
+    border-right: 0;
+}
+
+#file-preview-container .fa-file-alt {
+    flex-shrink: 0;
+}
+
+#file-preview-name {
+    font-size: 0.9rem;
+    color: #5a5c69;
+}
+
+/* --- Attachment Styles in Message Bubbles --- */
+.message-attachment {
+    margin-top: 8px;
+    max-width: 100%;
+}
+
+/* Style for images */
+.chat-image {
+    max-width: 300px;
+    height: auto;
+    border-radius: 10px;
+    cursor: pointer;
+    border: 1px solid #eee;
+}
+
+/* Style for videos */
+.chat-video {
+    max-width: 350px;
+    height: auto;
+    border-radius: 10px;
+    border: 1px solid #eee;
+}
+
+/* Style for general file links */
+.file-link-wrapper {
+    display: flex;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.04);
+    padding: 10px;
+    border-radius: 8px;
+    text-decoration: none !important;
+    color: inherit;
+    transition: background-color 0.2s ease;
+}
+
+.file-link-wrapper:hover {
+    background-color: rgba(0, 0, 0, 0.08);
+}
+
+.message-bubble.sent .file-link-wrapper {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.message-bubble.sent .file-link-wrapper:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.file-link-wrapper .file-icon {
+    font-size: 1.8rem;
+    margin-right: 10px;
+}
+
+.file-link-wrapper .file-info {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+    overflow: hidden;
+}
+
+.file-link-wrapper .file-info .file-name {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
