@@ -411,7 +411,7 @@ if (isset($conn) && $user_id) {
         </div>
     </li>
     <?php
-                $transport_pages = ['manage_vehicles.php', 'manage_drivers.php', 'manage_routes.php', 'student_transport.php'];
+                $transport_pages = ['manage_vehicles.php', 'manage_drivers.php', 'manage_routes.php', 'teacher_transport.php', 'librarian_transport.php', 'student_transport.php'];
             ?>
     <li class="nav-item">
         <a class="nav-link <?php echo (is_active_page($transport_pages)) ? '' : 'collapsed'; ?>" href="#"
