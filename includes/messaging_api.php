@@ -1,7 +1,6 @@
 <?php
 header('Content-Type: application/json');
 
-// --- FINAL, VERIFIED FILE PATHS ---
 include_once "connect.php";
 include_once "../encryption.php";
 
@@ -122,45 +121,91 @@ switch ($action) {
         }
         break;
 
-        case 'send_message':
-            $receiver_id = $_POST['receiver_id'] ?? null;
-            $message_text = trim($_POST['message_text'] ?? '');
-            $file_path = null;
-            $file_type = null;
-            $original_filename = null;
-    
-            if (empty($receiver_id)) {
-                $response['message'] = 'Receiver ID is missing.';
+    case 'send_message':
+        $receiver_id = $_POST['receiver_id'] ?? null;
+        $message_text = trim($_POST['message_text'] ?? '');
+        $file_path = null;
+        $file_type = null;
+        $original_filename = null;
+
+        if (empty($receiver_id)) {
+            $response['message'] = 'Receiver ID is missing.';
+            break;
+        }
+        
+        $receiver_role = ($current_user_role === 'student') ? 'teacher' : 'student';
+
+        if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] === UPLOAD_ERR_OK) {
+            $file = $_FILES['attachment'];
+            $original_filename = basename($file['name']);
+            
+            // =================== NEW SECURITY VALIDATION BLOCK START ===================
+            $max_file_size = 15 * 1024 * 1024; // 15 MB limit
+            if ($file['size'] > $max_file_size) {
+                $response['message'] = 'Error: File is too large. Maximum size is 15 MB.';
+                break; 
+            }
+
+            // Whitelist of allowed extensions and their corresponding MIME types
+            $allowed_types = [
+                'jpg'  => 'image/jpeg',
+                'jpeg' => 'image/jpeg',
+                'png'  => 'image/png',
+                'gif'  => 'image/gif',
+                'pdf'  => 'application/pdf',
+                'doc'  => 'application/msword',
+                'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'xls'  => 'application/vnd.ms-excel',
+                'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'ppt'  => 'application/vnd.ms-powerpoint',
+                'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                'txt'  => 'text/plain',
+                'mp4'  => 'video/mp4',
+                'mov'  => 'video/quicktime',
+                'wmv'  => 'video/x-ms-wmv'
+            ];
+
+            $file_extension = strtolower(pathinfo($original_filename, PATHINFO_EXTENSION));
+
+            if (!array_key_exists($file_extension, $allowed_types)) {
+                $response['message'] = 'Error: Invalid file extension. Not allowed.';
                 break;
             }
+
+            // Verify the actual MIME type from file content to prevent spoofing
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $detected_mime_type = finfo_file($finfo, $file['tmp_name']);
+            finfo_close($finfo);
+
+            if ($detected_mime_type !== $allowed_types[$file_extension]) {
+                $response['message'] = 'Error: File content does not match its extension.';
+                break;
+            }
+            // =================== NEW SECURITY VALIDATION BLOCK END ===================
+
+            $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/uploads/messages/';
             
-            $receiver_role = ($current_user_role === 'student') ? 'teacher' : 'student';
-    
-            if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] === UPLOAD_ERR_OK) {
-                $file = $_FILES['attachment'];
-                $original_filename = basename($file['name']);
-                // ... (file validation code remains the same) ...
-    
-                $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/uploads/messages/';
-                
-                if (!is_dir($upload_dir)) {
-                    mkdir($upload_dir, 0775, true);
-                }
-                
-                $file_extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-                $unique_filename = 'msg_' . uniqid() . '_' . time() . '.' . $file_extension;
-                $destination = $upload_dir . $unique_filename;
-    
-                // --- THIS SECTION IS UPDATED WITH A CLEARER ERROR ---
-                if (move_uploaded_file($file['tmp_name'], $destination)) {
-                    $file_path = 'uploads/messages/' . $unique_filename;
-                    $file_type = $file['type'];
-                } else {
-                    $response['message'] = 'CRITICAL ERROR: Failed to move uploaded file. Check folder permissions for: ' . $upload_dir;
-                    echo json_encode($response);
-                    exit; // Stop the script here
+            if (!is_dir($upload_dir)) {
+                if (!mkdir($upload_dir, 0775, true)) {
+                     $response['message'] = 'CRITICAL ERROR: Failed to create upload directory.';
+                     echo json_encode($response);
+                     exit;
                 }
             }
+            
+            $unique_filename = 'msg_' . uniqid() . '_' . time() . '.' . $file_extension;
+            $destination = $upload_dir . $unique_filename;
+
+            if (move_uploaded_file($file['tmp_name'], $destination)) {
+                $file_path = 'uploads/messages/' . $unique_filename;
+                // Use the server-detected MIME type for accuracy
+                $file_type = $detected_mime_type; 
+            } else {
+                $response['message'] = 'CRITICAL ERROR: Failed to move uploaded file. Check folder permissions for: ' . realpath($upload_dir);
+                echo json_encode($response);
+                exit;
+            }
+        }
 
         if (empty($message_text) && empty($file_path)) {
             $response['message'] = 'Cannot send an empty message.';

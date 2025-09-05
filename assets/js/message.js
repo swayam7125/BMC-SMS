@@ -16,7 +16,6 @@ $(document).ready(function() {
     const filePreviewName = $('#file-preview-name');
     const cancelFileButton = $('#cancel-file-button');
 
-    // --- NEW: Helper function to format date separators ---
     function formatDateSeparator(dateString) {
         const date = new Date(dateString);
         const today = new Date();
@@ -104,17 +103,15 @@ $(document).ready(function() {
             success: function(response) {
                 if (isInitialLoad) messageArea.empty();
                 let hadNewMessages = false;
-                let lastMessageDate = null; // Reset for each full load/refresh
+                let lastMessageDate = null;
                 
                 if (response.status === 'success' && response.messages.length > 0) {
-                    // When loading initially, clear the area completely
                     if(isInitialLoad) messageArea.empty();
 
                     response.messages.forEach(msg => {
                         if ($(`.message-wrapper[data-message-id="${msg.id}"]`).length > 0) return;
                         hadNewMessages = true;
 
-                        // --- Date Separator Logic ---
                         const currentMessageDate = new Date(msg.timestamp).toDateString();
                         if (currentMessageDate !== lastMessageDate) {
                             const separatorHtml = `
@@ -133,23 +130,35 @@ $(document).ready(function() {
                         if (msg.file_path) {
                             const uniqueFilename = msg.file_path.split('/').pop();
                             const downloadUrl = `${window.base_url}includes/download.php?file=${encodeURIComponent(uniqueFilename)}`;
+                            const fileUrl = window.base_url + msg.file_path;
                             
+                            // =================== MODIFIED BLOCK START ===================
                             if (msg.file_type && msg.file_type.startsWith('image/')) {
-                                const imageUrl = window.base_url + msg.file_path;
-                                attachmentHtml = `<div class="message-attachment"><a href="${downloadUrl}" target="_blank"><img src="${imageUrl}" class="chat-image" alt="Attachment"></a></div>`;
+                                // If it's an image, render an <img> tag
+                                attachmentHtml = `
+                                    <div class="message-attachment">
+                                        <a href="${downloadUrl}" target="_blank">
+                                            <img src="${fileUrl}" class="chat-image" alt="Attachment">
+                                        </a>
+                                    </div>`;
                             } else if (msg.file_type && msg.file_type.startsWith('video/')) {
-                                const videoUrl = window.base_url + msg.file_path;
-                                attachmentHtml = `<div class="message-attachment"><video src="${videoUrl}" class="chat-video" controls></video></div>`;
+                                // If it's a video, render a <video> tag with controls
+                                attachmentHtml = `
+                                    <div class="message-attachment">
+                                        <video src="${fileUrl}" class="chat-video" controls></video>
+                                    </div>`;
                             } else {
+                                // For all other files, render the generic file link
                                 const originalFileName = msg.original_filename || uniqueFilename.substring(14);
                                 attachmentHtml = `
                                 <div class="message-attachment">
-                                    <a href="${downloadUrl}" class="file-link-wrapper">
+                                    <a href="${downloadUrl}" class="file-link-wrapper" download="${escapeHtml(originalFileName)}">
                                         <i class="fas fa-file-alt file-icon"></i>
                                         <div class="file-info"><span class="file-name">${escapeHtml(originalFileName)}</span></div>
                                     </a>
                                 </div>`;
                             }
+                            // =================== MODIFIED BLOCK END ===================
                         }
 
                         const messageHtml = `

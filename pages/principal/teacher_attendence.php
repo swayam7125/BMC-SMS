@@ -11,9 +11,11 @@ $userId = null;
 $errorMessage = '';
 $principalDetails = null;
 $teachers_with_details = [];
-$all_missing_dates = []; // To hold ALL dates with incomplete attendance
+$all_missing_dates = [];
 $is_holiday = false; 
 $holiday_description = ''; 
+$edit_teacher_id = isset($_GET['edit_teacher_id']) ? $_GET['edit_teacher_id'] : null;
+$earliest_joining_date_school = null;
 
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
@@ -38,7 +40,11 @@ try {
     $current_date = date('Y-m-d');
     $attendance_date_display = isset($_GET['attendance_date']) ? $_GET['attendance_date'] : $current_date;
 
-    // Check if the selected date is a holiday
+    if ($attendance_date_display > $current_date) {
+        $attendance_date_display = $current_date;
+        $errorMessage = "You cannot mark attendance for a future date. The date has been reset to today.";
+    }
+
     if (empty($errorMessage)) {
         $holiday_stmt = $conn->prepare("SELECT description FROM holidays WHERE holiday_date = ? AND school_id = ?");
         $holiday_stmt->execute([$attendance_date_display, $principalDetails['school_id']]);
@@ -49,54 +55,44 @@ try {
         }
     }
 
-    // --- Mandatory Past Attendance Check (starts from joining date) ---
+    // --- Mandatory Past Attendance Check ---
     if (empty($errorMessage) && !$is_holiday) {
         $target_date = new DateTime($attendance_date_display);
         
-        // Find the earliest joining date of a teacher in the school to optimize the check period.
-        $first_joining_stmt = $conn->prepare("SELECT MIN(date_of_joining) FROM teacher WHERE school_id = ?");
+        $first_joining_stmt = $conn->prepare("SELECT MIN(date_of_joining) FROM teacher WHERE school_id = ? AND date_of_joining IS NOT NULL");
         $first_joining_stmt->execute([$principalDetails['school_id']]);
         $first_joining_date = $first_joining_stmt->fetchColumn();
 
-        // Determine the start date for the check: either the 1st of the month or the first teacher's joining date, whichever is later.
         $start_of_month = new DateTime($target_date->format('Y-m-01'));
         $start_date = ($first_joining_date && new DateTime($first_joining_date) > $start_of_month) ? new DateTime($first_joining_date) : $start_of_month;
 
-        // Only perform the check if there are past dates to validate.
         if ($start_date < $target_date) {
             $interval = new DateInterval('P1D');
             $period = new DatePeriod($start_date, $interval, $target_date);
 
-            // Prepare statements outside the loop for better performance.
             $att_count_stmt = $conn->prepare("SELECT COUNT(teacher_id) FROM teacher_attendance WHERE school_id = ? AND attendance_date = ?");
             $holiday_check_stmt = $conn->prepare("SELECT COUNT(*) FROM holidays WHERE school_id = ? AND holiday_date = ?");
-            // New statement to count teachers who should have been present on a given date.
             $teacher_expected_stmt = $conn->prepare("SELECT COUNT(id) FROM teacher WHERE school_id = ? AND (date_of_joining IS NULL OR date_of_joining <= ?)");
 
             foreach ($period as $date) {
-                if (date('N', $date->getTimestamp()) < 7) { // Check only Mon-Sat
+                if (date('N', $date->getTimestamp()) < 7) {
                     $date_to_check = $date->format('Y-m-d');
 
-                    // Skip holidays
                     $holiday_check_stmt->execute([$principalDetails['school_id'], $date_to_check]);
                     if ($holiday_check_stmt->fetchColumn() > 0) {
                         continue;
                     }
 
-                    // Get the number of teachers expected to be working on this date
                     $teacher_expected_stmt->execute([$principalDetails['school_id'], $date_to_check]);
                     $expected_teachers = $teacher_expected_stmt->fetchColumn();
                     
-                    // If no teachers were employed yet on this date, skip.
                     if ($expected_teachers == 0) {
                         continue;
                     }
 
-                    // Get the number of teachers with recorded attendance
                     $att_count_stmt->execute([$principalDetails['school_id'], $date_to_check]);
                     $recorded_teachers = $att_count_stmt->fetchColumn();
                     
-                    // If recorded attendance is less than expected, flag the date as missing.
                     if ($recorded_teachers < $expected_teachers) {
                         $all_missing_dates[] = $date_to_check;
                     }
@@ -104,7 +100,6 @@ try {
             }
         }
     }
-    // --- END of Modification ---
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($all_missing_dates) && !$is_holiday) {
         $conn->beginTransaction();
@@ -116,7 +111,7 @@ try {
         $stmt_upsert = $conn->prepare($upsert_sql);
         
         $success_message = '';
-        if (isset($_POST['attendance'])) { // Bulk update
+        if (isset($_POST['attendance'])) {
             $attendance_data = $_POST['attendance'];
             $attendance_date = $_POST['attendance_date'];
             foreach ($attendance_data as $teacher_id => $status) {
@@ -131,13 +126,26 @@ try {
     }
 
     if (empty($errorMessage) && empty($all_missing_dates) && !$is_holiday) {
-        $teacher_stmt = $conn->prepare("SELECT id, teacher_name, std, batch FROM teacher WHERE school_id = ? ORDER BY teacher_name ASC");
-        $teacher_stmt->execute([$principalDetails['school_id']]);
+        $school_id_param = $principalDetails['school_id'];
+        $attendance_date_param = $attendance_date_display;
+
+        $teacher_query = "SELECT id, teacher_name, batch, class_teacher, class_teacher_std, date_of_joining FROM teacher WHERE school_id = ? ORDER BY teacher_name ASC";
+        $teacher_stmt = $conn->prepare($teacher_query);
+        $teacher_stmt->execute([$school_id_param]);
         $teachers_result = $teacher_stmt->fetchAll(PDO::FETCH_ASSOC);
 
+        $earliest_joining_date_school = new DateTime();
+        $found_first = false;
+        foreach ($teachers_result as $teacher) {
+            if ($teacher['date_of_joining'] && (!$found_first || new DateTime($teacher['date_of_joining']) < $earliest_joining_date_school)) {
+                $earliest_joining_date_school = new DateTime($teacher['date_of_joining']);
+                $found_first = true;
+            }
+        }
+        
         $att_stmt = $conn->prepare("SELECT status FROM teacher_attendance WHERE teacher_id = ? AND attendance_date = ?");
         foreach ($teachers_result as $teacher) {
-            $att_stmt->execute([$teacher['id'], $attendance_date_display]);
+            $att_stmt->execute([$teacher['id'], $attendance_date_param]);
             $att_result = $att_stmt->fetch(PDO::FETCH_ASSOC);
             $teacher['status'] = $att_result['status'] ?? 'Present';
             $teachers_with_details[] = $teacher;
@@ -153,7 +161,6 @@ if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <title>Update Teacher Attendance - School Management System</title>
@@ -171,18 +178,17 @@ if (!is_ajax_request()) {
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
-<?php
-}
-?>
+                <?php
+                }
+                ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Update Teacher Attendance</h1>
-                        <a href="view_teacher_attendence.php?date=<?php echo $attendance_date_display; ?>" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i class="fas fa-eye fa-sm text-white-50"></i> View History</a>
+                        <a href="view_teacher_attendence.php?date=<?php echo htmlspecialchars($attendance_date_display); ?>" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i class="fas fa-eye fa-sm text-white-50"></i> View History</a>
                     </div>
 
                     <?php if (!empty($errorMessage)): ?>
-                        <div class="alert alert-danger"><?php echo $errorMessage; ?></div>
-                    <?php // NEW: Logic to show holiday message or attendance form ?>
+                        <div class="alert alert-danger"><?php echo htmlspecialchars($errorMessage); ?></div>
                     <?php elseif ($is_holiday): ?>
                         <div class="card shadow mb-4">
                             <div class="card-header py-3">
@@ -216,13 +222,15 @@ if (!is_ajax_request()) {
                             </h6>
                         </div>
                         <div class="card-body">
-                            <p class="text-info">Bulk Edit Mode: All teachers are editable.</p>
+                            <p class="text-info">
+                                <?php echo $edit_teacher_id ? 'Editing a single teacher\'s attendance.' : 'Bulk Edit Mode: All teachers are editable.'; ?>
+                            </p>
                             <form method="POST" action="">
                                 <div class="d-flex align-items-center justify-content-between mb-4">
                                     <div class="form-inline">
                                         <div class="form-group">
                                             <label for="attendance_date" class="mr-2">Date:</label>
-                                            <input type="date" id="attendance_date" name="attendance_date" class="form-control" value="<?php echo htmlspecialchars($attendance_date_display); ?>" max="<?php echo $current_date; ?>">
+                                            <input type="date" id="attendance_date" name="attendance_date" class="form-control" value="<?php echo htmlspecialchars($attendance_date_display); ?>" min="<?php echo $earliest_joining_date_school->format('Y-m-d'); ?>" max="<?php echo $current_date; ?>">
                                         </div>
                                     </div>
                                     <div class="form-group">
@@ -239,28 +247,37 @@ if (!is_ajax_request()) {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <?php foreach ($teachers_with_details as $teacher): ?>
-                                                <tr>
+                                            <?php foreach ($teachers_with_details as $teacher):
+                                                $is_pre_joining = $teacher['date_of_joining'] && $attendance_date_display < $teacher['date_of_joining'];
+                                                $is_disabled = ($edit_teacher_id && $teacher['id'] != $edit_teacher_id) || $is_pre_joining;
+                                            ?>
+                                                <tr <?php echo $is_disabled ? 'class="blurred-row"' : ''; ?>>
                                                     <td><?php echo htmlspecialchars($teacher['teacher_name']); ?></td>
                                                     <td><?php echo htmlspecialchars($teacher['batch']); ?></td>
                                                     <td>
-                                                        <?php $current_status = $teacher['status']; ?>
-                                                        <div class="form-check form-check-inline">
-                                                            <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Present" <?php if ($current_status == 'Present') echo 'checked'; ?>>
-                                                            <label class="form-check-label">Present</label>
-                                                        </div>
-                                                        <div class="form-check form-check-inline">
-                                                            <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Absent" <?php if ($current_status == 'Absent') echo 'checked'; ?>>
-                                                            <label class="form-check-label">Absent</label>
-                                                        </div>
-                                                        <div class="form-check form-check-inline">
-                                                            <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Half Day" <?php if ($current_status == 'Half Day') echo 'checked'; ?>>
-                                                            <label class="form-check-label">Half Day</label>
-                                                        </div>
-                                                        <div class="form-check form-check-inline">
-                                                            <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Leave" <?php if ($current_status == 'Leave') echo 'checked'; ?>>
-                                                            <label class="form-check-label">Leave</label>
-                                                        </div>
+                                                        <?php if ($is_pre_joining): ?>
+                                                            <span class='badge badge-secondary p-2'>Joined on <?php echo date('d M, Y', strtotime($teacher['date_of_joining'])); ?></span>
+                                                            <input type="hidden" name="attendance[<?php echo $teacher['id']; ?>]" value="Not Applicable">
+                                                        <?php else:
+                                                            $current_status = $teacher['status'];
+                                                        ?>
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Present" <?php if ($current_status == 'Present') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
+                                                                <label class="form-check-label">Present</label>
+                                                            </div>
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Absent" <?php if ($current_status == 'Absent') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
+                                                                <label class="form-check-label">Absent</label>
+                                                            </div>
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Half Day" <?php if ($current_status == 'Half Day') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
+                                                                <label class="form-check-label">Half Day</label>
+                                                            </div>
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Leave" <?php if ($current_status == 'Leave') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
+                                                                <label class="form-check-label">Leave</label>
+                                                            </div>
+                                                        <?php endif; ?>
                                                     </td>
                                                 </tr>
                                             <?php endforeach; ?>
@@ -283,6 +300,13 @@ if (!is_ajax_request()) {
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php" ?>
+    <style>
+        .blurred-row {
+            filter: blur(1px);
+            pointer-events: none;
+            user-select: none;
+        }
+    </style>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
@@ -304,6 +328,10 @@ if (!is_ajax_request()) {
             $('#attendance_date').on('change', function() {
                 var selectedDate = $(this).val();
                 var redirectUrl = 'teacher_attendence.php?attendance_date=' + selectedDate;
+                var editId = '<?php echo $edit_teacher_id; ?>';
+                if (editId) {
+                    redirectUrl += '&edit_teacher_id=' + editId;
+                }
                 window.location.href = redirectUrl;
             });
         });

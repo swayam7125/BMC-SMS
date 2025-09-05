@@ -1,5 +1,5 @@
 <?php
-include_once '../../includes/connect.php'; // Assumes this file now provides a PDO connection object, e.g., $conn
+include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php';
 
@@ -12,6 +12,7 @@ if ($role !== 'principal' || !$userId) {
 }
 
 $school_id = null;
+$earliest_joining_date = null;
 try {
     $stmt = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
     $stmt->execute([$userId]);
@@ -21,30 +22,42 @@ try {
         die("Error: Could not retrieve principal details.");
     }
     $school_id = $principalDetails['school_id'];
+    
+    // Fetch the earliest joining date for a librarian in this school
+    $joining_stmt = $conn->prepare("SELECT MIN(date_of_joining) FROM librarian WHERE school_id = ? AND date_of_joining IS NOT NULL");
+    $joining_stmt->execute([$school_id]);
+    $earliest_joining_date = $joining_stmt->fetchColumn();
 
 } catch (PDOException $e) {
     error_log("Database Error (Principal Fetch): " . $e->getMessage());
     die("A critical database error occurred while fetching user details.");
 }
 
-// --- START of date validation logic ---
-// Get the current date to use as a maximum for the date input
 $current_date = date('Y-m-d');
 $filter_date = $_GET['date'] ?? $current_date;
 
-// Server-side check to prevent future dates, even if the URL is manipulated
 if ($filter_date > $current_date) {
     $filter_date = $current_date;
 }
-// --- END of date validation logic ---
 
 $records = [];
+$is_holiday_for_date = false;
+$holiday_description_for_date = '';
 
 try {
-    // This query fetches all librarians and their attendance status for the selected date.
+    $holiday_check_stmt = $conn->prepare("SELECT description FROM holidays WHERE holiday_date = ? AND school_id = ?");
+    $holiday_check_stmt->execute([$filter_date, $school_id]);
+    $holiday_info = $holiday_check_stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($holiday_info) {
+        $is_holiday_for_date = true;
+        $holiday_description_for_date = $holiday_info['description'];
+    }
+
     $sql = "SELECT
                 l.id as librarian_id,
                 l.librarian_name,
+                l.date_of_joining,
                 la.status
             FROM
                 librarian l
@@ -61,7 +74,6 @@ try {
 
 } catch (PDOException $e) {
     error_log("Database Error (Attendance Fetch): " . $e->getMessage());
-    // Let the page render with an empty table instead of crashing
 }
 
 if (!is_ajax_request()) {
@@ -84,9 +96,9 @@ if (!is_ajax_request()) {
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
-<?php
-}
-?>
+                <?php 
+                }
+                ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">Librarian Attendance History</h1>
 
@@ -106,7 +118,7 @@ if (!is_ajax_request()) {
                                 <form method="GET" action="" class="form-inline">
                                     <div class="form-group">
                                         <label for="date" class="mr-2">Date:</label>
-                                        <input type="date" id="date" name="date" class="form-control" value="<?php echo htmlspecialchars($filter_date); ?>" max="<?php echo $current_date; ?>">
+                                        <input type="date" id="date" name="date" class="form-control" value="<?php echo htmlspecialchars($filter_date); ?>" min="<?php echo htmlspecialchars($earliest_joining_date); ?>" max="<?php echo $current_date; ?>">
                                     </div>
                                     <button type="submit" class="btn btn-primary ml-2"><i class="fas fa-search fa-sm"></i> View</button>
                                 </form>
@@ -133,16 +145,27 @@ if (!is_ajax_request()) {
                                                     <?php
                                                         $status = $record['status'] ?? 'Not Marked';
                                                         $badge_class = 'badge-secondary';
-                                                        if ($status == 'Present') $badge_class = 'badge-success';
-                                                        if ($status == 'Absent') $badge_class = 'badge-danger';
-                                                        if ($status == 'Leave') $badge_class = 'badge-warning';
-                                                        // ADDED: Badge for Half Day
-                                                        if ($status == 'Half Day') $badge_class = 'badge-info';
+                                                        $is_editable = true;
+
+                                                        if ($record['date_of_joining'] && $filter_date < $record['date_of_joining']) {
+                                                            $status = 'Joined on ' . date('d M, Y', strtotime($record['date_of_joining']));
+                                                            $badge_class = 'badge-secondary';
+                                                            $is_editable = false;
+                                                        } elseif ($is_holiday_for_date) {
+                                                            $status = 'Holiday';
+                                                            $badge_class = 'badge-primary';
+                                                            $is_editable = false;
+                                                        } else {
+                                                            if ($status == 'Present') $badge_class = 'badge-success';
+                                                            if ($status == 'Absent') $badge_class = 'badge-danger';
+                                                            if ($status == 'Leave') $badge_class = 'badge-warning';
+                                                            if ($status == 'Half Day') $badge_class = 'badge-info';
+                                                        }
                                                         echo "<span class='badge {$badge_class} p-2'>" . htmlspecialchars($status) . "</span>";
                                                     ?>
                                                 </td>
                                                 <td>
-                                                    <a href="librarian_attendance.php?attendance_date=<?php echo htmlspecialchars($filter_date); ?>&edit_librarian_id=<?php echo $record['librarian_id']; ?>" class="btn btn-sm btn-warning">
+                                                    <a href="librarian_attendance.php?attendance_date=<?php echo htmlspecialchars($filter_date); ?>&edit_librarian_id=<?php echo $record['librarian_id']; ?>" class="btn btn-sm btn-warning <?php echo $is_editable ? '' : 'disabled'; ?>">
                                                         <i class="fas fa-edit"></i> Edit
                                                     </a>
                                                 </td>

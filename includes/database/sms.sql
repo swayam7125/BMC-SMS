@@ -210,6 +210,18 @@ CREATE TYPE auth.factor_type AS ENUM (
 ALTER TYPE auth.factor_type OWNER TO supabase_auth_admin;
 
 --
+-- Name: oauth_registration_type; Type: TYPE; Schema: auth; Owner: supabase_auth_admin
+--
+
+CREATE TYPE auth.oauth_registration_type AS ENUM (
+    'dynamic',
+    'manual'
+);
+
+
+ALTER TYPE auth.oauth_registration_type OWNER TO supabase_auth_admin;
+
+--
 -- Name: one_time_token_type; Type: TYPE; Schema: auth; Owner: supabase_auth_admin
 --
 
@@ -2555,6 +2567,31 @@ COMMENT ON TABLE auth.mfa_factors IS 'auth: stores metadata about factors';
 
 
 --
+-- Name: oauth_clients; Type: TABLE; Schema: auth; Owner: supabase_auth_admin
+--
+
+CREATE TABLE auth.oauth_clients (
+    id uuid NOT NULL,
+    client_id text NOT NULL,
+    client_secret_hash text NOT NULL,
+    registration_type auth.oauth_registration_type NOT NULL,
+    redirect_uris text NOT NULL,
+    grant_types text NOT NULL,
+    client_name text,
+    client_uri text,
+    logo_uri text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    deleted_at timestamp with time zone,
+    CONSTRAINT oauth_clients_client_name_length CHECK ((char_length(client_name) <= 1024)),
+    CONSTRAINT oauth_clients_client_uri_length CHECK ((char_length(client_uri) <= 2048)),
+    CONSTRAINT oauth_clients_logo_uri_length CHECK ((char_length(logo_uri) <= 2048))
+);
+
+
+ALTER TABLE auth.oauth_clients OWNER TO supabase_auth_admin;
+
+--
 -- Name: one_time_tokens; Type: TABLE; Schema: auth; Owner: supabase_auth_admin
 --
 
@@ -3668,7 +3705,12 @@ CREATE TABLE public.messages (
     receiver_id bigint NOT NULL,
     message_text text NOT NULL,
     "timestamp" timestamp with time zone DEFAULT now() NOT NULL,
-    is_read boolean DEFAULT false NOT NULL
+    is_read boolean DEFAULT false NOT NULL,
+    file_path character varying(255) DEFAULT NULL::character varying,
+    file_type character varying(50) DEFAULT NULL::character varying,
+    sender_role character varying(50),
+    receiver_role character varying(50),
+    original_filename character varying(255)
 );
 
 
@@ -5023,6 +5065,14 @@ COPY auth.mfa_factors (id, user_id, friendly_name, factor_type, status, created_
 
 
 --
+-- Data for Name: oauth_clients; Type: TABLE DATA; Schema: auth; Owner: supabase_auth_admin
+--
+
+COPY auth.oauth_clients (id, client_id, client_secret_hash, registration_type, redirect_uris, grant_types, client_name, client_uri, logo_uri, created_at, updated_at, deleted_at) FROM stdin;
+\.
+
+
+--
 -- Data for Name: one_time_tokens; Type: TABLE DATA; Schema: auth; Owner: supabase_auth_admin
 --
 
@@ -5121,6 +5171,7 @@ COPY auth.schema_migrations (version) FROM stdin;
 20240806073726
 20241009103726
 20250717082212
+20250731150234
 \.
 
 
@@ -5161,6 +5212,7 @@ COPY auth.users (instance_id, id, aud, role, email, encrypted_password, email_co
 --
 
 COPY public.assignment_submissions (id, assignment_id, student_id, file_path, original_filename, status, rejection_reason, submitted_at, evaluated_at, rejection_count) FROM stdin;
+18	24	150	/BMC-SMS/pages/assignments/submit/sub_68b48e1c9613a8.36311755_All_School_Library_Report.pdf	All_School_Library_Report.pdf	Accepted	\N	2025-08-31 18:02:03.573338+00	2025-08-31 18:02:34.142689+00	1
 \.
 
 
@@ -5323,6 +5375,10 @@ COPY public.deleted_principals (id, principal_name, email, phone, dob, gender, b
 58	Gotu	gotu@gmail.com	8527419632	1999-05-17	male	A-	surat	d	567504.00	Morning	5	superadmin	2025-08-10 18:09:20.831395+00
 56	Dhruv	dhruv@gmail.com	8596321478	2005-02-28	male	A+	Surat	MA	650000.00	Morning	9	superadmin	2025-08-10 18:09:35.142576+00
 41	Chinmay	chinmay@gmail.com	8596457291	1998-08-17	male	A+	Adajan	12	900000.00	Morning	7	superadmin	2025-08-11 07:50:42.589222+00
+64	PQRS	pqrs@gmail.com	3208741230	2021-12-11	male	AB+	abcdef	B.C.A	12000.00	Morning	11	superadmin	2025-08-29 10:47:49.840582+00
+133	Viken More	viken@gmail.com	8526548520	1996-02-08	male	AB+	kliuop	B.tech	51000.00	Evening	15	superadmin	2025-08-29 10:48:11.062256+00
+148	Sachin Tendulkar	sachin@gmail.com	8723657401	1996-02-01	male	B+	dfc	M.tech	42350.00	Evening	1	superadmin	2025-08-29 10:48:37.157322+00
+114	Hardik Kulkarni	hardik@gmail.com	8520123697	1996-02-06	male	O-	39, Sarkar Villa, Piplod, Surat	M.A. M.Ed	52300.00	Evening	4	superadmin	2025-08-29 10:48:51.149469+00
 \.
 
 
@@ -5392,6 +5448,13 @@ COPY public.deleted_teachers (id, teacher_name, email, phone, gender, dob, blood
 55	Raj Purohit	raj@gmail.com	7896541023	Male	1999-12-05	O+	bfaaqw	4	B.A	Physics	English, Hindi, Gujarati	28500.00	{12}	4	Evening	f	\N	principal	2025-08-08 15:29:26.931328+00
 103	Andrew Garfield	andrew@gmail.com	9156787656	Male	1980-08-20	O+	new york	4	M.A	Science	English	80000.00	{11,12}	20	Morning	t	10	principal	2025-08-18 10:28:06.061891+00
 118	Andrew Garfield	andrew@gmail.com	9156787656	Male	1980-08-20	O+	new york	4	M.A	Science	English	8000.00	{11,12}	20	Evening	t	12	principal	2025-08-20 12:05:10.114155+00
+123	Viraj Gelani	viraj@gmail.com	9852142011	Male	1997-01-01	O-	abcd	4	B.tech	Gujarati	English, Hindi, Gujarati	23000.00	{12}	5	Evening	t	12	principal	2025-08-29 09:50:01.18468+00
+146	Prince Parmar	prince@gmail.com	7410235897	Male	1997-02-06	O-	pqrs	4	M.A. M.Ed	Economics	English, Hindi, Gujarati	33000.00	{12}	4	Morning	f	\N	principal	2025-08-29 10:43:38.894+00
+141	Tina Sen	tina@gmail.com	8576548525	Female	1991-01-06	O-	acbd	4	M.A. M.Ed	Music	English, Hindi	12400.00	{8}	2	Morning	f	\N	principal	2025-08-29 10:43:52.437129+00
+106	Yug Pandya	yug@gmail.com	7410025633	Male	1997-06-07	B+	V-101, Amrut Heights, Jakatnaka, Surat	4	B.A.	Business Studies	English, Hindi, Gujarati	23000.00	{12}	3	Morning	f	\N	principal	2025-08-29 10:44:09.427441+00
+137	Avantika Sironi	avantika@gmail.com	9924976504	Female	1988-12-04	O+	pqrs	4	M.A. M.Ed	English	English, Gujarati	21000.00	{8}	4	Morning	f	\N	principal	2025-08-29 10:44:21.189216+00
+124	Ranjit Chaudhari	ranjit@gmail.com	9852142012	Male	1999-02-02	O-	abcd	4	B.ed	Sanskrit	Hindi, Sanskrit	21500.00	{8}	4	Morning	f	\N	principal	2025-08-29 10:44:31.82957+00
+119	Andrew Garfield	andrew@gmail.com	9156787656	Male	1980-08-20	AB-	new york	4	M.A	Science	English	8000.00	{10,11,12}	20	Morning	t	12	principal	2025-08-29 10:51:41.582632+00
 \.
 
 
@@ -5533,8 +5596,8 @@ COPY public.librarian (id, librarian_image, librarian_name, school_id, email, pa
 53	/BMC-SMS/pages/librarian/uploads/librarian_6895b77a58c4d1.07997847.jpg	Rohit Singh	1	rohit@gmail.com	$2y$10$CX5ZFB02c4ncgdCCy9WplezqcHT0jAEaAAaI6uqr6fQHvj0FoSL8m	7412036985	2021-12-12	Male	O-	abcdefg	MBA	12000.00	Morning	\N	\N	\N	\N	\N	\N
 107	\N	Prakash Jadav	1	prakash@gmail.com	$2y$10$pub4gPRk6EW7Il4jxjo2Ouc4F87zBPcLdf9p12/FYFppQYSX8yTai	9622001456	1998-08-12	Male	A-	101, Shivalik Row House, Surat	B.A	15000.00	Evening	\N	\N	\N	\N	\N	\N
 108	/BMC-SMS/pages/librarian/uploads/librarian_68a47ee5dd0421.90308632.jpg	Santosh Pandit	6	santosh@gmai.com	$2y$10$JM1uBHaBUqobLR9miaICKO8tuD7q2LKAQysccyTcY7Tt0SH5sUAK.	8420369874	1997-04-03	Male	AB-	abcd	B.A.	12500.00	Morning	\N	\N	\N	\N	\N	\N
-36	/BMC-SMS/pages/librarian/uploads/librarian_68b16e61daea87.50245944.jpeg	Devang Odedra	4	devang@gmail.com	$2y$10$zmDytTauKLi/cqAY89QgT.CyVW7b4lgK.rwFVPdJbZf4zIsHGyYdu	9187567898	1981-01-01	Male	A+	Canal Road	B.A	40000.00	Morning	\N	Self Transport	Bike	GJ-21-CE-1115	GJ-2120128523014	\N
-147	/BMC-SMS/pages/librarian/uploads/librarian_68b16ee1e8ebe8.42276774.jpg	Dinesh Karthik	4	dinesh@gmail.com	$2y$10$e/ba0l3WZPzpCiKblkuMLOmVYTrB4k5WyrK/Zpe8WzyfoylNbCuIq	9852317789	1998-02-02	Male	O-	nkm	M.Lib.I.Sc.	12500.00	Evening	2025-08-29	Self Transport	Public Transport	\N	\N	\N
+36	/BMC-SMS/pages/librarian/uploads/librarian_68b16e61daea87.50245944.jpeg	Devang Odedra	4	devang@gmail.com	$2y$10$zmDytTauKLi/cqAY89QgT.CyVW7b4lgK.rwFVPdJbZf4zIsHGyYdu	9187567898	1981-01-01	Male	A+	Canal Road	B.A	40000.00	Morning	\N	Self Transport	Bike	GJ-04-JE-8530	GJ-0420113658730	\N
+147	/BMC-SMS/pages/librarian/uploads/librarian_68b16ee1e8ebe8.42276774.jpg	Dinesh Karthik	4	dinesh@gmail.com	$2y$10$e/ba0l3WZPzpCiKblkuMLOmVYTrB4k5WyrK/Zpe8WzyfoylNbCuIq	9852317789	1998-02-02	Male	O-	nkm	M.Lib.I.Sc.	12500.00	Evening	2025-08-29	School Transport	\N	\N	\N	4
 \.
 
 
@@ -5599,7 +5662,7 @@ COPY public.librarian_attendance (attendance_id, librarian_id, school_id, attend
 
 COPY public.librarian_leave_applications (id, librarian_id, from_date, to_date, reason, leave_type, status, applied_on, rejection_reason) FROM stdin;
 1	36	2025-08-15	2025-08-21	Testing librarian leave panel\r\nImplemented on 14-08-2025	Full Day	Approved	2025-08-14 08:39:06.80083+00	\N
-2	36	2025-08-22	2025-08-28	v	Full Day	Pending	2025-08-21 13:03:55.056673+00	\N
+2	36	2025-08-22	2025-08-28	v	Full Day	Approved	2025-08-21 13:03:55.056673+00	\N
 \.
 
 
@@ -5659,7 +5722,17 @@ COPY public.librarian_timings (timing_id, librarian_id, day_of_week, opens_at, c
 -- Data for Name: messages; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.messages (id, sender_id, receiver_id, message_text, "timestamp", is_read) FROM stdin;
+COPY public.messages (id, sender_id, receiver_id, message_text, "timestamp", is_read, file_path, file_type, sender_role, receiver_role, original_filename) FROM stdin;
+159	6	149	hyy	2025-08-31 17:27:12.552859+00	f	\N	\N	\N	\N	\N
+160	150	6	Brijesh samji gayo	2025-08-31 17:45:53.408874+00	t	\N	\N	\N	\N	\N
+161	6	150	heeee, hamko shikha rahiya hai	2025-08-31 17:46:36.968078+00	t	\N	\N	\N	\N	\N
+162	6	150	see this	2025-09-01 10:26:57.409506+00	t	\N	\N	\N	\N	\N
+163	6	150	see	2025-09-01 11:02:19.939283+00	t	uploads/messages/msg_68b57d3cf041f_1756724540.pdf	application/pdf	teacher	student	\N
+164	6	150	see	2025-09-01 11:02:33.36774+00	t	uploads/messages/msg_68b57d4a63921_1756724554.pdf	application/pdf	teacher	student	\N
+165	6	150		2025-09-01 11:04:13.825861+00	t	uploads/messages/msg_68b57daed27b8_1756724654.pdf	application/pdf	teacher	student	\N
+166	6	150		2025-09-01 11:22:30.266934+00	t	uploads/messages/msg_68b581f73b696_1756725751.pdf	application/pdf	teacher	student	Sanskar_Bharti_Vidyalay_Enrollment_report.pdf
+167	150	6		2025-09-01 11:39:06.770725+00	t	uploads/messages/msg_68b585dba8642_1756726747.pdf	application/pdf	student	teacher	All_School_Library_Report.pdf
+168	6	150	hyyy	2025-09-01 11:44:51.60304+00	t	uploads/messages/msg_68b587347a5a0_1756727092.pdf	application/pdf	teacher	student	All_School_Library_Report (1).pdf
 \.
 
 
@@ -5726,6 +5799,7 @@ COPY public.notice (id, user_id, title, content, file_path, original_filename, c
 COPY public.notifications (id, user_id, message, link, is_read, created_at, type) FROM stdin;
 435	10	New leave request from Devang Odedra	pages/principal/librarian_leave_management.php	t	2025-08-14 08:39:06.80083+00	librarian_leave_request
 455	6	Your leave application has been Approved.	pages/teacher/teacher_leave_management.php	t	2025-08-14 09:01:10.492705+00	leave_status
+721	36	Your leave application has been Approved.	pages/librarian/my_leave_management.php	t	2025-08-31 17:17:06.968202+00	librarian_leave_status
 476	6	New Exam Timetable: Final Exam Timetable	pages/teacher/view_exam_timetable.php	t	2025-08-14 09:25:09.722633+00	exam_timetable
 461	6	New Exam Timetable: Term 2 Exam Timetable	pages/teacher/view_exam_timetable.php	t	2025-08-14 09:01:41.931191+00	exam_timetable
 436	36	Your leave application has been Approved.	pages/librarian/my_leave_management.php	t	2025-08-14 08:39:31.727446+00	librarian_leave_status
@@ -5751,6 +5825,7 @@ COPY public.notifications (id, user_id, message, link, is_read, created_at, type
 438	51	New notice from Principal: Checking...	pages/teacher/view_notice.php	t	2025-08-14 08:51:41.319196+00	school_notice
 472	51	New Exam Timetable: Final Exam Timetable	pages/teacher/view_exam_timetable.php	t	2025-08-14 09:25:09.722633+00	exam_timetable
 457	51	New Exam Timetable: Term 2 Exam Timetable	pages/teacher/view_exam_timetable.php	t	2025-08-14 09:01:41.931191+00	exam_timetable
+722	6	Your salary for August 2025 amounting to ₹80,260.87 has been processed.	pages/teacher/view_salary_history.php	t	2025-08-31 17:29:35.804271+00	salary
 489	70	New Exam Timetable: Term 2 Exam Timetable	pages/teacher/view_exam_timetable.php	f	2025-08-14 09:25:50.650348+00	exam_timetable
 490	49	New Exam Timetable: Term 2 Exam Timetable	pages/teacher/view_exam_timetable.php	f	2025-08-14 09:25:50.650348+00	exam_timetable
 492	12	New Exam Timetable: Term 2 Exam Timetable	pages/teacher/view_exam_timetable.php	f	2025-08-14 09:25:50.650348+00	exam_timetable
@@ -5781,6 +5856,7 @@ COPY public.notifications (id, user_id, message, link, is_read, created_at, type
 487	51	New Exam Timetable: Term 2 Exam Timetable	pages/teacher/view_exam_timetable.php	t	2025-08-14 09:25:50.650348+00	exam_timetable
 503	51	New Exam Timetable: Term 1 Exam Timetable	pages/teacher/view_exam_timetable.php	t	2025-08-14 09:26:49.835349+00	exam_timetable
 528	51	New notice from Principal: fenil...	pages/teacher/view_notice.php	t	2025-08-14 09:41:18.188366+00	school_notice
+723	6	devam parekh has submitted an assignment.	pages/assignments/view_submissions.php?id=24	t	2025-08-31 17:58:47.528243+00	assignment_submission
 558	54	Harsh Shah has submitted an assignment.	pages/assignments/view_submissions.php?id=20	t	2025-08-14 10:16:59.773629+00	assignment_submission
 545	6	New notice from Principal: HIII...	pages/teacher/view_notice.php	t	2025-08-14 09:59:48.817463+00	school_notice
 546	6	Rohini Seth has submitted an assignment.	pages/assignments/view_submissions.php?id=18	t	2025-08-14 10:00:27.435849+00	assignment_submission
@@ -5798,7 +5874,6 @@ COPY public.notifications (id, user_id, message, link, is_read, created_at, type
 560	6	Your leave application has been Approved.	pages/teacher/teacher_leave_management.php	t	2025-08-14 10:17:46.845042+00	leave_status
 566	39	New notice from BMC: ASAP	pages/principal/view_notice.php	f	2025-08-14 11:07:11.865209+00	new_notice
 567	40	New notice from BMC: ASAP	pages/principal/view_notice.php	f	2025-08-14 11:07:11.865209+00	new_notice
-568	64	New notice from BMC: ASAP	pages/principal/view_notice.php	f	2025-08-14 11:07:11.865209+00	new_notice
 570	42	New notice from BMC: ASAP	pages/principal/view_notice.php	f	2025-08-14 11:07:11.865209+00	new_notice
 563	36	New Notice from Principal Fenil Pastagia	pages/librarian/view_principal_notices.php	t	2025-08-14 11:05:48.185076+00	principal_to_librarian_notice
 561	6	Harsh Shah has submitted an assignment.	pages/assignments/view_submissions.php?id=13	t	2025-08-14 10:59:07.40346+00	assignment_submission
@@ -5813,7 +5888,6 @@ COPY public.notifications (id, user_id, message, link, is_read, created_at, type
 584	13	New notice from BMC: HII	pages/principal/view_notice.php	f	2025-08-18 07:31:15.795683+00	new_notice
 585	39	New notice from BMC: HII	pages/principal/view_notice.php	f	2025-08-18 07:31:15.795683+00	new_notice
 586	40	New notice from BMC: HII	pages/principal/view_notice.php	f	2025-08-18 07:31:15.795683+00	new_notice
-587	64	New notice from BMC: HII	pages/principal/view_notice.php	f	2025-08-18 07:31:15.795683+00	new_notice
 589	42	New notice from BMC: HII	pages/principal/view_notice.php	f	2025-08-18 07:31:15.795683+00	new_notice
 588	10	New notice from BMC: HII	pages/principal/view_notice.php	t	2025-08-18 07:31:15.795683+00	new_notice
 590	6	Harsh Shah has submitted an assignment.	pages/assignments/view_submissions.php?id=2	t	2025-08-18 07:32:23.032019+00	assignment_submission
@@ -5834,8 +5908,6 @@ COPY public.notifications (id, user_id, message, link, is_read, created_at, type
 607	13	New notice from BMC: Notice	pages/principal/view_notice.php	f	2025-08-21 09:09:37.518602+00	new_notice
 608	39	New notice from BMC: Notice	pages/principal/view_notice.php	f	2025-08-21 09:09:37.518602+00	new_notice
 609	40	New notice from BMC: Notice	pages/principal/view_notice.php	f	2025-08-21 09:09:37.518602+00	new_notice
-610	64	New notice from BMC: Notice	pages/principal/view_notice.php	f	2025-08-21 09:09:37.518602+00	new_notice
-611	114	New notice from BMC: Notice	pages/principal/view_notice.php	f	2025-08-21 09:09:37.518602+00	new_notice
 612	42	New notice from BMC: Notice	pages/principal/view_notice.php	f	2025-08-21 09:09:37.518602+00	new_notice
 614	115	New notice from BMC: Notice	pages/principal/view_notice.php	f	2025-08-21 09:09:37.518602+00	new_notice
 615	121	New notice from BMC: Notice	pages/principal/view_notice.php	f	2025-08-21 09:09:37.518602+00	new_notice
@@ -5844,47 +5916,35 @@ COPY public.notifications (id, user_id, message, link, is_read, created_at, type
 613	10	New notice from BMC: Notice	pages/principal/view_notice.php	t	2025-08-21 09:09:37.518602+00	new_notice
 617	8	New Notice from Fenil Pastagia	pages/bmc/view_principal_notices.php	t	2025-08-21 09:12:47.064478+00	principal_notice
 620	40	New notice from BMC: Quarterly General Meeting	pages/principal/view_notice.php	f	2025-08-21 09:20:01.299446+00	new_notice
-621	64	New notice from BMC: Quarterly General Meeting	pages/principal/view_notice.php	f	2025-08-21 09:20:01.299446+00	new_notice
-622	114	New notice from BMC: Quarterly General Meeting	pages/principal/view_notice.php	f	2025-08-21 09:20:01.299446+00	new_notice
 623	42	New notice from BMC: Quarterly General Meeting	pages/principal/view_notice.php	f	2025-08-21 09:20:01.299446+00	new_notice
 624	115	New notice from BMC: Quarterly General Meeting	pages/principal/view_notice.php	f	2025-08-21 09:20:01.299446+00	new_notice
 625	121	New notice from BMC: Quarterly General Meeting	pages/principal/view_notice.php	f	2025-08-21 09:20:01.299446+00	new_notice
 626	122	New notice from BMC: Quarterly General Meeting	pages/principal/view_notice.php	f	2025-08-21 09:20:01.299446+00	new_notice
 627	10	New notice from BMC: Quarterly General Meeting	pages/principal/view_notice.php	t	2025-08-21 09:20:01.299446+00	new_notice
 628	12	New notice from Principal: wdfsc...	pages/teacher/view_notice.php	f	2025-08-21 12:25:15.984748+00	school_notice
-629	119	New notice from Principal: wdfsc...	pages/teacher/view_notice.php	f	2025-08-21 12:25:23.835039+00	school_notice
 630	52	New notice from Principal: wdfsc...	pages/teacher/view_notice.php	f	2025-08-21 12:25:25.627966+00	school_notice
 632	105	New notice from Principal: wdfsc...	pages/teacher/view_notice.php	f	2025-08-21 12:25:37.845359+00	school_notice
 633	70	New notice from Principal: wdfsc...	pages/teacher/view_notice.php	f	2025-08-21 12:25:42.934886+00	school_notice
-634	106	New notice from Principal: wdfsc...	pages/teacher/view_notice.php	f	2025-08-21 12:25:46.563537+00	school_notice
 635	49	New notice from Principal: wdfsc...	pages/teacher/view_notice.php	f	2025-08-21 12:25:53.47269+00	school_notice
 637	92	New notice from Principal: wdfsc...	pages/teacher/view_notice.php	f	2025-08-21 12:26:03.10021+00	school_notice
-638	123	New notice from Principal: wdfsc...	pages/teacher/view_notice.php	f	2025-08-21 12:26:05.615388+00	school_notice
 639	51	New notice from Principal: wdfsc...	pages/teacher/view_notice.php	f	2025-08-21 12:26:09.343607+00	school_notice
 631	54	New notice from Principal: wdfsc...	pages/teacher/view_notice.php	t	2025-08-21 12:25:31.643014+00	school_notice
 604	36	Your salary for August 2025 amounting to ₹20,869.57 has been processed.	pages/librarian/view_salary_history.php	t	2025-08-19 17:47:24.738406+00	librarian_salary
 636	6	New notice from Principal: wdfsc...	pages/teacher/view_notice.php	t	2025-08-21 12:25:58.435105+00	school_notice
 600	12	Your salary for August 2025 amounting to ₹5,652.17 has been processed.	pages/teacher/view_salary_history.php	t	2025-08-19 08:29:27.155238+00	salary
-640	124	New notice from Principal: wdfsc...	pages/teacher/view_notice.php	f	2025-08-21 12:26:11.665617+00	school_notice
+724	6	devam parekh has submitted an assignment.	pages/assignments/view_submissions.php?id=24	t	2025-08-31 18:02:03.67286+00	assignment_submission
 655	36	New Notice from Principal Fenil Pastagia	pages/librarian/view_principal_notices.php	t	2025-08-21 12:27:28.086334+00	principal_to_librarian_notice
-657	114	New leave request from Devang Odedra	pages/principal/librarian_leave_management.php	f	2025-08-21 13:03:55.056673+00	librarian_leave_request
 658	13	New notice from BMC: hii	pages/principal/view_notice.php	f	2025-08-25 08:05:17.076391+00	new_notice
 659	39	New notice from BMC: hii	pages/principal/view_notice.php	f	2025-08-25 08:05:17.076391+00	new_notice
 660	40	New notice from BMC: hii	pages/principal/view_notice.php	f	2025-08-25 08:05:17.076391+00	new_notice
-661	64	New notice from BMC: hii	pages/principal/view_notice.php	f	2025-08-25 08:05:17.076391+00	new_notice
-662	114	New notice from BMC: hii	pages/principal/view_notice.php	f	2025-08-25 08:05:17.076391+00	new_notice
 663	42	New notice from BMC: hii	pages/principal/view_notice.php	f	2025-08-25 08:05:17.076391+00	new_notice
-664	133	New notice from BMC: hii	pages/principal/view_notice.php	f	2025-08-25 08:05:17.076391+00	new_notice
 665	115	New notice from BMC: hii	pages/principal/view_notice.php	f	2025-08-25 08:05:17.076391+00	new_notice
 666	121	New notice from BMC: hii	pages/principal/view_notice.php	f	2025-08-25 08:05:17.076391+00	new_notice
 667	122	New notice from BMC: hii	pages/principal/view_notice.php	f	2025-08-25 08:05:17.076391+00	new_notice
 669	13	New notice from BMC: hiii	pages/principal/view_notice.php	f	2025-08-25 08:11:53.750122+00	new_notice
 670	39	New notice from BMC: hiii	pages/principal/view_notice.php	f	2025-08-25 08:11:53.750122+00	new_notice
 671	40	New notice from BMC: hiii	pages/principal/view_notice.php	f	2025-08-25 08:11:53.750122+00	new_notice
-672	64	New notice from BMC: hiii	pages/principal/view_notice.php	f	2025-08-25 08:11:53.750122+00	new_notice
-673	114	New notice from BMC: hiii	pages/principal/view_notice.php	f	2025-08-25 08:11:53.750122+00	new_notice
 674	42	New notice from BMC: hiii	pages/principal/view_notice.php	f	2025-08-25 08:11:53.750122+00	new_notice
-675	133	New notice from BMC: hiii	pages/principal/view_notice.php	f	2025-08-25 08:11:53.750122+00	new_notice
 676	115	New notice from BMC: hiii	pages/principal/view_notice.php	f	2025-08-25 08:11:53.750122+00	new_notice
 677	121	New notice from BMC: hiii	pages/principal/view_notice.php	f	2025-08-25 08:11:53.750122+00	new_notice
 678	122	New notice from BMC: hiii	pages/principal/view_notice.php	f	2025-08-25 08:11:53.750122+00	new_notice
@@ -5894,10 +5954,7 @@ COPY public.notifications (id, user_id, message, link, is_read, created_at, type
 681	13	New notice from BMC: Annual General Meeting	pages/principal/view_notice.php	f	2025-08-25 10:45:55.836037+00	new_notice
 682	39	New notice from BMC: Annual General Meeting	pages/principal/view_notice.php	f	2025-08-25 10:45:55.836037+00	new_notice
 683	40	New notice from BMC: Annual General Meeting	pages/principal/view_notice.php	f	2025-08-25 10:45:55.836037+00	new_notice
-684	64	New notice from BMC: Annual General Meeting	pages/principal/view_notice.php	f	2025-08-25 10:45:55.836037+00	new_notice
-685	114	New notice from BMC: Annual General Meeting	pages/principal/view_notice.php	f	2025-08-25 10:45:55.836037+00	new_notice
 686	42	New notice from BMC: Annual General Meeting	pages/principal/view_notice.php	f	2025-08-25 10:45:55.836037+00	new_notice
-687	133	New notice from BMC: Annual General Meeting	pages/principal/view_notice.php	f	2025-08-25 10:45:55.836037+00	new_notice
 688	115	New notice from BMC: Annual General Meeting	pages/principal/view_notice.php	f	2025-08-25 10:45:55.836037+00	new_notice
 689	121	New notice from BMC: Annual General Meeting	pages/principal/view_notice.php	f	2025-08-25 10:45:55.836037+00	new_notice
 690	122	New notice from BMC: Annual General Meeting	pages/principal/view_notice.php	f	2025-08-25 10:45:55.836037+00	new_notice
@@ -5905,16 +5962,12 @@ COPY public.notifications (id, user_id, message, link, is_read, created_at, type
 692	13	New notice from BMC: Re-scheduling AGM	pages/principal/view_notice.php	f	2025-08-25 10:58:07.693808+00	new_notice
 693	39	New notice from BMC: Re-scheduling AGM	pages/principal/view_notice.php	f	2025-08-25 10:58:07.693808+00	new_notice
 694	40	New notice from BMC: Re-scheduling AGM	pages/principal/view_notice.php	f	2025-08-25 10:58:07.693808+00	new_notice
-695	64	New notice from BMC: Re-scheduling AGM	pages/principal/view_notice.php	f	2025-08-25 10:58:07.693808+00	new_notice
-696	114	New notice from BMC: Re-scheduling AGM	pages/principal/view_notice.php	f	2025-08-25 10:58:07.693808+00	new_notice
 697	42	New notice from BMC: Re-scheduling AGM	pages/principal/view_notice.php	f	2025-08-25 10:58:07.693808+00	new_notice
-698	133	New notice from BMC: Re-scheduling AGM	pages/principal/view_notice.php	f	2025-08-25 10:58:07.693808+00	new_notice
 699	115	New notice from BMC: Re-scheduling AGM	pages/principal/view_notice.php	f	2025-08-25 10:58:07.693808+00	new_notice
 700	121	New notice from BMC: Re-scheduling AGM	pages/principal/view_notice.php	f	2025-08-25 10:58:07.693808+00	new_notice
 701	122	New notice from BMC: Re-scheduling AGM	pages/principal/view_notice.php	f	2025-08-25 10:58:07.693808+00	new_notice
 702	10	New notice from BMC: Re-scheduling AGM	pages/principal/view_notice.php	t	2025-08-25 10:58:07.693808+00	new_notice
 703	12	Your salary for August 2025 amounting to ₹7,156.52 has been processed.	pages/teacher/view_salary_history.php	t	2025-08-26 08:17:00.084272+00	salary
-704	119	Your salary for August 2025 amounting to ₹1,203.48 has been processed.	pages/teacher/view_salary_history.php	t	2025-08-26 08:37:56.736531+00	salary
 705	36	Your salary for August 2025 amounting to ₹32,365.22 has been processed.	pages/librarian/view_salary_history.php	t	2025-08-26 08:39:47.997126+00	librarian_salary
 719	6	Harsh Shah has submitted an assignment.	pages/assignments/view_submissions.php?id=24	t	2025-08-26 11:29:30.508949+00	assignment_submission
 720	6	Harsh Shah has submitted an assignment.	pages/assignments/view_submissions.php?id=23	t	2025-08-26 11:31:04.608289+00	assignment_submission
@@ -5953,18 +6006,14 @@ COPY public.payroll_attendance (id, payroll_id, school_id, attendance_date, stat
 --
 
 COPY public.principal (id, principal_image, school_id, principal_name, email, password, phone, dob, gender, blood_group, address, qualification, salary, batch, date_of_joining, transport_mode, self_transport_mode, vehicle_number, license_number, stop_id) FROM stdin;
-114	/BMC-SMS/pages/principal/uploads/principal_68a4c1410ee3a6.67179248.jpg	4	Hardik Kulkarni	hardik@gmail.com	$2y$10$viDn0Uqmw5uHxjRW09Hg.eadmQ5RIft8UyBcEkzO0cs1amrrW4FXi	8520123697	1996-02-06	Male	O-	39, Sarkar Villa, Piplod, Surat	M.A. M.Ed	52300.00	Evening	\N	\N	\N	\N	\N	\N
-42	\N	8	Akshat	akshat@gmail.com	$2y$10$YW7sWUGqVcbuiHzwxwjShOajCzOXNSbqML9zPAzrM8.RWml.41iXW	8574123698	2000-06-06	Male	AB-	Adajan	MA	560000.00	Morning	\N	\N	\N	\N	\N	\N
-39	/BMC-SMS/uploads/principal_images/principal_39_1754626094.png	5	Sunny	sunny@gmail.com	$2y$10$B4ISjcDHMlF.dJwZ0X.LlOQT6ZKgHPQy.odp78wc8cEahPpkhMKKm	8796457852	2003-06-06	Male	B+	Surat	d	100000.00	Evening	\N	\N	\N	\N	\N	\N
-40	/BMC-SMS/uploads/principal_images/principal_40_1754626208.png	6	Viral	viral@gmail.com	$2y$10$jKjdp7PnB3Ys3M7TnrfQtO97DNw8WPvNtldu7M1rX/ckGXx.P/9QW	7405670345	2000-03-11	Male	O+	Jahangirpura	MA	800000.00	Morning	\N	\N	\N	\N	\N	\N
-64	/BMC-SMS/uploads/principal_images/principal_6898b7b97f89a0.42981154.jpg	11	PQRS	pqrs@gmail.com	$2y$10$.Nu9UqZeGtKi.A1fJd1VQOMIRiwiqWstqDRIoj2SoFdy/gsmY4cx2	3208741230	2021-12-11	Male	AB+	abcdef	B.C.A	12000.00	Morning	\N	\N	\N	\N	\N	\N
-115	/BMC-SMS/uploads/principal_images/principal_115_1755692567.jpg	13	Rupesh Pastagia	rupesh@gmail.com	$2y$10$bE4j/mv0OVuqDix.gg1NLOTdhoDj2FYSBuDZ1hp6j.tubSV2vhwPm	9678906578	1988-12-28	Male	A+	Adajan, Surat	M.A, B.Ed	80000.00	Morning	\N	\N	\N	\N	\N	\N
-121	/BMC-SMS/uploads/principal_images/principal_121_1755766722.jpg	15	Tanvi Agarwal	tanvi@gmail.com	$2y$10$IUDB1lEgEfLXwNDaCMukEu7LCw5BgJoav0cwNDUIxuTBJY9SuyMou	8520147896	1997-01-02	Male	O+	21, Harikrushna Village Society, Surat	M.A. M.Ed	41000.00	Morning	\N	\N	\N	\N	\N	\N
-122	/BMC-SMS/uploads/principal_images/principal_122_1755766871.jpg	5	Jagruti Dhameliya	jagurti@gmail.com	$2y$10$RTm5fWQRtc3XHs.nkd53t.rvJCGgTzRdBq6aFqOh6c49ZGaRxvoxe	7410236589	2022-08-12	Female	O-	jkm	B.ed	21000.00	Morning	\N	\N	\N	\N	\N	\N
-133	/BMC-SMS/uploads/principal_images/principal_68a724cfecffa5.99643331.jpg	15	Viken More	viken@gmail.com	$2y$10$j4Qz1IbrFpsR8FbzluTBueDH7pjxZvGefShnN3O9ZF7TFt90lNZgG	8526548520	1996-02-08	Male	AB+	kliuop	B.tech	51000.00	Evening	2025-08-22	\N	\N	\N	\N	\N
-148	/BMC-SMS/uploads/principal_images/principal_68b03c54221384.98040997.jpg	1	Sachin Tendulkar	sachin@gmail.com	$2y$10$lZWWyyjvM1bn2nXavCGSfO7FMWbVDauhBLGifHIrEO090bOzernfe	8723657401	1996-02-01	Male	B+	dfc	M.tech	42350.00	Evening	2025-08-29	Self Transport	Car	GJ-01-BD-0032	GJ-0120149621932	\N
-10	/BMC-SMS/pages/principal/uploads/principal_68a6e3287dca55.02623464.jpg	4	Fenil Pastagia	17fenill@gmail.com	$2y$10$EP56edKNSOvDiPXCub4iZuAI5sEVX3XjU1tnqJu8a4f.VS58QO5de	9924976503	1990-08-17	Male	B+	canal road	M.A. M.Ed	90000.00	Morning	\N	Self Transport	Car	GJ-05-JE-2002	GJ-0520189732052	\N
-13	/BMC-SMS/uploads/principal_images/principal_13_1756383195.jpg	1	Dhaval	dhaval@gmail.com	$2y$10$/PhOzkuBDiabEZAW5eIZKuEr9Gcr0NTvpE7mGegA1Z6oNalzKXQcW	2563417897	1995-08-06	Male	A+	Varacha	12	600000.00	Morning	\N	Self Transport	Walking	\N	\N	\N
+13	/BMC-SMS/pages/principal/uploads/principal_13_1756465402.jpg	1	Dhaval	dhaval@gmail.com	$2y$10$/PhOzkuBDiabEZAW5eIZKuEr9Gcr0NTvpE7mGegA1Z6oNalzKXQcW	2563417897	1995-08-06	Male	A+	Varacha	12	600000.00	Morning	\N	Self Transport	Walking	\N	\N	\N
+39	/BMC-SMS/pages/principal/uploads/principal_39_1756465416.jpg	5	Sunny	sunny@gmail.com	$2y$10$B4ISjcDHMlF.dJwZ0X.LlOQT6ZKgHPQy.odp78wc8cEahPpkhMKKm	8796457852	2003-06-06	Male	B+	Surat	d	100000.00	Evening	\N	Self Transport	Walking	\N	\N	\N
+42	/BMC-SMS/pages/principal/uploads/principal_42_1756465470.png	8	Akshat	akshat@gmail.com	$2y$10$YW7sWUGqVcbuiHzwxwjShOajCzOXNSbqML9zPAzrM8.RWml.41iXW	8574123698	2000-06-06	Male	AB-	Adajan	MA	560000.00	Morning	\N	Self Transport	Bike	GJ-08-VG-8403	GJ-05-20237896541	\N
+40	/BMC-SMS/pages/principal/uploads/principal_40_1756465497.png	6	Viral	viral@gmail.com	$2y$10$jKjdp7PnB3Ys3M7TnrfQtO97DNw8WPvNtldu7M1rX/ckGXx.P/9QW	7405670345	2000-03-11	Male	O+	Jahangirpura	MA	800000.00	Morning	\N	Self Transport	Walking	\N	\N	\N
+115	/BMC-SMS/pages/principal/uploads/principal_115_1756465541.jpeg	13	Rupesh Pastagia	rupesh@gmail.com	$2y$10$bE4j/mv0OVuqDix.gg1NLOTdhoDj2FYSBuDZ1hp6j.tubSV2vhwPm	9678906578	1988-12-28	Male	A+	Adajan, Surat	M.A, B.Ed	80000.00	Morning	\N	Self Transport	Public Transport	\N	\N	\N
+121	/BMC-SMS/pages/principal/uploads/principal_121_1756465582.jpg	15	Tanvi Agarwal	tanvi@gmail.com	$2y$10$IUDB1lEgEfLXwNDaCMukEu7LCw5BgJoav0cwNDUIxuTBJY9SuyMou	8520147896	1997-01-02	Male	O+	21, Harikrushna Village Society, Surat	M.A. M.Ed	41000.00	Morning	\N	Self Transport	Walking	\N	\N	\N
+122	/BMC-SMS/pages/principal/uploads/principal_122_1756465735.jpg	5	Jagruti Dhameliya	jagurti@gmail.com	$2y$10$RTm5fWQRtc3XHs.nkd53t.rvJCGgTzRdBq6aFqOh6c49ZGaRxvoxe	7410236589	2022-08-12	Female	O-	jkm	B.ed	21000.00	Morning	\N	Self Transport	Public Transport	\N	\N	\N
+10	/BMC-SMS/pages/principal/uploads/principal_10_1756465389.jpg	4	Fenil Pastagia	17fenill@gmail.com	$2y$10$EP56edKNSOvDiPXCub4iZuAI5sEVX3XjU1tnqJu8a4f.VS58QO5de	9924976503	1990-08-17	Male	B+	canal road	M.A. M.Ed	90000.00	Morning	\N	Self Transport	Car	GJ-05-JE-2013	GJ-0520189732052	\N
 \.
 
 
@@ -5988,8 +6037,8 @@ COPY public.principal_attendance (id, principal_id, school_id, attendance_date, 
 183	40	6	2025-08-19	Absent	\N	\N	13:41:18.812112	2025-08-19 13:34:26.906254+00
 2	10	4	2025-08-07	Absent	21.20995620	72.77066930	18:31:01.623545	2025-08-07 11:51:37.880963+00
 63	10	4	2025-08-12	Absent	21.18553904	72.77813518	11:52:44.990294	2025-08-12 06:05:11.118698+00
+336	10	4	2025-09-01	Absent	21.18613248	72.77633357	10:18:37.438459	2025-09-01 07:57:28.896058+00
 22	13	1	2025-08-08	Absent	\N	\N	08:38:52.86685	2025-08-08 08:32:54.774228+00
-195	114	4	2025-08-19	Absent	\N	\N	18:23:29.601793	2025-08-19 18:23:29.601793+00
 155	10	4	2025-08-19	Absent	21.20139575	72.79829760	20:30:07.473768	2025-08-19 08:00:45.51607+00
 17	10	4	2025-08-08	Absent	\N	\N	16:39:26.206211	2025-08-08 04:26:59.590595+00
 40	10	4	2025-08-09	Absent	21.18541550	72.77866350	13:12:13.945994	2025-08-09 13:07:51.58185+00
@@ -5997,13 +6046,13 @@ COPY public.principal_attendance (id, principal_id, school_id, attendance_date, 
 128	10	4	2025-08-18	Absent	21.19106560	72.83671040	17:20:04.812795	2025-08-18 06:36:25.983619+00
 99	13	1	2025-08-13	Absent	\N	\N	18:17:31.769506	2025-08-13 18:04:04.073787+00
 42	10	4	2025-08-10	Absent	\N	\N	18:27:05.466767	2025-08-10 09:48:58.767457+00
-306	148	1	2025-08-28	Absent	\N	\N	12:27:50.545843	2025-08-28 11:49:48.617761+00
 262	13	1	2025-08-25	Absent	\N	\N	08:26:53.887285	2025-08-25 08:26:53.887285+00
 289	10	4	2025-08-28	Absent	\N	\N	13:24:45.530753	2025-08-28 07:58:48.137937+00
 107	42	8	2025-08-13	Absent	\N	\N	19:02:43.848609	2025-08-13 19:02:43.848609+00
 76	10	4	2025-08-13	Absent	\N	\N	19:05:07.836238	2025-08-13 08:53:01.325826+00
-313	10	4	2025-08-29	Absent	21.20137567	72.79833517	09:16:49.99084	2025-08-29 07:57:40.798962+00
 256	10	4	2025-08-25	Absent	\N	\N	16:18:05.726122	2025-08-25 07:32:20.190986+00
+313	10	4	2025-08-29	Absent	\N	\N	12:21:31.826575	2025-08-29 07:57:40.798962+00
+331	10	4	2025-08-31	Absent	\N	\N	18:07:23.676104	2025-08-31 16:50:15.987694+00
 274	10	4	2025-08-26	Absent	\N	\N	17:16:36.170339	2025-08-26 07:40:39.213264+00
 \.
 
@@ -6021,43 +6070,20 @@ COPY public.principal_payroll (id, principal_id, payroll_user_id, school_id, sal
 --
 
 COPY public.principal_timings (timing_id, principal_id, day_of_week, opens_at, closes_at, is_closed) FROM stdin;
-71	39	Monday	10:00:00	20:00:00	f
-72	39	Tuesday	10:00:00	20:00:00	f
-73	39	Wednesday	10:00:00	20:00:00	f
-74	39	Thursday	10:00:00	20:00:00	f
-75	39	Friday	10:00:00	20:00:00	f
-76	39	Saturday	10:00:00	20:00:00	f
-77	39	Sunday	\N	\N	t
-85	40	Monday	10:00:00	20:00:00	f
-86	40	Tuesday	10:00:00	20:00:00	f
-87	40	Wednesday	10:00:00	20:00:00	f
-88	40	Thursday	10:00:00	20:00:00	f
-89	40	Friday	10:00:00	20:00:00	f
+113	42	Monday	10:00 AM	08:00 PM	f
+114	42	Tuesday	10:00 AM	08:00 PM	f
+115	42	Wednesday	10:00 AM	08:00 PM	f
+116	42	Thursday	10:00 AM	08:00 PM	f
+117	42	Friday	10:00 AM	08:00 PM	f
+118	42	Saturday	10:00 AM	08:00 PM	f
+119	42	Sunday	\N	\N	t
+85	40	Monday	10:00 AM	08:00 PM	f
+86	40	Tuesday	10:00 AM	08:00 PM	f
+87	40	Wednesday	10:00 AM	08:00 PM	f
+88	40	Thursday	10:00 AM	08:00 PM	f
+89	40	Friday	10:00 AM	08:00 PM	f
 90	40	Saturday	\N	\N	t
 91	40	Sunday	\N	\N	t
-113	42	Monday	10:00:00	20:00:00	f
-114	42	Tuesday	10:00:00	20:00:00	f
-115	42	Wednesday	10:00:00	20:00:00	f
-116	42	Thursday	10:00:00	20:00:00	f
-117	42	Friday	10:00:00	20:00:00	f
-118	42	Saturday	10:00:00	20:00:00	f
-119	42	Sunday	\N	\N	t
-148	64	Monday	10:00:00	20:00:00	f
-149	64	Tuesday	10:00:00	20:00:00	f
-150	64	Wednesday	10:00:00	20:00:00	f
-151	64	Thursday	10:00:00	20:00:00	f
-152	64	Friday	10:00:00	20:00:00	f
-153	64	Saturday	10:00:00	20:00:00	f
-154	64	Sunday	\N	\N	t
-176	114	Monday	10:00:00	20:00:00	f
-177	114	Tuesday	10:00:00	20:00:00	f
-178	114	Wednesday	10:00:00	20:00:00	f
-179	114	Thursday	10:00:00	20:00:00	f
-180	114	Friday	10:00:00	20:00:00	f
-181	114	Saturday	10:00:00	20:00:00	f
-182	114	Sunday	\N	\N	t
-309	148	Monday	10:00 AM	06:00 PM	f
-310	148	Tuesday	10:00 AM	06:00 PM	f
 190	115	Monday	07:00 AM	12:00 PM	f
 191	115	Tuesday	07:00 AM	12:00 PM	f
 192	115	Wednesday	07:00 AM	12:00 PM	f
@@ -6065,39 +6091,27 @@ COPY public.principal_timings (timing_id, principal_id, day_of_week, opens_at, c
 194	115	Friday	07:00 AM	12:00 PM	f
 195	115	Saturday	07:00 AM	10:00 AM	f
 196	115	Sunday	\N	\N	t
-274	121	Monday	07:00 AM	06:00 PM	f
-275	121	Tuesday	07:00 AM	06:00 PM	f
-276	121	Wednesday	07:00 AM	06:00 PM	f
-277	121	Thursday	07:00 AM	06:00 PM	f
-278	121	Friday	07:00 AM	06:00 PM	f
-279	121	Saturday	07:00 AM	06:00 PM	f
+274	121	Monday	07:00 AM	06:00 AM	f
+275	121	Tuesday	07:00 AM	06:00 AM	f
+276	121	Wednesday	07:00 AM	06:00 AM	f
+277	121	Thursday	07:00 AM	06:00 AM	f
+278	121	Friday	07:00 AM	06:00 AM	f
+279	121	Saturday	07:00 AM	06:00 AM	f
 280	121	Sunday	\N	\N	t
-288	122	Monday	10:00 AM	06:00 PM	f
-289	122	Tuesday	10:00 AM	06:00 PM	f
-290	122	Wednesday	10:00 AM	06:00 PM	f
-291	122	Thursday	10:00 AM	06:00 PM	f
-292	122	Friday	10:00 AM	06:00 PM	f
-293	122	Saturday	10:00 AM	06:00 PM	f
+288	122	Monday	10:00 AM	06:00 AM	f
+289	122	Tuesday	10:00 AM	06:00 AM	f
+290	122	Wednesday	10:00 AM	06:00 AM	f
+291	122	Thursday	10:00 AM	06:00 AM	f
+292	122	Friday	10:00 AM	06:00 AM	f
+293	122	Saturday	10:00 AM	06:00 AM	f
 294	122	Sunday	\N	\N	t
-302	133	Monday	10:00 AM	06:00 PM	f
-303	133	Tuesday	10:00 AM	06:00 PM	f
-304	133	Wednesday	10:00 AM	06:00 PM	f
-305	133	Thursday	10:00 AM	06:00 PM	f
-306	133	Friday	10:00 AM	06:00 PM	f
-311	148	Wednesday	10:00 AM	06:00 PM	f
-312	148	Thursday	10:00 AM	06:00 PM	f
-313	148	Friday	10:00 AM	06:00 PM	f
-314	148	Saturday	10:00 AM	06:00 PM	f
-315	148	Sunday	\N	\N	t
 1	10	Monday	07:00 AM	12:00 PM	f
 2	10	Tuesday	07:00 AM	12:00 PM	f
 3	10	Wednesday	07:00 AM	12:00 PM	f
 4	10	Thursday	07:00 AM	12:00 PM	f
 5	10	Friday	07:00 AM	12:00 PM	f
 6	10	Saturday	07:00 AM	10:00 AM	f
-7	10	Sunday	10:00 AM	12:00 PM	f
-307	133	Saturday	10:00 AM	06:00 PM	f
-308	133	Sunday	\N	\N	t
+7	10	Sunday	\N	\N	t
 15	13	Monday	10:00 AM	08:00 PM	f
 16	13	Tuesday	10:00 AM	08:00 PM	f
 17	13	Wednesday	10:00 AM	08:00 PM	f
@@ -6105,6 +6119,13 @@ COPY public.principal_timings (timing_id, principal_id, day_of_week, opens_at, c
 19	13	Friday	10:00 AM	08:00 PM	f
 20	13	Saturday	10:00 AM	08:00 PM	f
 21	13	Sunday	\N	\N	t
+71	39	Monday	10:00 AM	08:00 AM	f
+72	39	Tuesday	10:00 AM	08:00 AM	f
+73	39	Wednesday	10:00 AM	08:00 AM	f
+74	39	Thursday	10:00 AM	08:00 AM	f
+75	39	Friday	10:00 AM	08:00 AM	f
+76	39	Saturday	10:00 AM	08:00 AM	f
+77	39	Sunday	\N	\N	t
 \.
 
 
@@ -6174,6 +6195,7 @@ COPY public.school (id, school_logo, school_name, email, phone, school_opening, 
 15	/BMC-SMS/uploads/school_logos/school_15_1755764522.jpg	CountrySide International School	countryside@gmail.com	9210368742	2025-08-22	Private	{CBSE,State}	{English,Hindi}	{Primary,"Upper Primary",Secondary,"Higher Secondary"}	CountrySide International School, Near Heaven Party Lawns, Dandi Road, Surat	\N	\N	33.00	75.00
 5	/BMC-SMS/uploads/school_logos/school_5_1754623317.png	Riverdale	river@gmail.com	8574321698	2011-08-05	Private	{CBSE,State,IGCSE}	{English}	{Pre-Primary,Primary,Secondary}	Surat	\N	\N	33.00	75.00
 4	/BMC-SMS/uploads/school_logos/school_4_1754848072.jpg	Sanskar Bharti Vidyalay	sbv@gmail.com	8526548525	2025-07-06	Private	{CBSE}	{English,Hindi}	{Pre-Primary,Primary,"Upper Primary",Secondary,"Higher Secondary"}	Crossroad, Beside D-Mart, Katargam, Surat-395001	21.21060270	72.76795460	33.45	70.00
+16	/BMC-SMS/uploads/school_logos/school_16_1756663823.png	DailyFix	dailyfix@gmail.com	9675875456	2025-08-31	Government	{State}	{English}	{"Higher Secondary"}	Dindayal co. Socity	\N	\N	33.00	75.00
 8	uploads/school_logos/school_8_1754638909.png	DPS	dps@gmail.com	8596321478	2025-02-11	Government	{State}	{"Regional Language"}	{Pre-Primary,Primary,"Upper Primary",Secondary,"Higher Secondary"}	Surat	\N	\N	33.00	75.00
 \.
 
@@ -6426,31 +6448,23 @@ COPY public.school_timetable (id, school_id, standard, day_of_week, period_numbe
 
 COPY public.staff_incentives (id, staff_id, staff_role, incentive_id, salary_month, salary_year, amount, assigned_by_user_id, assigned_at) FROM stdin;
 28	12	teacher	7	8	2025	700.00	134	2025-08-25 11:33:24.025901+00
-29	119	teacher	7	8	2025	560.00	134	2025-08-25 11:33:24.025901+00
 30	52	teacher	7	8	2025	1750.00	134	2025-08-25 11:33:24.025901+00
 31	54	teacher	7	8	2025	875.00	134	2025-08-25 11:33:24.025901+00
 32	105	teacher	7	8	2025	3640.00	134	2025-08-25 11:33:24.025901+00
 33	70	teacher	7	8	2025	3500.00	134	2025-08-25 11:33:24.025901+00
-34	106	teacher	7	8	2025	1610.00	134	2025-08-25 11:33:24.025901+00
 35	49	teacher	7	8	2025	1400.00	134	2025-08-25 11:33:24.025901+00
 36	6	teacher	7	8	2025	7000.00	134	2025-08-25 11:33:24.025901+00
 37	92	teacher	7	8	2025	1750.00	134	2025-08-25 11:33:24.025901+00
-38	123	teacher	7	8	2025	1610.00	134	2025-08-25 11:33:24.025901+00
 39	51	teacher	7	8	2025	1050.00	134	2025-08-25 11:33:24.025901+00
-40	124	teacher	7	8	2025	1505.00	134	2025-08-25 11:33:24.025901+00
 41	12	teacher	6	8	2025	-500.00	134	2025-08-25 11:33:38.276569+00
-42	119	teacher	6	8	2025	-400.00	134	2025-08-25 11:33:38.276569+00
 43	52	teacher	6	8	2025	-1250.00	134	2025-08-25 11:33:38.276569+00
 44	54	teacher	6	8	2025	-625.00	134	2025-08-25 11:33:38.276569+00
 45	105	teacher	6	8	2025	-2600.00	134	2025-08-25 11:33:38.276569+00
 46	70	teacher	6	8	2025	-2500.00	134	2025-08-25 11:33:38.276569+00
-47	106	teacher	6	8	2025	-1150.00	134	2025-08-25 11:33:38.276569+00
 48	49	teacher	6	8	2025	-1000.00	134	2025-08-25 11:33:38.276569+00
 49	6	teacher	6	8	2025	-5000.00	134	2025-08-25 11:33:38.276569+00
 50	92	teacher	6	8	2025	-1250.00	134	2025-08-25 11:33:38.276569+00
-51	123	teacher	6	8	2025	-1150.00	134	2025-08-25 11:33:38.276569+00
 52	51	teacher	6	8	2025	-750.00	134	2025-08-25 11:33:38.276569+00
-53	124	teacher	6	8	2025	-1075.00	134	2025-08-25 11:33:38.276569+00
 54	36	librarian	7	8	2025	2800.00	134	2025-08-25 16:20:24.260084+00
 \.
 
@@ -6603,6 +6617,10 @@ COPY public.stops (id, route_id, stop_name, stop_fee) FROM stdin;
 --
 
 COPY public.student (id, student_image, student_name, rollno, std, email, password, academic_year, school_id, dob, gender, blood_group, address, father_name, father_phone, mother_name, mother_phone, stop_id, transport_mode, date_of_joining, self_transport_mode, vehicle_number, license_number) FROM stdin;
+149	/BMC-SMS/pages/student/uploads/student_68b173ebc7a3e6.68453386.jpeg	harsh shah	1	10	harsh@gmail.com	$2y$10$H.8lBW0bupzwRTyCyqfTNu53VOf8tPze9TIUMfXGIw7MuLMpWvTP2	2024-2025	4	2005-01-26	Male	AB+	shantibhavan	hemant	753685124	sunita	8575356545	\N	Self Transport	2025-08-29	Bike	GJ-05-JK-5297	GJ-0520173201830
+152	/BMC-SMS/pages/student/uploads/student_68b1758f2f1a62.15594044.jpg	Rupali	4	8	rupali@gmail.com	$2y$10$syYFrJ7eZvKF62J8AVx6DOscekP9tS2qRlBJL0B1uIPc3.rbzD6fG	2024-2025	4	1998-08-08	Female	B-	vadodara	rupesh	7532145986	vanita	7412369852	\N	Self Transport	2025-08-29	Bike	GJ-06-HE-4133	GJ-05-20237396540
+150	/BMC-SMS/pages/student/uploads/student_68b1747f3ec457.95083106.jpg	devam parekh	2	11	devamparekh1200@gmail.com	$2y$10$EAp3p41/hhr6/8KrZ5AtZu/e6AOOp5NBdW6yBxx.PkMD1OfMYDtvK	2024-2025	4	2005-03-11	Male	AB-	LP savani	mukesh	9874563210	falguni	7532147852	\N	Self Transport	2025-08-29	Bike	GJ5DD5887	GJ-05-20237896541
+151	/BMC-SMS/pages/student/uploads/student_68b174f89872e0.32870785.jpg	Ravindra jadeja	3	11	ravindra@gmail.com	$2y$10$DTDfibDinWNWk4ssatRx4e5q12feiW4bb/M5T4BgevYGawJek2NBW	2024-2025	4	2000-12-08	Male	AB+	Jamnagar	haresh	7532147856	ramila	9512365478	1	School Transport	2025-08-29	\N	\N	\N
 \.
 
 
@@ -6649,22 +6667,15 @@ COPY public.subjects (subject_id, subject_name) FROM stdin;
 --
 
 COPY public.teacher (id, teacher_image, teacher_name, phone, school_id, dob, gender, blood_group, address, email, password, qualification, subject, language_known, salary, std, experience, batch, class_teacher, class_teacher_std, date_of_joining, transport_mode, self_transport_mode, vehicle_number, license_number, stop_id) FROM stdin;
-12	/BMC-SMS/pages/teacher/uploads/teacher_6899d4a35ee540.89855330.jpg	Jay Shah	9874522589	4	2025-08-13	Male	AB+	canal road	jay@gmail.com	$2y$10$TUf4M/5ENm2A6oun27EuAuAz8Wlr8e8Ub8xwCR3w9i09nTBhFEWMO	M.A	maths	english,gujarati	10000	{9,10,11}	10	Morning	f	\N	\N	\N	\N	\N	\N	\N
-119	/BMC-SMS/pages/teacher/uploads/teacher_68a5ba3a14678.jpg	Andrew Garfield	9156787656	4	1980-08-20	Male	AB-	new york	andrew@gmail.com	$2y$10$Oeaq9x.uF0kq44nr44WUPOiczSWeXw5h3EfAbN9A/Rttn.NIDLpLK	M.A	Science	English	8000	{10,11,12}	20	Morning	t	12	\N	\N	\N	\N	\N	\N
-52	/BMC-SMS/pages/teacher/uploads/teacher_6899d4fd0d4961.85441737.jpg	Tara Sutaria	8514789630	4	2021-07-12	Male	O-	ancdefgh	tara@gmail.com	$2y$10$sjbggi23JLfNjwuNGmvKY.EvgUgWS9.nh7pA3vv5QjJGP75YBBxDO	BBA	Sanskrit	Hindi	25000	{11}	5	Evening	f	\N	\N	\N	\N	\N	\N	\N
-105	/BMC-SMS/pages/teacher/uploads/teacher_68a473cbb05398.98905019.jpg	Sapna Trivedi	6923001456	4	1997-02-06	Female	O+	G-02, Roman Row House, Near H.K. Marg, Piplod, Surat	sapna@gmail.com	$2y$10$wpEpcFBLJ7Msu0z60MmiQu6n2q.FJ9QY1rl1SPH67b5uaixJl0gNG	C.A.	Accounts	English, Hindi, Gujarati	52000	{12}	5	Morning	f	\N	\N	\N	\N	\N	\N	\N
-70	/BMC-SMS/pages/teacher/uploads/teacher_689c61f5e28d4.jpg	Rahul	9523001459	4	1997-08-12	Male	AB+	sd	rahul@gmail.com	$2y$10$QjT3TSvtutmr1Jl2REhPBuJ4c6B34xrmOkAOe7GwI0ms3sB7Ov.iW	B.C.A	Hindi	Hindi	50000	{8}	8	Morning	f	\N	\N	\N	\N	\N	\N	\N
-106	/BMC-SMS/pages/teacher/uploads/teacher_68a47ae3e1e34.jpg	Yug Pandya	7410025633	4	1997-06-07	Male	B+	V-101, Amrut Heights, Jakatnaka, Surat	yug@gmail.com	$2y$10$8.d4YkdwLMfcBmHQWizcLObYGeBopqGAqTQarYOrO6SALDwDgAFRq	B.A.	Business Studies	English, Hindi, Gujarati	23000	{12}	3	Morning	f	\N	\N	\N	\N	\N	\N	\N
-141	/BMC-SMS/pages/teacher/uploads/teacher_141_68ad8f5f6a06f.jpg	Tina Sen	8576548525	4	1991-01-06	Female	O-	acbd	tina@gmail.com	$2y$10$NWErAseL5ni2z8d4xUwPg.CKdUtjK6bAm8uL331Gek/xC7eLfmc3i	M.A. M.Ed	Music	English, Hindi	12400	{8}	2	Morning	f	\N	2025-08-27	\N	\N	\N	\N	\N
-92	/BMC-SMS/pages/teacher/uploads/teacher_689dd8764d7f4.jpg	Meera Rajput	8741203698	4	1997-01-05	Female	A+	J-501, Shivam Heights, Ankur Char Rasta, Udhana, Surat	meera@gmail.com	$2y$10$8rmmBKRvJBYB3g0Ct1iIIOiZ.o1pBFnqsjXqfbcnO0qbaJ.QIu7a6	MCA	Social Studies	English, Hindi, Gujarati	25000	{12}	5	Morning	f	\N	\N	\N	\N	\N	\N	\N
-123	/BMC-SMS/pages/teacher/uploads/teacher_68a6eb2f3f240.jpg	Viraj Gelani	9852142011	4	1997-01-01	Male	O-	abcd	viraj@gmail.com	$2y$10$5I8lVaVWXFV0tQeB2o/ig.QnfyhDmtW3oeGe3oQGP7pdqfxn.6mKW	B.tech	Gujarati	English, Hindi, Gujarati	23000	{12}	5	Evening	t	12	\N	\N	\N	\N	\N	\N
-124	/BMC-SMS/pages/teacher/uploads/teacher_68a6f372d1cc7.jpg	Ranjit Chaudhari	9852142012	4	1999-02-02	Male	O-	abcd	ranjit@gmail.com	$2y$10$JzR2jkc6zlkIUC4GGN3BSO9wZBmNf1AvegpuGpAfTfMPh7Igz9sIi	B.ed	Sanskrit	Hindi, Sanskrit	21500	{8}	4	Morning	f	\N	2025-08-22	\N	\N	\N	\N	\N
-137	/BMC-SMS/pages/teacher/uploads/teacher_68ad76a1bb684.jpg	Avantika Sironi	9924976504	4	1988-12-04	Female	O+	pqrs	avantika@gmail.com	$2y$10$IRXNzxfDGlWgQdjvuouM7O2xLcZ5Wf3hMMBbq6aHtgg0O64n1i5H6	M.A. M.Ed	English	English, Gujarati	21000	{8}	4	Morning	f	\N	2025-08-27	\N	\N	\N	\N	\N
-146	/BMC-SMS/pages/teacher/uploads/teacher_68b0199dba9b3.jpg	Prince Parmar	7410235897	4	1997-02-06	Male	O-	pqrs	prince@gmail.com	$2y$10$YkLGFwPGHlW8DnoImfyOwOIoiOrHuDKSYiiJvf94lKQuISEuTxO3q	M.A. M.Ed	Economics	English, Hindi, Gujarati	33000	{12}	4	Morning	f	\N	2025-08-29	Self Transport	Bike	GJ-05-RV-4084	GJ-0520219635209	\N
-6	/BMC-SMS/pages/teacher/uploads/teacher_6_68ad86ca00f07.jpg	Meet Patel	9852142016	4	2005-09-04	Male	AB+	Motavarachha	meet@gmail.com	$2y$10$sdz4DZ5oaMJNrUA9mld44uiBNIIkAQCPjs2XrrnUcl.Bp6wlzYz1a	B.C.A	Maths, Chemistry	english	100000	{10,11}	10	Evening	t	11	\N	Self Transport	Car	GJ-05-RU-5556	GJ-1987119635203	\N
-49	/BMC-SMS/pages/teacher/uploads/teacher_49_689c643ced517.jpg	Ayushi Patil	8745632100	4	1980-12-12	Male	B+	abcd	ayushi@gmail.com	$2y$10$Vo893uZp26VV4sCkTWFXSePR9UxOVhLRZlnVtYthhIgdrm4kdIslO	B.C.A	Computer Science	English, Hindi, Gujarati	20000	{10,11}	2	Morning	f	\N	\N	School Transport	\N	\N	\N	5
-51	/BMC-SMS/pages/teacher/uploads/teacher_68a46e8a9b32e0.13131507.jpg	Ravindra Jadeja	7456321062	4	1987-02-01	Male	A-	J-801, Shurveer Bunglows, Near HK Road, Udhana, Surat	jadeja@gmail.com	$2y$10$yzEERP8pUf.GaSHQrRtc6uLlzjr.ft1N6j/BS2KGqQzoykf289BGS	MCA	Physical Education	English	15000	{11,12}	3	Evening	f	\N	\N	Self Transport	Public Transport	\N	\N	\N
-54	/BMC-SMS/pages/teacher/uploads/teacher_6899dace940677.99622641.jpg	Tia Dholakia	9853200014	4	2005-08-08	Male	O+	Katargam	tia@gmail.com	$2y$10$qtWaXyrRnRYI72QYxah1QOa9VXCChAc0/aFadc2i1m2x.ZEq6Euha	BCA	Biology	English, Hindi, Gujarati	12500	{11}	5	Morning	f	\N	\N	School Transport	\N	\N	\N	2
+12	/BMC-SMS/pages/teacher/uploads/teacher_6899d4a35ee540.89855330.jpg	Jay Shah	9874522589	4	2025-08-13	Male	AB+	canal road	jay@gmail.com	$2y$10$TUf4M/5ENm2A6oun27EuAuAz8Wlr8e8Ub8xwCR3w9i09nTBhFEWMO	M.A	maths	english,gujarati	10000	{9,10,11}	10	Morning	f	\N	\N	School Transport	\N	\N	\N	5
+92	/BMC-SMS/pages/teacher/uploads/teacher_92_68b17750b607c.jpg	Meera Rajput	8741203698	4	1997-01-05	Female	A+	J-501, Shivam Heights, Ankur Char Rasta, Udhana, Surat	meera@gmail.com	$2y$10$8rmmBKRvJBYB3g0Ct1iIIOiZ.o1pBFnqsjXqfbcnO0qbaJ.QIu7a6	MCA	Social Studies	English, Hindi, Gujarati	25000	{12}	5	Morning	f	\N	\N	Self Transport	Bike	GJ-21-CE-1152	GJ-2120108523637	\N
+6	/BMC-SMS/pages/teacher/uploads/teacher_6_68b17688f110b.jpg	Meet Patel	9852142016	4	2005-09-04	Male	AB+	Motavarachha	meet@gmail.com	$2y$10$sdz4DZ5oaMJNrUA9mld44uiBNIIkAQCPjs2XrrnUcl.Bp6wlzYz1a	B.C.A	Maths, Chemistry	english	100000	{10,11}	10	Evening	t	11	\N	Self Transport	Car	GJ-05-RU-5556	GJ-1987119635203	\N
+70	/BMC-SMS/pages/teacher/uploads/teacher_70_68b176f0b7bf8.jpg	Rahul	9523001459	4	1997-08-12	Male	AB+	sd	rahul@gmail.com	$2y$10$QjT3TSvtutmr1Jl2REhPBuJ4c6B34xrmOkAOe7GwI0ms3sB7Ov.iW	B.C.A	Hindi	Hindi	50000	{8}	8	Morning	f	\N	\N	Self Transport	Public Transport	\N	\N	\N
+51	/BMC-SMS/pages/teacher/uploads/teacher_51_68b176c556070.jpg	Ravindra Jadeja	7456321062	4	1987-02-01	Male	A-	J-801, Shurveer Bunglows, Near HK Road, Udhana, Surat	jadeja@gmail.com	$2y$10$yzEERP8pUf.GaSHQrRtc6uLlzjr.ft1N6j/BS2KGqQzoykf289BGS	MCA	Physical Education	English	15000	{11,12}	3	Evening	f	\N	\N	Self Transport	Bike	GJ-08-VG-8403	GJ-0820126301236	\N
+105	/BMC-SMS/pages/teacher/uploads/teacher_105_68b177731f863.jpg	Sapna Trivedi	6923001456	4	1997-02-06	Female	O+	G-02, Roman Row House, Near H.K. Marg, Piplod, Surat	sapna@gmail.com	$2y$10$wpEpcFBLJ7Msu0z60MmiQu6n2q.FJ9QY1rl1SPH67b5uaixJl0gNG	C.A.	Accounts	English, Hindi, Gujarati	52000	{12}	5	Morning	f	\N	\N	Self Transport	Walking	\N	\N	\N
+52	/BMC-SMS/pages/teacher/uploads/teacher_52_68b177262328e.jpg	Tara Sutaria	8514789630	4	2021-07-12	Male	O-	ancdefgh	tara@gmail.com	$2y$10$sjbggi23JLfNjwuNGmvKY.EvgUgWS9.nh7pA3vv5QjJGP75YBBxDO	BBA	Sanskrit	Hindi	25000	{11}	5	Evening	f	\N	\N	School Transport	\N	\N	\N	7
+54	/BMC-SMS/pages/teacher/uploads/teacher_54_68b177369c734.jpg	Tia Dholakia	9853200014	4	2005-08-08	Male	O+	Katargam	tia@gmail.com	$2y$10$qtWaXyrRnRYI72QYxah1QOa9VXCChAc0/aFadc2i1m2x.ZEq6Euha	BCA	Biology	English, Hindi, Gujarati	12500	{11}	5	Morning	f	\N	\N	Self Transport	Bike	GJ-01-RC-8630	GJ-0120086320146	\N
+49	/BMC-SMS/pages/teacher/uploads/teacher_49_68b17697981ed.jpg	Ayushi Patil	8745632100	4	1980-12-12	Male	B+	abcd	ayushi@gmail.com	$2y$10$Vo893uZp26VV4sCkTWFXSePR9UxOVhLRZlnVtYthhIgdrm4kdIslO	B.C.A	Computer Science	English, Hindi, Gujarati	20000	{10,11}	2	Morning	f	\N	\N	Self Transport	Bike	GJ-21-CE-1152	GJ-2120108523001	\N
 \.
 
 
@@ -6768,34 +6779,23 @@ COPY public.teacher_attendance (attendance_id, teacher_id, school_id, attendance
 117	54	4	2025-08-11	Present	\N	10	2025-08-13 10:46:05.653445+00
 258	105	4	2025-08-01	Present	\N	10	2025-08-19 17:57:30.161511+00
 61	54	4	2025-08-01	Present	\N	10	2025-08-13 10:27:01.783533+00
-261	106	4	2025-08-01	Present	\N	10	2025-08-19 17:57:30.161511+00
 268	105	4	2025-08-02	Present	\N	10	2025-08-19 17:59:50.866161+00
-271	106	4	2025-08-02	Present	\N	10	2025-08-19 17:59:50.866161+00
 279	105	4	2025-08-04	Present	\N	10	2025-08-19 18:00:07.080538+00
-281	106	4	2025-08-04	Present	\N	10	2025-08-19 18:00:07.080538+00
 288	105	4	2025-08-05	Present	\N	10	2025-08-19 18:00:19.645668+00
-291	106	4	2025-08-05	Present	\N	10	2025-08-19 18:00:19.645668+00
 298	105	4	2025-08-06	Present	\N	10	2025-08-19 18:00:36.508774+00
 89	54	4	2025-08-06	Present	\N	10	2025-08-13 10:45:18.644532+00
-301	106	4	2025-08-06	Present	\N	10	2025-08-19 18:00:36.508774+00
 308	105	4	2025-08-07	Present	\N	10	2025-08-19 18:00:49.706507+00
-311	106	4	2025-08-07	Present	\N	10	2025-08-19 18:00:49.706507+00
 318	105	4	2025-08-08	Present	\N	10	2025-08-19 18:01:05.526566+00
 39	54	4	2025-08-08	Absent	\N	10	2025-08-08 09:16:58.952298+00
-321	106	4	2025-08-08	Present	\N	10	2025-08-19 18:01:05.526566+00
 201	92	4	2025-08-09	Present	\N	10	2025-08-18 08:31:14.121843+00
 328	105	4	2025-08-09	Present	\N	10	2025-08-19 18:01:15.225568+00
 46	54	4	2025-08-09	Present	\N	10	2025-08-09 13:13:20.840006+00
-331	106	4	2025-08-09	Present	\N	10	2025-08-19 18:01:15.225568+00
 206	92	4	2025-08-11	Present	\N	10	2025-08-18 08:31:24.599556+00
 338	105	4	2025-08-11	Present	\N	10	2025-08-19 18:01:25.531094+00
-341	106	4	2025-08-11	Present	\N	10	2025-08-19 18:01:25.531094+00
 214	92	4	2025-08-12	Present	\N	10	2025-08-18 08:31:40.864813+00
 349	105	4	2025-08-12	Present	\N	10	2025-08-19 18:01:35.096441+00
-351	106	4	2025-08-12	Present	\N	10	2025-08-19 18:01:35.096441+00
 222	92	4	2025-08-13	Present	\N	10	2025-08-18 08:32:05.056941+00
 358	105	4	2025-08-13	Present	\N	10	2025-08-19 18:01:47.476165+00
-361	106	4	2025-08-13	Present	\N	10	2025-08-19 18:01:47.476165+00
 228	49	4	2025-08-14	Present	\N	10	2025-08-18 08:32:16.370907+00
 229	12	4	2025-08-14	Present	\N	10	2025-08-18 08:32:16.370907+00
 230	92	4	2025-08-14	Present	\N	10	2025-08-18 08:32:16.370907+00
@@ -6805,7 +6805,6 @@ COPY public.teacher_attendance (attendance_id, teacher_id, school_id, attendance
 368	105	4	2025-08-14	Present	\N	10	2025-08-19 18:01:58.735981+00
 234	52	4	2025-08-14	Present	\N	10	2025-08-18 08:32:16.370907+00
 235	54	4	2025-08-14	Present	\N	10	2025-08-18 08:32:16.370907+00
-371	106	4	2025-08-14	Present	\N	10	2025-08-19 18:01:58.735981+00
 236	49	4	2025-08-18	Present	\N	10	2025-08-18 08:32:23.423785+00
 237	12	4	2025-08-18	Present	\N	10	2025-08-18 08:32:23.423785+00
 238	92	4	2025-08-18	Present	\N	10	2025-08-18 08:32:23.423785+00
@@ -6815,7 +6814,6 @@ COPY public.teacher_attendance (attendance_id, teacher_id, school_id, attendance
 378	105	4	2025-08-18	Present	\N	10	2025-08-19 18:02:11.235902+00
 242	52	4	2025-08-18	Present	\N	10	2025-08-18 08:32:23.423785+00
 243	54	4	2025-08-18	Present	\N	10	2025-08-18 08:32:23.423785+00
-381	106	4	2025-08-18	Present	\N	10	2025-08-19 18:02:11.235902+00
 244	49	4	2025-08-19	Present	\N	10	2025-08-19 08:04:48.5524+00
 245	12	4	2025-08-19	Absent	\N	10	2025-08-19 08:04:48.5524+00
 246	92	4	2025-08-19	Absent	\N	10	2025-08-19 08:04:48.5524+00
@@ -6825,7 +6823,6 @@ COPY public.teacher_attendance (attendance_id, teacher_id, school_id, attendance
 388	105	4	2025-08-19	Present	\N	10	2025-08-19 18:02:25.778938+00
 250	52	4	2025-08-19	Present	\N	10	2025-08-19 08:04:48.5524+00
 251	54	4	2025-08-19	Absent	\N	10	2025-08-19 08:04:48.5524+00
-391	106	4	2025-08-19	Present	\N	10	2025-08-19 18:02:25.778938+00
 392	49	4	2025-08-20	Present	\N	10	2025-08-20 09:51:22.71613+00
 394	92	4	2025-08-20	Present	\N	10	2025-08-20 09:51:22.71613+00
 396	70	4	2025-08-20	Present	\N	10	2025-08-20 09:51:22.71613+00
@@ -6833,61 +6830,51 @@ COPY public.teacher_attendance (attendance_id, teacher_id, school_id, attendance
 398	105	4	2025-08-20	Present	\N	10	2025-08-20 09:51:22.71613+00
 399	52	4	2025-08-20	Present	\N	10	2025-08-20 09:51:22.71613+00
 400	54	4	2025-08-20	Present	\N	10	2025-08-20 09:51:22.71613+00
-401	106	4	2025-08-20	Present	\N	10	2025-08-20 09:51:22.71613+00
-402	119	4	2025-08-22	Present	\N	10	2025-08-25 07:50:20.710687+00
 403	49	4	2025-08-22	Present	\N	10	2025-08-25 07:50:20.710687+00
 404	12	4	2025-08-22	Present	\N	10	2025-08-25 07:50:20.710687+00
 405	92	4	2025-08-22	Present	\N	10	2025-08-25 07:50:20.710687+00
 406	6	4	2025-08-22	Present	\N	10	2025-08-25 07:50:20.710687+00
 407	70	4	2025-08-22	Present	\N	10	2025-08-25 07:50:20.710687+00
-408	124	4	2025-08-22	Present	\N	10	2025-08-25 07:50:20.710687+00
 409	51	4	2025-08-22	Present	\N	10	2025-08-25 07:50:20.710687+00
 410	105	4	2025-08-22	Present	\N	10	2025-08-25 07:50:20.710687+00
 411	52	4	2025-08-22	Present	\N	10	2025-08-25 07:50:20.710687+00
 412	54	4	2025-08-22	Present	\N	10	2025-08-25 07:50:20.710687+00
-413	123	4	2025-08-22	Present	\N	10	2025-08-25 07:50:20.710687+00
-414	106	4	2025-08-22	Present	\N	10	2025-08-25 07:50:20.710687+00
-415	119	4	2025-08-23	Present	\N	10	2025-08-25 07:50:30.55195+00
 416	49	4	2025-08-23	Present	\N	10	2025-08-25 07:50:30.55195+00
 417	12	4	2025-08-23	Present	\N	10	2025-08-25 07:50:30.55195+00
 418	92	4	2025-08-23	Present	\N	10	2025-08-25 07:50:30.55195+00
 419	6	4	2025-08-23	Present	\N	10	2025-08-25 07:50:30.55195+00
 420	70	4	2025-08-23	Present	\N	10	2025-08-25 07:50:30.55195+00
-421	124	4	2025-08-23	Present	\N	10	2025-08-25 07:50:30.55195+00
 422	51	4	2025-08-23	Present	\N	10	2025-08-25 07:50:30.55195+00
 423	105	4	2025-08-23	Present	\N	10	2025-08-25 07:50:30.55195+00
 424	52	4	2025-08-23	Present	\N	10	2025-08-25 07:50:30.55195+00
 425	54	4	2025-08-23	Present	\N	10	2025-08-25 07:50:30.55195+00
-426	123	4	2025-08-23	Present	\N	10	2025-08-25 07:50:30.55195+00
-427	106	4	2025-08-23	Present	\N	10	2025-08-25 07:50:30.55195+00
-428	119	4	2025-08-25	Present	\N	10	2025-08-25 07:50:39.497137+00
 429	49	4	2025-08-25	Present	\N	10	2025-08-25 07:50:39.497137+00
 430	12	4	2025-08-25	Present	\N	10	2025-08-25 07:50:39.497137+00
 431	92	4	2025-08-25	Present	\N	10	2025-08-25 07:50:39.497137+00
 432	6	4	2025-08-25	Present	\N	10	2025-08-25 07:50:39.497137+00
 433	70	4	2025-08-25	Present	\N	10	2025-08-25 07:50:39.497137+00
-434	124	4	2025-08-25	Present	\N	10	2025-08-25 07:50:39.497137+00
 435	51	4	2025-08-25	Present	\N	10	2025-08-25 07:50:39.497137+00
 436	105	4	2025-08-25	Present	\N	10	2025-08-25 07:50:39.497137+00
 437	52	4	2025-08-25	Present	\N	10	2025-08-25 07:50:39.497137+00
 438	54	4	2025-08-25	Present	\N	10	2025-08-25 07:50:39.497137+00
-439	123	4	2025-08-25	Present	\N	10	2025-08-25 07:50:39.497137+00
-440	106	4	2025-08-25	Present	\N	10	2025-08-25 07:50:39.497137+00
-441	119	4	2025-08-26	Present	\N	10	2025-08-26 16:17:08.744982+00
-442	137	4	2025-08-26	Present	\N	10	2025-08-26 16:17:08.744982+00
 443	49	4	2025-08-26	Present	\N	10	2025-08-26 16:17:08.744982+00
 444	12	4	2025-08-26	Present	\N	10	2025-08-26 16:17:08.744982+00
 445	92	4	2025-08-26	Present	\N	10	2025-08-26 16:17:08.744982+00
 446	6	4	2025-08-26	Present	\N	10	2025-08-26 16:17:08.744982+00
 447	70	4	2025-08-26	Present	\N	10	2025-08-26 16:17:08.744982+00
-448	124	4	2025-08-26	Present	\N	10	2025-08-26 16:17:08.744982+00
 449	51	4	2025-08-26	Present	\N	10	2025-08-26 16:17:08.744982+00
 450	105	4	2025-08-26	Present	\N	10	2025-08-26 16:17:08.744982+00
 451	52	4	2025-08-26	Present	\N	10	2025-08-26 16:17:08.744982+00
 452	54	4	2025-08-26	Present	\N	10	2025-08-26 16:17:08.744982+00
-453	141	4	2025-08-26	Present	\N	10	2025-08-26 16:17:08.744982+00
-454	123	4	2025-08-26	Present	\N	10	2025-08-26 16:17:08.744982+00
-455	106	4	2025-08-26	Present	\N	10	2025-08-26 16:17:08.744982+00
+456	49	4	2025-08-21	Present	\N	10	2025-08-31 16:53:44.124141+00
+457	12	4	2025-08-21	Present	\N	10	2025-08-31 16:53:44.124141+00
+458	92	4	2025-08-21	Present	\N	10	2025-08-31 16:53:44.124141+00
+459	6	4	2025-08-21	Present	\N	10	2025-08-31 16:53:44.124141+00
+460	70	4	2025-08-21	Present	\N	10	2025-08-31 16:53:44.124141+00
+461	51	4	2025-08-21	Present	\N	10	2025-08-31 16:53:44.124141+00
+462	105	4	2025-08-21	Present	\N	10	2025-08-31 16:53:44.124141+00
+463	52	4	2025-08-21	Present	\N	10	2025-08-31 16:53:44.124141+00
+464	54	4	2025-08-21	Present	\N	10	2025-08-31 16:53:44.124141+00
 \.
 
 
@@ -6897,7 +6884,7 @@ COPY public.teacher_attendance (attendance_id, teacher_id, school_id, attendance
 
 COPY public.teacher_payroll (id, teacher_id, payroll_user_id, school_id, salary_month, salary_year, base_salary, total_working_days, present_days, absent_days, deduction_amount, total_incentives, net_salary_paid, payment_date, status) FROM stdin;
 1	12	134	4	8	2025	10000.00	23	16.0	3	1304.35	200.00	7156.52	2025-08-26 08:17:00.084272+00	Paid
-2	119	134	4	8	2025	8000.00	23	3.0	0	0.00	160.00	1203.48	2025-08-26 08:37:56.736531+00	Paid
+3	6	134	4	8	2025	100000.00	23	18.0	3	13043.48	2000.00	80260.87	2025-08-31 17:29:35.804271+00	Paid
 \.
 
 
@@ -6906,118 +6893,69 @@ COPY public.teacher_payroll (id, teacher_id, payroll_user_id, school_id, salary_
 --
 
 COPY public.teacher_timings (timing_id, teacher_id, day_of_week, opens_at, closes_at, is_closed) FROM stdin;
+64	49	Monday	10:00:00	18:00:00	f
+65	49	Tuesday	10:00:00	18:00:00	f
+66	49	Wednesday	10:00:00	18:00:00	f
+67	49	Thursday	10:00:00	18:00:00	f
+68	49	Friday	10:00:00	18:00:00	f
+69	49	Saturday	10:00:00	18:00:00	f
+15	12	Monday	10:00:00	06:00:00	f
 1	6	Monday	10:00:00	18:00:00	f
-15	12	Monday	10:00:00	18:00:00	f
-16	12	Tuesday	10:00:00	18:00:00	f
-17	12	Wednesday	10:00:00	18:00:00	f
-18	12	Thursday	10:00:00	18:00:00	f
-19	12	Friday	10:00:00	18:00:00	f
-20	12	Saturday	10:00:00	18:00:00	f
-21	12	Sunday	10:00:00	18:00:00	f
 2	6	Tuesday	10:00:00	18:00:00	f
 3	6	Wednesday	10:00:00	18:00:00	f
 4	6	Thursday	10:00:00	18:00:00	f
 5	6	Friday	10:00:00	18:00:00	f
 6	6	Saturday	10:00:00	18:00:00	f
-246	92	Monday	10:00:00	18:00:00	f
-247	92	Tuesday	10:00:00	18:00:00	f
-248	92	Wednesday	10:00:00	18:00:00	f
-249	92	Thursday	10:00:00	18:00:00	f
-250	92	Friday	10:00:00	18:00:00	f
-251	92	Saturday	10:00:00	18:00:00	f
-252	92	Sunday	\N	\N	t
-92	52	Monday	10:00:00	18:00:00	f
-93	52	Tuesday	10:00:00	18:00:00	f
-64	49	Monday	10:00:00	18:00:00	f
-94	52	Wednesday	10:00:00	18:00:00	f
-95	52	Thursday	10:00:00	18:00:00	f
-96	52	Friday	10:00:00	18:00:00	f
-97	52	Saturday	10:00:00	18:00:00	f
-98	52	Sunday	\N	\N	t
-295	105	Monday	10:00:00	18:00:00	f
-362	123	Friday	10:00:00	18:00:00	f
-363	123	Saturday	10:00:00	18:00:00	f
-364	123	Sunday	\N	\N	t
-386	124	Monday	10:00:00	18:00:00	f
-387	124	Tuesday	10:00:00	18:00:00	f
-388	124	Wednesday	10:00:00	18:00:00	f
-296	105	Tuesday	10:00:00	18:00:00	f
-297	105	Wednesday	10:00:00	18:00:00	f
-298	105	Thursday	10:00:00	18:00:00	f
-299	105	Friday	10:00:00	18:00:00	f
-300	105	Saturday	10:00:00	18:00:00	f
-301	105	Sunday	10:00:00	18:00:00	f
-309	106	Monday	07:00:00	13:00:00	f
-225	70	Monday	10:00:00	18:00:00	f
-226	70	Tuesday	10:00:00	18:00:00	f
-227	70	Wednesday	10:00:00	18:00:00	f
-228	70	Thursday	10:00:00	18:00:00	f
-229	70	Friday	10:00:00	18:00:00	f
-230	70	Saturday	10:00:00	18:00:00	f
-231	70	Sunday	\N	\N	t
-71	51	Monday	10:00:00	18:00:00	f
-389	124	Thursday	10:00:00	18:00:00	f
-310	106	Tuesday	07:00:00	13:00:00	f
-311	106	Wednesday	07:00:00	13:00:00	f
-312	106	Thursday	07:00:00	13:00:00	f
-313	106	Friday	07:00:00	13:00:00	f
-314	106	Saturday	19:00:00	13:00:00	f
+70	49	Sunday	\N	\N	t
+16	12	Tuesday	10:00:00	06:00:00	f
+17	12	Wednesday	10:00:00	06:00:00	f
+18	12	Thursday	10:00:00	06:00:00	f
+19	12	Friday	10:00:00	06:00:00	f
+20	12	Saturday	10:00:00	06:00:00	f
 106	54	Monday	10:00:00	18:00:00	f
+107	54	Tuesday	10:00:00	18:00:00	f
+225	70	Monday	10:00:00	18:00:00	f
+108	54	Wednesday	10:00:00	18:00:00	f
+109	54	Thursday	10:00:00	18:00:00	f
+110	54	Friday	10:00:00	18:00:00	f
+111	54	Saturday	10:00:00	18:00:00	f
+246	92	Monday	10:00:00	06:00:00	f
+71	51	Monday	10:00:00	18:00:00	f
+247	92	Tuesday	10:00:00	06:00:00	f
+21	12	Sunday	\N	\N	t
 72	51	Tuesday	10:00:00	18:00:00	f
 73	51	Wednesday	10:00:00	18:00:00	f
 74	51	Thursday	10:00:00	18:00:00	f
 75	51	Friday	10:00:00	18:00:00	f
 76	51	Saturday	10:00:00	18:00:00	f
 77	51	Sunday	\N	\N	t
-315	106	Sunday	07:00:00	13:00:00	f
-107	54	Tuesday	10:00:00	18:00:00	f
-108	54	Wednesday	10:00:00	18:00:00	f
-109	54	Thursday	10:00:00	18:00:00	f
-110	54	Friday	10:00:00	18:00:00	f
-111	54	Saturday	10:00:00	18:00:00	f
-112	54	Sunday	\N	\N	t
-351	119	Monday	10:00:00	18:00:00	f
-352	119	Tuesday	10:00:00	18:00:00	f
-353	119	Wednesday	10:00:00	18:00:00	f
-354	119	Thursday	10:00:00	18:00:00	f
-355	119	Friday	10:00:00	18:00:00	f
-356	119	Saturday	10:00:00	18:00:00	f
-357	119	Sunday	\N	\N	t
-393	137	Monday	10:00:00	18:00:00	f
-394	137	Tuesday	10:00:00	18:00:00	f
-395	137	Wednesday	10:00:00	18:00:00	f
-396	137	Thursday	10:00:00	18:00:00	f
-397	137	Friday	10:00:00	18:00:00	f
-398	137	Saturday	10:00:00	18:00:00	f
-399	137	Sunday	\N	\N	t
-358	123	Monday	10:00:00	18:00:00	f
-359	123	Tuesday	10:00:00	18:00:00	f
-360	123	Wednesday	10:00:00	18:00:00	f
-361	123	Thursday	10:00:00	18:00:00	f
-390	124	Friday	10:00:00	18:00:00	f
-391	124	Saturday	10:00:00	18:00:00	f
-392	124	Sunday	\N	\N	t
-414	141	Monday	10:00:00	18:00:00	f
-65	49	Tuesday	10:00:00	18:00:00	f
-66	49	Wednesday	10:00:00	18:00:00	f
-67	49	Thursday	10:00:00	18:00:00	f
-68	49	Friday	10:00:00	18:00:00	f
-69	49	Saturday	10:00:00	18:00:00	f
-70	49	Sunday	\N	\N	t
-415	141	Tuesday	10:00:00	18:00:00	f
-416	141	Wednesday	10:00:00	18:00:00	f
-417	141	Thursday	10:00:00	18:00:00	f
-418	141	Friday	10:00:00	18:00:00	f
-419	141	Saturday	10:00:00	18:00:00	f
-420	141	Sunday	\N	\N	t
-428	146	Monday	10:00:00	18:00:00	f
-429	146	Tuesday	10:00:00	18:00:00	f
-430	146	Wednesday	10:00:00	18:00:00	f
-431	146	Thursday	10:00:00	18:00:00	f
-432	146	Friday	10:00:00	18:00:00	f
-433	146	Saturday	10:00:00	18:00:00	f
-434	146	Sunday	\N	\N	t
+248	92	Wednesday	10:00:00	06:00:00	f
+249	92	Thursday	10:00:00	06:00:00	f
+250	92	Friday	10:00:00	06:00:00	f
+251	92	Saturday	10:00:00	06:00:00	f
+252	92	Sunday	\N	\N	t
+295	105	Monday	10:00:00	18:00:00	f
+226	70	Tuesday	10:00:00	18:00:00	f
+227	70	Wednesday	10:00:00	18:00:00	f
+228	70	Thursday	10:00:00	18:00:00	f
+229	70	Friday	10:00:00	18:00:00	f
+230	70	Saturday	10:00:00	18:00:00	f
+231	70	Sunday	\N	\N	t
+92	52	Monday	10:00:00	06:00:00	f
+93	52	Tuesday	10:00:00	06:00:00	f
+94	52	Wednesday	10:00:00	06:00:00	f
+95	52	Thursday	10:00:00	06:00:00	f
+96	52	Friday	10:00:00	06:00:00	f
+97	52	Saturday	10:00:00	06:00:00	f
+98	52	Sunday	\N	\N	t
+296	105	Tuesday	10:00:00	18:00:00	f
+297	105	Wednesday	10:00:00	18:00:00	f
+298	105	Thursday	10:00:00	18:00:00	f
+299	105	Friday	10:00:00	18:00:00	f
+300	105	Saturday	10:00:00	18:00:00	f
+301	105	Sunday	10:00:00	18:00:00	f
 7	6	Sunday	\N	\N	t
+112	54	Sunday	\N	\N	t
 \.
 
 
@@ -7038,8 +6976,11 @@ COPY public.users (id, role, email, password, account_status, otp_hash, otp_expi
 8	superadmin	shahswayam7125@gmail.com	$2y$10$T74F9Gb05l.StKcZg2sy/ub6PHeH.l3tT3Lv1JwOZzioXJCdEN0zO	active	\N	\N
 51	teacher	jadeja@gmail.com	$2y$10$yzEERP8pUf.GaSHQrRtc6uLlzjr.ft1N6j/BS2KGqQzoykf289BGS	active	\N	\N
 147	librarian	dinesh@gmail.com	$2y$10$e/ba0l3WZPzpCiKblkuMLOmVYTrB4k5WyrK/Zpe8WzyfoylNbCuIq	active	\N	\N
+150	student	devamparekh1200@gmail.com	$2y$10$EAp3p41/hhr6/8KrZ5AtZu/e6AOOp5NBdW6yBxx.PkMD1OfMYDtvK	active	\N	\N
+151	student	ravindra@gmail.com	$2y$10$DTDfibDinWNWk4ssatRx4e5q12feiW4bb/M5T4BgevYGawJek2NBW	active	\N	\N
+152	student	rupali@gmail.com	$2y$10$syYFrJ7eZvKF62J8AVx6DOscekP9tS2qRlBJL0B1uIPc3.rbzD6fG	active	\N	\N
 105	teacher	sapna@gmail.com	$2y$10$wpEpcFBLJ7Msu0z60MmiQu6n2q.FJ9QY1rl1SPH67b5uaixJl0gNG	active	\N	\N
-106	teacher	yug@gmail.com	$2y$10$8.d4YkdwLMfcBmHQWizcLObYGeBopqGAqTQarYOrO6SALDwDgAFRq	active	\N	\N
+10	principal	17fenill@gmail.com	$2y$10$EP56edKNSOvDiPXCub4iZuAI5sEVX3XjU1tnqJu8a4f.VS58QO5de	active	$2y$10$KK4weLbHrHxvW39CjFoO4eFD3zn0llDzxmiP4HWMyQ2cp63teJJ5.	2025-09-01 11:22:31
 107	librarian	prakash@gmail.com	$2y$10$pub4gPRk6EW7Il4jxjo2Ouc4F87zBPcLdf9p12/FYFppQYSX8yTai	active	\N	\N
 108	librarian	santosh@gmai.com	$2y$10$JM1uBHaBUqobLR9miaICKO8tuD7q2LKAQysccyTcY7Tt0SH5sUAK.	active	\N	\N
 13	principal	dhaval@gmail.com	$2y$10$/PhOzkuBDiabEZAW5eIZKuEr9Gcr0NTvpE7mGegA1Z6oNalzKXQcW	active	\N	\N
@@ -7047,29 +6988,19 @@ COPY public.users (id, role, email, password, account_status, otp_hash, otp_expi
 39	principal	sunny@gmail.com	$2y$10$B4ISjcDHMlF.dJwZ0X.LlOQT6ZKgHPQy.odp78wc8cEahPpkhMKKm	active	\N	\N
 92	teacher	meera@gmail.com	$2y$10$8rmmBKRvJBYB3g0Ct1iIIOiZ.o1pBFnqsjXqfbcnO0qbaJ.QIu7a6	active	\N	\N
 40	principal	viral@gmail.com	$2y$10$jKjdp7PnB3Ys3M7TnrfQtO97DNw8WPvNtldu7M1rX/ckGXx.P/9QW	active	\N	\N
-64	principal	pqrs@gmail.com	$2y$10$.Nu9UqZeGtKi.A1fJd1VQOMIRiwiqWstqDRIoj2SoFdy/gsmY4cx2	active	\N	\N
-114	principal	hardik@gmail.com	$2y$10$viDn0Uqmw5uHxjRW09Hg.eadmQ5RIft8UyBcEkzO0cs1amrrW4FXi	active	\N	\N
 12	teacher	jay@gmail.com	$2y$10$TUf4M/5ENm2A6oun27EuAuAz8Wlr8e8Ub8xwCR3w9i09nTBhFEWMO	active	\N	\N
 52	teacher	tara@gmail.com	$2y$10$sjbggi23JLfNjwuNGmvKY.EvgUgWS9.nh7pA3vv5QjJGP75YBBxDO	active	\N	\N
 49	teacher	ayushi@gmail.com	$2y$10$Vo893uZp26VV4sCkTWFXSePR9UxOVhLRZlnVtYthhIgdrm4kdIslO	active	\N	\N
 70	teacher	rahul@gmail.com	$2y$10$QjT3TSvtutmr1Jl2REhPBuJ4c6B34xrmOkAOe7GwI0ms3sB7Ov.iW	active	\N	\N
 42	principal	akshat@gmail.com	$2y$10$YW7sWUGqVcbuiHzwxwjShOajCzOXNSbqML9zPAzrM8.RWml.41iXW	active	\N	\N
-141	teacher	tina@gmail.com	$2y$10$NWErAseL5ni2z8d4xUwPg.CKdUtjK6bAm8uL331Gek/xC7eLfmc3i	active	\N	\N
-133	principal	viken@gmail.com	$2y$10$j4Qz1IbrFpsR8FbzluTBueDH7pjxZvGefShnN3O9ZF7TFt90lNZgG	active	\N	\N
 134	payroll	prithvi@gmail.com	$2y$10$FcKBnpIqM9ypJ6iwb.yZYOHyCwMcF//0KR50/J5AV9lN7fhYih44K	active	\N	\N
 6	teacher	meet@gmail.com	$2y$10$Dy/QvvkcnkheaPFyapfKR.9hzc/ZA5twsbVVqc6Gm.jR4nglV6Mv6	active	\N	\N
-119	teacher	andrew@gmail.com	$2y$10$Oeaq9x.uF0kq44nr44WUPOiczSWeXw5h3EfAbN9A/Rttn.NIDLpLK	active	\N	\N
 53	librarian	rohit@gmail.com	$2y$10$CX5ZFB02c4ncgdCCy9WplezqcHT0jAEaAAaI6uqr6fQHvj0FoSL8m	active	\N	\N
 115	principal	rupesh@gmail.com	$2y$10$bE4j/mv0OVuqDix.gg1NLOTdhoDj2FYSBuDZ1hp6j.tubSV2vhwPm	active	\N	\N
 121	principal	tanvi@gmail.com	$2y$10$IUDB1lEgEfLXwNDaCMukEu7LCw5BgJoav0cwNDUIxuTBJY9SuyMou	active	\N	\N
 122	principal	jagurti@gmail.com	$2y$10$RTm5fWQRtc3XHs.nkd53t.rvJCGgTzRdBq6aFqOh6c49ZGaRxvoxe	active	\N	\N
-10	principal	17fenill@gmail.com	$2y$10$EP56edKNSOvDiPXCub4iZuAI5sEVX3XjU1tnqJu8a4f.VS58QO5de	active	\N	\N
-123	teacher	viraj@gmail.com	$2y$10$5I8lVaVWXFV0tQeB2o/ig.QnfyhDmtW3oeGe3oQGP7pdqfxn.6mKW	active	\N	\N
-124	teacher	ranjit@gmail.com	$2y$10$JzR2jkc6zlkIUC4GGN3BSO9wZBmNf1AvegpuGpAfTfMPh7Igz9sIi	active	\N	\N
-137	teacher	avantika@gmail.com	$2y$10$IRXNzxfDGlWgQdjvuouM7O2xLcZ5Wf3hMMBbq6aHtgg0O64n1i5H6	active	\N	\N
-146	teacher	prince@gmail.com	$2y$10$YkLGFwPGHlW8DnoImfyOwOIoiOrHuDKSYiiJvf94lKQuISEuTxO3q	active	\N	\N
-148	principal	sachin@gmail.com	$2y$10$lZWWyyjvM1bn2nXavCGSfO7FMWbVDauhBLGifHIrEO090bOzernfe	active	\N	\N
 36	librarian	devang@gmail.com	$2y$10$zmDytTauKLi/cqAY89QgT.CyVW7b4lgK.rwFVPdJbZf4zIsHGyYdu	active	\N	\N
+149	student	harsh@gmail.com	$2y$10$H.8lBW0bupzwRTyCyqfTNu53VOf8tPze9TIUMfXGIw7MuLMpWvTP2	active	\N	\N
 \.
 
 
@@ -7278,7 +7209,7 @@ SELECT pg_catalog.setval('auth.refresh_tokens_id_seq', 1, false);
 -- Name: assignment_submissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.assignment_submissions_id_seq', 17, true);
+SELECT pg_catalog.setval('public.assignment_submissions_id_seq', 18, true);
 
 
 --
@@ -7432,7 +7363,7 @@ SELECT pg_catalog.setval('public.librarian_timings_timing_id_seq', 203, true);
 -- Name: messages_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.messages_id_seq', 158, true);
+SELECT pg_catalog.setval('public.messages_id_seq', 168, true);
 
 
 --
@@ -7453,7 +7384,7 @@ SELECT pg_catalog.setval('public.notice_id_seq', 29, true);
 -- Name: notifications_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.notifications_id_seq', 720, true);
+SELECT pg_catalog.setval('public.notifications_id_seq', 724, true);
 
 
 --
@@ -7474,7 +7405,7 @@ SELECT pg_catalog.setval('public.payroll_attendance_id_seq', 1, true);
 -- Name: principal_attendance_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.principal_attendance_id_seq', 318, true);
+SELECT pg_catalog.setval('public.principal_attendance_id_seq', 345, true);
 
 
 --
@@ -7488,7 +7419,7 @@ SELECT pg_catalog.setval('public.principal_payroll_id_seq', 1, false);
 -- Name: principal_timings_timing_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.principal_timings_timing_id_seq', 329, true);
+SELECT pg_catalog.setval('public.principal_timings_timing_id_seq', 434, true);
 
 
 --
@@ -7516,7 +7447,7 @@ SELECT pg_catalog.setval('public.routes_id_seq', 2, true);
 -- Name: school_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.school_id_seq', 15, true);
+SELECT pg_catalog.setval('public.school_id_seq', 16, true);
 
 
 --
@@ -7579,21 +7510,21 @@ SELECT pg_catalog.setval('public.subjects_subject_id_seq', 22, true);
 -- Name: teacher_attendance_attendance_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.teacher_attendance_attendance_id_seq', 455, true);
+SELECT pg_catalog.setval('public.teacher_attendance_attendance_id_seq', 464, true);
 
 
 --
 -- Name: teacher_payroll_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.teacher_payroll_id_seq', 2, true);
+SELECT pg_catalog.setval('public.teacher_payroll_id_seq', 3, true);
 
 
 --
 -- Name: teacher_timings_timing_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.teacher_timings_timing_id_seq', 469, true);
+SELECT pg_catalog.setval('public.teacher_timings_timing_id_seq', 567, true);
 
 
 --
@@ -7607,7 +7538,7 @@ SELECT pg_catalog.setval('public.timetables_id_seq', 1, false);
 -- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.users_id_seq', 148, true);
+SELECT pg_catalog.setval('public.users_id_seq', 152, true);
 
 
 --
@@ -7702,6 +7633,22 @@ ALTER TABLE ONLY auth.mfa_factors
 
 ALTER TABLE ONLY auth.mfa_factors
     ADD CONSTRAINT mfa_factors_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: oauth_clients oauth_clients_client_id_key; Type: CONSTRAINT; Schema: auth; Owner: supabase_auth_admin
+--
+
+ALTER TABLE ONLY auth.oauth_clients
+    ADD CONSTRAINT oauth_clients_client_id_key UNIQUE (client_id);
+
+
+--
+-- Name: oauth_clients oauth_clients_pkey; Type: CONSTRAINT; Schema: auth; Owner: supabase_auth_admin
+--
+
+ALTER TABLE ONLY auth.oauth_clients
+    ADD CONSTRAINT oauth_clients_pkey PRIMARY KEY (id);
 
 
 --
@@ -8345,6 +8292,14 @@ ALTER TABLE ONLY public.teacher
 
 
 --
+-- Name: teacher teacher_license_number_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.teacher
+    ADD CONSTRAINT teacher_license_number_key UNIQUE (license_number);
+
+
+--
 -- Name: teacher_payroll teacher_payroll_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -8401,11 +8356,43 @@ ALTER TABLE ONLY public.librarian_timings
 
 
 --
+-- Name: librarian unique_librarian_license_number; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.librarian
+    ADD CONSTRAINT unique_librarian_license_number UNIQUE (license_number);
+
+
+--
 -- Name: librarian unique_librarian_school_batch; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.librarian
     ADD CONSTRAINT unique_librarian_school_batch UNIQUE (school_id, batch);
+
+
+--
+-- Name: principal unique_principal_license_number; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.principal
+    ADD CONSTRAINT unique_principal_license_number UNIQUE (license_number);
+
+
+--
+-- Name: student unique_student_license_number; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.student
+    ADD CONSTRAINT unique_student_license_number UNIQUE (license_number);
+
+
+--
+-- Name: teacher unique_teacher_license_number; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.teacher
+    ADD CONSTRAINT unique_teacher_license_number UNIQUE (license_number);
 
 
 --
@@ -8688,6 +8675,20 @@ CREATE UNIQUE INDEX mfa_factors_user_friendly_name_unique ON auth.mfa_factors US
 --
 
 CREATE INDEX mfa_factors_user_id_idx ON auth.mfa_factors USING btree (user_id);
+
+
+--
+-- Name: oauth_clients_client_id_idx; Type: INDEX; Schema: auth; Owner: supabase_auth_admin
+--
+
+CREATE INDEX oauth_clients_client_id_idx ON auth.oauth_clients USING btree (client_id);
+
+
+--
+-- Name: oauth_clients_deleted_at_idx; Type: INDEX; Schema: auth; Owner: supabase_auth_admin
+--
+
+CREATE INDEX oauth_clients_deleted_at_idx ON auth.oauth_clients USING btree (deleted_at);
 
 
 --
@@ -11023,6 +11024,14 @@ GRANT ALL ON TABLE auth.mfa_challenges TO dashboard_user;
 GRANT INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,MAINTAIN,UPDATE ON TABLE auth.mfa_factors TO postgres;
 GRANT SELECT ON TABLE auth.mfa_factors TO postgres WITH GRANT OPTION;
 GRANT ALL ON TABLE auth.mfa_factors TO dashboard_user;
+
+
+--
+-- Name: TABLE oauth_clients; Type: ACL; Schema: auth; Owner: supabase_auth_admin
+--
+
+GRANT ALL ON TABLE auth.oauth_clients TO postgres;
+GRANT ALL ON TABLE auth.oauth_clients TO dashboard_user;
 
 
 --

@@ -13,6 +13,8 @@ $school_id = null;
 $all_missing_dates = [];
 $is_holiday = false;
 $holiday_description = '';
+$edit_librarian_id = isset($_GET['edit_librarian_id']) ? $_GET['edit_librarian_id'] : null;
+$earliest_joining_date_school = null;
 
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
@@ -53,54 +55,44 @@ try {
         }
     }
 
-    // --- Mandatory Past Attendance Check (starts from joining date) ---
+    // --- Mandatory Past Attendance Check ---
     if (empty($errorMessage) && !$is_holiday) {
         $target_date = new DateTime($attendance_date_display);
         
-        // Find the earliest joining date of a librarian in the school to optimize the check period.
-        $first_joining_stmt = $conn->prepare("SELECT MIN(date_of_joining) FROM librarian WHERE school_id = ?");
+        $first_joining_stmt = $conn->prepare("SELECT MIN(date_of_joining) FROM librarian WHERE school_id = ? AND date_of_joining IS NOT NULL");
         $first_joining_stmt->execute([$school_id]);
         $first_joining_date = $first_joining_stmt->fetchColumn();
 
-        // Determine the start date for the check: either the 1st of the month or the first librarian's joining date, whichever is later.
         $start_of_month = new DateTime($target_date->format('Y-m-01'));
         $start_date = ($first_joining_date && new DateTime($first_joining_date) > $start_of_month) ? new DateTime($first_joining_date) : $start_of_month;
 
-        // Only perform the check if there are past dates to validate.
         if ($start_date < $target_date) {
             $interval = new DateInterval('P1D');
             $period = new DatePeriod($start_date, $interval, $target_date);
             
-            // Prepare statements outside the loop for better performance.
             $att_count_stmt = $conn->prepare("SELECT COUNT(librarian_id) FROM librarian_attendance WHERE school_id = ? AND attendance_date = ?");
             $holiday_check_stmt = $conn->prepare("SELECT COUNT(*) FROM holidays WHERE school_id = ? AND holiday_date = ?");
-            // New statement to count librarians who should have been present on a given date.
             $lib_expected_stmt = $conn->prepare("SELECT COUNT(id) FROM librarian WHERE school_id = ? AND (date_of_joining IS NULL OR date_of_joining <= ?)");
 
             foreach ($period as $date) {
-                if (date('N', $date->getTimestamp()) < 7) { // Check only Mon-Sat
+                if (date('N', $date->getTimestamp()) < 7) {
                     $date_to_check = $date->format('Y-m-d');
                     
-                    // Skip holidays
                     $holiday_check_stmt->execute([$school_id, $date_to_check]);
                     if ($holiday_check_stmt->fetchColumn() > 0) {
                         continue; 
                     }
                     
-                    // Get the number of librarians expected to be working on this date
                     $lib_expected_stmt->execute([$school_id, $date_to_check]);
                     $expected_librarians = $lib_expected_stmt->fetchColumn();
 
-                    // If no librarians were employed yet on this date, skip.
                     if ($expected_librarians == 0) {
                         continue;
                     }
 
-                    // Get the number of librarians with recorded attendance
                     $att_count_stmt->execute([$school_id, $date_to_check]);
                     $recorded_librarians = $att_count_stmt->fetchColumn();
                     
-                    // If recorded attendance is less than expected, flag the date as missing.
                     if ($recorded_librarians < $expected_librarians) {
                         $all_missing_dates[] = $date_to_check;
                     }
@@ -108,7 +100,6 @@ try {
             }
         }
     }
-    // --- END of Modification ---
     
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($all_missing_dates) && $school_id && !$is_holiday) {
         $attendance_date = $_POST['attendance_date'];
@@ -140,9 +131,11 @@ try {
     }
     
     $librarians_with_details = [];
+    $earliest_joining_date_school = null;
+
     if (empty($errorMessage) && empty($all_missing_dates) && $school_id && !$is_holiday) {
         try {
-            $sql = "SELECT id, librarian_name FROM librarian WHERE school_id = ? ORDER BY librarian_name ASC";
+            $sql = "SELECT id, librarian_name, date_of_joining FROM librarian WHERE school_id = ? ORDER BY librarian_name ASC";
             $lib_stmt = $conn->prepare($sql);
             $lib_stmt->execute([$school_id]);
             $all_librarians = $lib_stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -151,7 +144,13 @@ try {
             $att_stmt->execute([$school_id, $attendance_date_display]);
             $attendance_records_raw = $att_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
+            $earliest_joining_date_school = new DateTime();
+            $found_first = false;
             foreach ($all_librarians as $librarian) {
+                if ($librarian['date_of_joining'] && (!$found_first || new DateTime($librarian['date_of_joining']) < $earliest_joining_date_school)) {
+                    $earliest_joining_date_school = new DateTime($librarian['date_of_joining']);
+                    $found_first = true;
+                }
                 $librarian['status'] = $attendance_records_raw[$librarian['id']] ?? 'Present';
                 $librarians_with_details[] = $librarian;
             }
@@ -178,16 +177,16 @@ if (!is_ajax_request()) {
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-    </head>
+</head>
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
-<?php
-}
-?>
+                <?php
+                }
+                ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Update Librarian Attendance</h1>
@@ -196,7 +195,6 @@ if (!is_ajax_request()) {
 
                     <?php if (!empty($errorMessage)): ?>
                         <div class="alert alert-danger"><?php echo htmlspecialchars($errorMessage); ?></div>
-                    <?php // NEW: Logic to show holiday message or attendance form ?>
                     <?php elseif ($is_holiday): ?>
                         <div class="card shadow mb-4">
                              <div class="card-header py-3">
@@ -230,13 +228,15 @@ if (!is_ajax_request()) {
                                 </h6>
                             </div>
                             <div class="card-body">
-                                <p class="text-info">Bulk Edit Mode: All librarians are editable.</p>
+                                <p class="text-info">
+                                    <?php echo $edit_librarian_id ? 'Editing a single librarian\'s attendance.' : 'Bulk Edit Mode: All librarians are editable.'; ?>
+                                </p>
                                 <form method="POST" action="">
                                     <div class="d-flex align-items-center justify-content-between mb-4">
                                         <div class="form-inline">
                                             <div class="form-group">
                                                 <label for="attendance_date" class="mr-2">Date:</label>
-                                                <input type="date" id="attendance_date" name="attendance_date" class="form-control" value="<?php echo htmlspecialchars($attendance_date_display); ?>" max="<?php echo $current_date; ?>">
+                                                <input type="date" id="attendance_date" name="attendance_date" class="form-control" value="<?php echo htmlspecialchars($attendance_date_display); ?>" min="<?php echo $earliest_joining_date_school->format('Y-m-d'); ?>" max="<?php echo $current_date; ?>">
                                             </div>
                                         </div>
                                         <div class="form-group">
@@ -248,22 +248,34 @@ if (!is_ajax_request()) {
                                         <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
                                             <thead><tr><th>Librarian Name</th><th>Status</th></tr></thead>
                                             <tbody>
-                                                <?php foreach ($librarians_with_details as $librarian): ?>
-                                                    <tr>
+                                                <?php foreach ($librarians_with_details as $librarian):
+                                                    $is_pre_joining = $librarian['date_of_joining'] && $attendance_date_display < $librarian['date_of_joining'];
+                                                    $is_disabled = ($edit_librarian_id && $librarian['id'] != $edit_librarian_id) || $is_pre_joining;
+                                                ?>
+                                                    <tr <?php echo $is_disabled ? 'class="blurred-row"' : ''; ?>>
                                                         <td><?php echo htmlspecialchars($librarian['librarian_name']); ?></td>
                                                         <td>
-                                                            <div class="form-check form-check-inline">
-                                                                <input class="form-check-input" type="radio" name="attendance[<?php echo $librarian['id']; ?>]" value="Present" <?php if ($librarian['status'] == 'Present') echo 'checked'; ?>><label class="form-check-label">Present</label>
-                                                            </div>
-                                                            <div class="form-check form-check-inline">
-                                                                <input class="form-check-input" type="radio" name="attendance[<?php echo $librarian['id']; ?>]" value="Absent" <?php if ($librarian['status'] == 'Absent') echo 'checked'; ?>><label class="form-check-label">Absent</label>
-                                                            </div>
-                                                            <div class="form-check form-check-inline">
-                                                                <input class="form-check-input" type="radio" name="attendance[<?php echo $librarian['id']; ?>]" value="Half Day" <?php if ($librarian['status'] == 'Half Day') echo 'checked'; ?>><label class="form-check-label">Half Day</label>
-                                                            </div>
-                                                            <div class="form-check form-check-inline">
-                                                                <input class="form-check-input" type="radio" name="attendance[<?php echo $librarian['id']; ?>]" value="Leave" <?php if ($librarian['status'] == 'Leave') echo 'checked'; ?>><label class="form-check-label">Leave</label>
-                                                            </div>
+                                                            <?php if ($is_pre_joining): ?>
+                                                                <span class='badge badge-secondary p-2'>Joined on <?php echo date('d M, Y', strtotime($librarian['date_of_joining'])); ?></span>
+                                                                <input type="hidden" name="attendance[<?php echo $librarian['id']; ?>]" value="Not Applicable">
+                                                            <?php else: ?>
+                                                                <div class="form-check form-check-inline">
+                                                                    <input class="form-check-input" type="radio" name="attendance[<?php echo $librarian['id']; ?>]" value="Present" <?php if ($librarian['status'] == 'Present') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
+                                                                    <label class="form-check-label">Present</label>
+                                                                </div>
+                                                                <div class="form-check form-check-inline">
+                                                                    <input class="form-check-input" type="radio" name="attendance[<?php echo $librarian['id']; ?>]" value="Absent" <?php if ($librarian['status'] == 'Absent') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
+                                                                    <label class="form-check-label">Absent</label>
+                                                                </div>
+                                                                <div class="form-check form-check-inline">
+                                                                    <input class="form-check-input" type="radio" name="attendance[<?php echo $librarian['id']; ?>]" value="Half Day" <?php if ($librarian['status'] == 'Half Day') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
+                                                                    <label class="form-check-label">Half Day</label>
+                                                                </div>
+                                                                <div class="form-check form-check-inline">
+                                                                    <input class="form-check-input" type="radio" name="attendance[<?php echo $librarian['id']; ?>]" value="Leave" <?php if ($librarian['status'] == 'Leave') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
+                                                                    <label class="form-check-label">Leave</label>
+                                                                </div>
+                                                            <?php endif; ?>
                                                         </td>
                                                     </tr>
                                                 <?php endforeach; ?>
@@ -286,6 +298,13 @@ if (!is_ajax_request()) {
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php"?>
+    <style>
+        .blurred-row {
+            filter: blur(1px);
+            pointer-events: none;
+            user-select: none;
+        }
+    </style>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
@@ -306,6 +325,10 @@ if (!is_ajax_request()) {
             $('#attendance_date').on('change', function() {
                 var selectedDate = $(this).val();
                 var redirectUrl = 'librarian_attendance.php?attendance_date=' + selectedDate;
+                var editId = '<?php echo $edit_librarian_id; ?>';
+                if (editId) {
+                    redirectUrl += '&edit_librarian_id=' + editId;
+                }
                 window.location.href = redirectUrl;
             });
         });

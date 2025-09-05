@@ -1,5 +1,24 @@
 <?php
-// Assuming 'session_start()' is in 'connect.php' or another global include.
+// --- PDF GENERATION SETUP ---
+require_once '../../includes/dompdf/autoload.inc.php';
+use Dompdf\Dompdf;
+use Dompdf\Options;
+
+// --- PDF GENERATION LOGIC ---
+if (isset($_POST['download_pdf'])) {
+    $options = new Options();
+    $options->set('isRemoteEnabled', true);
+    $dompdf = new Dompdf($options);
+    $html = $_POST['pdf_html'];
+    $filename = $_POST['pdf_filename'] ?? 'Holiday_List.pdf';
+
+    $dompdf->loadHtml($html);
+    $dompdf->setPaper('A4', 'portrait');
+    $dompdf->render();
+    $dompdf->stream($filename, ["Attachment" => 1]);
+    exit();
+}
+
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php';
@@ -16,17 +35,19 @@ if ($role !== 'principal' || !$userId) {
 }
 
 $school_id = null;
+$school_name = "School Management System";
 $errorMessage = '';
 $successMessage = '';
 $holidays = [];
 $available_years = [];
 
 try {
-    // Fetch the principal's assigned school ID.
-    $stmt_school = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
+    // Fetch the principal's assigned school ID and name
+    $stmt_school = $conn->prepare("SELECT s.id, s.school_name FROM principal p JOIN school s ON p.school_id = s.id WHERE p.id = ?");
     $stmt_school->execute([$userId]);
     $principalDetails = $stmt_school->fetch(PDO::FETCH_ASSOC);
-    $school_id = $principalDetails['school_id'] ?? null;
+    $school_id = $principalDetails['id'] ?? null;
+    $school_name = $principalDetails['school_name'] ?? 'School Management System';
 
     if (!$school_id) {
         throw new Exception("Access Denied: You are not assigned to a school.");
@@ -66,17 +87,13 @@ try {
     }
 
     // --- FETCH DATA FOR DISPLAY ---
-
-    // Get all unique years that have holidays, for the filter dropdown (sorted chronologically).
     $stmt_years = $conn->prepare("SELECT DISTINCT EXTRACT(YEAR FROM holiday_date) as year FROM holidays WHERE school_id = ? ORDER BY year ASC");
     $stmt_years->execute([$school_id]);
     $available_years = $stmt_years->fetchAll(PDO::FETCH_COLUMN, 0);
 
-    // Determine the selected year for filtering. Default to the current year if available, otherwise 'all'.
     $current_year = date('Y');
     $selected_year = isset($_GET['year']) ? $_GET['year'] : (in_array($current_year, $available_years) ? $current_year : 'all');
 
-    // Build the main query to fetch holidays.
     $params = [$school_id];
     $query = "SELECT id, holiday_date, description FROM holidays WHERE school_id = ?";
 
@@ -85,7 +102,6 @@ try {
         $params[] = $selected_year;
     }
 
-    // Sort from Jan 1 to Dec 31 by ordering by date in ASCENDING order.
     $query .= " ORDER BY holiday_date ASC";
     $stmt_holidays = $conn->prepare($query);
     $stmt_holidays->execute($params);
@@ -142,20 +158,30 @@ if (!is_ajax_request()) {
                     <div class="card shadow mb-4">
                         <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                             <h6 class="m-0 font-weight-bold text-primary">List of Festivals</h6>
-                            <form action="manage_holidays.php" method="GET" class="form-inline">
-                                <div class="form-group">
-                                    <label for="year" class="mr-2">Year:</label>
-                                    <select name="year" id="year" class="form-control form-control-sm" onchange="this.form.submit()">
-                                        <option value="all" <?php echo ($selected_year == 'all') ? 'selected' : ''; ?>>All Years</option>
-                                        <?php foreach ($available_years as $year): ?>
-                                            <option value="<?php echo $year; ?>" <?php echo ($selected_year == $year) ? 'selected' : ''; ?>><?php echo $year; ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                            </form>
+                            <div class="d-flex align-items-center">
+                                <form id="download-form" method="POST" action="manage_holidays.php">
+                                    <input type="hidden" name="download_pdf" value="1">
+                                    <input type="hidden" id="pdf_html" name="pdf_html">
+                                    <input type="hidden" id="pdf_filename" name="pdf_filename">
+                                    <button type="button" id="download-list-btn" class="btn btn-primary btn-sm mr-2" <?php echo empty($holidays) ? 'disabled' : ''; ?>>
+                                        <i class="fas fa-download"></i> Download List
+                                    </button>
+                                </form>
+                                <form action="manage_holidays.php" method="GET" class="form-inline">
+                                    <div class="form-group">
+                                        <label for="year" class="mr-2">Year:</label>
+                                        <select name="year" id="year" class="form-control form-control-sm" onchange="this.form.submit()">
+                                            <option value="all" <?php echo ($selected_year == 'all') ? 'selected' : ''; ?>>All Years</option>
+                                            <?php foreach ($available_years as $year): ?>
+                                                <option value="<?php echo $year; ?>" <?php echo ($selected_year == $year) ? 'selected' : ''; ?>><?php echo $year; ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                         <div class="card-body">
-                            <div class="table-responsive">
+                            <div id="holiday-table-for-pdf">
                                 <table class="table table-bordered" width="100%" cellspacing="0">
                                     <thead>
                                         <tr>
@@ -172,7 +198,6 @@ if (!is_ajax_request()) {
                                             $last_year = null;
                                             foreach ($holidays as $holiday):
                                                 $current_year_for_row = date('Y', strtotime($holiday['holiday_date']));
-                                                // If viewing 'All Years' and the year changes, print a year header row.
                                                 if ($selected_year === 'all' && $current_year_for_row !== $last_year) {
                                                     echo '<tr><td colspan="3" class="text-center font-weight-bold bg-light">' . $current_year_for_row . '</td></tr>';
                                                     $last_year = $current_year_for_row;
@@ -204,13 +229,77 @@ if (!is_ajax_request()) {
             <?php include_once '../../includes/footer.php'; ?>
         </div>
     </div>
-    
+
     <?php include_once "../../includes/logout_modal.php"?>
-    
+
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
+    <script>
+    document.getElementById('download-list-btn').addEventListener('click', function() {
+        const table = document.getElementById('holiday-table-for-pdf');
+        
+        // Clone the table element so we can modify it without affecting the original page layout
+        const tableClone = table.cloneNode(true);
+        
+        // Remove the 'Action' column headers
+        const headerRow = tableClone.querySelector('thead tr');
+        if (headerRow) {
+            const actionHeader = headerRow.querySelector('th:last-child');
+            if (actionHeader && actionHeader.textContent.trim() === 'Action') {
+                actionHeader.remove();
+            }
+        }
+        
+        // Remove the 'Action' column data cells
+        const bodyRows = tableClone.querySelectorAll('tbody tr');
+        bodyRows.forEach(row => {
+            const actionCell = row.querySelector('td:last-child');
+            // Ensure we don't accidentally remove a column from a year header row
+            if (actionCell && actionCell.parentElement.querySelectorAll('td').length > 2) {
+                actionCell.remove();
+            }
+        });
+
+        const year = document.getElementById('year').value;
+        const schoolName = "<?php echo htmlspecialchars($school_name); ?>";
+
+        const pdfHtml = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Holiday List</title>
+                <style>
+                    body { font-family: sans-serif; margin: 20px; }
+                    .header { text-align: center; margin-bottom: 20px; }
+                    h1 { font-size: 1.5rem; margin: 0; }
+                    h2 { font-size: 1.2rem; font-weight: normal; margin-top: 5px; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
+                    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                    th { background-color: #f2f2f2; font-weight: bold; }
+                    .text-center { text-align: center; }
+                    .font-weight-bold { font-weight: bold; }
+                    .bg-light { background-color: #f8f9fa; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>Holiday List</h1>
+                    <h2>For ${schoolName}</h2>
+                    <h3>Year: ${year === 'all' ? 'All Years' : year}</h3>
+                </div>
+                ${tableClone.outerHTML}
+            </body>
+            </html>
+        `;
+
+        const filename_part = year === 'all' ? 'AllYears' : year;
+        document.getElementById('pdf_html').value = pdfHtml;
+        document.getElementById('pdf_filename').value = 'Holiday_List_' + filename_part + '.pdf';
+        document.getElementById('download-form').submit();
+    });
+    </script>
 </body>
 </html>
 <?php

@@ -8,6 +8,9 @@ $userId = null;
 $errorMessage = '';
 $principalDetails = null;
 $attendance_records = [];
+$is_holiday_for_date = false;
+$holiday_description_for_date = '';
+$earliest_joining_date = null;
 
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
@@ -28,22 +31,34 @@ try {
 
     if (!$principalDetails || empty($principalDetails['school_id'])) {
         $errorMessage = "Access Denied: You are not assigned to a school.";
+    } else {
+        // Fetch the earliest joining date for a teacher in this school
+        $joining_stmt = $conn->prepare("SELECT MIN(date_of_joining) FROM teacher WHERE school_id = ? AND date_of_joining IS NOT NULL");
+        $joining_stmt->execute([$principalDetails['school_id']]);
+        $earliest_joining_date = $joining_stmt->fetchColumn();
     }
 
     $current_date = date('Y-m-d');
-    
     $attendance_date_display = $_GET['date'] ?? $current_date;
 
-    // Server-side check to prevent future dates
     if ($attendance_date_display > $current_date) {
         $attendance_date_display = $current_date;
         $errorMessage = "You cannot view attendance for a future date. The date has been reset to today.";
     }
 
     if (empty($errorMessage)) {
+        $holiday_check_stmt = $conn->prepare("SELECT description FROM holidays WHERE holiday_date = ? AND school_id = ?");
+        $holiday_check_stmt->execute([$attendance_date_display, $principalDetails['school_id']]);
+        $holiday_info = $holiday_check_stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($holiday_info) {
+            $is_holiday_for_date = true;
+            $holiday_description_for_date = $holiday_info['description'];
+        }
+
         $stmt_att = $conn->prepare("
             SELECT 
-                t.id AS teacher_id, t.teacher_name, t.batch, t.class_teacher, t.class_teacher_std, ta.status 
+                t.id AS teacher_id, t.teacher_name, t.batch, t.class_teacher, t.class_teacher_std, t.date_of_joining, ta.status 
             FROM teacher t
             LEFT JOIN teacher_attendance ta ON t.id = ta.teacher_id AND ta.attendance_date = ?
             WHERE t.school_id = ?
@@ -61,7 +76,6 @@ if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <title>View Teacher Attendance - School Management System</title>
@@ -72,16 +86,15 @@ if (!is_ajax_request()) {
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
-
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
-<?php
-}
-?>
+                <?php
+                }
+                ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">Teacher Attendance History</h1>
 
@@ -104,7 +117,7 @@ if (!is_ajax_request()) {
                                     <form method="GET" action="" class="form-inline">
                                         <div class="form-group">
                                             <label for="date" class="mr-2">Date:</label>
-                                            <input type="date" id="date" name="date" class="form-control" value="<?php echo htmlspecialchars($attendance_date_display); ?>" max="<?php echo $current_date; ?>">
+                                            <input type="date" id="date" name="date" class="form-control" value="<?php echo htmlspecialchars($attendance_date_display); ?>" min="<?php echo htmlspecialchars($earliest_joining_date); ?>" max="<?php echo $current_date; ?>">
                                         </div>
                                         <button type="submit" class="btn btn-primary ml-2"><i class="fas fa-search fa-sm"></i> View</button>
                                     </form>
@@ -130,18 +143,31 @@ if (!is_ajax_request()) {
                                                         <td><?php echo htmlspecialchars($record['batch']); ?></td>
                                                         <td><?php if ($record['class_teacher']): ?>Yes (Std: <?php echo htmlspecialchars($record['class_teacher_std']); ?>)<?php else: ?>No<?php endif; ?></td>
                                                         <td>
-                                                            <?php 
-                                                                $status = $record['status'] ?? 'Not Marked';
-                                                                $badge_class = 'badge-secondary';
-                                                                if ($status == 'Present') $badge_class = 'badge-success';
-                                                                if ($status == 'Absent') $badge_class = 'badge-danger';
-                                                                if ($status == 'Leave') $badge_class = 'badge-warning';
-                                                                if ($status == 'Half Day') $badge_class = 'badge-info';
-                                                                echo "<span class='badge {$badge_class} p-2'>" . htmlspecialchars($status) . "</span>"; 
+                                                            <?php
+                                                                $is_pre_joining = $record['date_of_joining'] && $attendance_date_display < $record['date_of_joining'];
+                                                                $is_editable = true;
+                                                                
+                                                                if ($is_pre_joining) {
+                                                                    $status = 'Joined on ' . date('d M, Y', strtotime($record['date_of_joining']));
+                                                                    $badge_class = 'badge-secondary';
+                                                                    $is_editable = false;
+                                                                } elseif ($is_holiday_for_date) {
+                                                                    $status = 'Holiday';
+                                                                    $badge_class = 'badge-primary';
+                                                                    $is_editable = false;
+                                                                } else {
+                                                                    $status = $record['status'] ?? 'Not Marked';
+                                                                    $badge_class = 'badge-secondary';
+                                                                    if ($status == 'Present') $badge_class = 'badge-success';
+                                                                    if ($status == 'Absent') $badge_class = 'badge-danger';
+                                                                    if ($status == 'Leave') $badge_class = 'badge-warning';
+                                                                    if ($status == 'Half Day') $badge_class = 'badge-info';
+                                                                }
+                                                                echo "<span class='badge {$badge_class} p-2'>" . htmlspecialchars($status) . "</span>";
                                                             ?>
                                                         </td>
                                                         <td>
-                                                            <a href="teacher_attendence.php?attendance_date=<?php echo htmlspecialchars($attendance_date_display); ?>&edit_teacher_id=<?php echo $record['teacher_id']; ?>" class="btn btn-sm btn-warning">
+                                                            <a href="teacher_attendence.php?attendance_date=<?php echo htmlspecialchars($attendance_date_display); ?>&edit_teacher_id=<?php echo $record['teacher_id']; ?>" class="btn btn-sm btn-warning <?php echo $is_editable ? '' : 'disabled'; ?>">
                                                                 <i class="fas fa-edit"></i> Edit
                                                             </a>
                                                         </td>
@@ -176,7 +202,7 @@ if (!is_ajax_request()) {
     <script>
         $(document).ready(function() {
             $('#dataTable').DataTable({
-                "order": [] // Disable initial sorting
+                "order": []
             });
         });
     </script>
