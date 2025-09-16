@@ -87,10 +87,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email']) && isset($_PO
                                     login_longitude = EXCLUDED.login_longitude, login_time = EXCLUDED.login_time';
                     $att_stmt = $conn->prepare($att_query);
                     $att_stmt->execute([$user['id'], $user['school_id'], date("Y-m-d"), $attendance_status, $user_lat, $user_lon]);
-                }
-
-                // --- START OF THE FIX ---
-                
+                }                
                 // User profile data is now fetched from the single initial query
                 $user_name = $user[$user['role'] . '_name'] ?? $email;
                 $profile_image_raw = $user[$user['role'] . '_image'] ?? null;
