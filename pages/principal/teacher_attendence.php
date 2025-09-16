@@ -12,8 +12,8 @@ $errorMessage = '';
 $principalDetails = null;
 $teachers_with_details = [];
 $all_missing_dates = [];
-$is_holiday = false; 
-$holiday_description = ''; 
+$is_holiday = false;
+$holiday_description = '';
 $edit_teacher_id = isset($_GET['edit_teacher_id']) ? $_GET['edit_teacher_id'] : null;
 $earliest_joining_date_school = null;
 
@@ -36,7 +36,7 @@ try {
     if (!$principalDetails || empty($principalDetails['school_id'])) {
         $errorMessage = "Access Denied: You are not assigned to a school.";
     }
-    
+
     $current_date = date('Y-m-d');
     $attendance_date_display = isset($_GET['attendance_date']) ? $_GET['attendance_date'] : $current_date;
 
@@ -58,9 +58,10 @@ try {
     // --- Mandatory Past Attendance Check ---
     if (empty($errorMessage) && !$is_holiday) {
         $target_date = new DateTime($attendance_date_display);
-        
-        $first_joining_stmt = $conn->prepare("SELECT MIN(date_of_joining) FROM teacher WHERE school_id = ? AND date_of_joining IS NOT NULL");
-        $first_joining_stmt->execute([$principalDetails['school_id']]);
+
+        // Corrected query to prevent future dates from breaking the min attribute
+        $first_joining_stmt = $conn->prepare("SELECT MIN(date_of_joining) FROM teacher WHERE school_id = ? AND date_of_joining IS NOT NULL AND date_of_joining <= ?");
+        $first_joining_stmt->execute([$principalDetails['school_id'], $current_date]);
         $first_joining_date = $first_joining_stmt->fetchColumn();
 
         $start_of_month = new DateTime($target_date->format('Y-m-01'));
@@ -85,14 +86,14 @@ try {
 
                     $teacher_expected_stmt->execute([$principalDetails['school_id'], $date_to_check]);
                     $expected_teachers = $teacher_expected_stmt->fetchColumn();
-                    
+
                     if ($expected_teachers == 0) {
                         continue;
                     }
 
                     $att_count_stmt->execute([$principalDetails['school_id'], $date_to_check]);
                     $recorded_teachers = $att_count_stmt->fetchColumn();
-                    
+
                     if ($recorded_teachers < $expected_teachers) {
                         $all_missing_dates[] = $date_to_check;
                     }
@@ -104,17 +105,18 @@ try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($all_missing_dates) && !$is_holiday) {
         $conn->beginTransaction();
 
-        $upsert_sql = "INSERT INTO teacher_attendance (teacher_id, school_id, attendance_date, status, marked_by_user_id) 
+        $upsert_sql = "INSERT INTO teacher_attendance (teacher_id, school_id, attendance_date, status, marked_by_user_id)
                        VALUES (?, ?, ?, ?, ?)
-                       ON CONFLICT (teacher_id, attendance_date) 
+                       ON CONFLICT (teacher_id, attendance_date)
                        DO UPDATE SET status = EXCLUDED.status, marked_by_user_id = EXCLUDED.marked_by_user_id";
         $stmt_upsert = $conn->prepare($upsert_sql);
-        
+
         $success_message = '';
         if (isset($_POST['attendance'])) {
             $attendance_data = $_POST['attendance'];
             $attendance_date = $_POST['attendance_date'];
             foreach ($attendance_data as $teacher_id => $status) {
+                // Ensure all five parameters are always passed
                 $stmt_upsert->execute([$teacher_id, $principalDetails['school_id'], $attendance_date, $status, $userId]);
             }
             $success_message = "Attendance for " . htmlspecialchars($attendance_date) . " has been successfully saved!";
@@ -142,7 +144,7 @@ try {
                 $found_first = true;
             }
         }
-        
+
         $att_stmt = $conn->prepare("SELECT status FROM teacher_attendance WHERE teacher_id = ? AND attendance_date = ?");
         foreach ($teachers_result as $teacher) {
             $att_stmt->execute([$teacher['id'], $attendance_date_param]);
@@ -230,7 +232,7 @@ if (!is_ajax_request()) {
                                     <div class="form-inline">
                                         <div class="form-group">
                                             <label for="attendance_date" class="mr-2">Date:</label>
-                                            <input type="date" id="attendance_date" name="attendance_date" class="form-control" value="<?php echo htmlspecialchars($attendance_date_display); ?>" min="<?php echo $earliest_joining_date_school->format('Y-m-d'); ?>" max="<?php echo $current_date; ?>">
+                                            <input type="date" id="attendance_date" name="attendance_date" class="form-control" value="<?php echo htmlspecialchars($attendance_date_display); ?>" min="<?php echo $earliest_joining_date_school ? $earliest_joining_date_school->format('Y-m-d') : ''; ?>" max="<?php echo $current_date; ?>">
                                         </div>
                                     </div>
                                     <div class="form-group">
@@ -251,9 +253,13 @@ if (!is_ajax_request()) {
                                                 $is_pre_joining = $teacher['date_of_joining'] && $attendance_date_display < $teacher['date_of_joining'];
                                                 $is_disabled = ($edit_teacher_id && $teacher['id'] != $edit_teacher_id) || $is_pre_joining;
                                             ?>
-                                                <tr <?php echo $is_disabled ? 'class="blurred-row"' : ''; ?>>
-                                                    <td><?php echo htmlspecialchars($teacher['teacher_name']); ?></td>
-                                                    <td><?php echo htmlspecialchars($teacher['batch']); ?></td>
+                                                <tr>
+                                                    <td>
+                                                        <span class="<?php echo $is_disabled ? 'disabled-text' : ''; ?>"><?php echo htmlspecialchars($teacher['teacher_name']); ?></span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="<?php echo $is_disabled ? 'disabled-text' : ''; ?>"><?php echo htmlspecialchars($teacher['batch']); ?></span>
+                                                    </td>
                                                     <td>
                                                         <?php if ($is_pre_joining): ?>
                                                             <span class='badge badge-secondary p-2'>Joined on <?php echo date('d M, Y', strtotime($teacher['date_of_joining'])); ?></span>
@@ -261,21 +267,23 @@ if (!is_ajax_request()) {
                                                         <?php else:
                                                             $current_status = $teacher['status'];
                                                         ?>
-                                                            <div class="form-check form-check-inline">
-                                                                <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Present" <?php if ($current_status == 'Present') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
-                                                                <label class="form-check-label">Present</label>
-                                                            </div>
-                                                            <div class="form-check form-check-inline">
-                                                                <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Absent" <?php if ($current_status == 'Absent') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
-                                                                <label class="form-check-label">Absent</label>
-                                                            </div>
-                                                            <div class="form-check form-check-inline">
-                                                                <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Half Day" <?php if ($current_status == 'Half Day') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
-                                                                <label class="form-check-label">Half Day</label>
-                                                            </div>
-                                                            <div class="form-check form-check-inline">
-                                                                <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Leave" <?php if ($current_status == 'Leave') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
-                                                                <label class="form-check-label">Leave</label>
+                                                            <div class="<?php echo $is_disabled ? 'disabled-row-content' : ''; ?>">
+                                                                <div class="form-check form-check-inline">
+                                                                    <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Present" <?php if ($current_status == 'Present') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
+                                                                    <label class="form-check-label">Present</label>
+                                                                </div>
+                                                                <div class="form-check form-check-inline">
+                                                                    <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Absent" <?php if ($current_status == 'Absent') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
+                                                                    <label class="form-check-label">Absent</label>
+                                                                </div>
+                                                                <div class="form-check form-check-inline">
+                                                                    <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Half Day" <?php if ($current_status == 'Half Day') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
+                                                                    <label class="form-check-label">Half Day</label>
+                                                                </div>
+                                                                <div class="form-check form-check-inline">
+                                                                    <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Leave" <?php if ($current_status == 'Leave') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
+                                                                    <label class="form-check-label">Leave</label>
+                                                                </div>
                                                             </div>
                                                         <?php endif; ?>
                                                     </td>
@@ -301,8 +309,11 @@ if (!is_ajax_request()) {
     </div>
     <?php include_once "../../includes/logout_modal.php" ?>
     <style>
-        .blurred-row {
-            filter: blur(1px);
+        .disabled-text {
+            color: #6c757d;
+        }
+        .disabled-row-content {
+            opacity: 0.6;
             pointer-events: none;
             user-select: none;
         }
