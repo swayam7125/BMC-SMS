@@ -1,8 +1,18 @@
+// Global variable to track initialization
+var isInitialized = false;
+
 $(document).ready(function () {
+  // Initialize only once
+  if (isInitialized) {
+    return;
+  }
+  isInitialized = true;
+
   // Convert all internal links to AJAX links
   function convertInternalLinks() {
     $('a[href^="/BMC-SMS/"]')
       .not("[data-no-ajax]")
+      .not("[data-ajax-link]") // Don't convert already converted links
       .each(function () {
         $(this).attr("data-ajax-link", $(this).attr("href"));
       });
@@ -74,16 +84,21 @@ $(document).ready(function () {
         "X-Requested-With": "XMLHttpRequest",
       },
       success: function (response) {
-        $("#main-content").html(response);
+        // Only update the page-content div
+        $("#page-content").html(response);
+        
+        // Initialize plugins after content update
         initializePlugins();
-        convertInternalLinks();
-
-        // Update active states in sidebar
+        
+        // Update sidebar active state
         updateSidebarActiveState(url);
       },
       error: function (xhr, status, error) {
         showErrorMessage(error);
       },
+      complete: function() {
+        hideLoadingSpinner();
+      }
     });
   }
 
@@ -130,8 +145,10 @@ $(document).ready(function () {
     $(document).trigger("contentLoaded");
   }
 
-  // Load initial page if not on the index
-  if (
+  // Only setup AJAX navigation after the first load
+  if (!window.initialPageLoadComplete) {
+    window.initialPageLoadComplete = true;
+  } else if (
     window.location.pathname !== "/" &&
     window.location.pathname !== "/index.php"
   ) {

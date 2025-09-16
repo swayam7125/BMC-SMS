@@ -59,93 +59,85 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email']) && isset($_PO
         $stmt->execute([$email]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($user) {
-            // STEP 1: User (email) exists. Now, verify the password.
-            if (password_verify($password, $user['password'])) {
-                // STEP 2: Password is correct. Now, check the account status.
-                if ($user['account_status'] === 'suspended') {
-                    $response = ['status' => 'error', 'message' => 'Your account has been suspended.'];
-                } else {
-                    // SUCCESS: All checks passed. Proceed with login.
-
-                    // Principal Attendance Logic (Now requires fewer queries)
-                    if ($user['role'] === 'principal' && $user['school_id']) {
-                        $school_loc_stmt = $conn->prepare("SELECT latitude, longitude FROM school WHERE id = ?");
-                        $school_loc_stmt->execute([$user['school_id']]);
-                        $school_location = $school_loc_stmt->fetch(PDO::FETCH_ASSOC);
-
-                        $location_ok = false;
-                        if ($user_lat && $user_lon && $school_location && !empty($school_location['latitude'])) {
-                            $distance = haversine_distance($user_lat, $user_lon, $school_location['latitude'], $school_location['longitude']);
-                            if ($distance <= 300) $location_ok = true;
-                        }
-
-                        $current_hour = (int)date('H');
-                        $time_ok = ($user['batch'] === 'Morning' && $current_hour < 10) || ($user['batch'] === 'Evening' && $current_hour < 14);
-
-                        $attendance_status = ($location_ok && $time_ok) ? 'Present' : 'Absent';
-
-                        $att_query = 'INSERT INTO principal_attendance (principal_id, school_id, attendance_date, status, login_latitude, login_longitude, login_time)
-                                      VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIME)
-                                      ON CONFLICT (principal_id, attendance_date) DO UPDATE SET
-                                        status = EXCLUDED.status, login_latitude = EXCLUDED.login_latitude,
-                                        login_longitude = EXCLUDED.login_longitude, login_time = EXCLUDED.login_time';
-                        $att_stmt = $conn->prepare($att_query);
-                        $att_stmt->execute([$user['id'], $user['school_id'], date("Y-m-d"), $attendance_status, $user_lat, $user_lon]);
-                    }
-                    // User profile data is now fetched from the single initial query
-                    $user_name = $user[$user['role'] . '_name'] ?? $email;
-                    $profile_image_raw = $user[$user['role'] . '_image'] ?? null;
-
-                    $profile_image_for_cookie = '';
-                    if (!empty($profile_image_raw)) {
-                        // Define the base path that needs to be removed from the start of the string
-                        $base_path_to_remove = '/BMC-SMS/';
-
-                        // Check if the raw path from the DB starts with the base path
-                        if (str_starts_with($profile_image_raw, $base_path_to_remove)) {
-                            // If it does, remove it to create a relative path for the cookie
-                            $profile_image_for_cookie = substr($profile_image_raw, strlen($base_path_to_remove));
-                        } else {
-                            // This is a fallback for other roles if their path is just a filename
-                            $profile_image_for_cookie = 'pages/' . $user['role'] . '/uploads/' . basename($profile_image_raw);
-                        }
-                    }
-
-                    // Set session variables
-                    $_SESSION['user_id'] = $user['id'];
-                    $_SESSION['user_role'] = $user['role'];
-                    $_SESSION['user_name'] = $user_name;
-
-                    // Set secure cookies with proper flags
-                    $cookie_options = [
-                        'expires' => time() + 86400,
-                        'path' => '/',
-                        'domain' => '',
-                        'secure' => true,     // Only send over HTTPS
-                        'httponly' => true,   // Not accessible via JavaScript
-                        'samesite' => 'Lax'   // CSRF protection
-                    ];
-
-                    try {
-                        setcookie("encrypted_user_id", encrypt_id($user['id']), $cookie_options);
-                        setcookie("encrypted_user_role", encrypt_id($user['role']), $cookie_options);
-                        setcookie("encrypted_profile_image", encrypt_id($profile_image_for_cookie), $cookie_options);
-                        setcookie("encrypted_user_name", encrypt_id($user_name), $cookie_options);
-                    } catch (Exception $e) {
-                        error_log("Cookie encryption failed: " . $e->getMessage());
-                        // Continue without cookies, session is still set
-                    }
-
-                    $response = ['status' => 'success', 'redirect' => 'index.php'];
-                }
+        if ($user && password_verify($password, $user['password'])) {
+            if ($user['account_status'] === 'suspended') {
+                $response = ['status' => 'error', 'message' => 'Your account has been suspended.'];
             } else {
-                // ERROR: Password is incorrect for the given email.
-                $response = ['status' => 'error', 'message' => 'The password you entered is incorrect.'];
+                // Principal Attendance Logic (Now requires fewer queries)
+                if ($user['role'] === 'principal' && $user['school_id']) {
+                    $school_loc_stmt = $conn->prepare("SELECT latitude, longitude FROM school WHERE id = ?");
+                    $school_loc_stmt->execute([$user['school_id']]);
+                    $school_location = $school_loc_stmt->fetch(PDO::FETCH_ASSOC);
+
+                    $location_ok = false;
+                    if ($user_lat && $user_lon && $school_location && !empty($school_location['latitude'])) {
+                        $distance = haversine_distance($user_lat, $user_lon, $school_location['latitude'], $school_location['longitude']);
+                        if ($distance <= 300) $location_ok = true;
+                    }
+
+                    $current_hour = (int)date('H');
+                    $time_ok = ($user['batch'] === 'Morning' && $current_hour < 10) || ($user['batch'] === 'Evening' && $current_hour < 14);
+
+                    $attendance_status = ($location_ok && $time_ok) ? 'Present' : 'Absent';
+
+                    $att_query = 'INSERT INTO principal_attendance (principal_id, school_id, attendance_date, status, login_latitude, login_longitude, login_time)
+                                  VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIME)
+                                  ON CONFLICT (principal_id, attendance_date) DO UPDATE SET
+                                    status = EXCLUDED.status, login_latitude = EXCLUDED.login_latitude,
+                                    login_longitude = EXCLUDED.login_longitude, login_time = EXCLUDED.login_time';
+                    $att_stmt = $conn->prepare($att_query);
+                    $att_stmt->execute([$user['id'], $user['school_id'], date("Y-m-d"), $attendance_status, $user_lat, $user_lon]);
+                }
+                // User profile data is now fetched from the single initial query
+                $user_name = $user[$user['role'] . '_name'] ?? $email;
+                $profile_image_raw = $user[$user['role'] . '_image'] ?? null;
+
+                $profile_image_for_cookie = '';
+                if (!empty($profile_image_raw)) {
+                    // Define the base path that needs to be removed from the start of the string
+                    $base_path_to_remove = '/BMC-SMS/';
+
+                    // Check if the raw path from the DB starts with the base path
+                    if (str_starts_with($profile_image_raw, $base_path_to_remove)) {
+                        // If it does, remove it to create a relative path for the cookie
+                        $profile_image_for_cookie = substr($profile_image_raw, strlen($base_path_to_remove));
+                    } else {
+                        // This is a fallback for other roles if their path is just a filename
+                        $profile_image_for_cookie = 'pages/' . $user['role'] . '/uploads/' . basename($profile_image_raw);
+                    }
+                }
+
+                // Set session variables
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['user_role'] = $user['role'];
+                $_SESSION['user_name'] = $user_name;
+
+                // Set secure cookies with proper flags
+                $cookie_options = [
+                    'expires' => time() + 86400,
+                    'path' => '/',
+                    'domain' => '',
+                    'secure' => true,     // Only send over HTTPS
+                    'httponly' => true,   // Not accessible via JavaScript
+                    'samesite' => 'Lax'   // CSRF protection
+                ];
+
+                try {
+                    setcookie("encrypted_user_id", encrypt_id($user['id']), $cookie_options);
+                    setcookie("encrypted_user_role", encrypt_id($user['role']), $cookie_options);
+                    setcookie("encrypted_profile_image", encrypt_id($profile_image_for_cookie), $cookie_options);
+                    setcookie("encrypted_user_name", encrypt_id($user_name), $cookie_options);
+                } catch (Exception $e) {
+                    error_log("Cookie encryption failed: " . $e->getMessage());
+                    // Continue without cookies, session is still set
+                }
+
+                // --- END OF THE FIX ---
+
+                $response = ['status' => 'success', 'redirect' => 'index.php'];
             }
         } else {
-            // ERROR: User (email) does not exist in the database.
-            $response = ['status' => 'error', 'message' => 'The email you entered is not registered.'];
+            $response = ['status' => 'error', 'message' => 'Invalid email or password.'];
         }
     } catch (PDOException $e) {
         error_log($e->getMessage()); // Log error for debugging
@@ -170,7 +162,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email']) && isset($_PO
 
 /**
  * Calculate the distance between two points using the Haversine formula
- * * @param float $lat1 Latitude of first point
+ * 
+ * @param float $lat1 Latitude of first point
  * @param float $lon1 Longitude of first point
  * @param float $lat2 Latitude of second point
  * @param float $lon2 Longitude of second point

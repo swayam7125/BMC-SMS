@@ -155,10 +155,11 @@ document.addEventListener("DOMContentLoaded", function () {
             // Redirect after a short delay
             setTimeout(() => {
               if (data.redirect) {
-                window.location.href = data.redirect;
+                // Force a clean page load by using replace
+                window.location.replace(data.redirect);
               } else {
                 // Fallback redirect
-                window.location.href = "index.php?page=dashboard";
+                window.location.replace("index.php?page=dashboard");
               }
             }, 1500);
           } else {

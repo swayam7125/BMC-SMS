@@ -182,17 +182,19 @@ if (is_ajax_request()) {
 <body id="page-top">
     <div id="wrapper">
 
-        <?php include __DIR__ . '/includes/sidebar.php'; ?>
+        <?php // include __DIR__ . '/includes/sidebar.php'; ?>
 
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include __DIR__ . '/includes/header.php'; ?>
+                <?php // include __DIR__ . '/includes/header.php'; ?>
 
                 <div id="main-content">
                     <?php
-                    // Load the initial page content for the full page load
+                    // For regular page loads, include the content normally
                     if (file_exists($content_file)) {
+                        echo "<div id='page-content'>";
                         include $content_file;
+                        echo "</div>";
                     } else {
                         echo "<div class='container-fluid'>";
                         echo "<div class='alert alert-danger'>";
@@ -204,7 +206,7 @@ if (is_ajax_request()) {
                     ?>
                 </div>
             </div>
-            <?php include __DIR__ . '/includes/footer.php'; ?>
+            <?php // include __DIR__ . '/includes/footer.php'; ?>
         </div>
     </div>
     <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
