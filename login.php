@@ -9,27 +9,29 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Enable error reporting for debugging (remove in production)
+// Enable error reporting for debugging
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// Check if user is already logged in
-if (isset($_COOKIE['encrypted_user_role'])) {
-    header("Location: index.php?page=dashboard");
-    exit;
-}
-
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email']) && isset($_POST['password'])) {
     // Validate CSRF token
     if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
-        Response::error('Invalid request verification.', 403);
+        Response::send([
+            'success' => false,
+            'message' => 'Invalid request verification.'
+        ], 403);
+        exit;
     }
 
     // Validate and sanitize input
     $email = filter_var(trim($_POST['email']), FILTER_SANITIZE_EMAIL);
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        Response::error('Invalid email format.');
+        Response::send([
+            'success' => false,
+            'message' => 'Invalid email format.'
+        ], 400);
+        exit;
     }
 
     $password = trim($_POST['password']);
@@ -37,152 +39,218 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email']) && isset($_PO
     $user_lon = !empty($_POST['longitude']) ? $_POST['longitude'] : null;
 
     try {
-        // OPTIMIZED QUERY - Get user data from all possible tables
-        $query = "SELECT u.id, u.password, u.role, u.account_status,
-                         COALESCE(s.student_name, t.teacher_name, p.principal_name, l.librarian_name, py.payroll_name, 'Super Admin') as user_name,
-                         COALESCE(s.student_image, t.teacher_image, p.principal_image, l.librarian_image, py.payroll_image, NULL) as profile_image
-                  FROM users u
-                  LEFT JOIN student s ON u.id = s.id AND u.role = 'student'
-                  LEFT JOIN teacher t ON u.id = t.id AND u.role = 'teacher'
-                  LEFT JOIN principal p ON u.id = p.id AND u.role = 'principal'
-                  LEFT JOIN librarian l ON u.id = l.id AND u.role = 'librarian'
-                  LEFT JOIN payroll py ON u.id = py.id AND u.role = 'payroll'
-                  WHERE u.email = ?";
+        // OPTIMIZED QUERY: This single query gets all user and role-specific data at once.
+        $query = '
+            SELECT
+                u.id, u.password, u.role, u.account_status,
+                p.principal_name, p.principal_image, p.school_id, p.batch,
+                t.teacher_name, t.teacher_image,
+                s.student_name, s.student_image,
+                l.librarian_name, l.librarian_image
+            FROM users u
+            LEFT JOIN principal p ON u.id = p.id AND u.role = \'principal\'
+            LEFT JOIN teacher t ON u.id = t.id AND u.role = \'teacher\'
+            LEFT JOIN student s ON u.id = s.id AND u.role = \'student\'
+            LEFT JOIN librarian l ON u.id = l.id AND u.role = \'librarian\'
+            WHERE u.email = ?
+        ';
 
         $stmt = $conn->prepare($query);
         $stmt->execute([$email]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($user && password_verify($password, $user['password'])) {
-            // Check account status
-            if ($user['account_status'] !== 'Active') {
-                Response::error('Your account is currently ' . $user['account_status'] . '. Please contact administration.');
+            if ($user['account_status'] === 'suspended') {
+                $response = ['status' => 'error', 'message' => 'Your account has been suspended.'];
+            } else {
+                // Principal Attendance Logic (Now requires fewer queries)
+                if ($user['role'] === 'principal' && $user['school_id']) {
+                    $school_loc_stmt = $conn->prepare("SELECT latitude, longitude FROM school WHERE id = ?");
+                    $school_loc_stmt->execute([$user['school_id']]);
+                    $school_location = $school_loc_stmt->fetch(PDO::FETCH_ASSOC);
+
+                    $location_ok = false;
+                    if ($user_lat && $user_lon && $school_location && !empty($school_location['latitude'])) {
+                        $distance = haversine_distance($user_lat, $user_lon, $school_location['latitude'], $school_location['longitude']);
+                        if ($distance <= 300) $location_ok = true;
+                    }
+
+                    $current_hour = (int)date('H');
+                    $time_ok = ($user['batch'] === 'Morning' && $current_hour < 10) || ($user['batch'] === 'Evening' && $current_hour < 14);
+
+                    $attendance_status = ($location_ok && $time_ok) ? 'Present' : 'Absent';
+
+                    $att_query = 'INSERT INTO principal_attendance (principal_id, school_id, attendance_date, status, login_latitude, login_longitude, login_time)
+                                  VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIME)
+                                  ON CONFLICT (principal_id, attendance_date) DO UPDATE SET
+                                    status = EXCLUDED.status, login_latitude = EXCLUDED.login_latitude,
+                                    login_longitude = EXCLUDED.login_longitude, login_time = EXCLUDED.login_time';
+                    $att_stmt = $conn->prepare($att_query);
+                    $att_stmt->execute([$user['id'], $user['school_id'], date("Y-m-d"), $attendance_status, $user_lat, $user_lon]);
+                }
+                // User profile data is now fetched from the single initial query
+                $user_name = $user[$user['role'] . '_name'] ?? $email;
+                $profile_image_raw = $user[$user['role'] . '_image'] ?? null;
+
+                $profile_image_for_cookie = '';
+                if (!empty($profile_image_raw)) {
+                    // Define the base path that needs to be removed from the start of the string
+                    $base_path_to_remove = '/BMC-SMS/';
+
+                    // Check if the raw path from the DB starts with the base path
+                    if (str_starts_with($profile_image_raw, $base_path_to_remove)) {
+                        // If it does, remove it to create a relative path for the cookie
+                        $profile_image_for_cookie = substr($profile_image_raw, strlen($base_path_to_remove));
+                    } else {
+                        // This is a fallback for other roles if their path is just a filename
+                        $profile_image_for_cookie = 'pages/' . $user['role'] . '/uploads/' . basename($profile_image_raw);
+                    }
+                }
+
+                // Set session variables
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['user_role'] = $user['role'];
+                $_SESSION['user_name'] = $user_name;
+
+                // Set secure cookies with proper flags
+                $cookie_options = [
+                    'expires' => time() + 86400,
+                    'path' => '/',
+                    'domain' => '',
+                    'secure' => true,     // Only send over HTTPS
+                    'httponly' => true,   // Not accessible via JavaScript
+                    'samesite' => 'Lax'   // CSRF protection
+                ];
+
+                try {
+                    setcookie("encrypted_user_id", encrypt_id($user['id']), $cookie_options);
+                    setcookie("encrypted_user_role", encrypt_id($user['role']), $cookie_options);
+                    setcookie("encrypted_profile_image", encrypt_id($profile_image_for_cookie), $cookie_options);
+                    setcookie("encrypted_user_name", encrypt_id($user_name), $cookie_options);
+                } catch (Exception $e) {
+                    error_log("Cookie encryption failed: " . $e->getMessage());
+                    // Continue without cookies, session is still set
+                }
+
+                // --- END OF THE FIX ---
+
+                $response = ['status' => 'success', 'redirect' => 'index.php'];
             }
-
-            // Set session variables (optional, for additional security)
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['user_role'] = $user['role'];
-            $_SESSION['user_name'] = $user['user_name'];
-
-            // Set cookies
-            $cookie_expiry = isset($_POST['remember_me']) ? time() + (86400 * 30) : 0; // 30 days or session
-            $cookie_options = [
-                'expires' => $cookie_expiry,
-                'path' => '/',
-                'domain' => '',
-                'secure' => isset($_SERVER['HTTPS']), // Only over HTTPS if available
-                'httponly' => true, // Prevent JavaScript access
-                'samesite' => 'Lax' // CSRF protection
-            ];
-
-            setcookie('encrypted_user_id', encrypt_id($user['id']), $cookie_options);
-            setcookie('encrypted_user_role', encrypt_id($user['role']), $cookie_options);
-            setcookie('encrypted_user_name', encrypt_id($user['user_name']), $cookie_options);
-            setcookie('encrypted_profile_image', encrypt_id($user['profile_image'] ?? ''), $cookie_options);
-
-            // Log successful login (optional)
-            error_log("Successful login: User ID " . $user['id'] . " (" . $user['user_name'] . ") logged in.");
-
-            // FIXED: Use the routing system instead of direct dashboard.php
-            Response::success(
-                'Login successful! Redirecting...',
-                null,
-                'index.php?page=dashboard'
-            );
         } else {
-            // Log failed login attempt (optional)
-            error_log("Failed login attempt for email: " . $email);
-            Response::error('Invalid email or password.');
+            $response = ['status' => 'error', 'message' => 'Invalid email or password.'];
         }
     } catch (PDOException $e) {
-        // Log the actual error for debugging
-        error_log("Login Database Error: " . $e->getMessage());
-        Response::error('A database error occurred. Please try again later.', 500);
-    } catch (Exception $e) {
-        // Log any other errors
-        error_log("Login General Error: " . $e->getMessage());
-        Response::error('An unexpected error occurred. Please try again later.', 500);
+        error_log($e->getMessage()); // Log error for debugging
+        $response = ['status' => 'error', 'message' => 'A system error occurred. Please try again later.'];
     }
+
+    // Set the content type header to signal that we're sending JSON
+    header('Content-Type: application/json');
+
+    // Check the status and set a proper HTTP response code
+    if ($response['status'] === 'error') {
+        // 401 Unauthorized is a good code for failed login
+        http_response_code(401);
+    }
+
+    // Echo the final response as a JSON string and stop the script
+    echo json_encode($response);
+
+    $conn = null;
+    exit();
 }
 
-// Generate a new CSRF token for the login form
-if (!isset($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+/**
+ * Calculate the distance between two points using the Haversine formula
+ * 
+ * @param float $lat1 Latitude of first point
+ * @param float $lon1 Longitude of first point
+ * @param float $lat2 Latitude of second point
+ * @param float $lon2 Longitude of second point
+ * @return float Distance in meters
+ */
+function haversine_distance($lat1, $lon1, $lat2, $lon2)
+{
+    $earth_radius = 6371000; // Earth's radius in meters
+
+    $lat1 = deg2rad($lat1);
+    $lon1 = deg2rad($lon1);
+    $lat2 = deg2rad($lat2);
+    $lon2 = deg2rad($lon2);
+
+    $dlat = $lat2 - $lat1;
+    $dlon = $lon2 - $lon1;
+
+    $a = sin($dlat / 2) * sin($dlat / 2) + cos($lat1) * cos($lat2) * sin($dlon / 2) * sin($dlon / 2);
+    $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+
+    return $earth_radius * $c;
 }
 
+// --- PHP LOGIC ENDS HERE ---
 ?>
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BMC-SMS - Login</title>
-    <link rel="shortcut icon" href="./assets/images/favicon.ico" type="image/x-icon">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="./assets/css/login.css" />
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>BMC-SMS -- Login</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="./assets/css/login.css">
 </head>
 
 <body>
-    <div class="container-fluid">
-        <div class="row vh-100">
-            <!-- Left side - Branding -->
-            <div class="col-lg-6 login-branding-panel d-none d-lg-flex">
-                <div class="logo">BMC-SMS</div>
-                <p class="tagline">Efficiently Managing Education</p>
+    <div class="container-fluid p-0">
+        <div class="row g-0">
+            <div class="col-lg-5 d-none d-lg-flex login-branding-panel">
+                <div class="logo"><i class="far fa-smile"></i></div>
+                <h1>Welcome Back!</h1>
+                <p>Your central hub for school management and monitoring.</p>
             </div>
-
-            <!-- Right side - Login Form -->
-            <div class="col-lg-6 d-flex align-items-center justify-content-center bg-light">
+            <div class="col-12 col-lg-7 login-form-panel">
                 <div class="login-form-container">
-                    <h2 class="form-title">Welcome Back!</h2>
-                    <p class="form-subtitle">Please enter your details to sign in.</p>
-
-                    <!-- Alert placeholder for messages -->
+                    <h2>Login</h2>
+                    <p class="subtitle">Please enter your credentials to proceed.</p>
                     <div id="login-alert-placeholder"></div>
-
-                    <form id="loginForm">
-                        <!-- CSRF Token -->
+                    <form id="loginForm" method="POST" action="login.php" novalidate>
+                        <?php
+                        // Generate CSRF token if not exists
+                        if (empty($_SESSION['csrf_token'])) {
+                            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+                        }
+                        ?>
                         <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
 
-                        <!-- Email Input -->
-                        <div class="form-group position-relative">
+                        <div class="form-group">
+                            <input type="email" class="form-control form-control-custom"
+                                id="email" name="email" placeholder="Email Address"
+                                required autocomplete="email">
                             <i class="fas fa-envelope form-icon"></i>
-                            <input type="email" name="email" id="email" class="form-control form-control-custom" placeholder="Email" required autocomplete="email" />
                         </div>
-
-                        <!-- Password Input -->
-                        <div class="form-group position-relative">
+                        <div class="form-group">
+                            <input type="password" class="form-control form-control-custom"
+                                name="password" id="password" placeholder="Password"
+                                required autocomplete="current-password">
                             <i class="fas fa-lock form-icon"></i>
-                            <input type="password" name="password" id="password" class="form-control form-control-custom" placeholder="Password" required autocomplete="current-password" />
                             <i class="fas fa-eye password-toggle" id="togglePassword"></i>
                         </div>
-
-                        <!-- Remember Me & Forgot Password -->
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="remember_me" id="rememberMeCheckbox" />
-                                <label class="form-check-label" for="rememberMeCheckbox">Remember me</label>
-                            </div>
-                            <a href="#" class="forgot-password-link" data-bs-toggle="modal" data-bs-target="#forgotPasswordModal">Forgot Password?</a>
-                        </div>
-
-                        <!-- Hidden fields for geolocation -->
                         <input type="hidden" name="latitude" id="latitude">
                         <input type="hidden" name="longitude" id="longitude">
-
-                        <!-- Submit Button -->
-                        <button type="submit" class="btn btn-custom-login">
-                            <span class="button-text">Sign In</span>
-                        </button>
+                        <div class="d-grid mt-4">
+                            <button type="submit" class="btn btn-custom-login">Login</button>
+                        </div>
+                        <div class="text-center mt-4">
+                            <a class="forgot-password-link" data-bs-toggle="modal" data-bs-target="#forgotPasswordModal">Forgot Password?</a>
+                        </div>
                     </form>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Forgot Password Modal -->
     <div class="modal fade" id="forgotPasswordModal" tabindex="-1" aria-labelledby="forgotPasswordModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -192,32 +260,28 @@ if (!isset($_SESSION['csrf_token'])) {
                 </div>
                 <div class="modal-body">
                     <div id="reset-alert-placeholder"></div>
-
-                    <!-- Send OTP Form -->
                     <form id="sendOtpForm">
                         <p>Enter your email address and we'll send you an OTP to reset your password.</p>
                         <div class="mb-3">
                             <label for="resetEmail" class="form-label">Email Address</label>
-                            <input type="email" class="form-control" id="resetEmail" required>
+                            <input type="email" class="form-control" id="resetEmail" disabled>
                         </div>
                         <button type="submit" class="btn btn-custom-login w-100">Send OTP</button>
                     </form>
-
-                    <!-- Reset Password Form -->
                     <form id="resetPasswordForm" class="d-none">
                         <p>An OTP has been sent to <strong id="userEmailDisplay"></strong>. Please enter it below along with your new password.</p>
                         <input type="hidden" id="hiddenEmail" name="email">
                         <div class="mb-3">
                             <label for="otp" class="form-label">One-Time Password (OTP)</label>
-                            <input type="text" class="form-control" id="otp" name="otp" required maxlength="6">
+                            <input type="text" class="form-control" id="otp" name="otp" required>
                         </div>
                         <div class="mb-3">
                             <label for="new_password" class="form-label">New Password</label>
-                            <input type="password" class="form-control" id="new_password" name="new_password" required minlength="8">
+                            <input type="password" class="form-control" id="new_password" name="new_password" required>
                         </div>
                         <div class="mb-3">
                             <label for="confirm_password" class="form-label">Confirm New Password</label>
-                            <input type="password" class="form-control" id="confirm_password" name="confirm_password" required minlength="8">
+                            <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
                         </div>
                         <button type="submit" class="btn btn-custom-login w-100">Reset Password</button>
                     </form>
@@ -225,7 +289,6 @@ if (!isset($_SESSION['csrf_token'])) {
             </div>
         </div>
     </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="./assets/js/login.js"></script>
 </body>
