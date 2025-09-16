@@ -120,6 +120,8 @@ document.addEventListener("DOMContentLoaded", function () {
       submitButton.disabled = true;
       submitButton.innerHTML =
         '<span class="spinner-border spinner-border-sm me-2"></span>Logging In...';
+      
+      // --- START OF LOGIC CHANGE ---
 
       // Send login request
       fetch("login.php", {
@@ -127,17 +129,22 @@ document.addEventListener("DOMContentLoaded", function () {
         body: formData,
         credentials: "same-origin", // Include cookies
       })
-        .then((response) => {
-          // Check if response is ok
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          return response.json();
-        })
-        .then((data) => {
+      .then(response => {
+          // This logic reads the JSON body first, regardless of the HTTP status code.
+          // This allows us to get the specific error message from the server on failed logins.
+          return response.json().then(data => {
+              if (!response.ok) {
+                  // If the response status is an error (e.g., 401), we create a new Error object
+                  // but use the specific message from the server's JSON payload.
+                  throw new Error(data.message || 'An unknown server error occurred.');
+              }
+              // If the response is ok (status 200), we pass the data to the next .then() block.
+              return data;
+          });
+      })
+      .then(data => {
+          // This block now only runs for successful (2xx) responses.
           console.log("Login response:", data); // For debugging
-
-          // FIXED: Check for both possible response formats
           if (data.status === "success" || data.success === true) {
             showAlert(
               data.message || "Login successful! Redirecting...",
@@ -155,7 +162,7 @@ document.addEventListener("DOMContentLoaded", function () {
               }
             }, 1500);
           } else {
-            // Handle error response
+            // This is a fallback for a 200 OK response that still indicates an error
             showAlert(
               data.message || "Login failed. Please try again.",
               "danger",
@@ -163,24 +170,24 @@ document.addEventListener("DOMContentLoaded", function () {
             );
             submitButton.disabled = false;
             submitButton.innerHTML = originalButtonText;
-
-            // Focus on email field for retry
             emailInput.focus();
           }
-        })
-        .catch((error) => {
+      })
+      .catch(error => {
+          // This .catch() now receives the specific error message from the server
+          // OR a real network error if the server is unreachable.
           console.error("Login Error:", error);
           showAlert(
-            "Connection error. Please check your internet connection and try again.",
+            error.message, // This now displays the specific error message
             "danger",
             alertPlaceholder
           );
           submitButton.disabled = false;
           submitButton.innerHTML = originalButtonText;
-
-          // Focus on email field for retry
           emailInput.focus();
-        });
+      });
+
+      // --- END OF LOGIC CHANGE ---
     });
   }
 
