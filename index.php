@@ -13,6 +13,13 @@ require_once __DIR__ . "/includes/ajax_helpers.php"; // Contains is_ajax_request
 
 // Check if user is logged in. If not, redirect to login page.
 if (!isset($_COOKIE['encrypted_user_role'])) {
+    // If it's an AJAX request, return JSON error
+    if (is_ajax_request()) {
+        header('Content-Type: application/json');
+        echo json_encode(['status' => 'error', 'message' => 'Please login to continue.', 'redirect' => 'login.php']);
+        exit;
+    }
+    // For regular requests, redirect to login
     header("Location: login.php");
     exit;
 }
@@ -21,6 +28,9 @@ if (!isset($_COOKIE['encrypted_user_role'])) {
 
 // Determine which page to load. Default to 'dashboard'.
 $page_identifier = $_GET['page'] ?? 'dashboard';
+
+// Sanitize the page identifier to prevent directory traversal
+$page_identifier = preg_replace('/[^a-zA-Z0-9_-]/', '', $page_identifier);
 
 // A mapping of simple URL identifiers to the actual file paths.
 $page_map = [
@@ -124,6 +134,11 @@ $page_map = [
 // Check if the requested page identifier exists in our map.
 if (!array_key_exists($page_identifier, $page_map)) {
     // If not, show a 404 error
+    if (is_ajax_request()) {
+        header('Content-Type: application/json');
+        echo json_encode(['status' => 'error', 'message' => 'Page not found']);
+        exit;
+    }
     header("HTTP/1.0 404 Not Found");
     echo "<h1>404 Page Not Found</h1><p>The requested page was not found.</p>";
     exit;
@@ -139,7 +154,8 @@ if (is_ajax_request()) {
         include $content_file;
     } else {
         // Handle case where file doesn't exist for an AJAX request
-        echo "<div class='container-fluid'><p class='text-danger'>Error: Content file not found.</p></div>";
+        header('Content-Type: application/json');
+        echo json_encode(['status' => 'error', 'message' => 'Content file not found']);
     }
     exit; // IMPORTANT: Stop script execution for AJAX requests.
 }
@@ -154,6 +170,7 @@ if (is_ajax_request()) {
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>BMC School Management</title>
+    <link rel="shortcut icon" href="./assets/images/favicon.ico" type="image/x-icon">
 
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
@@ -177,7 +194,12 @@ if (is_ajax_request()) {
                     if (file_exists($content_file)) {
                         include $content_file;
                     } else {
-                        echo "<h1>Error</h1><p>Content file could not be loaded.</p>";
+                        echo "<div class='container-fluid'>";
+                        echo "<div class='alert alert-danger'>";
+                        echo "<h4>Error: Content Not Found</h4>";
+                        echo "<p>The requested content could not be loaded. Please try again or contact support.</p>";
+                        echo "</div>";
+                        echo "</div>";
                     }
                     ?>
                 </div>
