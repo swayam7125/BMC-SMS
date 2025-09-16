@@ -252,7 +252,7 @@ if (!is_ajax_request()) {
                                                     $is_pre_joining = $librarian['date_of_joining'] && $attendance_date_display < $librarian['date_of_joining'];
                                                     $is_disabled = ($edit_librarian_id && $librarian['id'] != $edit_librarian_id) || $is_pre_joining;
                                                 ?>
-                                                    <tr <?php echo $is_disabled ? 'class="blurred-row"' : ''; ?>>
+                                                    <tr>
                                                         <td><?php echo htmlspecialchars($librarian['librarian_name']); ?></td>
                                                         <td>
                                                             <?php if ($is_pre_joining): ?>
@@ -298,13 +298,6 @@ if (!is_ajax_request()) {
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php"?>
-    <style>
-        .blurred-row {
-            filter: blur(1px);
-            pointer-events: none;
-            user-select: none;
-        }
-    </style>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
