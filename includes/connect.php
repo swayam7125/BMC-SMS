@@ -1,10 +1,10 @@
 <?php
 // Database credentials for your Supabase project
-$host = 'aws-0-ap-south-1.pooler.supabase.com';
+$host = 'aws-1-ap-south-1.pooler.supabase.com';
 $port = '5432';
 $dbname = 'postgres';
-$user = 'postgres.fwkvbvmmfwyjpqjileil';
-$password = '0407111726'; // It's recommended to use environment variables for passwords
+$user = 'postgres.thfennvtfwzhxxcqpufz';
+$password = 'SMS0407111726'; // It's recommended to use environment variables for passwords
 
 // This constant can help with file paths and URLs in your application.
 define('BASE_URL', '/BMC-SMS/');
