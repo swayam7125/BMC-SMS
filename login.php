@@ -134,7 +134,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email']) && isset($_PO
 
                 // --- END OF THE FIX ---
 
-                $response = ['status' => 'success', 'redirect' => 'index.php'];
+                $response = ['status' => 'success', 'redirect' => 'dashboard.php'];
             }
         } else {
             $response = ['status' => 'error', 'message' => 'Invalid email or password.'];
