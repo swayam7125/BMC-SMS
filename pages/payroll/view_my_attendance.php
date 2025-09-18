@@ -9,8 +9,8 @@ $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_
 // Decrypt the user ID from the cookie.
 $userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
 
-// If the user is not a payroll user or if the user ID is not set, redirect to the login page.
-if ($role !== 'payroll' || !$userId) {
+// If the user is not a hr user or if the user ID is not set, redirect to the login page.
+if ($role !== 'hr' || !$userId) {
     header("Location: /BMC-SMS/login.php");
     exit();
 }
@@ -18,8 +18,8 @@ if ($role !== 'payroll' || !$userId) {
 // Initialize an array to store attendance records.
 $records = []; 
 try {
-    // Prepare a query to fetch all attendance records for the specified payroll user.
-    $query = "SELECT attendance_date, status FROM payroll_attendance WHERE payroll_id = ? ORDER BY attendance_date DESC";
+    // Prepare a query to fetch all attendance records for the specified hr user.
+    $query = "SELECT attendance_date, status FROM hr_attendance WHERE hr_id = ? ORDER BY attendance_date DESC";
 
     // Prepare and execute the statement.
     $stmt = $conn->prepare($query);
@@ -29,7 +29,7 @@ try {
 
 } catch (PDOException $e) {
     // Log any database errors and display a generic error message.
-    error_log("Error fetching payroll attendance records: " . $e->getMessage());
+    error_log("Error fetching HR attendance records: " . $e->getMessage());
     die("A database error occurred. Please try again later.");
 }
 
