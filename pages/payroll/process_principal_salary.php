@@ -12,14 +12,14 @@ function formatIndianCurrency($number) {
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 $userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
 
-if ($role !== 'payroll' || !$userId) {
+if ($role !== 'hr' || !$userId) {
     header("Location: /BMC-SMS/login.php");
     exit();
 }
 
 $school_id = null;
 try {
-    $stmt = $conn->prepare("SELECT school_id FROM payroll WHERE id = ?");
+    $stmt = $conn->prepare("SELECT school_id FROM hr WHERE id = ?");
     $stmt->execute([$userId]);
     $school_id = $stmt->fetchColumn();
 } catch (Exception $e) {
@@ -27,7 +27,7 @@ try {
 }
 
 if (!$school_id) {
-    die("Error: Payroll user is not associated with any school.");
+    die("Error: HR user is not associated with any school.");
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_pay_submit'])) {
@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_pay_submit'])) {
         $conn->beginTransaction();
         // Use the new table name 'principal_payroll'
         $payment_stmt = $conn->prepare(
-            "INSERT INTO principal_payroll (principal_id, payroll_user_id, school_id, salary_month, salary_year, base_salary, total_working_days, present_days, absent_days, deduction_amount, total_incentives, net_salary_paid) 
+            "INSERT INTO principal_payroll (principal_id, hr_user_id, school_id, salary_month, salary_year, base_salary, total_working_days, present_days, absent_days, deduction_amount, total_incentives, net_salary_paid) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         );
         $notify_stmt = $conn->prepare(

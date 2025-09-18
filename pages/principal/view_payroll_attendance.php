@@ -18,8 +18,8 @@ try {
     $stmt->execute([$principal_id]);
     $school_id = $stmt->fetchColumn();
     
-    // The payroll table doesn't have a date_of_joining column, but for consistency, we'll fetch the earliest payroll_attendance date.
-    $joining_stmt = $conn->prepare("SELECT MIN(attendance_date) FROM payroll_attendance WHERE school_id = ?");
+    // The hr table doesn't have a date_of_joining column, but for consistency, we'll fetch the earliest hr_attendance date.
+    $joining_stmt = $conn->prepare("SELECT MIN(attendance_date) FROM hr_attendance WHERE school_id = ?");
     $joining_stmt->execute([$school_id]);
     $earliest_joining_date = $joining_stmt->fetchColumn();
 
@@ -49,11 +49,11 @@ try {
     }
 
     $query = "
-        SELECT p.id as payroll_id, pa.attendance_date, pa.status, p.payroll_name
-        FROM payroll p
-        LEFT JOIN payroll_attendance pa ON p.id = pa.payroll_id AND pa.attendance_date = ?
+        SELECT p.id as payroll_id, pa.attendance_date, pa.status, p.hr_name
+        FROM hr p
+        LEFT JOIN hr_attendance pa ON p.id = pa.payroll_id AND pa.attendance_date = ?
         WHERE p.school_id = ?
-        ORDER BY p.payroll_name ASC
+        ORDER BY p.hr_name ASC
     ";
 
     $stmt = $conn->prepare($query);
@@ -61,11 +61,11 @@ try {
     $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 } catch (PDOException $e) {
-    error_log("Error fetching payroll attendance records: " . $e->getMessage());
+    error_log("Error fetching HR attendance records: " . $e->getMessage());
     die("A database error occurred. Please try again later.");
 }
 
-$page_title = "Payroll Attendance History";
+$page_title = "HR Attendance History";
 
 if (!is_ajax_request()) {
 ?>
@@ -93,7 +93,7 @@ if (!is_ajax_request()) {
             <div id="content">
                 <?php include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/header.php'; ?>
                 <div class="container-fluid">
-                    <h1 class="h3 mb-2 text-gray-800">Payroll Attendance History</h1>
+                    <h1 class="h3 mb-2 text-gray-800">HR Attendance History</h1>
                     
                     <?php if (isset($_GET['success'])): ?>
                     <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -115,7 +115,7 @@ if (!is_ajax_request()) {
                                     </div>
                                     <button type="submit" class="btn btn-primary ml-2"><i class="fas fa-search fa-sm"></i> View</button>
                                 </form>
-                                <a href="payroll_attendance.php?attendance_date=<?php echo htmlspecialchars($filter_date); ?>" class="btn btn-info">
+                                <a href="hr_attendance.php?attendance_date=<?php echo htmlspecialchars($filter_date); ?>" class="btn btn-info">
                                     <i class="fas fa-edit"></i> Update Attendance
                                 </a>
                             </div>
@@ -123,7 +123,7 @@ if (!is_ajax_request()) {
                                 <table class="table table-bordered" id="dataTable">
                                     <thead>
                                         <tr>
-                                            <th>Payroll Staff Name</th>
+                                            <th>HR Staff Name</th>
                                             <th>Status</th>
                                             <th>Action</th>
                                         </tr>
@@ -134,7 +134,7 @@ if (!is_ajax_request()) {
                                         <?php else: ?>
                                             <?php foreach ($records as $record): ?>
                                             <tr>
-                                                <td><?php echo htmlspecialchars($record['payroll_name']); ?></td>
+                                                <td><?php echo htmlspecialchars($record['hr_name']); ?></td>
                                                 <td>
                                                     <?php 
                                                         $status = $record['status'] ?? 'Not Marked';
@@ -159,7 +159,7 @@ if (!is_ajax_request()) {
                                                     ?>
                                                 </td>
                                                 <td>
-                                                    <a href="payroll_attendance.php?attendance_date=<?php echo htmlspecialchars($filter_date); ?>&edit_payroll_id=<?php echo $record['payroll_id']; ?>" class="btn btn-sm btn-warning <?php echo $is_editable ? '' : 'disabled'; ?>">
+                                                    <a href="hr_attendance.php?attendance_date=<?php echo htmlspecialchars($filter_date); ?>&edit_payroll_id=<?php echo $record['payroll_id']; ?>" class="btn btn-sm btn-warning <?php echo $is_editable ? '' : 'disabled'; ?>">
                                                         <i class="fas fa-edit"></i> Edit
                                                     </a>
                                                 </td>

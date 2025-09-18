@@ -110,7 +110,7 @@ try {
     $most_borrowed_stmt->execute($params);
     $most_borrowed_books = $most_borrowed_stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // 3. Total Salary Disbursed per Month (Using payroll tables)
+    // 3. Total Salary Disbursed per Month (Using HR tables)
     $salary_query = "SELECT month, SUM(net_salary_paid) as total_disbursed
                      FROM (
                         SELECT TO_CHAR(TO_DATE(salary_year || '-' || salary_month, 'YYYY-MM'), 'YYYY-MM') AS month, net_salary_paid, school_id FROM teacher_payroll

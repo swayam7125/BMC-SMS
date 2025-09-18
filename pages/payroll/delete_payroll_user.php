@@ -20,8 +20,8 @@ if ($role !== 'principal') {
 }
 
 // Get the payroll user ID to delete from the URL
-$payroll_user_id_to_delete = isset($_GET['id']) ? filter_var($_GET['id'], FILTER_VALIDATE_INT) : null;
-if (!$payroll_user_id_to_delete) {
+$hr_user_id_to_delete = isset($_GET['id']) ? filter_var($_GET['id'], FILTER_VALIDATE_INT) : null;
+if (!$hr_user_id_to_delete) {
     header("Location: payroll_list.php?error=Invalid user ID.");
     exit;
 }
@@ -36,8 +36,8 @@ if ($userId) {
 
 try {
     // Security Check: Verify the user being deleted belongs to the principal's school
-    $stmt_check = $conn->prepare('SELECT school_id FROM payroll WHERE id = ?');
-    $stmt_check->execute([$payroll_user_id_to_delete]);
+    $stmt_check = $conn->prepare('SELECT school_id FROM hr WHERE id = ?');
+    $stmt_check->execute([$hr_user_id_to_delete]);
     $user_school_id = $stmt_check->fetchColumn();
 
     if ($user_school_id != $admin_school_id) {
@@ -50,19 +50,19 @@ try {
 
     // Delete from the 'users' table. The 'ON DELETE CASCADE' constraint on the 'payroll'
     // table will automatically delete the corresponding record there.
-    $stmt_delete = $conn->prepare('DELETE FROM users WHERE id = ? AND role = \'payroll\'');
-    $stmt_delete->execute([$payroll_user_id_to_delete]);
+    $stmt_delete = $conn->prepare('DELETE FROM users WHERE id = ? AND role = \'hr\'');
+    $stmt_delete->execute([$hr_user_id_to_delete]);
 
     // Commit the transaction
     $conn->commit();
 
-    header("Location: payroll_list.php?success=Payroll user deleted successfully.");
+    header("Location: payroll_list.php?success=HR user deleted successfully.");
     exit();
 
 } catch (PDOException $e) {
     // If something goes wrong, roll back the transaction
     $conn->rollBack();
-    error_log("Error deleting payroll user: " . $e->getMessage());
+    error_log("Error deleting HR user: " . $e->getMessage());
     header("Location: payroll_list.php?error=An error occurred during deletion.");
     exit;
 }

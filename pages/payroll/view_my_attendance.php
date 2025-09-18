@@ -9,8 +9,8 @@ $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_
 // Decrypt the user ID from the cookie.
 $userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
 
-// If the user is not a payroll user or if the user ID is not set, redirect to the login page.
-if ($role !== 'payroll' || !$userId) {
+// If the user is not a hr user or if the user ID is not set, redirect to the login page.
+if ($role !== 'hr' || !$userId) {
     header("Location: /BMC-SMS/login.php");
     exit();
 }
@@ -18,8 +18,8 @@ if ($role !== 'payroll' || !$userId) {
 // Initialize an array to store attendance records.
 $records = []; 
 try {
-    // Prepare a query to fetch all attendance records for the specified payroll user.
-    $query = "SELECT attendance_date, status FROM payroll_attendance WHERE payroll_id = ? ORDER BY attendance_date DESC";
+    // Prepare a query to fetch all attendance records for the specified hr user.
+    $query = "SELECT attendance_date, status FROM hr_attendance WHERE hr_id = ? ORDER BY attendance_date DESC";
 
     // Prepare and execute the statement.
     $stmt = $conn->prepare($query);
@@ -29,7 +29,7 @@ try {
 
 } catch (PDOException $e) {
     // Log any database errors and display a generic error message.
-    error_log("Error fetching payroll attendance records: " . $e->getMessage());
+    error_log("Error fetching HR attendance records: " . $e->getMessage());
     die("A database error occurred. Please try again later.");
 }
 
@@ -45,17 +45,12 @@ if (!is_ajax_request()) {
 <head>
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($page_title); ?></title>
-    <!-- Include Font Awesome for icons -->
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
+    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-    <!-- Include Google Fonts -->
-    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800,900" rel="stylesheet">
-    <!-- Include the admin theme CSS -->
-    <link href="/BMC-SMS/assets/css/sb-admin-2.min.css" rel="stylesheet">
-    <!-- Custom CSS for sidebar and scrollbar -->
+    <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-    <!-- DataTables CSS for Bootstrap -->
-    <link href="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
 </head>
 
 <body id="page-top">

@@ -59,7 +59,7 @@ try {
     if (empty($errorMessage) && !$is_holiday) {
         $target_date = new DateTime($attendance_date_display);
         
-        $payroll_joining_stmt = $conn->prepare("SELECT MIN(date_of_joining) FROM payroll WHERE school_id = ? AND date_of_joining IS NOT NULL");
+        $payroll_joining_stmt = $conn->prepare("SELECT MIN(date_of_joining) FROM hr WHERE school_id = ? AND date_of_joining IS NOT NULL");
         $payroll_joining_stmt->execute([$school_id]);
         $first_joining_date = $payroll_joining_stmt->fetchColumn();
 
@@ -70,9 +70,9 @@ try {
             $interval = new DateInterval('P1D');
             $period = new DatePeriod($start_date, $interval, $target_date);
             
-            $att_count_stmt = $conn->prepare("SELECT COUNT(payroll_id) FROM payroll_attendance WHERE school_id = ? AND attendance_date = ?");
+            $att_count_stmt = $conn->prepare("SELECT COUNT(payroll_id) FROM hr_attendance WHERE school_id = ? AND attendance_date = ?");
             $holiday_check_stmt = $conn->prepare("SELECT COUNT(*) FROM holidays WHERE school_id = ? AND holiday_date = ?");
-            $payroll_expected_stmt = $conn->prepare("SELECT COUNT(id) FROM payroll WHERE school_id = ? AND (date_of_joining IS NULL OR date_of_joining <= ?)");
+            $payroll_expected_stmt = $conn->prepare("SELECT COUNT(id) FROM hr WHERE school_id = ? AND (date_of_joining IS NULL OR date_of_joining <= ?)");
 
             foreach ($period as $date) {
                 if (date('N', $date->getTimestamp()) < 7) {
@@ -107,7 +107,7 @@ try {
 
         try {
             $conn->beginTransaction();
-            $upsert_sql = "INSERT INTO payroll_attendance (payroll_id, school_id, attendance_date, status, marked_by_user_id)
+            $upsert_sql = "INSERT INTO hr_attendance (payroll_id, school_id, attendance_date, status, marked_by_user_id)
                            VALUES (?, ?, ?, ?, ?)
                            ON CONFLICT (payroll_id, attendance_date)
                            DO UPDATE SET status = EXCLUDED.status, marked_by_user_id = EXCLUDED.marked_by_user_id";
@@ -136,12 +136,12 @@ try {
     
     if (empty($errorMessage) && empty($all_missing_dates) && $school_id && !$is_holiday) {
         try {
-            // Updated query to get payroll staff with joining date.
-            $sql = "SELECT p.id, p.payroll_name, p.date_of_joining, pa.status
-                    FROM payroll p
-                    LEFT JOIN payroll_attendance pa ON p.id = pa.payroll_id AND pa.attendance_date = ?
+            // Updated query to get hr staff with joining date.
+            $sql = "SELECT p.id, p.hr_name, p.date_of_joining, pa.status
+                    FROM hr p
+                    LEFT JOIN hr_attendance pa ON p.id = pa.payroll_id AND pa.attendance_date = ?
                     WHERE p.school_id = ?
-                    ORDER BY p.payroll_name ASC";
+                    ORDER BY p.hr_name ASC";
             $stmt = $conn->prepare($sql);
             $stmt->execute([$attendance_date_display, $school_id]);
             $payroll_staff_with_details = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -172,7 +172,7 @@ if (!is_ajax_request()) {
 
 <head>
     <meta charset="utf-8">
-    <title>Update Payroll Attendance - School Management System</title>
+    <title>Update HR Attendance - School Management System</title>
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
@@ -192,7 +192,7 @@ if (!is_ajax_request()) {
                 ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                        <h1 class="h3 mb-0 text-gray-800">Update Payroll Attendance</h1>
+                        <h1 class="h3 mb-0 text-gray-800">Update HR Attendance</h1>
                         <a href="view_payroll_attendance.php?date=<?php echo $attendance_date_display; ?>" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i class="fas fa-eye fa-sm text-white-50"></i> View History</a>
                     </div>
 
@@ -213,7 +213,7 @@ if (!is_ajax_request()) {
                     <?php elseif (!empty($all_missing_dates)): ?>
                         <div class="alert alert-warning">
                             <h4 class="alert-heading">Action Required</h4>
-                            <p>You cannot mark attendance for <strong><?php echo htmlspecialchars($attendance_date_display); ?></strong> because payroll staff attendance for the following past date(s) is incomplete:</p>
+                            <p>You cannot mark attendance for <strong><?php echo htmlspecialchars($attendance_date_display); ?></strong> because HR staff attendance for the following past date(s) is incomplete:</p>
                             <ul>
                                 <?php foreach ($all_missing_dates as $missing_date): ?>
                                     <li><strong><?php echo htmlspecialchars($missing_date); ?></strong></li>
@@ -227,12 +227,12 @@ if (!is_ajax_request()) {
                         <div class="card shadow mb-4">
                             <div class="card-header py-3">
                                 <h6 class="m-0 font-weight-bold text-primary">
-                                    Attendance for Payroll Staff on <?php echo date('d F, Y', strtotime($attendance_date_display)); ?>
+                                    Attendance for HR Staff on <?php echo date('d F, Y', strtotime($attendance_date_display)); ?>
                                 </h6>
                             </div>
                             <div class="card-body">
                                 <p class="text-info">
-                                    <?php echo $edit_payroll_id ? 'Editing a single payroll staff member\'s attendance.' : 'Bulk Edit Mode: All payroll staff members are editable.'; ?>
+                                    <?php echo $edit_payroll_id ? 'Editing a single HR staff member\'s attendance.' : 'Bulk Edit Mode: All HR staff members are editable.'; ?>
                                 </p>
                                 <form method="POST" action="">
                                     <div class="d-flex align-items-center justify-content-between mb-4">
@@ -243,22 +243,22 @@ if (!is_ajax_request()) {
                                             </div>
                                         </div>
                                         <div class="form-group">
-                                            <input type="text" id="customSearchBox" class="form-control" placeholder="Search payroll staff...">
+                                            <input type="text" id="customSearchBox" class="form-control" placeholder="Search HR staff...">
                                         </div>
                                     </div>
                                     <div class="table-responsive">
                                         <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                                            <thead><tr><th>Payroll Staff Name</th><th>Status</th></tr></thead>
+                                            <thead><tr><th>HR Staff Name</th><th>Status</th></tr></thead>
                                             <tbody>
                                                 <?php if (empty($payroll_staff_with_details)): ?>
-                                                    <tr><td colspan="2" class="text-center">No payroll staff found for this school.</td></tr>
+                                                    <tr><td colspan="2" class="text-center">No HR staff found for this school.</td></tr>
                                                 <?php else: ?>
                                                     <?php foreach ($payroll_staff_with_details as $staff): 
                                                         $is_pre_joining = !empty($staff['date_of_joining']) && $attendance_date_display < $staff['date_of_joining'];
                                                         $is_disabled = ($edit_payroll_id && $staff['id'] != $edit_payroll_id) || $is_pre_joining;
                                                     ?>
                                                         <tr <?php echo $is_disabled ? 'class="blurred-row"' : ''; ?>>
-                                                            <td><?php echo htmlspecialchars($staff['payroll_name']); ?></td>
+                                                            <td><?php echo htmlspecialchars($staff['hr_name']); ?></td>
                                                             <td>
                                                                 <?php if ($is_pre_joining): ?>
                                                                     <span class='badge badge-secondary p-2'>Joined on <?php echo date('d M, Y', strtotime($staff['date_of_joining'])); ?></span>

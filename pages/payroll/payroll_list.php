@@ -27,23 +27,23 @@ if ($userId) {
     $school_id = $stmt->fetchColumn();
 }
 
-// Fetch the list of payroll users for the principal's school
+// Fetch the list of HR users for the principal's school
 $payroll_users = [];
 if ($school_id) {
     try {
         $query = '
-            SELECT u.id, u.email, py.payroll_name
+            SELECT u.id, u.email, py.hr_name
             FROM users u
-            JOIN payroll py ON u.id = py.id
-            WHERE py.school_id = ? AND u.role = \'payroll\'
-            ORDER BY py.payroll_name
+            JOIN hr py ON u.id = py.id
+            WHERE py.school_id = ? AND u.role = \'hr\'
+            ORDER BY py.hr_name
         ';
         $stmt = $conn->prepare($query);
         $stmt->execute([$school_id]);
         $payroll_users = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
         // Log error and display a friendly message if something goes wrong
-        error_log("Database error fetching payroll list: " . $e->getMessage());
+        error_log("Database error fetching HR list: " . $e->getMessage());
         die("An error occurred while fetching the user list. Please try again later.");
     }
 }
@@ -53,7 +53,7 @@ if ($school_id) {
 
 <head>
     <meta charset="utf-8">
-    <title>Payroll User List - School Management System</title>
+    <title>HR User List - School Management System</title>
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
@@ -72,9 +72,9 @@ if ($school_id) {
 
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                        <h1 class="h3 mb-0 text-gray-800">Payroll User List</h1>
+                        <h1 class="h3 mb-0 text-gray-800">HR User List</h1>
                         <a href="../../includes/forms/payroll_enrollment.php" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
-                            <i class="fas fa-user-plus fa-sm text-white-50"></i> Enroll New Payroll User
+                            <i class="fas fa-user-plus fa-sm text-white-50"></i> Enroll New HR User
                         </a>
                     </div>
                     
@@ -98,7 +98,7 @@ if ($school_id) {
 
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">Manage Payroll Staff</h6>
+                            <h6 class="m-0 font-weight-bold text-primary">Manage HR Staff</h6>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
@@ -113,12 +113,12 @@ if ($school_id) {
                                     <tbody>
                                         <?php if (empty($payroll_users)): ?>
                                             <tr>
-                                                <td colspan="3" class="text-center">No payroll users found.</td>
+                                                <td colspan="3" class="text-center">No HR users found.</td>
                                             </tr>
                                         <?php else: ?>
                                             <?php foreach ($payroll_users as $user): ?>
                                                 <tr>
-                                                    <td><?php echo htmlspecialchars($user['payroll_name']); ?></td>
+                                                    <td><?php echo htmlspecialchars($user['hr_name']); ?></td>
                                                     <td><?php echo htmlspecialchars($user['email']); ?></td>
                                                     <td>
                                                         <a href="edit_payroll.php?id=<?php echo $user['id']; ?>" class="btn btn-warning btn-sm" title="Edit">
@@ -155,7 +155,7 @@ if ($school_id) {
                         <span aria-hidden="true">×</span>
                     </button>
                 </div>
-                <div class="modal-body">Are you sure you want to delete this payroll user? This action cannot be undone.</div>
+                <div class="modal-body">Are you sure you want to delete this HR user? This action cannot be undone.</div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
                     <a class="btn btn-danger" id="confirmDeleteBtn">Delete</a>

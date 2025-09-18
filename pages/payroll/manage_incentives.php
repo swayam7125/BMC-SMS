@@ -2,18 +2,18 @@
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 
-// Authorization check for payroll user
+// Authorization check for HR user
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 $userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
 
-if ($role !== 'payroll' || !$userId) {
+if ($role !== 'hr' || !$userId) {
     header("Location: /BMC-SMS/login.php");
     exit();
 }
 
 $school_id = null;
 try {
-    $stmt = $conn->prepare("SELECT school_id FROM payroll WHERE id = ?");
+    $stmt = $conn->prepare("SELECT school_id FROM hr WHERE id = ?");
     $stmt->execute([$userId]);
     $school_id = $stmt->fetchColumn();
 } catch (Exception $e) {
@@ -21,7 +21,7 @@ try {
 }
 
 if (!$school_id) {
-    die("Error: Payroll user is not associated with any school.");
+    die("Error: HR user is not associated with any school.");
 }
 
 // Handle Form Submissions
