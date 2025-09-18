@@ -225,9 +225,9 @@ try {
             }
             break;
 
-        case 'payroll':
-            // First, get the school_id for the logged-in payroll user
-            $stmt = $conn->prepare('SELECT "school_id" FROM "payroll" WHERE "id" = ?');
+        case 'hr':
+            // First, get the school_id for the logged-in hr user
+            $stmt = $conn->prepare('SELECT "school_id" FROM "hr" WHERE "id" = ?');
             $stmt->execute([$userId]);
             $payrollData = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -626,7 +626,7 @@ if ($userId && isset($conn)) {
                                     </a>
                                 </div>
 
-                            <?php elseif ($role == 'payroll') : ?>
+                            <?php elseif ($role == 'hr') : ?>
                                 <div class="col-xl-3 col-md-6 mb-4">
                                     <div class="card border-left-success shadow h-100 py-2">
                                         <div class="card-body">

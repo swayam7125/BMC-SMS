@@ -73,10 +73,10 @@ if (isset($_COOKIE['encrypted_user_role'])) {
                     $name_field = 'librarian_name';
                     $image_field = 'librarian_image';
                     break;
-                case 'payroll':
-                    $table_name = 'payroll';
-                    $name_field = 'payroll_name';
-                    $image_field = 'payroll_image'; // This field exists in your table
+                case 'hr':
+                    $table_name = 'hr';
+                    $name_field = 'hr_name';
+                    $image_field = 'hr_image'; // This field exists in your table
                     break;
             }
 
@@ -347,7 +347,7 @@ if (!function_exists('getNotificationIcon')) {
                     style="width: 32px; height: 32px; object-fit: cover;">
             </a>
             <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="userDropdown">
-                <?php if ($user_role !== 'superadmin' && $user_role !== 'payroll'): ?>
+                <?php if ($user_role !== 'superadmin' && $user_role !== 'hr'): ?>
                 <a class="dropdown-item" href="<?php echo BASE_WEB_PATH; ?>pages/user/profile.php">
                     <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
                     Profile
@@ -493,9 +493,9 @@ document.addEventListener('DOMContentLoaded', function() {
         ['title' => 'Enroll Student', 'url' => 'includes/forms/student_enrollment.php', 'roles' => ['principal']],
         ['title' => 'Student List', 'url' => 'pages/student/student_list.php', 'roles' => ['principal']],
         ['title' => 'Generate LC', 'url' => 'pages/principal/generate_lc.php', 'roles' => ['principal']],
-        ['title' => 'Enroll Payroll User', 'url' => 'includes/forms/payroll_enrollment.php', 'roles' => ['principal']],
-        ['title' => 'Payroll User List', 'url' => 'pages/payroll/payroll_list.php', 'roles' => ['principal']],
-        ['title' => 'Payroll Attendance', 'url' => 'pages/principal/payroll_attendance.php', 'roles' => ['principal']],
+        ['title' => 'Enroll HR User', 'url' => 'includes/forms/payroll_enrollment.php', 'roles' => ['principal']],
+        ['title' => 'HR User List', 'url' => 'pages/payroll/payroll_list.php', 'roles' => ['principal']],
+        ['title' => 'HR Attendance', 'url' => 'pages/principal/payroll_attendance.php', 'roles' => ['principal']],
         ['title' => 'Manage Vehicles', 'url' => 'pages/transport/manage_vehicles.php', 'roles' => ['principal']],
         ['title' => 'Manage Drivers', 'url' => 'pages/transport/manage_drivers.php', 'roles' => ['principal']],
         ['title' => 'Manage Routes & Stops', 'url' => 'pages/transport/manage_routes.php', 'roles' => ['principal']],
@@ -575,13 +575,13 @@ document.addEventListener('DOMContentLoaded', function() {
         ['title' => 'Past Book Records', 'url' => 'pages/past_record/past_books.php', 'roles' => ['librarian']],
 
         // Payroll Pages
-        ['title' => 'Dashboard', 'url' => 'dashboard.php', 'roles' => ['payroll']],
-        ['title' => 'My Attendance', 'url' => 'pages/payroll/view_my_attendance.php', 'roles' => ['payroll']],
-        ['title' => 'Manage Incentives', 'url' => 'pages/payroll/manage_incentives.php', 'roles' => ['payroll']],
-        ['title' => 'Teacher Payroll', 'url' => 'pages/payroll/process_teacher_salary.php', 'roles' => ['payroll']],
-        ['title' => 'Librarian Payroll', 'url' => 'pages/payroll/process_librarian_salary.php', 'roles' => ['payroll']],
-        ['title' => 'Principal Payroll', 'url' => 'pages/payroll/process_principal_salary.php', 'roles' => ['payroll']],
-        ['title' => 'Salary History', 'url' => 'pages/payroll/view_salary_history.php', 'roles' => ['payroll']],
+        ['title' => 'Dashboard', 'url' => 'dashboard.php', 'roles' => ['hr']],
+        ['title' => 'My Attendance', 'url' => 'pages/payroll/view_my_attendance.php', 'roles' => ['hr']],
+        ['title' => 'Manage Incentives', 'url' => 'pages/payroll/manage_incentives.php', 'roles' => ['hr']],
+        ['title' => 'Teacher Payroll', 'url' => 'pages/payroll/process_teacher_salary.php', 'roles' => ['hr']],
+        ['title' => 'Librarian Payroll', 'url' => 'pages/payroll/process_librarian_salary.php', 'roles' => ['hr']],
+        ['title' => 'Principal Payroll', 'url' => 'pages/payroll/process_principal_salary.php', 'roles' => ['hr']],
+        ['title' => 'Salary History', 'url' => 'pages/payroll/view_salary_history.php', 'roles' => ['hr']],
     ];
 
     // Filter the pages based on the current user's role

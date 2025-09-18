@@ -19,8 +19,8 @@ if ($role !== 'principal') {
 }
 
 // Get the payroll user ID from the URL
-$payroll_user_id = isset($_GET['id']) ? filter_var($_GET['id'], FILTER_VALIDATE_INT) : null;
-if (!$payroll_user_id) {
+$hr_user_id = isset($_GET['id']) ? filter_var($_GET['id'], FILTER_VALIDATE_INT) : null;
+if (!$hr_user_id) {
     header("Location: payroll_list.php?error=Invalid user ID.");
     exit;
 }
@@ -36,8 +36,8 @@ if ($userId) {
 // Fetch the payroll user's data
 $user_data = null;
 try {
-    $stmt = $conn->prepare('SELECT u.email, py.payroll_name, py.school_id FROM users u JOIN payroll py ON u.id = py.id WHERE u.id = ?');
-    $stmt->execute([$payroll_user_id]);
+    $stmt = $conn->prepare('SELECT u.email, py.hr_name, py.school_id FROM users u JOIN hr py ON u.id = py.id WHERE u.id = ?');
+    $stmt->execute([$hr_user_id]);
     $user_data = $stmt->fetch(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     header("Location: payroll_list.php?error=Database error.");
@@ -54,12 +54,12 @@ $errors = [];
 
 // Handle form submission for updating the user
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $payroll_name = trim($_POST['payroll_name'] ?? '');
+    $hr_name = trim($_POST['hr_name'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
 
     // Validation
-    if (empty($payroll_name)) $errors[] = "Full Name is required.";
+    if (empty($hr_name)) $errors[] = "Full Name is required.";
     if (empty($email)) $errors[] = "Email is required.";
 
     if (empty($errors)) {
@@ -67,21 +67,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $conn->beginTransaction();
 
             // Update the 'payroll' table
-            $stmt_payroll = $conn->prepare('UPDATE payroll SET payroll_name = ? WHERE id = ?');
-            $stmt_payroll->execute([$payroll_name, $payroll_user_id]);
+            $stmt_payroll = $conn->prepare('UPDATE hr_name SET hr_name = ? WHERE id = ?');
+            $stmt_payroll->execute([$hr_name, $hr_user_id]);
 
             // Update the 'users' table
             if (!empty($password)) {
                 $hashed_password = password_hash($password, PASSWORD_DEFAULT);
                 $stmt_user = $conn->prepare('UPDATE users SET email = ?, password = ? WHERE id = ?');
-                $stmt_user->execute([$email, $hashed_password, $payroll_user_id]);
+                $stmt_user->execute([$email, $hashed_password, $hr_user_id]);
             } else {
                 $stmt_user = $conn->prepare('UPDATE users SET email = ? WHERE id = ?');
-                $stmt_user->execute([$email, $payroll_user_id]);
+                $stmt_user->execute([$email, $hr_user_id]);
             }
 
             $conn->commit();
-            header("Location: payroll_list.php?success=Payroll user updated successfully.");
+            header("Location: payroll_list.php?success=HR user updated successfully.");
             exit();
         } catch (PDOException $e) {
             $conn->rollBack();
@@ -98,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Edit Payroll User - School Management System</title>
+    <title>Edit HR User - School Management System</title>
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
@@ -115,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php include_once '../../includes/header.php'; ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                        <h1 class="h3 mb-0 text-gray-800">Edit Payroll User</h1>
+                        <h1 class="h3 mb-0 text-gray-800">Edit HR User</h1>
                         <a href="payroll_list.php" class="btn btn-sm btn-primary shadow-sm"><i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to List</a>
                     </div>
                     <?php if (!empty($errors)): ?>
@@ -130,8 +130,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="card-body">
                             <form method="POST">
                                 <div class="form-group">
-                                    <label for="payroll_name">Full Name *</label>
-                                    <input type="text" class="form-control" id="payroll_name" name="payroll_name" value="<?php echo htmlspecialchars($user_data['payroll_name']); ?>" required>
+                                    <label for="hr_name">Full Name *</label>
+                                    <input type="text" class="form-control" id="hr_name" name="hr_name" value="<?php echo htmlspecialchars($user_data['hr_name']); ?>" required>
                                 </div>
                                 <div class="form-group">
                                     <label for="email">Email Address *</label>

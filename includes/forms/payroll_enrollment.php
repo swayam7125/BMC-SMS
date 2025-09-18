@@ -37,14 +37,14 @@ $errors = [];
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Retrieve and sanitize form data
-    $payroll_name = trim($_POST['payroll_name'] ?? '');
+    $hr_name = trim($_POST['hr_name'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
     $salary = trim($_POST['salary'] ?? ''); // New salary field
     $school_id = $admin_school_id; // The school is fixed to the principal's school
 
     // --- Validation ---
-    if (empty($payroll_name)) $errors[] = "Payroll user's name is required.";
+    if (empty($hr_name)) $errors[] = "HR user's name is required.";
     if (empty($email)) $errors[] = "Email is required.";
     if (empty($password)) $errors[] = "Password is required.";
     if (!is_numeric($salary) || $salary < 0) $errors[] = "Please enter a valid salary."; // Validate salary
@@ -55,19 +55,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $conn->beginTransaction();
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-            $user_role = 'payroll';
+            $user_role = 'hr';
 
             // 1. Insert into the main 'users' table
             $stmt_user = $conn->prepare('INSERT INTO "users" ("role", "email", "password") VALUES (?, ?, ?)');
             $stmt_user->execute([$user_role, $email, $hashed_password]);
             $new_user_id = $conn->lastInsertId();
 
-            // 2. Insert into the 'payroll' table with the school_id and new salary
-            $stmt_payroll = $conn->prepare('INSERT INTO "payroll" (id, school_id, payroll_name, salary) VALUES (?, ?, ?, ?)');
-            $stmt_payroll->execute([$new_user_id, $school_id, $payroll_name, $salary]);
+            // 2. Insert into the 'hr' table with the school_id and new salary
+            $stmt_payroll = $conn->prepare('INSERT INTO "hr" (id, school_id, hr_name, salary) VALUES (?, ?, ?, ?)');
+            $stmt_payroll->execute([$new_user_id, $school_id, $hr_name, $salary]);
 
             $conn->commit();
-            header("Location: ../../pages/payroll/payroll_list.php?success=Payroll user enrolled successfully");
+            header("Location: ../../pages/payroll/payroll_list.php?success=HR user enrolled successfully");
             exit();
         } catch (PDOException $e) {
             $conn->rollBack();
@@ -87,7 +87,7 @@ if (!is_ajax_request()) {
 
 <head>
     <meta charset="utf-8">
-    <title>Enroll Payroll User - School Management System</title>
+    <title>Enroll HR User - School Management System</title>
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
@@ -105,7 +105,7 @@ if (!is_ajax_request()) {
                 <?php include_once '../../includes/header.php'; ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                        <h1 class="h3 mb-0 text-gray-800">Enroll New Payroll User</h1>
+                        <h1 class="h3 mb-0 text-gray-800">Enroll New HR User</h1>
                         <a href="../../pages/payroll/payroll_list.php" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to List</a>
                     </div>
                     <?php if (!empty($errors)): ?>
@@ -115,14 +115,14 @@ if (!is_ajax_request()) {
                     <?php endif; ?>
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">Payroll User Information</h6>
+                            <h6 class="m-0 font-weight-bold text-primary">HR User Information</h6>
                         </div>
                         <div class="card-body">
                             <form method="POST">
                                 <div class="form-row">
                                     <div class="form-group col-md-6">
-                                        <label for="payroll_name">Full Name *</label>
-                                        <input type="text" class="form-control" id="payroll_name" name="payroll_name" value="<?php echo htmlspecialchars($_POST['payroll_name'] ?? ''); ?>" required>
+                                        <label for="hr_name">Full Name *</label>
+                                        <input type="text" class="form-control" id="hr_name" name="hr_name" value="<?php echo htmlspecialchars($_POST['hr_name'] ?? ''); ?>" required>
                                     </div>
                                     <div class="form-group col-md-6">
                                         <label for="salary">Salary (Monthly) *</label>
@@ -148,7 +148,7 @@ if (!is_ajax_request()) {
                                 </div>
                                 <hr>
                                 <div class="form-group mt-4">
-                                    <button type="submit" class="btn btn-primary"><i class="fas fa-user-plus"></i> Enroll Payroll User</button>
+                                    <button type="submit" class="btn btn-primary"><i class="fas fa-user-plus"></i> Enroll HR User</button>
                                     <button type="reset" class="btn btn-secondary"><i class="fas fa-times"></i> Reset Form</button>
                                 </div>
                             </form>

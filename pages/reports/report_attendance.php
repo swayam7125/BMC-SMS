@@ -136,7 +136,7 @@ try {
     // 4. Staff Attendance Data (Individual and Summary)
     $roles_to_query = [];
     if ($filter_staff_role === 'all') {
-        $roles_to_query = ['teacher', 'librarian', 'principal', 'payroll'];
+        $roles_to_query = ['teacher', 'librarian', 'principal', 'hr'];
     } else {
         $roles_to_query[] = $filter_staff_role;
     }
@@ -146,7 +146,7 @@ try {
             'teacher' => ['name_col' => 'teacher_name', 'att_table' => 'teacher_attendance', 'id_col' => 'teacher_id'],
             'librarian' => ['name_col' => 'librarian_name', 'att_table' => 'librarian_attendance', 'id_col' => 'librarian_id'],
             'principal' => ['name_col' => 'principal_name', 'att_table' => 'principal_attendance', 'id_col' => 'principal_id'],
-            'payroll' => ['name_col' => 'payroll_name', 'att_table' => 'payroll_attendance', 'id_col' => 'payroll_id'] 
+            'hr' => ['name_col' => 'hr_name', 'att_table' => 'hr_attendance', 'id_col' => 'payroll_id'] 
         ];
         
         if (!isset($table_map[$current_role])) continue;
@@ -349,7 +349,7 @@ $total_leave = array_sum(array_column($individual_staff_attendance, 'leave'));
                                             <option value="teacher" <?php if ($filter_staff_role == 'teacher') echo 'selected'; ?>>Teachers</option>
                                             <option value="librarian" <?php if ($filter_staff_role == 'librarian') echo 'selected'; ?>>Librarians</option>
                                             <option value="principal" <?php if ($filter_staff_role == 'principal') echo 'selected'; ?>>Principals</option>
-                                            <option value="payroll" <?php if ($filter_staff_role == 'payroll') echo 'selected'; ?>>Payroll</option>
+                                            <option value="hr" <?php if ($filter_staff_role == 'hr') echo 'selected'; ?>>HR</option>
                                         </select>
                                     </form>
                                     <a href="#" class="download-section-btn" data-section="staff-attendance" title="Download this section"><i class="fas fa-download fa-sm"></i></a>

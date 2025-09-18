@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_pay_submit'])) {
         $conn->beginTransaction();
         // Use the new table name 'principal_payroll'
         $payment_stmt = $conn->prepare(
-            "INSERT INTO principal_payroll (principal_id, payroll_user_id, school_id, salary_month, salary_year, base_salary, total_working_days, present_days, absent_days, deduction_amount, total_incentives, net_salary_paid) 
+            "INSERT INTO principal_payroll (principal_id, hr_user_id, school_id, salary_month, salary_year, base_salary, total_working_days, present_days, absent_days, deduction_amount, total_incentives, net_salary_paid) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         );
         $notify_stmt = $conn->prepare(
