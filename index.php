@@ -1,4 +1,5 @@
 <?php
+
 // /BMC-SMS/index.php (UPDATED ROUTER & LAYOUT)
 
 // Start session if not already started

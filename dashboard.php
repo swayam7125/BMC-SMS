@@ -1,7 +1,7 @@
 <?php
-require_once "./includes/ajax_helpers.php";
-require_once "./includes/connect.php";
-require_once "encryption.php";
+require_once __DIR__ . "/includes/ajax_helpers.php";
+require_once __DIR__ . "/includes/connect.php";
+require_once __DIR__ . "/encryption.php";
 
 // Enable error reporting for debugging
 error_reporting(E_ALL);
@@ -132,7 +132,7 @@ $totalLibraryMembers = 0;
 $monthly_present_days = 0;
 $librarian_total_absent = 0;
 $librarian_deduction_amount = 0;
-$attendance_percentage = 0; 
+$attendance_percentage = 0;
 $minimum_attendance_percentage = 75.00; // Fallback for student role
 
 // --- START OF PAYROLL ROLE ADDITION ---
