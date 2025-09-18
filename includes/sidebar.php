@@ -1094,12 +1094,13 @@ if (isset($conn) && $user_id) {
                     <span>Manage Incentives</span></div>
                 </a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link" href="/BMC-SMS/pages/payroll/view_my_attendance.php">
+            <li class="nav-item <?php echo ($current_page == 'view_my_attendance.php') ? 'active' : ''; ?>">
+                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/payroll/view_my_attendance.php">
                     <div><i class="fas fa-fw fa-user-check"></i>
-                    <span>My Attendance</span></div>
+                        <span>My Attendance</span>
+                    </div>
                 </a>
-             </li>
+            </li>
             <li class="nav-item <?php echo ($current_page == 'process_teacher_salary.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/payroll/process_teacher_salary.php">
                     <div><i class="fas fa-file-invoice-dollar"></i>
