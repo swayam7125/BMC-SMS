@@ -38,9 +38,11 @@ $unread_acquisition_requests = 0;
 $unread_library_status = 0;
 $unread_principal_to_librarian_notices = 0;
 $unread_librarian_requests = 0;
+$unread_hr_requests = 0;
 $unread_salary_notifications = 0; // For librarian salary history
 $unread_teacher_salary = 0; // For teacher salary history
 $unread_principal_salary = 0; // For principal salary history
+$unread_hr_leave_status = 0; // For HR leave status
 $is_class_teacher = false; // Initialize teacher-specific flag
 
 // Fetch counts based on the user's role if a valid user ID and connection exist
@@ -76,9 +78,32 @@ if (isset($conn) && $user_id) {
                     WHERE user_id = ?
                       AND is_read = false
                       AND type = 'new_notice'";
-                    $stmt_bmc = $conn->prepare($sql_bmc_notices);
-                    $stmt_bmc->execute([$user_id]);
-                    $unread_bmc_notices = (int) $stmt_bmc->fetchColumn();
+                $stmt_bmc = $conn->prepare($sql_bmc_notices);
+                $stmt_bmc->execute([$user_id]);
+                $unread_bmc_notices = (int) $stmt_bmc->fetchColumn();
+
+                $sql_leave_requests = "SELECT COUNT(*)
+                    FROM notifications
+                    WHERE user_id = ?
+                      AND is_read = false
+                      AND type = 'leave_request'";
+                $stmt_leave_reqs = $conn->prepare($sql_leave_requests);
+                $stmt_leave_reqs->execute([$user_id]);
+                $unread_leave_requests = (int) $stmt_leave_reqs->fetchColumn();
+
+                $sql_librarian_requests = "SELECT COUNT(*)
+                    FROM notifications
+                    WHERE user_id = ?
+                      AND is_read = false
+                      AND type = 'librarian_leave_request'";
+                $stmt_librarian_reqs = $conn->prepare($sql_librarian_requests);
+                $stmt_librarian_reqs->execute([$user_id]);
+                $unread_librarian_requests = (int) $stmt_librarian_reqs->fetchColumn();
+                
+                $sql_hr_requests = "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = false AND type = 'hr_leave_request'";
+                $stmt_hr_reqs = $conn->prepare($sql_hr_requests);
+                $stmt_hr_reqs->execute([$user_id]);
+                $unread_hr_requests = (int) $stmt_hr_reqs->fetchColumn();
                 break;
 
             case 'teacher':
@@ -133,6 +158,13 @@ if (isset($conn) && $user_id) {
                 $stmt_counts = $conn->prepare($sql_counts);
                 $stmt_counts->execute([$user_id]);
                 $unread_principal_notices = (int) $stmt_counts->fetchColumn();
+                break;
+                
+            case 'hr':
+                $sql_hr_leave_status = "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND type = 'hr_leave_status' AND is_read = false";
+                $stmt_hr_leave_status = $conn->prepare($sql_hr_leave_status);
+                $stmt_hr_leave_status->execute([$user_id]);
+                $unread_hr_leave_status = (int) $stmt_hr_leave_status->fetchColumn();
                 break;
         }
     } catch (PDOException $e) {
@@ -313,7 +345,7 @@ if (isset($conn) && $user_id) {
             $notice_pages = ['send_notice.php', 'send_notice_to_bmc.php', 'send_notice_to_librarian.php', 'view_notice.php'];
             $academics_pages = ['manage_subjects.php', 'manage_timetable.php', 'send_exam_timetable.php', 'manage_holidays.php'];
             $past_data_pages_principal = ['past_teacher.php', 'past_librarian.php', 'past_student.php'];
-            $leave_management_pages = ['teacher_leave_management.php', 'librarian_leave_management.php'];
+            $leave_management_pages = ['teacher_leave_management.php', 'librarian_leave_management.php', 'hr_leave_management.php'];
             $is_leave_management_active = in_array($current_page, $leave_management_pages);
             $reports_pages = ['report_enrollment.php', 'report_attendance.php', 'report_academic.php', 'report_payroll.php', 'report_library.php'];
 
@@ -530,7 +562,7 @@ if (isset($conn) && $user_id) {
                 <i class="fas fa-fw fa-calendar-alt"></i>
                 <span>Leave Management</span>
                 <?php
-                            $total_leave_notifs = $unread_leave_requests + $unread_librarian_requests;
+                            $total_leave_notifs = $unread_leave_requests + $unread_librarian_requests + $unread_hr_requests;
                             if ($total_leave_notifs > 0):
                         ?>
                 <span class="badge badge-danger badge-counter">
@@ -558,6 +590,15 @@ if (isset($conn) && $user_id) {
                     <?php if ($unread_librarian_requests > 0): ?>
                     <span
                         class="badge badge-danger badge-counter"><?php echo ($unread_librarian_requests > 9) ? '9+' : $unread_librarian_requests; ?></span>
+                    <?php endif; ?>
+                </a>
+                <a class="collapse-item <?php echo ($current_page == 'hr_leave_management.php') ? 'active' : ''; ?>"
+                    href="<?php echo BASE_WEB_PATH; ?>pages/principal/hr_leave_management.php"
+                    data-notification-type="hr_leave_request">
+                    HR Leave
+                    <?php if ($unread_hr_requests > 0): ?>
+                    <span
+                        class="badge badge-danger badge-counter"><?php echo ($unread_hr_requests > 9) ? '9+' : $unread_hr_requests; ?></span>
                     <?php endif; ?>
                 </a>
             </div>
@@ -1086,17 +1127,37 @@ if (isset($conn) && $user_id) {
 
         case 'hr':
             $payroll_pages = ['process_teacher_salary.php', 'process_librarian_salary.php', 'view_salary_history.php'];
+            $hr_leave_pages = ['my_leave_management.php'];
         ?>
             <div class="sidebar-heading font-weight-semibold">Management</div>
+            <li class="nav-item <?php echo ($current_page == 'profile.php') ? 'active' : ''; ?>">
+                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/user/profile.php">
+                    <div><i class="fas fa-fw fa-id-card"></i>
+                        <span>My Profile</span>
+                    </div>
+                </a>
+            </li>
+            <li class="nav-item <?php echo (is_active_page($hr_leave_pages)) ? 'active' : ''; ?>">
+                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/hr/my_leave_management.php"
+                   data-notification-type="hr_leave_status">
+                    <div>
+                        <i class="fas fa-fw fa-calendar-alt"></i>
+                        <span>Manage Leave</span>
+                        <?php if ($unread_hr_leave_status > 0): ?>
+                        <span class="badge badge-danger badge-counter">
+                            <?php echo ($unread_hr_leave_status > 9) ? '9+' : $unread_hr_leave_status; ?>
+                        </span>
+                        <?php endif; ?>
+                    </div>
+                </a>
+            </li>
             <li class="nav-item <?php echo ($current_page == 'manage_incentives.php') ? 'active' : ''; ?>">
-                <a class="nav-link" href="/BMC-SMS/pages/hr/manage_incentives.php">
                 <a class="nav-link" href="/BMC-SMS/pages/hr/manage_incentives.php">
                     <div><i class="fas fa-gift"></i>
                     <span>Manage Incentives</span></div>
                 </a>
             </li>
             <li class="nav-item <?php echo ($current_page == 'view_my_attendance.php') ? 'active' : ''; ?>">
-                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/hr/view_my_attendance.php">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/hr/view_my_attendance.php">
                     <div><i class="fas fa-fw fa-user-check"></i>
                         <span>My Attendance</span>
@@ -1105,13 +1166,11 @@ if (isset($conn) && $user_id) {
             </li>
             <li class="nav-item <?php echo ($current_page == 'process_teacher_salary.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/hr/process_teacher_salary.php">
-                <a class="nav-link" href="/BMC-SMS/pages/hr/process_teacher_salary.php">
                     <div><i class="fas fa-file-invoice-dollar"></i>
                     <span>Teacher Payroll</span></div>
                 </a>
             </li>
             <li class="nav-item <?php echo ($current_page == 'process_librarian_salary.php') ? 'active' : ''; ?>">
-                <a class="nav-link" href="/BMC-SMS/pages/hr/process_librarian_salary.php">
                 <a class="nav-link" href="/BMC-SMS/pages/hr/process_librarian_salary.php">
                     <div><i class="fas fa-file-invoice-dollar"></i>
                     <span>Librarian Payroll</span></div>
@@ -1119,13 +1178,11 @@ if (isset($conn) && $user_id) {
             </li>
             <li class="nav-item <?php echo ($current_page == 'process_principal_salary.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/hr/process_principal_salary.php">
-                <a class="nav-link" href="/BMC-SMS/pages/hr/process_principal_salary.php">
                     <div><i class="fas fa-file-invoice-dollar"></i>
                     <span>Principal Payroll</span></div>
                 </a>
             </li>
             <li class="nav-item <?php echo ($current_page == 'view_salary_history.php') ? 'active' : ''; ?>">
-                <a class="nav-link" href="/BMC-SMS/pages/hr/view_salary_history.php">
                 <a class="nav-link" href="/BMC-SMS/pages/hr/view_salary_history.php">
                     <div><i class="fas fa-history"></i>
                     <span>Salary History</span></div>

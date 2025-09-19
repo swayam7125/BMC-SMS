@@ -59,7 +59,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
     $user_id = decrypt_id($_COOKIE['encrypted_user_id']);
     $user_role = decrypt_id($_COOKIE['encrypted_user_role']);
     // Define a path-safe role name for directory creation
-    $path_role = ($user_role === 'principal' || $user_role === 'librarian') ? $user_role : $user_role;
+    $path_role = $user_role;
 
     // Determine table and field names based on user role
     $table_name = '';
@@ -86,6 +86,11 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
             $table_name = 'librarian';
             $image_field = 'librarian_image';
             $name_field = 'librarian_name';
+            break;
+        case 'hr': 
+            $table_name = 'hr';
+            $image_field = 'hr_image';
+            $name_field = 'hr_name';
             break;
         default:
             // Redirect if the role is invalid
@@ -130,7 +135,8 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
             if (strlen($blood_group) > 10) {
                 $errors[] = "The Blood Group value is too long. Please use a standard format (e.g., 'A+', 'O-').";
             }
-            if (in_array($user_role, ['teacher', 'principal', 'librarian']) && strlen($phone) > 15) {
+            // MODIFIED: Added 'hr' to the array for phone validation
+            if (in_array($user_role, ['teacher', 'principal', 'librarian', 'hr']) && strlen($phone) > 15) {
                 $errors[] = "The Phone Number is too long. Please limit it to 15 characters.";
             }
             if ($user_role === 'student') {
@@ -190,7 +196,8 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                 ];
                 $params = [$name, $email, $dob, $gender, $blood_group, $address, $new_image_path];
 
-                if (in_array($user_role, ['teacher', 'principal', 'librarian'])) {
+                // MODIFIED: Added 'hr' to the condition for phone and image update
+                if (in_array($user_role, ['teacher', 'principal', 'librarian', 'hr'])) {
                     $update_fields[] = "phone = ?";
                     $params[] = $phone;
                 } elseif ($user_role === 'student') {
@@ -286,7 +293,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                                             <label for="email">Email *</label>
                                             <input type="email" class="form-control" id="email" name="email" value="<?php echo htmlspecialchars($user_data['email'] ?? ''); ?>" required>
                                         </div>
-                                        <?php if (in_array($user_role, ['teacher', 'principal', 'librarian'])): ?>
+                                        <?php if (in_array($user_role, ['teacher', 'principal', 'librarian', 'hr'])): ?>
                                             <div class="form-group">
                                                 <label for="phone">Phone</label>
                                                 <input type="tel" class="form-control" id="phone" name="phone" value="<?php echo htmlspecialchars($user_data['phone'] ?? ''); ?>">

@@ -76,7 +76,7 @@ if (isset($_COOKIE['encrypted_user_role'])) {
                 case 'hr':
                     $table_name = 'hr';
                     $name_field = 'hr_name';
-                    $image_field = 'hr_image'; // This field exists in your table
+                    $image_field = 'hr_image'; 
                     break;
             }
 
@@ -94,9 +94,14 @@ if (isset($_COOKIE['encrypted_user_role'])) {
                         // Set the profile image
                         $db_image_path = $user_details[$image_field];
                         if (!empty($db_image_path)) {
-                            $filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $db_image_path;
+                            // Fetch the image path from the database, which is often a relative path
+                            $imagePathFromDB = $user_details[$image_field];
+                            $full_path = str_starts_with($imagePathFromDB, '/') ? $imagePathFromDB : BASE_WEB_PATH . ltrim($imagePathFromDB, '/');
+                            
+                            $filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $full_path;
+
                             if (file_exists($filesystem_path) && is_file($filesystem_path)) {
-                                $userProfileImage = $db_image_path;
+                                $userProfileImage = $full_path;
                             }
                         }
                     }
@@ -163,6 +168,7 @@ if (!function_exists('getNotificationIcon')) {
             case 'acquisition_status': return 'fas fa-check-circle text-white';
             case 'teacher_salary': return 'fas fa-receipt text-white'; 
             case 'librarian_salary': return 'fas fa-receipt text-white'; 
+            case 'hr_salary': return 'fas fa-receipt text-white'; // ADDED: Icon for HR salary
             default: return 'fas fa-bell text-white';
         }
     }
@@ -347,7 +353,7 @@ if (!function_exists('getNotificationIcon')) {
                     style="width: 32px; height: 32px; object-fit: cover;">
             </a>
             <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="userDropdown">
-                <?php if ($user_role !== 'superadmin' && $user_role !== 'hr'): ?>
+                <?php if ($user_role !== 'superadmin'): ?>
                 <a class="dropdown-item" href="<?php echo BASE_WEB_PATH; ?>pages/user/profile.php">
                     <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
                     Profile
@@ -577,6 +583,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // HR Pages
         ['title' => 'Dashboard', 'url' => 'dashboard.php', 'roles' => ['hr']],
+        ['title' => 'My Profile', 'url' => 'pages/user/profile.php', 'roles' => ['hr']],
         ['title' => 'My Attendance', 'url' => 'pages/hr/view_my_attendance.php', 'roles' => ['hr']],
         ['title' => 'Manage Incentives', 'url' => 'pages/hr/manage_incentives.php', 'roles' => ['hr']],
         ['title' => 'Teacher Payroll', 'url' => 'pages/hr/process_teacher_salary.php', 'roles' => ['hr']],
