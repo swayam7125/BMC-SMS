@@ -6,6 +6,10 @@ $role = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
+$current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+
+// Read the filter value that was sent from the list page
+$from_list_filter = isset($_GET['from_list_filter']) ? $_GET['from_list_filter'] : ''; 
 
 if (!$role) {
     header("Location: ../../login.php");
@@ -13,9 +17,6 @@ if (!$role) {
 }
 
 $teacher_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
-// Read the filter value that was sent from the list page
-$from_list_filter = isset($_GET['from_list_filter']) ? $_GET['from_list_filter'] : ''; 
-
 if ($teacher_id <= 0) {
     header("Location: teacher_list.php?error=Invalid teacher ID");
     exit;
@@ -25,7 +26,36 @@ $teacher = null;
 $timings = [];
 
 try {
-    // MODIFIED: Updated query to select all new transportation fields
+    // Check access based on role and school_id
+    $query_access = "SELECT school_id FROM teacher WHERE id = ?";
+    $stmt_access = $conn->prepare($query_access);
+    $stmt_access->execute([$teacher_id]);
+    $target_school_id = $stmt_access->fetchColumn();
+
+    $user_school_id = null;
+    if ($role === 'principal') {
+        $stmt_user_school = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
+        $stmt_user_school->execute([$current_user_id]);
+        $user_school_id = $stmt_user_school->fetchColumn();
+    } elseif ($role === 'hr') {
+        $stmt_user_school = $conn->prepare("SELECT school_id FROM hr WHERE id = ?");
+        $stmt_user_school->execute([$current_user_id]);
+        $user_school_id = $stmt_user_school->fetchColumn();
+    }
+    
+    // Authorization check for principal and HR roles
+    if (($role === 'principal' || $role === 'hr') && $target_school_id != $user_school_id) {
+        $redirect_url = ($role === 'hr') ? 'hr_teacher_list.php' : 'teacher_list.php';
+        header("Location: " . $redirect_url . "?error=Unauthorized access to this profile.");
+        exit;
+    }
+    
+    // Authorization check for teacher role (self-view only)
+    if ($role === 'teacher' && $teacher_id != $current_user_id) {
+        header("Location: ../../dashboard.php?error=Unauthorized access to this profile.");
+        exit;
+    }
+
     $query_teacher = "SELECT t.*, s.school_name, s.address as school_address, s.phone as school_phone, s.email as school_email,
                       st.stop_name, r.route_name, v.vehicle_number as school_vehicle_number
                       FROM teacher t
@@ -91,8 +121,12 @@ if (!empty($photo_path)) {
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Teacher's Details</h1>
                         <div>
-                            <a href="teacher_list.php?std=<?php echo urlencode($from_list_filter); ?>" class="btn btn-secondary btn-sm mr-2"><i class="fas fa-arrow-left fa-sm"></i> Back to List</a>
-                            <a href="edit.php?id=<?php echo $teacher['id']; ?>" class="btn btn-primary btn-sm"><i class="fas fa-edit fa-sm"></i> Edit Teacher</a>
+                            <?php if ($role === 'principal' || $role === 'hr'): ?>
+                                <a href="teacher_list.php?std=<?php echo urlencode($from_list_filter); ?>" class="btn btn-secondary btn-sm mr-2"><i class="fas fa-arrow-left fa-sm"></i> Back to List</a>
+                                <a href="edit.php?id=<?php echo $teacher['id']; ?>" class="btn btn-primary btn-sm"><i class="fas fa-edit fa-sm"></i> Edit Teacher</a>
+                            <?php else: ?>
+                                <a href="../../dashboard.php" class="btn btn-secondary btn-sm mr-2"><i class="fas fa-arrow-left fa-sm"></i> Back to Dashboard</a>
+                            <?php endif; ?>
                         </div>
                     </div>
                     <div class="row">

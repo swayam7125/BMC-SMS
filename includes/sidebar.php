@@ -432,9 +432,9 @@ if (isset($conn) && $user_id) {
             data-parent="#accordionSidebar">
             <div class="bg-white py-2 collapse-inner rounded">
                 <a class="collapse-item <?php echo ($current_page == 'hr_enrollment.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>includes/forms/hr_enrollment.php">Enroll HR User</a>
+                    href="<?php echo BASE_WEB_PATH; ?>includes/forms/hr_enrollment.php">Enroll HR</a>
                 <a class="collapse-item <?php echo ($current_page == 'hr_list.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>pages/hr/hr_list.php">HR User List</a>
+                    href="<?php echo BASE_WEB_PATH; ?>pages/hr/hr_list.php">HR List</a>
                 <a class="collapse-item <?php echo ($current_page == 'hr_attendance.php') ? 'active' : ''; ?>"
                     href="<?php echo BASE_WEB_PATH; ?>pages/principal/hr_attendance.php">HR Attendance</a>
                 <a class="collapse-item <?php echo ($current_page == 'view_hr_attendance.php') ? 'active' : ''; ?>"
@@ -1128,6 +1128,7 @@ if (isset($conn) && $user_id) {
         case 'hr':
             $payroll_pages = ['process_teacher_salary.php', 'process_librarian_salary.php', 'view_salary_history.php'];
             $hr_leave_pages = ['my_leave_management.php'];
+            $hr_manage_profiles_pages = ['principal_list.php', 'teacher_list.php', 'student_list.php', 'librarian_list.php'];
         ?>
             <div class="sidebar-heading font-weight-semibold">Management</div>
             <li class="nav-item <?php echo ($current_page == 'profile.php') ? 'active' : ''; ?>">
@@ -1150,6 +1151,22 @@ if (isset($conn) && $user_id) {
                         <?php endif; ?>
                     </div>
                 </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?php echo (is_active_page($hr_manage_profiles_pages)) ? '' : 'collapsed'; ?>" href="#"
+                   data-toggle="collapse" data-target="#collapseManageProfiles">
+                    <div><i class="fas fa-fw fa-users"></i>
+                    <span>Manage Profiles</span></div>
+                </a>
+                <div id="collapseManageProfiles" class="collapse <?php echo (is_active_page($hr_manage_profiles_pages)) ? 'show' : ''; ?>"
+                     data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item <?php echo ($current_page == 'principal_list.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/principal/principal_list.php">Principal Profile</a>
+                        <a class="collapse-item <?php echo ($current_page == 'teacher_list.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/teacher_list.php">Teacher Profile</a>
+                        <a class="collapse-item <?php echo ($current_page == 'student_list.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/student/student_list.php">Student Profile</a>
+                        <a class="collapse-item <?php echo ($current_page == 'librarian_list.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/librarian/librarian_list.php">Librarian Profile</a>
+                    </div>
+                </div>
             </li>
             <li class="nav-item <?php echo ($current_page == 'manage_incentives.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/hr/manage_incentives.php">

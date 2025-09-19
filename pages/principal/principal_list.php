@@ -5,33 +5,52 @@ include_once "../../includes/ajax_helpers.php";
 
 $role = null;
 $principals = [];
+$current_user_id = null;
+$user_school_id = null;
 
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
+if (isset($_COOKIE['encrypted_user_id'])) {
+    $current_user_id = decrypt_id($_COOKIE['encrypted_user_id']);
+}
 
-if (!$role) {
+if ($role !== 'superadmin' && $role !== 'hr') {
     header("Location: ../../login.php");
     exit;
 }
 
 try {
-    // PDO Change: Converted to PDO
     $query = "SELECT p.id, p.principal_name, p.email, p.phone, p.batch, 
                      sc.school_name, u.account_status
               FROM principal p 
               LEFT JOIN school sc ON p.school_id = sc.id
-              LEFT JOIN users u ON p.id = u.id
-              ORDER BY p.id ASC";
+              LEFT JOIN users u ON p.id = u.id";
+
+    if ($role === 'hr') {
+        $stmt_school = $conn->prepare("SELECT school_id FROM hr WHERE id = ?");
+        $stmt_school->execute([$current_user_id]);
+        $user_school_id = $stmt_school->fetchColumn();
+        
+        if (!$user_school_id) {
+            die("Error: Could not determine the school for the HR user.");
+        }
+        $query .= " WHERE p.school_id = ?";
+        $params = [$user_school_id];
+    } else {
+        $params = [];
+    }
+
+    $query .= " ORDER BY p.id ASC";
     $stmt = $conn->prepare($query);
-    $stmt->execute();
+    $stmt->execute($params);
     $principals = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     error_log("Principal List Error: " . $e->getMessage());
     die("A database error occurred.");
 }
 
-if (!is_ajax_request()) {
+if (!is_ajax_request()) 
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -53,9 +72,6 @@ if (!is_ajax_request()) {
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
-<?php
-}
-?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">Principal Management</h1>
                     <p class="mb-4">List of all principals in the system.</p>
@@ -68,7 +84,9 @@ if (!is_ajax_request()) {
                     <div class="card shadow mb-4">
                         <div class="card-header py-3 d-flex justify-content-between align-items-center">
                             <h6 class="m-0 font-weight-bold text-primary">Principal List</h6>
-                            <a href="/BMC-SMS/includes/forms/principal_enrollment.php" class="btn btn-primary btn-icon-split btn-sm"><span class="icon text-white-50"><i class="fas fa-plus"></i></span><span class="text">Add New Principal</span></a>
+                            <?php if ($role === 'superadmin'): ?>
+                                <a href="/BMC-SMS/includes/forms/principal_enrollment.php" class="btn btn-primary btn-icon-split btn-sm"><span class="icon text-white-50"><i class="fas fa-plus"></i></span><span class="text">Add New Principal</span></a>
+                            <?php endif; ?>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
@@ -100,8 +118,8 @@ if (!is_ajax_request()) {
                                                     <td>
                                                         <a href="view.php?id=<?php echo $row['id']; ?>" class="btn btn-info btn-sm" title="View"><i class="fas fa-eye"></i></a>
                                                         <a href="edit.php?id=<?php echo $row['id']; ?>" class="btn btn-primary btn-sm" title="Edit"><i class="fas fa-edit"></i></a>
-                                                        <?php if ($role === 'superadmin'):
-                                                            $return_url = urlencode('/BMC-SMS/pages/principal/principal_list.php');
+                                                        <?php 
+                                                            $return_url = urlencode(($role === 'hr') ? '/BMC-SMS/pages/hr/principal_list.php' : '/BMC-SMS/pages/principal/principal_list.php');
                                                             if ($row['account_status'] === 'active'):
                                                                 $suspendUrl = "../../includes/actions/update_user_status.php?id={$row['id']}&status=suspended&return={$return_url}";
                                                         ?>
@@ -110,9 +128,10 @@ if (!is_ajax_request()) {
                                                                 $reactivateUrl = "../../includes/actions/update_user_status.php?id={$row['id']}&status=active&return={$return_url}";
                                                             ?>
                                                                 <a href="#" onclick="confirmAction('<?php echo $reactivateUrl; ?>', 'reactivate this principal')" class="btn btn-success btn-sm" title="Reactivate"><i class="fas fa-check-circle"></i></a>
-                                                        <?php endif;
-                                                        endif; ?>
+                                                        <?php endif; ?>
+                                                        <?php if ($role === 'superadmin'): ?>
                                                         <button class="btn btn-danger btn-sm" onclick="confirmDelete(<?php echo $row['id']; ?>)" title="Delete"><i class="fas fa-trash"></i></button>
+                                                        <?php endif; ?>
                                                     </td>
                                                 </tr>
                                             <?php endforeach;

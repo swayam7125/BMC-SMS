@@ -8,106 +8,108 @@ require_once '../../encryption.php';
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 $user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
 
-if ($role !== 'librarian') {
+// Only the 'principal' role is allowed to perform this action.
+if ($role !== 'principal') {
     Response::error('Access denied', url('login.php'));
 }
 
-// Get book ID from either POST (AJAX) or GET (direct)
-$book_id = 0;
+// Validate input
+$librarian_id = 0;
 if (is_ajax_request()) {
     if (!isset($_POST['csrf_token']) || !validate_csrf_token($_POST['csrf_token'])) {
         Response::error('Invalid request');
     }
-    $book_id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+    $librarian_id = isset($_POST['id']) ? intval($_POST['id']) : 0;
 } else {
-    $book_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+    $librarian_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 }
 
-if ($book_id <= 0) {
-    Response::error('Invalid book ID provided', url('pages/librarian/book_list.php'));
+if ($librarian_id <= 0) {
+    Response::error('Invalid librarian ID provided', url('pages/librarian/librarian_list.php'));
 }
 
 try {
-    // Verify the book belongs to the librarian's school
-    $stmt = $conn->prepare('
-        SELECT b.* FROM books b
-        JOIN librarian l ON b.school_id = l.school_id
-        WHERE b.book_id = ? AND l.id = ?
-    ');
-    $stmt->execute([$book_id, $user_id]);
-    $book_data = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    if (!$book_data) {
-        Response::error('Book not found or access denied', url('pages/librarian/book_list.php'));
-    }
+    // Authorization Check: The principal must be in the same school as the librarian they are deleting.
+    $stmt_principal_school = $conn->prepare('SELECT school_id FROM principal WHERE id = ?');
+    $stmt_principal_school->execute([$user_id]);
+    $principal_school_id = $stmt_principal_school->fetchColumn();
 
+    $stmt_librarian_school = $conn->prepare('SELECT school_id FROM librarian WHERE id = ?');
+    $stmt_librarian_school->execute([$librarian_id]);
+    $librarian_school_id = $stmt_librarian_school->fetchColumn();
+
+    if ($principal_school_id !== $librarian_school_id) {
+        throw new Exception("Unauthorized access. You can only delete librarians from your school.");
+    }
+    
     // Begin transaction
     $conn->beginTransaction();
 
-    // Check if book can be deleted
-    // --- FIX 1: Corrected table name from 'book_loans' to 'borrowing_records' and condition to 'is_returned = FALSE' ---
-    $stmt = $conn->prepare('
-        SELECT COUNT(*) 
-        FROM borrowing_records 
-        WHERE book_id = ? AND is_returned = FALSE
-    ');
-    $stmt->execute([$book_id]);
-    
-    if ($stmt->fetchColumn() > 0) {
-        throw new Exception('Cannot delete: Book is currently loaned out');
+    // Fetch the full record of the librarian to be deleted.
+    $sql_fetch_librarian = "SELECT * FROM librarian WHERE id = ?";
+    $stmt_fetch = $conn->prepare($sql_fetch_librarian);
+    $stmt_fetch->execute([$librarian_id]);
+    $librarian_data = $stmt_fetch->fetch(PDO::FETCH_ASSOC);
+
+    if (!$librarian_data) {
+        throw new Exception("Librarian with ID $librarian_id not found.");
     }
 
-    // Archive the book data
-    $stmt_archive = $conn->prepare('
-        INSERT INTO "deleted_books" (
-            original_book_id, title, author, isbn, 
-            quantity_total, school_id, is_digital, 
-            deleted_by_role
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ');
-    
-    // --- FIX 2: Correctly handle the boolean value for is_digital ---
-    $stmt_archive->execute([
-        (int)$book_data['book_id'],
-        $book_data['title'],
-        $book_data['author'],
-        $book_data['isbn'],
-        (int)$book_data['quantity_total'],
-        (int)$book_data['school_id'],
-        !empty($book_data['is_digital']), // This now correctly passes a boolean value
-        $role
-    ]);
+    // Insert the fetched data into the `deleted_librarians` table for archiving.
+    $sql_archive_librarian = "INSERT INTO deleted_librarians 
+                                (id, librarian_name, email, phone, dob, gender, blood_group, address, qualification, salary, school_id, deleted_by_role, batch) 
+                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    $stmt_archive = $conn->prepare($sql_archive_librarian);
+    $archive_params = [
+        $librarian_data['id'],
+        $librarian_data['librarian_name'],
+        $librarian_data['email'],
+        $librarian_data['phone'],
+        $librarian_data['dob'],
+        $librarian_data['gender'],
+        $librarian_data['blood_group'],
+        $librarian_data['address'],
+        $librarian_data['qualification'],
+        $librarian_data['salary'],
+        $librarian_data['school_id'],
+        $role, 
+        $librarian_data['batch']
+    ];
+    $stmt_archive->execute($archive_params);
 
-    // Delete the book
-    $stmt = $conn->prepare('DELETE FROM "books" WHERE "book_id" = ?');
-    $stmt->execute([$book_id]);
+    // Delete the user record from the 'users' table.
+    $sql_delete_user = "DELETE FROM users WHERE id = ?";
+    $stmt_delete = $conn->prepare($sql_delete_user);
+    $stmt_delete->execute([$librarian_id]);
 
-    // Verify deletion
-    if ($stmt->rowCount() === 0) {
-        throw new Exception("Book could not be deleted (it may have already been removed).");
+    if ($stmt_delete->rowCount() === 0) {
+        throw new Exception("User with ID $librarian_id could not be deleted from the users table.");
     }
 
-    // Commit transaction
+    // Delete the librarian's image file from the server.
+    $image_path = $librarian_data['librarian_image'] ?? null;
+    if (!empty($image_path) && file_exists(rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $image_path)) {
+        unlink(rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $image_path);
+    }
+    
     $conn->commit();
 
-    // Send response based on request type
     if (is_ajax_request()) {
-        Response::success('Book deleted successfully', url('pages/librarian/book_list.php'));
+        Response::success('Librarian deleted successfully');
     } else {
-        header('Location: ' . url('pages/librarian/book_list.php') . '?success=Book deleted successfully');
+        header('Location: ' . url('pages/librarian/librarian_list.php') . '?success=Librarian deleted successfully');
         exit;
     }
 
 } catch (Exception $e) {
-    // Rollback on error
-    if ($conn->inTransaction()) {
+    if ($conn && $conn->inTransaction()) {
         $conn->rollBack();
     }
 
     if (is_ajax_request()) {
         Response::error($e->getMessage());
     } else {
-        header('Location: ' . url('pages/librarian/book_list.php') . '?error=' . urlencode($e->getMessage()));
+        header('Location: ' . url('pages/librarian/librarian_list.php') . '?error=' . urlencode("An error occurred: " . $e->getMessage()));
         exit;
     }
 } finally {

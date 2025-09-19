@@ -26,7 +26,10 @@ function getDefaultImagePath($base_web_path)
 }
 
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
-if (!$role) {
+$current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+
+// Only superadmin and HR can view a principal's profile
+if ($role !== 'superadmin' && $role !== 'hr') {
     header("Location: ../../login.php");
     exit;
 }
@@ -41,7 +44,22 @@ $principal = null;
 $timings = [];
 
 try {
-    // MODIFIED: Updated query to select all new transportation fields
+    // Check if the HR user is trying to view a principal from their own school
+    if ($role === 'hr') {
+        $stmt_hr_school = $conn->prepare("SELECT school_id FROM hr WHERE id = ?");
+        $stmt_hr_school->execute([$current_user_id]);
+        $hr_school_id = $stmt_hr_school->fetchColumn();
+
+        $stmt_principal_school = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
+        $stmt_principal_school->execute([$principal_id]);
+        $principal_school_id = $stmt_principal_school->fetchColumn();
+
+        if ($hr_school_id !== $principal_school_id) {
+            header("Location: principal_list.php?error=Unauthorized access");
+            exit;
+        }
+    }
+
     $query_principal = "SELECT p.*, s.school_name, s.address as school_address, s.phone as school_phone, s.email as school_email,
                         st.stop_name, r.route_name, v.vehicle_number as school_vehicle_number
                       FROM principal p 
@@ -72,6 +90,10 @@ try {
 
 $photo_path = getWebAccessibleImagePath($principal['principal_image'], BASE_URL);
 $default_photo = getDefaultImagePath(BASE_URL);
+
+$back_to_list_url = 'principal_list.php';
+$edit_url = 'edit.php?id=' . $principal['id'];
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -98,7 +120,9 @@ $default_photo = getDefaultImagePath(BASE_URL);
                         <h1 class="h3 mb-0 text-gray-800">Principal Details</h1>
                         <div>
                             <a href="principal_list.php" class="btn btn-secondary btn-sm mr-2"><i class="fas fa-arrow-left"></i> Back to List</a>
-                            <a href="edit.php?id=<?php echo $principal['id']; ?>" class="btn btn-primary btn-sm"><i class="fas fa-edit"></i> Edit Principal</a>
+                            <?php if ($role === 'superadmin' || $role === 'hr'): ?>
+                                <a href="edit.php?id=<?php echo $principal['id']; ?>" class="btn btn-primary btn-sm"><i class="fas fa-edit"></i> Edit Principal</a>
+                            <?php endif; ?>
                         </div>
                     </div>
                     <div class="row">

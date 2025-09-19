@@ -8,24 +8,28 @@ if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
 
-if (!$role || $role !== 'principal') {
+if ($role !== 'principal' && $role !== 'hr') {
     header("Location: ../../login.php");
     exit;
 }
 
-$user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
-$principal_school_id = null;
+$current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+$user_school_id = null;
 $librarians = [];
 
 try {
-    if ($user_id) {
+    if ($role === 'principal') {
         $school_stmt = $conn->prepare('SELECT "school_id" FROM "principal" WHERE "id" = ? LIMIT 1');
-        $school_stmt->execute([$user_id]);
-        $principal_school_id = $school_stmt->fetchColumn();
+        $school_stmt->execute([$current_user_id]);
+        $user_school_id = $school_stmt->fetchColumn();
+    } elseif ($role === 'hr') {
+        $school_stmt = $conn->prepare('SELECT "school_id" FROM "hr" WHERE "id" = ? LIMIT 1');
+        $school_stmt->execute([$current_user_id]);
+        $user_school_id = $school_stmt->fetchColumn();
     }
 
-    if (!$principal_school_id) {
-        die("Error: Could not determine the school for the principal.");
+    if (!$user_school_id) {
+        die("Error: Could not determine the school for the user.");
     }
 
     $query = 'SELECT l.id, l.librarian_name, l.email, l.phone, sc.school_name, u.account_status
@@ -35,14 +39,14 @@ try {
               WHERE l.school_id = ? 
               ORDER BY l.id ASC';
     $stmt = $conn->prepare($query);
-    $stmt->execute([$principal_school_id]);
+    $stmt->execute([$user_school_id]);
     $librarians = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 } catch (PDOException $e) {
     die("Database Error: " . $e->getMessage());
 }
 
-if (!is_ajax_request()) {
+if (!is_ajax_request()) 
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -62,9 +66,6 @@ if (!is_ajax_request()) {
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
-<?php
-}
-?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">Librarian Management</h1>
                     <p class="mb-4">List of all librarians in your school.</p>
@@ -83,10 +84,12 @@ if (!is_ajax_request()) {
                     <div class="card shadow mb-4">
                         <div class="card-header py-3 d-flex justify-content-between align-items-center">
                             <h6 class="m-0 font-weight-bold text-primary">Librarian List</h6>
-                            <a href="/BMC-SMS/includes/forms/librarian_enrollment.php" class="btn btn-primary btn-icon-split btn-sm">
-                                <span class="icon text-white-50"><i class="fas fa-plus"></i></span>
-                                <span class="text">Add New Librarian</span>
-                            </a>
+                            <?php if ($role === 'principal' || $role === 'hr'): ?>
+                                <a href="/BMC-SMS/includes/forms/librarian_enrollment.php" class="btn btn-primary btn-icon-split btn-sm">
+                                    <span class="icon text-white-50"><i class="fas fa-plus"></i></span>
+                                    <span class="text">Add New Librarian</span>
+                                </a>
+                            <?php endif; ?>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
@@ -119,7 +122,7 @@ if (!is_ajax_request()) {
                                                 <td>
                                                     <a href="view.php?id=<?php echo $row['id']; ?>" class="btn btn-info btn-sm" title="View"><i class="fas fa-eye"></i></a>
                                                     <a href="edit.php?id=<?php echo $row['id']; ?>" class="btn btn-primary btn-sm" title="Edit"><i class="fas fa-edit"></i></a>
-                                                    <?php if ($role === 'principal'):
+                                                    <?php
                                                         $return_url = urlencode('/BMC-SMS/pages/librarian/librarian_list.php');
                                                         if ($row['account_status'] === 'active'): 
                                                             $suspendUrl = "../../includes/actions/update_user_status.php?id={$row['id']}&status=suspended&return={$return_url}";
@@ -129,9 +132,10 @@ if (!is_ajax_request()) {
                                                         $reactivateUrl = "../../includes/actions/update_user_status.php?id={$row['id']}&status=active&return={$return_url}";
                                                     ?>
                                                     <a href="#" onclick="confirmAction('<?php echo $reactivateUrl; ?>', 'reactivate this librarian')" class="btn btn-success btn-sm" title="Reactivate"><i class="fas fa-check-circle"></i></a>
-                                                    <?php endif; 
-                                                    endif; ?>
-                                                    <button class="btn btn-danger btn-sm" onclick="confirmDelete(<?php echo $row['id']; ?>)" title="Delete"><i class="fas fa-trash"></i></button>
+                                                    <?php endif; ?>
+                                                    <?php if ($role === 'principal'): ?>
+                                                        <button class="btn btn-danger btn-sm" onclick="confirmDelete(<?php echo $row['id']; ?>)" title="Delete"><i class="fas fa-trash"></i></button>
+                                                    <?php endif; ?>
                                                 </td>
                                             </tr>
                                             <?php endforeach;

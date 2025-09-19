@@ -6,8 +6,10 @@ $role = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
+$current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
 
-if (!$role) {
+// Only principal and hr can view a librarian's profile
+if ($role !== 'principal' && $role !== 'hr') {
     header("Location: ../../login.php");
     exit;
 }
@@ -22,7 +24,30 @@ $librarian = null;
 $timings = [];
 
 try {
-    // MODIFIED: Fetch main librarian details including transportation fields by joining tables
+    // Check if the user is authorized to view this librarian
+    $query_access = "SELECT school_id FROM librarian WHERE id = ?";
+    $stmt_access = $conn->prepare($query_access);
+    $stmt_access->execute([$librarian_id]);
+    $target_school_id = $stmt_access->fetchColumn();
+
+    $user_school_id = null;
+    if ($role === 'principal') {
+        $stmt_user_school = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
+        $stmt_user_school->execute([$current_user_id]);
+        $user_school_id = $stmt_user_school->fetchColumn();
+    } elseif ($role === 'hr') {
+        $stmt_user_school = $conn->prepare("SELECT school_id FROM hr WHERE id = ?");
+        $stmt_user_school->execute([$current_user_id]);
+        $user_school_id = $stmt_user_school->fetchColumn();
+    }
+    
+    if ($target_school_id != $user_school_id) {
+        $redirect_url = ($role === 'hr') ? '../hr/librarian_list.php' : 'librarian_list.php';
+        header("Location: " . $redirect_url . "?error=Unauthorized access to this profile.");
+        exit;
+    }
+
+    // Fetch main librarian details including transportation fields by joining tables
     $query_librarian = 'SELECT l.*, s.school_name, s.email AS school_email, s.phone AS school_phone,
                         st.stop_name, r.route_name, v.vehicle_number as school_vehicle_number
                         FROM "librarian" l
