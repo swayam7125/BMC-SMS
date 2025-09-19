@@ -309,7 +309,7 @@ if (isset($conn) && $user_id) {
             $teacher_pages = ['teacher_enrollment.php', 'teacher_list.php', 'teacher_attendence.php', 'view_teacher_attendence.php'];
             $librarian_pages = ['librarian_enrollment.php', 'librarian_list.php', 'librarian_attendance.php', 'view_librarian_attendance.php'];
             $student_pages = ['student_enrollment.php', 'student_list.php', 'generate_lc.php'];
-            $payroll_pages = ['payroll_enrollment.php', 'payroll_list.php', 'hr_attendance.php', 'view_payroll_attendance.php'];
+            $hr_pages = ['payroll_enrollment.php', 'payroll_list.php', 'hr_attendance.php', 'view_payroll_attendance.php'];
             $notice_pages = ['send_notice.php', 'send_notice_to_bmc.php', 'send_notice_to_librarian.php', 'view_notice.php'];
             $academics_pages = ['manage_subjects.php', 'manage_timetable.php', 'send_exam_timetable.php', 'manage_holidays.php'];
             $past_data_pages_principal = ['past_teacher.php', 'past_librarian.php', 'past_student.php'];
@@ -390,13 +390,13 @@ if (isset($conn) && $user_id) {
         </div>
     </li>
     <li class="nav-item">
-        <a class="nav-link <?php echo (is_active_page($payroll_pages)) ? '' : 'collapsed'; ?>" href="#"
+        <a class="nav-link <?php echo (is_active_page($hr_pages)) ? '' : 'collapsed'; ?>" href="#"
             data-toggle="collapse" data-target="#collapsePayrollUsers">
             <div><i class="fas fa-fw fa-users-cog"></i>
                 <span>Manage HR</span>
             </div>
         </a>
-        <div id="collapsePayrollUsers" class="collapse <?php echo (is_active_page($payroll_pages)) ? 'show' : ''; ?>"
+        <div id="collapsePayrollUsers" class="collapse <?php echo (is_active_page($hr_pages)) ? 'show' : ''; ?>"
             data-parent="#accordionSidebar">
             <div class="bg-white py-2 collapse-inner rounded">
                 <a class="collapse-item <?php echo ($current_page == 'payroll_enrollment.php') ? 'active' : ''; ?>"
@@ -404,9 +404,9 @@ if (isset($conn) && $user_id) {
                 <a class="collapse-item <?php echo ($current_page == 'payroll_list.php') ? 'active' : ''; ?>"
                     href="<?php echo BASE_WEB_PATH; ?>pages/payroll/payroll_list.php">HR User List</a>
                 <a class="collapse-item <?php echo ($current_page == 'payroll_attendance.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>pages/principal/payroll_attendance.php">HR Attendance</a>
+                    href="<?php echo BASE_WEB_PATH; ?>pages/principal/hr_attendance.php">HR Attendance</a>
                 <a class="collapse-item <?php echo ($current_page == 'view_payroll_attendance.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_payroll_attendance.php">View HR Attendance</a>
+                    href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_hr_attendance.php">View HR Attendance</a>
             </div>
         </div>
     </li>
@@ -1085,7 +1085,7 @@ if (isset($conn) && $user_id) {
             break;
 
         case 'hr':
-            $payroll_pages = ['process_teacher_salary.php', 'process_librarian_salary.php', 'view_salary_history.php'];
+            $payroll_pages = ['process_teacher_salary.php', 'process_librarian_salary.php', 'process_principal_salary.php', 'view_salary_history.php'];
         ?>
             <div class="sidebar-heading font-weight-semibold">Management</div>
             <li class="nav-item <?php echo ($current_page == 'manage_incentives.php') ? 'active' : ''; ?>">

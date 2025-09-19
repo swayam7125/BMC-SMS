@@ -28,7 +28,7 @@ if ($userId) {
 }
 
 // Fetch the list of HR users for the principal's school
-$payroll_users = [];
+$hr_users = [];
 if ($school_id) {
     try {
         $query = '
@@ -40,7 +40,7 @@ if ($school_id) {
         ';
         $stmt = $conn->prepare($query);
         $stmt->execute([$school_id]);
-        $payroll_users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $hr_users = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
         // Log error and display a friendly message if something goes wrong
         error_log("Database error fetching HR list: " . $e->getMessage());
@@ -78,7 +78,6 @@ if ($school_id) {
                         </a>
                     </div>
                     
-                    <!-- Success/Error Messages -->
                     <?php if (isset($_GET['success'])): ?>
                         <div class="alert alert-success alert-dismissible fade show" role="alert">
                             <?php echo htmlspecialchars($_GET['success']); ?>
@@ -111,12 +110,12 @@ if ($school_id) {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php if (empty($payroll_users)): ?>
+                                        <?php if (empty($hr_users)): ?>
                                             <tr>
                                                 <td colspan="3" class="text-center">No HR users found.</td>
                                             </tr>
                                         <?php else: ?>
-                                            <?php foreach ($payroll_users as $user): ?>
+                                            <?php foreach ($hr_users as $user): ?>
                                                 <tr>
                                                     <td><?php echo htmlspecialchars($user['hr_name']); ?></td>
                                                     <td><?php echo htmlspecialchars($user['email']); ?></td>
@@ -142,10 +141,8 @@ if ($school_id) {
         </div>
     </div>
 
-    <!-- Logout Modal-->
     <?php include_once "../../includes/logout_modal.php"; ?>
 
-    <!-- Delete Confirmation Modal -->
     <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">

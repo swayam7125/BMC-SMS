@@ -16,7 +16,7 @@ if ($role !== 'principal' || !$userId) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Sanitize and retrieve POST data
     $teacher_id = filter_input(INPUT_POST, 'teacher_id', FILTER_VALIDATE_INT);
-    $principal_id = filter_input(INPUT_POST, 'principal_id', FILTER_VALIDATE_INT);
+    // The principal is the user executing this. We use $userId for the hr_user_id/payroll_user_id.
     $school_id = filter_input(INPUT_POST, 'school_id', FILTER_VALIDATE_INT);
     $salary_month = filter_input(INPUT_POST, 'salary_month', FILTER_VALIDATE_INT);
     $salary_year = filter_input(INPUT_POST, 'salary_year', FILTER_VALIDATE_INT);
@@ -31,18 +31,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conn->beginTransaction();
 
         // 1. Double-check to prevent duplicate payment
-        $check_stmt = $conn->prepare("SELECT id FROM payroll_records WHERE teacher_id = ? AND salary_month = ? AND salary_year = ?");
+        $check_stmt = $conn->prepare("SELECT id FROM teacher_payroll WHERE teacher_id = ? AND salary_month = ? AND salary_year = ?");
         $check_stmt->execute([$teacher_id, $salary_month, $salary_year]);
         if ($check_stmt->fetch()) {
             throw new Exception("Salary for this teacher for this month has already been processed.");
         }
 
         // 2. Insert the payment record
-        $sql = "INSERT INTO payroll_records (teacher_id, principal_id, school_id, salary_month, salary_year, base_salary, total_working_days, present_days, absent_days, deduction_amount, net_salary_paid) 
+        // Renamed column from principal_id/payroll_user_id to hr_user_id
+        $sql = "INSERT INTO teacher_payroll (teacher_id, hr_user_id, school_id, salary_month, salary_year, base_salary, total_working_days, present_days, absent_days, deduction_amount, net_salary_paid) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $conn->prepare($sql);
         $stmt->execute([
-            $teacher_id, $principal_id, $school_id, $salary_month, $salary_year,
+            $teacher_id, $userId, $school_id, $salary_month, $salary_year,
             $base_salary, $total_working_days, $present_days, $absent_days,
             $deduction_amount, $net_salary_paid
         ]);
