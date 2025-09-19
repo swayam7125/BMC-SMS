@@ -5,9 +5,11 @@ ini_set('display_errors', 1);
 include_once "../connect.php";
 include_once "../../encryption.php";
 
+// Get current user's role AND ID
 $current_user_role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
+$current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
 
-if (!$current_user_role) {
+if (!$current_user_role || !$current_user_id) {
     header("Location: ../../login.php");
     exit;
 }
@@ -22,7 +24,6 @@ if ($user_id_to_update <= 0 || !$new_status) {
 }
 
 try {
-    // --- CORRECTED: Using PDO to fetch and update user data ---
     $stmt_target = $conn->prepare('SELECT "role" FROM "users" WHERE "id" = ?');
     $stmt_target->execute([$user_id_to_update]);
     $target_user = $stmt_target->fetch(PDO::FETCH_ASSOC);
@@ -33,14 +34,34 @@ try {
         exit;
     }
 
-    // Permission logic
+    // --- NEW & IMPROVED PERMISSION LOGIC ---
     $is_authorized = false;
     switch ($current_user_role) {
         case 'superadmin':
+            // Allow superadmin to modify principals (and potentially others)
             if ($target_role === 'principal') $is_authorized = true;
             break;
         case 'principal':
-            if (in_array($target_role, ['teacher', 'student', 'librarian'])) $is_authorized = true;
+            // 1. ADDED 'hr' to the list of roles a principal can manage.
+            $allowed_roles = ['teacher', 'student', 'librarian', 'hr'];
+            if (in_array($target_role, $allowed_roles)) {
+                
+                // 2. ADDED SECURITY CHECK: Ensure both users are in the same school.
+                $stmt_principal_school = $conn->prepare('SELECT "school_id" FROM "principal" WHERE "id" = ?');
+                $stmt_principal_school->execute([$current_user_id]);
+                $principal_school_id = $stmt_principal_school->fetchColumn();
+
+                // Get target user's school ID based on their role
+                $target_school_id = null;
+                $sql = sprintf('SELECT "school_id" FROM "%s" WHERE "id" = ?', $target_role);
+                $stmt_target_school = $conn->prepare($sql);
+                $stmt_target_school->execute([$user_id_to_update]);
+                $target_school_id = $stmt_target_school->fetchColumn();
+
+                if ($principal_school_id && $principal_school_id === $target_school_id) {
+                    $is_authorized = true;
+                }
+            }
             break;
     }
 
@@ -49,7 +70,7 @@ try {
         exit;
     }
 
-    // Update the user status
+    // Update the user status if authorized
     $stmt_update = $conn->prepare('UPDATE "users" SET "account_status" = ? WHERE "id" = ?');
     if ($stmt_update->execute([$new_status, $user_id_to_update])) {
         $action = ($new_status === 'suspended') ? 'suspended' : 'reactivated';
@@ -59,7 +80,9 @@ try {
     }
 
 } catch (PDOException $e) {
-    header("Location: $return_page?error=Database error: " . $e->getMessage());
+    // Note: In a production environment, you might not want to expose the full error message.
+    header("Location: $return_page?error=Database error.");
+    error_log("Update status error: " . $e->getMessage()); // Log error for debugging
 }
 
 $conn = null;
