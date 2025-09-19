@@ -1,21 +1,15 @@
 <?php
-<<<<<<< HEAD
-=======
 /*
 |--------------------------------------------------------------------------
 | 1. INCLUDES & SETUP
 |--------------------------------------------------------------------------
 | Includes required files and performs initial authorization and data setup.
 */
->>>>>>> cf31bf4f9c3abc38aa189c0b752862ab5abe8149
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 
 // Authorization check for HR user
-<<<<<<< HEAD
-=======
 session_start();
->>>>>>> cf31bf4f9c3abc38aa189c0b752862ab5abe8149
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 $userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
 
@@ -24,10 +18,7 @@ if ($role !== 'hr' || !$userId) {
     exit();
 }
 
-<<<<<<< HEAD
-=======
 // Fetch the HR user's associated school_id
->>>>>>> cf31bf4f9c3abc38aa189c0b752862ab5abe8149
 $school_id = null;
 try {
     $stmt = $conn->prepare("SELECT school_id FROM hr WHERE id = ?");
@@ -41,80 +32,6 @@ if (!$school_id) {
     die("Error: HR user is not associated with any school.");
 }
 
-<<<<<<< HEAD
-// Handle Form Submissions
-$errorMessage = '';
-$successMessage = '';
-
-// Add Incentive Type
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_incentive'])) {
-    $incentive_name = filter_input(INPUT_POST, 'incentive_name', FILTER_SANITIZE_STRING);
-    $percentage = filter_input(INPUT_POST, 'percentage', FILTER_VALIDATE_FLOAT);
-    $type = filter_input(INPUT_POST, 'type', FILTER_SANITIZE_STRING);
-
-    try {
-        $stmt = $conn->prepare("INSERT INTO incentives (school_id, incentive_name, percentage, type) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$school_id, $incentive_name, $percentage, $type]);
-        $successMessage = "Incentive type added successfully!";
-    } catch (Exception $e) {
-        $errorMessage = "Error: " . $e->getMessage();
-    }
-}
-
-// Assign Incentive to Staff Groups
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['assign_incentive'])) {
-    // This backend logic correctly handles the array of checkboxes
-    $assign_to = $_POST['assign_to'] ?? [];
-    $incentive_id = filter_input(INPUT_POST, 'incentive_id', FILTER_VALIDATE_INT);
-    $period = explode('-', $_POST['period']);
-    $salary_month = $period[1];
-    $salary_year = $period[0];
-
-    if (empty($assign_to) || !$incentive_id) {
-        $errorMessage = "Please select at least one staff group and an incentive type.";
-    } else {
-        try {
-            $conn->beginTransaction();
-            $incentiveStmt = $conn->prepare("SELECT percentage, type FROM incentives WHERE id = ?");
-            $incentiveStmt->execute([$incentive_id]);
-            $incentive_details = $incentiveStmt->fetch(PDO::FETCH_ASSOC);
-            $percentage = $incentive_details['percentage'];
-            $incentive_type = $incentive_details['type'];
-            $assignStmt = $conn->prepare("INSERT INTO staff_incentives (staff_id, staff_role, incentive_id, salary_month, salary_year, amount, assigned_by_user_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $total_assigned = 0;
-            foreach ($assign_to as $role_to_assign) {
-                $staff_list = [];
-                $staff_role_name = '';
-                if ($role_to_assign === 'all_teachers') {
-                    $staff_role_name = 'teacher';
-                    $staff_stmt = $conn->prepare("SELECT id, salary FROM teacher WHERE school_id = ?");
-                } elseif ($role_to_assign === 'all_librarians') {
-                    $staff_role_name = 'librarian';
-                    $staff_stmt = $conn->prepare("SELECT id, salary FROM librarian WHERE school_id = ?");
-                } elseif ($role_to_assign === 'all_principals') {
-                    $staff_role_name = 'principal';
-                    $staff_stmt = $conn->prepare("SELECT id, salary FROM principal WHERE school_id = ?");
-                }
-                if (!empty($staff_role_name)) {
-                    $staff_stmt->execute([$school_id]);
-                    $staff_list = $staff_stmt->fetchAll(PDO::FETCH_ASSOC);
-                    foreach ($staff_list as $staff) {
-                        $base_salary = $staff['salary'];
-                        $incentive_amount = ($base_salary * $percentage) / 100;
-                        if ($incentive_type === 'Subtraction') {
-                            $incentive_amount *= -1;
-                        }
-                        $assignStmt->execute([$staff['id'], $staff_role_name, $incentive_id, $salary_month, $salary_year, $incentive_amount, $userId]);
-                        $total_assigned++;
-                    }
-                }
-            }
-            $conn->commit();
-            $successMessage = "Incentive assigned successfully to " . $total_assigned . " staff member(s)!";
-        } catch (Exception $e) {
-            $conn->rollBack();
-            $errorMessage = "Error assigning incentive: " . $e->getMessage();
-=======
 // Initialize feedback messages
 $errorMessage = '';
 $successMessage = '';
@@ -337,20 +254,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } else {
             $errorMessage = "Invalid assignment ID for deletion.";
->>>>>>> cf31bf4f9c3abc38aa189c0b752862ab5abe8149
         }
     }
 }
 
-<<<<<<< HEAD
-// Fetch Data for Display
-$incentives = $conn->prepare("SELECT * FROM incentives WHERE school_id = ? ORDER BY incentive_name");
-$incentives->execute([$school_id]);
-$incentive_list = $incentives->fetchAll(PDO::FETCH_ASSOC);
-?>
-<!DOCTYPE html>
-<html lang="en">
-=======
 
 /*
 |--------------------------------------------------------------------------
@@ -432,7 +339,6 @@ $staff_incentives_json = json_encode($staff_incentives_map);
 <!DOCTYPE html>
 <html lang="en">
 
->>>>>>> cf31bf4f9c3abc38aa189c0b752862ab5abe8149
 <head>
     <meta charset="utf-8">
     <title>Manage Incentives</title>
@@ -442,9 +348,6 @@ $staff_incentives_json = json_encode($staff_incentives_map);
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-<<<<<<< HEAD
-</head>
-=======
     <style>
         .searchable-dropdown .dropdown-menu {
             display: none;
@@ -499,7 +402,6 @@ $staff_incentives_json = json_encode($staff_incentives_map);
     </style>
 </head>
 
->>>>>>> cf31bf4f9c3abc38aa189c0b752862ab5abe8149
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -513,76 +415,24 @@ $staff_incentives_json = json_encode($staff_incentives_map);
                     <?php if ($errorMessage): ?><div class="alert alert-danger"><?php echo $errorMessage; ?></div><?php endif; ?>
 
                     <div class="row">
-<<<<<<< HEAD
-                        <div class="col-lg-5">
-                             <div class="card shadow mb-4">
-                                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Define Incentive Types</h6></div>
-=======
                         <div class="col-lg-6">
                             <div class="card shadow mb-4">
                                 <div class="card-header py-3">
                                     <h6 class="m-0 font-weight-bold text-primary">Define Incentive Types</h6>
                                 </div>
->>>>>>> cf31bf4f9c3abc38aa189c0b752862ab5abe8149
                                 <div class="card-body">
                                     <form action="" method="POST">
                                         <div class="form-group"><label for="incentive_name">Incentive Name</label><input type="text" name="incentive_name" class="form-control" required></div>
                                         <div class="form-group"><label for="percentage">Percentage of Base Salary (%)</label><input type="number" step="0.01" name="percentage" class="form-control" required></div>
-<<<<<<< HEAD
-                                        <div class="form-group"><label for="type">Type</label><select name="type" class="form-control" required><option value="Addition">Addition (Bonus)</option><option value="Subtraction">Subtraction (Deduction)</option></select></div>
-=======
                                         <div class="form-group"><label for="type">Type</label><select name="type" class="form-control" required>
                                                 <option value="Addition">Addition (Bonus)</option>
                                                 <option value="Subtraction">Subtraction (Deduction)</option>
                                             </select></div>
->>>>>>> cf31bf4f9c3abc38aa189c0b752862ab5abe8149
                                         <button type="submit" name="save_incentive" class="btn btn-primary">Add Incentive</button>
                                     </form>
                                 </div>
                             </div>
                         </div>
-<<<<<<< HEAD
-                        <div class="col-lg-7">
-                            <div class="card shadow mb-4">
-                                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Assign Incentive to Staff</h6></div>
-                                <div class="card-body">
-                                    <form action="" method="POST">
-                                        <div class="form-group">
-                                            <label for="period">For Period (Month-Year)</label>
-                                            <input type="month" name="period" class="form-control" value="<?php echo date('Y-m'); ?>" required>
-                                        </div>
-                                        
-                                        <div class="form-group position-relative">
-                                            <label for="assignToDisplay">Assign To</label>
-                                            <input type="text" id="assignToDisplay" class="form-control" placeholder="Select one or more staff groups" readonly style="cursor: pointer; background-color: #fff;">
-                                            <div id="assignToOptions" class="dropdown-menu p-2 w-100" style="display:none; position: absolute;">
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" name="assign_to[]" value="all_teachers" id="assign_teachers">
-                                                    <label class="form-check-label" for="assign_teachers">All Teachers</label>
-                                                </div>
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" name="assign_to[]" value="all_librarians" id="assign_librarians">
-                                                    <label class="form-check-label" for="assign_librarians">All Librarians</label>
-                                                </div>
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" name="assign_to[]" value="all_principals" id="assign_principals">
-                                                    <label class="form-check-label" for="assign_principals">All Principals</label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="form-group">
-                                            <label for="incentive_id">Incentive Type</label>
-                                            <select name="incentive_id" class="form-control" required>
-                                                <option value="">-- Select Incentive --</option>
-                                                <?php foreach($incentive_list as $inc): ?>
-                                                    <option value="<?php echo $inc['id']; ?>"><?php echo htmlspecialchars($inc['incentive_name']); ?> (<?php echo $inc['type'] === 'Addition' ? '+' : '-'; ?><?php echo rtrim(rtrim($inc['percentage'], '0'), '.'); ?>%)</option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                        </div>
-                                        <button type="submit" name="assign_incentive" class="btn btn-success">Assign Incentive</button>
-                                    </form>
-=======
                         <div class="col-lg-6">
                             <div class="card shadow mb-4">
                                 <div class="card-header py-3">
@@ -672,24 +522,10 @@ $staff_incentives_json = json_encode($staff_incentives_map);
                                             </form>
                                         </div>
                                     </div>
->>>>>>> cf31bf4f9c3abc38aa189c0b752862ab5abe8149
                                 </div>
                             </div>
                         </div>
                     </div>
-<<<<<<< HEAD
-                    
-                    <div class="row">
-                        <div class="col-lg-12">
-                            <div class="card shadow mb-4">
-                                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Existing Incentives</h6></div>
-                                <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered" id="incentivesTable" width="100%" cellspacing="0">
-                                            <thead><tr><th>Incentive Name</th><th>Type</th><th>Percentage</th></tr></thead>
-                                            <tbody>
-                                                <?php foreach($incentive_list as $inc): ?>
-=======
 
                     <div class="row">
                         <div class="col-lg-12">
@@ -710,18 +546,14 @@ $staff_incentives_json = json_encode($staff_incentives_map);
                                             </thead>
                                             <tbody>
                                                 <?php foreach ($incentive_list as $inc): ?>
->>>>>>> cf31bf4f9c3abc38aa189c0b752862ab5abe8149
                                                     <tr>
                                                         <td><?php echo htmlspecialchars($inc['incentive_name']); ?></td>
                                                         <td><span class="badge badge-<?php echo $inc['type'] === 'Addition' ? 'success' : 'danger'; ?>"><?php echo htmlspecialchars($inc['type']); ?></span></td>
                                                         <td><?php echo rtrim(rtrim($inc['percentage'], '0'), '.'); ?>%</td>
-<<<<<<< HEAD
-=======
                                                         <td>
                                                             <a href="#" class="btn btn-warning btn-sm edit-btn" data-toggle="modal" data-target="#editIncentiveModal" data-id="<?php echo $inc['id']; ?>" data-name="<?php echo htmlspecialchars($inc['incentive_name']); ?>" data-percentage="<?php echo $inc['percentage']; ?>" data-type="<?php echo $inc['type']; ?>"><i class="fas fa-edit"></i> Edit</a>
                                                             <a href="#" class="btn btn-danger btn-sm delete-btn" data-toggle="modal" data-target="#deleteIncentiveModal" data-id="<?php echo $inc['id']; ?>"><i class="fas fa-trash"></i> Delete</a>
                                                         </td>
->>>>>>> cf31bf4f9c3abc38aa189c0b752862ab5abe8149
                                                     </tr>
                                                 <?php endforeach; ?>
                                             </tbody>
@@ -732,8 +564,6 @@ $staff_incentives_json = json_encode($staff_incentives_map);
                         </div>
                     </div>
 
-<<<<<<< HEAD
-=======
                     <div class="row">
                         <div class="col-lg-12">
                             <div class="card shadow mb-4">
@@ -769,7 +599,6 @@ $staff_incentives_json = json_encode($staff_incentives_map);
                             </div>
                         </div>
                     </div>
->>>>>>> cf31bf4f9c3abc38aa189c0b752862ab5abe8149
                 </div>
             </div>
             <?php include_once '../../includes/footer.php'; ?>
@@ -777,8 +606,6 @@ $staff_incentives_json = json_encode($staff_incentives_map);
     </div>
 
     <?php include_once "../../includes/logout_modal.php"; ?>
-<<<<<<< HEAD
-=======
     <div class="modal fade" id="editIncentiveModal" tabindex="-1">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
@@ -873,55 +700,12 @@ $staff_incentives_json = json_encode($staff_incentives_map);
             </div>
         </div>
     </div>
->>>>>>> cf31bf4f9c3abc38aa189c0b752862ab5abe8149
 
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
-<<<<<<< HEAD
-    
-    <script>
-    $(document).ready(function() {
-        $('#incentivesTable').DataTable();
-
-        const displayInput = $('#assignToDisplay');
-        const optionsContainer = $('#assignToOptions');
-        const checkboxes = optionsContainer.find('.form-check-input');
-        const placeholder = "Select one or more staff groups";
-
-        // Toggle the dropdown visibility when the fake input is clicked
-        displayInput.on('click', function() {
-            optionsContainer.toggle();
-        });
-
-        // Update the display text whenever a checkbox is changed
-        checkboxes.on('change', function() {
-            const selectedLabels = [];
-            checkboxes.filter(':checked').each(function() {
-                selectedLabels.push($(this).siblings('label').text());
-            });
-
-            if (selectedLabels.length > 0) {
-                displayInput.val(selectedLabels.join(', '));
-            } else {
-                displayInput.val('');
-                displayInput.attr('placeholder', placeholder);
-            }
-        }).trigger('change'); // Trigger on page load to set initial state
-
-        // Close the dropdown when clicking anywhere else on the page
-        $(document).on('click', function(e) {
-            // Check if the click is outside of the custom dropdown component
-            if (!$(e.target).closest('.position-relative').length) {
-                optionsContainer.hide();
-            }
-        });
-    });
-    </script>
-</body>
-=======
 
     <script>
         $(document).ready(function() {
@@ -1078,5 +862,4 @@ $staff_incentives_json = json_encode($staff_incentives_map);
     </script>
 </body>
 
->>>>>>> cf31bf4f9c3abc38aa189c0b752862ab5abe8149
 </html>
