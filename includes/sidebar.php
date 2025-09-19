@@ -309,7 +309,7 @@ if (isset($conn) && $user_id) {
             $teacher_pages = ['teacher_enrollment.php', 'teacher_list.php', 'teacher_attendence.php', 'view_teacher_attendence.php'];
             $librarian_pages = ['librarian_enrollment.php', 'librarian_list.php', 'librarian_attendance.php', 'view_librarian_attendance.php'];
             $student_pages = ['student_enrollment.php', 'student_list.php', 'generate_lc.php'];
-            $payroll_pages = ['payroll_enrollment.php', 'payroll_list.php', 'hr_attendance.php', 'view_payroll_attendance.php'];
+            $payroll_pages = ['hr_enrollment.php', 'hr_list.php', 'hr_attendance.php', 'view_hr_attendance.php'];
             $notice_pages = ['send_notice.php', 'send_notice_to_bmc.php', 'send_notice_to_librarian.php', 'view_notice.php'];
             $academics_pages = ['manage_subjects.php', 'manage_timetable.php', 'send_exam_timetable.php', 'manage_holidays.php'];
             $past_data_pages_principal = ['past_teacher.php', 'past_librarian.php', 'past_student.php'];
@@ -399,14 +399,14 @@ if (isset($conn) && $user_id) {
         <div id="collapsePayrollUsers" class="collapse <?php echo (is_active_page($payroll_pages)) ? 'show' : ''; ?>"
             data-parent="#accordionSidebar">
             <div class="bg-white py-2 collapse-inner rounded">
-                <a class="collapse-item <?php echo ($current_page == 'payroll_enrollment.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>includes/forms/payroll_enrollment.php">Enroll HR User</a>
-                <a class="collapse-item <?php echo ($current_page == 'payroll_list.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>pages/payroll/payroll_list.php">HR User List</a>
-                <a class="collapse-item <?php echo ($current_page == 'payroll_attendance.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>pages/principal/payroll_attendance.php">HR Attendance</a>
-                <a class="collapse-item <?php echo ($current_page == 'view_payroll_attendance.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_payroll_attendance.php">View HR Attendance</a>
+                <a class="collapse-item <?php echo ($current_page == 'hr_enrollment.php') ? 'active' : ''; ?>"
+                    href="<?php echo BASE_WEB_PATH; ?>includes/forms/hr_enrollment.php">Enroll HR User</a>
+                <a class="collapse-item <?php echo ($current_page == 'hr_list.php') ? 'active' : ''; ?>"
+                    href="<?php echo BASE_WEB_PATH; ?>pages/hr/hr_list.php">HR User List</a>
+                <a class="collapse-item <?php echo ($current_page == 'hr_attendance.php') ? 'active' : ''; ?>"
+                    href="<?php echo BASE_WEB_PATH; ?>pages/principal/hr_attendance.php">HR Attendance</a>
+                <a class="collapse-item <?php echo ($current_page == 'view_hr_attendance.php') ? 'active' : ''; ?>"
+                    href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_hr_attendance.php">View HR Attendance</a>
             </div>
         </div>
     </li>
@@ -1089,38 +1089,38 @@ if (isset($conn) && $user_id) {
         ?>
             <div class="sidebar-heading font-weight-semibold">Management</div>
             <li class="nav-item <?php echo ($current_page == 'manage_incentives.php') ? 'active' : ''; ?>">
-                <a class="nav-link" href="/BMC-SMS/pages/payroll/manage_incentives.php">
+                <a class="nav-link" href="/BMC-SMS/pages/hr/manage_incentives.php">
                     <div><i class="fas fa-gift"></i>
                     <span>Manage Incentives</span></div>
                 </a>
             </li>
             <li class="nav-item <?php echo ($current_page == 'view_my_attendance.php') ? 'active' : ''; ?>">
-                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/payroll/view_my_attendance.php">
+                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/hr/view_my_attendance.php">
                     <div><i class="fas fa-fw fa-user-check"></i>
                         <span>My Attendance</span>
                     </div>
                 </a>
             </li>
             <li class="nav-item <?php echo ($current_page == 'process_teacher_salary.php') ? 'active' : ''; ?>">
-                <a class="nav-link" href="/BMC-SMS/pages/payroll/process_teacher_salary.php">
+                <a class="nav-link" href="/BMC-SMS/pages/hr/process_teacher_salary.php">
                     <div><i class="fas fa-file-invoice-dollar"></i>
                     <span>Teacher Payroll</span></div>
                 </a>
             </li>
             <li class="nav-item <?php echo ($current_page == 'process_librarian_salary.php') ? 'active' : ''; ?>">
-                <a class="nav-link" href="/BMC-SMS/pages/payroll/process_librarian_salary.php">
+                <a class="nav-link" href="/BMC-SMS/pages/hr/process_librarian_salary.php">
                     <div><i class="fas fa-file-invoice-dollar"></i>
                     <span>Librarian Payroll</span></div>
                 </a>
             </li>
             <li class="nav-item <?php echo ($current_page == 'process_principal_salary.php') ? 'active' : ''; ?>">
-                <a class="nav-link" href="/BMC-SMS/pages/payroll/process_principal_salary.php">
+                <a class="nav-link" href="/BMC-SMS/pages/hr/process_principal_salary.php">
                     <div><i class="fas fa-file-invoice-dollar"></i>
                     <span>Principal Payroll</span></div>
                 </a>
             </li>
             <li class="nav-item <?php echo ($current_page == 'view_salary_history.php') ? 'active' : ''; ?>">
-                <a class="nav-link" href="/BMC-SMS/pages/payroll/view_salary_history.php">
+                <a class="nav-link" href="/BMC-SMS/pages/hr/view_salary_history.php">
                     <div><i class="fas fa-history"></i>
                     <span>Salary History</span></div>
                 </a>

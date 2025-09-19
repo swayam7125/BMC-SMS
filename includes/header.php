@@ -493,9 +493,9 @@ document.addEventListener('DOMContentLoaded', function() {
         ['title' => 'Enroll Student', 'url' => 'includes/forms/student_enrollment.php', 'roles' => ['principal']],
         ['title' => 'Student List', 'url' => 'pages/student/student_list.php', 'roles' => ['principal']],
         ['title' => 'Generate LC', 'url' => 'pages/principal/generate_lc.php', 'roles' => ['principal']],
-        ['title' => 'Enroll HR User', 'url' => 'includes/forms/payroll_enrollment.php', 'roles' => ['principal']],
-        ['title' => 'HR User List', 'url' => 'pages/payroll/payroll_list.php', 'roles' => ['principal']],
-        ['title' => 'HR Attendance', 'url' => 'pages/principal/payroll_attendance.php', 'roles' => ['principal']],
+        ['title' => 'Enroll HR User', 'url' => 'includes/forms/hr_enrollment.php', 'roles' => ['principal']],
+        ['title' => 'HR User List', 'url' => 'pages/hr/hr_list.php', 'roles' => ['principal']],
+        ['title' => 'HR Attendance', 'url' => 'pages/principal/hr_attendance.php', 'roles' => ['principal']],
         ['title' => 'Manage Vehicles', 'url' => 'pages/transport/manage_vehicles.php', 'roles' => ['principal']],
         ['title' => 'Manage Drivers', 'url' => 'pages/transport/manage_drivers.php', 'roles' => ['principal']],
         ['title' => 'Manage Routes & Stops', 'url' => 'pages/transport/manage_routes.php', 'roles' => ['principal']],
@@ -528,7 +528,7 @@ document.addEventListener('DOMContentLoaded', function() {
         ['title' => 'My Student', 'url' => 'pages/student/student_list.php', 'roles' => ['teacher']],
         ['title' => 'My Attendance', 'url' => 'pages/teacher/view_my_attendance.php', 'roles' => ['teacher']],
         ['title' => 'My Salary History', 'url' => 'pages/teacher/view_salary_history.php', 'roles' => ['teacher']],
-        ['title' => 'Salary History', 'url' => 'pages/payroll/view_salary_history.php', 'roles' => ['teacher']],
+        ['title' => 'Salary History', 'url' => 'pages/hr/view_salary_history.php', 'roles' => ['teacher']],
         ['title' => 'Enter Marks', 'url' => 'pages/teacher/marks_entry/marks_entry.php', 'roles' => ['teacher']],
         ['title' => 'View Marks', 'url' => 'pages/teacher/marks_entry/view_marks.php', 'roles' => ['teacher']],
         ['title' => 'Send Assignment', 'url' => 'pages/assignments/send_assignment.php', 'roles' => ['teacher']],
@@ -574,14 +574,14 @@ document.addEventListener('DOMContentLoaded', function() {
         ['title' => 'Acquisition Requests', 'url' => 'pages/librarian/book_requests.php', 'roles' => ['librarian']],
         ['title' => 'Past Book Records', 'url' => 'pages/past_record/past_books.php', 'roles' => ['librarian']],
 
-        // Payroll Pages
+        // HR Pages
         ['title' => 'Dashboard', 'url' => 'dashboard.php', 'roles' => ['hr']],
-        ['title' => 'My Attendance', 'url' => 'pages/payroll/view_my_attendance.php', 'roles' => ['hr']],
-        ['title' => 'Manage Incentives', 'url' => 'pages/payroll/manage_incentives.php', 'roles' => ['hr']],
-        ['title' => 'Teacher Payroll', 'url' => 'pages/payroll/process_teacher_salary.php', 'roles' => ['hr']],
-        ['title' => 'Librarian Payroll', 'url' => 'pages/payroll/process_librarian_salary.php', 'roles' => ['hr']],
-        ['title' => 'Principal Payroll', 'url' => 'pages/payroll/process_principal_salary.php', 'roles' => ['hr']],
-        ['title' => 'Salary History', 'url' => 'pages/payroll/view_salary_history.php', 'roles' => ['hr']],
+        ['title' => 'My Attendance', 'url' => 'pages/hr/view_my_attendance.php', 'roles' => ['hr']],
+        ['title' => 'Manage Incentives', 'url' => 'pages/hr/manage_incentives.php', 'roles' => ['hr']],
+        ['title' => 'Teacher Payroll', 'url' => 'pages/hr/process_teacher_salary.php', 'roles' => ['hr']],
+        ['title' => 'Librarian Payroll', 'url' => 'pages/hr/process_librarian_salary.php', 'roles' => ['hr']],
+        ['title' => 'Principal Payroll', 'url' => 'pages/hr/process_principal_salary.php', 'roles' => ['hr']],
+        ['title' => 'Salary History', 'url' => 'pages/hr/view_salary_history.php', 'roles' => ['hr']],
     ];
 
     // Filter the pages based on the current user's role

@@ -123,7 +123,7 @@ try {
             }
             
             $conn->commit();
-            header("Location: view_payroll_attendance.php?date=" . urlencode($attendance_date) . "&success=" . urlencode($success_message));
+            header("Location: view_hr_attendance.php?date=" . urlencode($attendance_date) . "&success=" . urlencode($success_message));
             exit();
         } catch (Exception $e) {
             $conn->rollBack();
@@ -193,7 +193,7 @@ if (!is_ajax_request()) {
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Update HR Attendance</h1>
-                        <a href="view_payroll_attendance.php?date=<?php echo $attendance_date_display; ?>" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i class="fas fa-eye fa-sm text-white-50"></i> View History</a>
+                        <a href="view_hr_attendance.php?date=<?php echo $attendance_date_display; ?>" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i class="fas fa-eye fa-sm text-white-50"></i> View History</a>
                     </div>
 
                     <?php if (!empty($errorMessage)): ?>
@@ -221,7 +221,7 @@ if (!is_ajax_request()) {
                             </ul>
                             <hr>
                             <p class="mb-0">Please start by filling the attendance for <strong><?php echo htmlspecialchars($all_missing_dates[0]); ?></strong>.</p>
-                            <a href="payroll_attendance.php?attendance_date=<?php echo htmlspecialchars($all_missing_dates[0]); ?>" class="btn btn-primary mt-3">Go to First Pending Attendance Sheet</a>
+                            <a href="hr_attendance.php?attendance_date=<?php echo htmlspecialchars($all_missing_dates[0]); ?>" class="btn btn-primary mt-3">Go to First Pending Attendance Sheet</a>
                         </div>
                     <?php else: ?>
                         <div class="card shadow mb-4">
@@ -326,7 +326,7 @@ if (!is_ajax_request()) {
 
             $('#attendance_date').on('change', function() {
                 var selectedDate = $(this).val();
-                var redirectUrl = 'payroll_attendance.php?attendance_date=' + selectedDate;
+                var redirectUrl = 'hr_attendance.php?attendance_date=' + selectedDate;
                 var editId = '<?php echo $edit_payroll_id; ?>';
                 if (editId) {
                     redirectUrl += '&edit_payroll_id=' + editId;
