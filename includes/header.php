@@ -529,6 +529,7 @@ document.addEventListener('DOMContentLoaded', function() {
         ['title' => 'My Attendance', 'url' => 'pages/teacher/view_my_attendance.php', 'roles' => ['teacher']],
         ['title' => 'My Salary History', 'url' => 'pages/teacher/view_salary_history.php', 'roles' => ['teacher']],
         ['title' => 'Salary History', 'url' => 'pages/hr/view_salary_history.php', 'roles' => ['teacher']],
+        ['title' => 'Salary History', 'url' => 'pages/hr/view_salary_history.php', 'roles' => ['teacher']],
         ['title' => 'Enter Marks', 'url' => 'pages/teacher/marks_entry/marks_entry.php', 'roles' => ['teacher']],
         ['title' => 'View Marks', 'url' => 'pages/teacher/marks_entry/view_marks.php', 'roles' => ['teacher']],
         ['title' => 'Send Assignment', 'url' => 'pages/assignments/send_assignment.php', 'roles' => ['teacher']],
@@ -576,6 +577,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // HR Pages
         ['title' => 'Dashboard', 'url' => 'dashboard.php', 'roles' => ['hr']],
+        ['title' => 'My Attendance', 'url' => 'pages/hr/view_my_attendance.php', 'roles' => ['hr']],
+        ['title' => 'Manage Incentives', 'url' => 'pages/hr/manage_incentives.php', 'roles' => ['hr']],
+        ['title' => 'Teacher Payroll', 'url' => 'pages/hr/process_teacher_salary.php', 'roles' => ['hr']],
+        ['title' => 'Librarian Payroll', 'url' => 'pages/hr/process_librarian_salary.php', 'roles' => ['hr']],
+        ['title' => 'Principal Payroll', 'url' => 'pages/hr/process_principal_salary.php', 'roles' => ['hr']],
+        ['title' => 'Salary History', 'url' => 'pages/hr/view_salary_history.php', 'roles' => ['hr']],
         ['title' => 'My Attendance', 'url' => 'pages/hr/view_my_attendance.php', 'roles' => ['hr']],
         ['title' => 'Manage Incentives', 'url' => 'pages/hr/manage_incentives.php', 'roles' => ['hr']],
         ['title' => 'Teacher Payroll', 'url' => 'pages/hr/process_teacher_salary.php', 'roles' => ['hr']],
