@@ -216,6 +216,5 @@ if (!is_ajax_request())
 
     </html>
 <?php
-}
 $conn = null;
 ?>

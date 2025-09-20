@@ -58,67 +58,33 @@ if (!is_ajax_request()) {
                     <div class="container-fluid">
                         <h1 class="h3 mb-4 text-gray-800">My Salary History</h1>
 
-                    <?php if ($errorMessage): ?>
-                        <div class="alert alert-danger"><?php echo $errorMessage; ?></div>
-                    <?php endif; ?>
+                        <?php if (!empty($errorMessage)): ?>
+                            <div class="alert alert-danger"><?php echo $errorMessage; ?></div>
+                        <?php endif; ?>
 
-                     <div class="card shadow mb-4">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">Download Salary Slips</h6>
-                        </div>
-                        <div class="card-body">
-                            <form action="../hr/download_slips.php" method="POST" target="_blank">
-                                <div class="form-row align-items-end">
-                                    <div class="form-group col-md-4">
-                                        <label for="download_period">Select Period:</label>
-                                        <select name="period" id="download_period" class="form-control">
-                                            <option value="current_month">Current Month</option>
-                                            <option value="last_3_months">Last 3 Months</option>
-                                            <option value="last_6_months">Last 6 Months</option>
-                                            <option value="current_fy">Current Financial Year</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group col-md-4">
-                                        <button type="submit" class="btn btn-success"><i class="fas fa-download"></i> Download Slips</button>
-                                    </div>
-                                </div>
-                                <small class="text-muted">Note: Bulk download functionality is a placeholder and requires server-side setup.</small>
-                            </form>
-                        </div>
-                    </div>
-
-                    <div class="card shadow mb-4">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">Processed Salary Records</h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-bordered">
-                                    <thead>
-                                        <tr>
-                                            <th>Salary Period</th>
-                                            <th>Net Amount Paid</th>
-                                            <th>Payment Date</th>
-                                            <th>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php if (empty($salary_records)): ?>
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Processed Salary Records</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-hover" id="salaryTable" width="100%">
+                                        <thead>
                                             <tr>
-                                                <td colspan="4" class="text-center">No salary records found.</td>
+                                                <th>Salary Period</th>
+                                                <th>Net Amount Paid</th>
+                                                <th>Payment Date</th>
+                                                <th>Action</th>
                                             </tr>
-                                        <?php else: ?>
-                                            <?php foreach($salary_records as $record): ?>
-                                            <tr>
-                                                <td><?php echo date('F Y', mktime(0, 0, 0, $record['salary_month'], 1, $record['salary_year'])); ?></td>
-                                                <td><?php echo formatIndianCurrency($record['net_salary_paid']); ?></td>
-                                                <td><?php echo date('d M, Y', strtotime($record['payment_date'])); ?></td>
-                                                <td>
-                                                    <a href="../hr/generate_slip.php?id=<?php echo encrypt_id($record['id']); ?>&type=librarian" target="_blank" class="btn btn-sm btn-info">
-                                                        <i class="fas fa-eye"></i> View Slip
-                                                    </a>
-                                                </td>
-                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($salary_records as $record): ?>
+                                                <tr>
+                                                    <td><?php echo date('F Y', mktime(0, 0, 0, $record['salary_month'], 1, $record['salary_year'])); ?></td>
+                                                    <td><?php echo formatIndianCurrency($record['net_salary_paid']); ?></td>
+                                                    <td><?php echo date('d M, Y', strtotime($record['payment_date'])); ?></td>
+                                                    <td><a href="../payroll/generate_slip.php?id=<?php echo encrypt_id($record['id']); ?>&type=librarian" target="_blank" class="btn btn-sm btn-info"><i class="fas fa-eye"></i> View Slip</a></td>
+                                                </tr>
                                             <?php endforeach; ?>
                                         </tbody>
                                     </table>
