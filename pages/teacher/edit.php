@@ -7,8 +7,10 @@ $role = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
+$current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
 
-if ($role !== 'principal') {
+// Only principal and hr can edit a teacher's profile
+if ($role !== 'principal' && $role !== 'hr') {
     header("Location: ../../login.php?error=Unauthorized");
     exit;
 }
@@ -30,7 +32,29 @@ if (!defined('BASE_WEB_PATH')) {
 }
 
 try {
-    // MODIFIED: Fetch current teacher data with all necessary fields, including transport
+    // Check if the user is authorized to edit this teacher
+    $query_access = "SELECT school_id FROM teacher WHERE id = ?";
+    $stmt_access = $conn->prepare($query_access);
+    $stmt_access->execute([$teacher_id]);
+    $target_school_id = $stmt_access->fetchColumn();
+
+    $user_school_id = null;
+    if ($role === 'principal') {
+        $stmt_user_school = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
+        $stmt_user_school->execute([$current_user_id]);
+        $user_school_id = $stmt_user_school->fetchColumn();
+    } elseif ($role === 'hr') {
+        $stmt_user_school = $conn->prepare("SELECT school_id FROM hr WHERE id = ?");
+        $stmt_user_school->execute([$current_user_id]);
+        $user_school_id = $stmt_user_school->fetchColumn();
+    }
+
+    if ($target_school_id != $user_school_id) {
+        $redirect_url = ($role === 'hr') ? 'hr_teacher_list.php' : 'teacher_list.php';
+        header("Location: " . $redirect_url . "?error=Unauthorized access");
+        exit;
+    }
+
     $sql_teacher = "SELECT t.*, st.stop_name, r.route_name, v.vehicle_number as school_vehicle_number FROM teacher t
                     LEFT JOIN stops st ON t.stop_id = st.id
                     LEFT JOIN routes r ON st.route_id = r.id
@@ -44,7 +68,6 @@ try {
         header("Location: teacher_list.php?error=Teacher not found");
         exit;
     }
-
     $original_email = $teacher['email'] ?? '';
     $original_image_path = $teacher['teacher_image'] ?? '';
     $original_class_teacher_std = $teacher['class_teacher_std'];
@@ -56,7 +79,7 @@ try {
     while ($row = $stmt_timings_fetch->fetch(PDO::FETCH_ASSOC)) {
         $timings[$row['day_of_week']] = $row;
     }
-    
+
 } catch (PDOException $e) {
     die("Database error while fetching data: " . $e->getMessage());
 }
@@ -101,21 +124,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     $image_path_for_db = $original_image_path;
 
-    // --- Validation ---
-    if (empty($teacher_name)) $errors[] = "Teacher name is required.";
-    if (empty($new_email) || !filter_var($new_email, FILTER_VALIDATE_EMAIL)) $errors[] = "A valid email is required.";
-    if (empty($batch)) $errors[] = "Batch selection is required.";
-    if ($class_teacher && empty($class_teacher_std)) {
-        $errors[] = "Please select a standard for the class teacher.";
-    }
-    
-    // NEW: Validation for transport details
-    if ($transport_mode === 'Self Transport' && empty($self_transport_mode)) $errors[] = "Please specify the mode of self-transport.";
-    if (($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') && empty($vehicle_number)) $errors[] = "Vehicle number is required.";
-    if (($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') && empty($license_number)) $errors[] = "License number is required.";
-
-
-    // --- Handle Photo Upload ---
     if (isset($_FILES['teacher_image']) && $_FILES['teacher_image']['error'] === UPLOAD_ERR_OK) {
         $file = $_FILES['teacher_image'];
         // Corrected upload path
@@ -138,6 +146,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    if (empty($teacher_name)) $errors[] = "Teacher name is required.";
+    if (empty($new_email) || !filter_var($new_email, FILTER_VALIDATE_EMAIL)) $errors[] = "A valid email is required.";
+    if (empty($batch)) $errors[] = "Batch selection is required.";
+    if ($class_teacher && empty($class_teacher_std)) {
+        $errors[] = "Please select a standard for the class teacher.";
+    }
+    
+    if ($transport_mode === 'Self Transport' && empty($self_transport_mode)) $errors[] = "Please specify the mode of self-transport.";
+    if (($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') && empty($vehicle_number)) $errors[] = "Vehicle number is required.";
+    if (($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') && empty($license_number)) $errors[] = "License number is required.";
+
+
     if (empty($errors)) {
         try {
             $conn->beginTransaction();
@@ -148,7 +168,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt_users->execute([$new_email, $teacher_id]);
             }
 
-            // CORRECTED: The SQL query now uses correct column names and placeholders.
             $sql_update_teacher = "UPDATE teacher SET 
                                   teacher_image = ?, teacher_name = ?, phone = ?, school_id = ?, dob = ?, gender = ?, blood_group = ?, address = ?, 
                                   email = ?, qualification = ?, subject = ?, language_known = ?, salary = ?, std = ?, experience = ?, batch = ?, 
@@ -176,13 +195,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $batch,
                 $class_teacher,
                 $class_teacher_std,
-                // New fields start here
                 $transport_mode,
                 $self_transport_mode,
                 $vehicle_number,
                 $license_number,
                 $stop_id,
-                // WHERE clause variable
                 $teacher_id
             ]);
 
@@ -207,7 +224,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $conn->commit();
-            header("Location: teacher_list.php?success=Teacher updated successfully");
+            
+            $redirect_url = 'teacher_list.php';
+            header("Location: " . $redirect_url . "?success=Teacher updated successfully");
             exit;
         } catch (PDOException $e) {
             if ($conn->inTransaction()) {
@@ -525,6 +544,12 @@ if (is_string($raw_stds) && !empty($raw_stds)) {
                     selfTransportSelect.value = '';
                     document.getElementById('vehicle_number').value = '';
                     document.getElementById('license_number').value = '';
+                    
+                    const schoolId = document.getElementById('school_id').value;
+                    const selectedStopId = <?php echo json_encode($teacher['stop_id'] ?? null); ?>;
+                    if (schoolId) {
+                        fetchTransportStops(schoolId, selectedStopId);
+                    }
                 } else if (mainMode === 'Self Transport') {
                     selfTransportDiv.style.display = 'block';
                     schoolTransportDiv.style.display = 'none';
@@ -549,6 +574,37 @@ if (is_string($raw_stds) && !empty($raw_stds)) {
             // Add event listeners for dynamic changes
             transportModeSelect.addEventListener('change', toggleTransportFields);
             selfTransportSelect.addEventListener('change', toggleSelfTransportFields);
+            
+            // Re-fetch stops if school changes
+            document.getElementById('school_id').addEventListener('change', function() {
+                if (transportModeSelect.value === 'School Transport') {
+                    fetchTransportStops(this.value, null);
+                }
+            });
+            
+            function fetchTransportStops(schoolId, selectedStopId) {
+                if (!schoolId) {
+                    $('#stop_id').html('<option value="">-- No Transport --</option>');
+                    return;
+                }
+                
+                $('#stop_id').html('<option value="">-- Loading stops --</option>');
+                
+                fetch('../teacher/get_transport_stops.php?school_id=' + schoolId)
+                    .then(response => response.json())
+                    .then(data => {
+                        let options = '<option value="">-- No Stop Selected --</option>';
+                        data.forEach(stop => {
+                            const isSelected = stop.stop_id == selectedStopId ? 'selected' : '';
+                            options += `<option value="${stop.stop_id}" ${isSelected}>${stop.stop_name} (Route: ${stop.route_name})</option>`;
+                        });
+                        $('#stop_id').html(options);
+                    })
+                    .catch(error => {
+                        console.error('Error fetching transport stops:', error);
+                        $('#stop_id').html('<option value="">-- Error loading stops --</option>');
+                    });
+            }
         });
     </script>
 </body>

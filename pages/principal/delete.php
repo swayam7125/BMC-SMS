@@ -13,9 +13,9 @@ if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
 
-// Redirect to login if the user is not logged in or has no role.
-if (!$role) {
-    header("Location: ../../login.php");
+// Redirect to login if the user is not a superadmin
+if ($role !== 'superadmin') {
+    header("Location: ../../login.php?error=unauthorized");
     exit;
 }
 

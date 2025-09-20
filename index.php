@@ -60,10 +60,10 @@ $page_map = [
     'student_enrollment' => __DIR__ . '/includes/forms/student_enrollment.php',
     'student_list' => __DIR__ . '/pages/student/student_list.php',
     'generate_lc' => __DIR__ . '/pages/principal/generate_lc.php',
-    'payroll_enrollment' => __DIR__ . '/includes/forms/payroll_enrollment.php',
-    'payroll_list' => __DIR__ . '/pages/payroll/payroll_list.php',
-    'payroll_attendance' => __DIR__ . '/pages/principal/payroll_attendance.php',
-    'view_payroll_attendance' => __DIR__ . '/pages/principal/view_payroll_attendance.php',
+    'hr_enrollment' => __DIR__ . '/includes/forms/hr_enrollment.php',
+    'hr_list' => __DIR__ . '/pages/hr/hr_list.php',
+    'hr_attendance' => __DIR__ . '/pages/principal/hr_attendance.php',
+    'view_hr_attendance' => __DIR__ . '/pages/principal/view_hr_attendance.php',
     'manage_vehicles' => __DIR__ . '/pages/transport/manage_vehicles.php',
     'manage_drivers' => __DIR__ . '/pages/transport/manage_drivers.php',
     'manage_routes' => __DIR__ . '/pages/transport/manage_routes.php',
@@ -125,11 +125,11 @@ $page_map = [
     'book_requests' => __DIR__ . '/pages/librarian/book_requests.php',
     'past_books' => __DIR__ . '/pages/past_record/past_books.php',
 
-    // Payroll
-    'manage_incentives' => __DIR__ . '/pages/payroll/manage_incentives.php',
-    'process_teacher_salary' => __DIR__ . '/pages/payroll/process_teacher_salary.php',
-    'process_librarian_salary' => __DIR__ . '/pages/payroll/process_librarian_salary.php',
-    'process_principal_salary' => __DIR__ . '/pages/payroll/process_principal_salary.php',
+    // HR
+    'manage_incentives' => __DIR__ . '/pages/hr/manage_incentives.php',
+    'process_teacher_salary' => __DIR__ . '/pages/hr/process_teacher_salary.php',
+    'process_librarian_salary' => __DIR__ . '/pages/hr/process_librarian_salary.php',
+    'process_principal_salary' => __DIR__ . '/pages/hr/process_principal_salary.php',
 ];
 
 // Check if the requested page identifier exists in our map.

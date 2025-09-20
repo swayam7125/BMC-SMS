@@ -9,10 +9,15 @@
 // --- Includes & Setup ---
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
+include_once '../../includes/ajax_helpers.php'; // Include for fetch_transport_stops
 
-// --- Authorization ---
-$role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
-if ($role !== 'principal') {
+$role = null;
+if (isset($_COOKIE['encrypted_user_role'])) {
+    $role = decrypt_id($_COOKIE['encrypted_user_role']);
+}
+$current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+
+if ($role !== 'principal' && $role !== 'hr') {
     header("Location: ../../login.php?error=Unauthorized");
     exit;
 }
@@ -29,7 +34,29 @@ $timings = [];
 
 // --- Initial Data Fetch ---
 try {
-    // Fetch all librarian data, including joined transport details.
+    // Check if the user is authorized to edit this librarian
+    $query_access = "SELECT school_id FROM librarian WHERE id = ?";
+    $stmt_access = $conn->prepare($query_access);
+    $stmt_access->execute([$librarian_id]);
+    $target_school_id = $stmt_access->fetchColumn();
+
+    $user_school_id = null;
+    if ($role === 'principal') {
+        $stmt_user_school = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
+        $stmt_user_school->execute([$current_user_id]);
+        $user_school_id = $stmt_user_school->fetchColumn();
+    } elseif ($role === 'hr') {
+        $stmt_user_school = $conn->prepare("SELECT school_id FROM hr WHERE id = ?");
+        $stmt_user_school->execute([$current_user_id]);
+        $user_school_id = $stmt_user_school->fetchColumn();
+    }
+
+    if ($target_school_id != $user_school_id) {
+        $redirect_url = ($role === 'hr') ? 'hr_librarian_list.php' : 'librarian_list.php';
+        header("Location: " . $redirect_url . "?error=Unauthorized access");
+        exit;
+    }
+
     $sql_librarian = "SELECT l.*, st.stop_name, r.route_name, v.vehicle_number as school_vehicle_number FROM librarian l
                       LEFT JOIN stops st ON l.stop_id = st.id
                       LEFT JOIN routes r ON st.route_id = r.id
@@ -47,6 +74,7 @@ try {
     // Store original values needed for comparison during update.
     $original_email = $librarian['email'];
     $original_image_path = $librarian['librarian_image'] ?? null;
+    $original_batch = $librarian['batch'];
 
     // Fetch librarian's weekly timings.
     $sql_timings = "SELECT * FROM librarian_timings WHERE librarian_id = ?";
@@ -83,8 +111,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $license_number = ($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') ? trim($_POST['license_number'] ?? '') : null;
 
     $image_path_for_db = $original_image_path;
-
-    // --- Photo Upload Logic ---
+    $new_image_was_uploaded = false;
+    
+    // --- Handle Photo Upload ---
     if (isset($_FILES['librarian_image']) && $_FILES['librarian_image']['error'] === UPLOAD_ERR_OK) {
         $file = $_FILES['librarian_image'];
         $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/librarian/uploads/';
@@ -97,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (move_uploaded_file($file['tmp_name'], $destination)) {
             $image_path_for_db = '/BMC-SMS/pages/librarian/uploads/' . $new_filename;
-            // Delete old photo if a new one is successfully uploaded.
+            $new_image_was_uploaded = true;
             if (!empty($original_image_path) && file_exists($_SERVER['DOCUMENT_ROOT'] . $original_image_path)) {
                 @unlink($_SERVER['DOCUMENT_ROOT'] . $original_image_path);
             }
@@ -106,7 +135,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // --- Database Update ---
+    if (empty($librarian_name)) $errors[] = "Librarian name is required.";
+    if (empty($new_email) || !filter_var($new_email, FILTER_VALIDATE_EMAIL)) $errors[] = "A valid email is required.";
+    if (empty($batch)) $errors[] = "Batch selection is required.";
+    if ($transport_mode === 'Self Transport' && empty($self_transport_mode)) $errors[] = "Please specify the mode of self-transport.";
+    if (($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') && empty($vehicle_number)) $errors[] = "Vehicle number is required.";
+    if (($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') && empty($license_number)) $errors[] = "License number is required.";
+    
+
     if (empty($errors)) {
         try {
             $conn->beginTransaction();
@@ -117,7 +153,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt_users->execute([$new_email, $librarian_id]);
             }
 
-            // Update the main 'librarian' table.
             $sql_update_librarian = "UPDATE librarian SET 
                                       librarian_image = ?, librarian_name = ?, phone = ?, dob = ?, gender = ?, blood_group = ?, address = ?, 
                                       email = ?, qualification = ?, salary = ?, batch = ?, 
@@ -153,18 +188,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             foreach ($posted_timings as $day => $details) {
                 $is_closed_db = isset($details['is_closed']) ? 1 : 0;
-                $opens_at = !$is_closed_db && !empty($details['opens_at']) ? date("H:i:s", strtotime($details['opens_at'] . ' ' . $details['opens_at_ampm'])) : null;
-                $closes_at = !$is_closed_db && !empty($details['closes_at']) ? date("H:i:s", strtotime($details['closes_at'] . ' ' . $details['closes_at_ampm'])) : null;
+
+                // --- UPDATE: Convert 12-hour AM/PM time to 24-hour format for DB ---
+                $opens_at = null;
+                if (!$is_closed_db && !empty($details['opens_at']) && !empty($details['opens_at_ampm'])) {
+                    $opens_at = date("H:i:s", strtotime($details['opens_at'] . ' ' . $details['opens_at_ampm']));
+                }
+                $closes_at = null;
+                if (!$is_closed_db && !empty($details['closes_at']) && !empty($details['closes_at_ampm'])) {
+                    $closes_at = date("H:i:s", strtotime($details['closes_at'] . ' ' . $details['closes_at_ampm']));
+                }
                 $stmt_timing_upsert->execute([$librarian_id, $day, $opens_at, $closes_at, $is_closed_db]);
             }
-
             $conn->commit();
-            header("Location: view.php?id=" . $librarian_id . "&success=updated");
+            header("Location: librarian_list.php?success=Librarian updated successfully");
             exit;
-        } catch (Exception $e) {
-            if ($conn->inTransaction()) $conn->rollBack();
-            error_log("DB update failed in edit.php: " . $e->getMessage());
-            $errors[] = "Database update failed. Please check the logs or contact support.";
+        } catch (PDOException $e) {
+            if ($conn->inTransaction()) {
+                $conn->rollBack();
+            }
+            if ($e->getCode() == 23505) {
+                if (strpos($e->getMessage(), 'unique_librarian_school_batch') !== false) {
+                    $errors[] = "A librarian is already assigned to this school for the selected batch.";
+                } else {
+                    $errors[] = "Database update failed: " . $e->getMessage();
+                }
+            } else {
+                $errors[] = "Database update failed: " . $e->getMessage();
+            }
         }
     }
 
@@ -172,6 +223,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $librarian = array_merge($librarian, $_POST);
     $timings = $posted_timings;
 }
+
+try {
+    $schools_query = "SELECT id, school_name FROM school ORDER BY school_name";
+    $schools_result = $conn->query($schools_query)->fetchAll(PDO::FETCH_ASSOC);
+
+    $school_to_check = $librarian['school_id'];
+    $stmt_routes = $conn->prepare('SELECT r.route_name, s.id as stop_id, s.stop_name FROM routes r JOIN stops s ON r.id = s.route_id WHERE r.school_id = ? ORDER BY r.route_name, s.stop_name');
+    $stmt_routes->execute([$school_to_check]);
+    $transport_stops = $stmt_routes->fetchAll(PDO::FETCH_ASSOC);
+
+} catch (PDOException $e) {
+    die("Could not fetch schools list or transport stops: " . $e->getMessage());
+}
+
+$back_to_list_url = 'librarian_list.php';
+$form_action_url = 'edit.php?id=' . $librarian_id;
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -217,14 +285,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php endif; ?>
 
                     <div class="card shadow mb-4">
-                        <div class="card-body p-lg-5">
-                            <form method="POST" enctype="multipart/form-data">
-
+                        <div class="card-body">
+                            <form method="POST" enctype="multipart/form-data" action="<?php echo $form_action_url; ?>">
                                 <div class="row">
-                                    <div class="col-lg-3 col-md-4 text-center">
-                                        <img src="<?php echo htmlspecialchars(!empty($librarian['librarian_image']) && file_exists($_SERVER['DOCUMENT_ROOT'] . $librarian['librarian_image']) ? $librarian['librarian_image'] : '../../assets/images/unisex.png'); ?>" alt="Librarian Photo" id="imagePreview" class="img-thumbnail rounded-circle mb-2">
-                                        <label for="librarian_image" class="btn btn-sm btn-primary"><i class="fas fa-upload fa-sm"></i> Change Photo</label>
-                                        <input type="file" class="d-none" id="librarian_image" name="librarian_image" onchange="document.getElementById('imagePreview').src = window.URL.createObjectURL(this.files[0])">
+                                    <div class="col-md-3 text-center">
+                                        <?php
+                                        $image_path = $librarian['librarian_image'] ?? '';
+                                        $full_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $image_path;
+                                        if (!empty($image_path) && file_exists($full_path)) {
+                                            $display_path = $image_path;
+                                        } else {
+                                            $display_path = '../../assets/images/unisex.png';
+                                        }
+                                        ?>
+                                        <img src="<?php echo htmlspecialchars($display_path); ?>" alt="Librarian Photo" id="imagePreview" class="img-thumbnail mb-2 mt-3 h-50 w-50" style="width: 150px; height: 150px; object-fit: cover;">
+                                        <div class="form-group mt-3"><label for="librarian_image" class="small btn btn-sm btn-primary"><i class="fas fa-upload fa-sm"></i> Change Photo</label><input type="file" class="d-none" id="librarian_image" name="librarian_image" onchange="document.getElementById('imagePreview').src = window.URL.createObjectURL(this.files[0])"></div>
                                     </div>
                                     <div class="col-lg-9 col-md-8">
                                         <div class="row">
@@ -358,10 +433,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $('#stop_id').html('<option value="">-- No school assigned --</option>');
                     return;
                 }
-                $('#stop_id').html('<option value="">Loading...</option>');
-
-                // Using modern Fetch API for the AJAX call.
-                fetch(`../../includes/ajax_helpers.php?action=get_stops&school_id=${schoolId}`)
+                
+                $('#stop_id').html('<option value="">-- Loading stops --</option>');
+                
+                fetch('../teacher/get_transport_stops.php?school_id=' + schoolId)
                     .then(response => response.json())
                     .then(data => {
                         let options = '<option value="">-- No Stop Selected --</option>';
@@ -431,3 +506,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </body>
 
 </html>
+<?php
+$conn = null;
+?>

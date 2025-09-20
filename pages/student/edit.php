@@ -7,8 +7,10 @@ $role = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
+$current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
 
-if ($role !== 'principal') {
+// Allow principal and hr to edit student profiles
+if ($role !== 'principal' && $role !== 'hr') {
     header("Location: ../../login.php?error=Unauthorized");
     exit;
 }
@@ -30,7 +32,28 @@ if (!defined('BASE_WEB_PATH')) {
 }
 
 try {
-    // Fetch current student data with all necessary fields
+    // Check if the user is authorized to edit this student
+    $query_access = "SELECT school_id FROM student WHERE id = ?";
+    $stmt_access = $conn->prepare($query_access);
+    $stmt_access->execute([$student_id]);
+    $target_school_id = $stmt_access->fetchColumn();
+
+    $user_school_id = null;
+    if ($role === 'principal') {
+        $stmt_user_school = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
+        $stmt_user_school->execute([$current_user_id]);
+        $user_school_id = $stmt_user_school->fetchColumn();
+    } elseif ($role === 'hr') {
+        $stmt_user_school = $conn->prepare("SELECT school_id FROM hr WHERE id = ?");
+        $stmt_user_school->execute([$current_user_id]);
+        $user_school_id = $stmt_user_school->fetchColumn();
+    }
+
+    if ($target_school_id != $user_school_id) {
+        header("Location: student_list.php?error=Unauthorized access");
+        exit;
+    }
+
     $stmt = $conn->prepare("SELECT * FROM student WHERE id = ?");
     $stmt->execute([$student_id]);
     $student = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -42,7 +65,7 @@ try {
 
     $original_email = $student['email'];
     $original_image_path = $student['student_image'];
-
+    
     // Handle form submission
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // --- Form Data Retrieval ---
@@ -64,7 +87,7 @@ try {
         $transport_mode = $_POST['transport_mode'] ?? 'Self Transport';
         $stop_id = ($transport_mode === 'School Transport' && !empty($_POST['stop_id'])) ? (int)$_POST['stop_id'] : null;
         
-        // NEW: Retrieve self-transport fields
+        //Retrieve self-transport fields
         $self_transport_mode = ($transport_mode === 'Self Transport' && !empty($_POST['self_transport_mode'])) ? $_POST['self_transport_mode'] : null;
         $vehicle_number = null;
         $license_number = null;
@@ -84,7 +107,6 @@ try {
         if (($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') && empty($vehicle_number)) $errors[] = "Vehicle number is required.";
         if (($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') && empty($license_number)) $errors[] = "License number is required.";
         
-
         if ($new_email !== $original_email) {
             $stmt_check = $conn->prepare("SELECT id FROM users WHERE email = ? AND id != ?");
             $stmt_check->execute([$new_email, $student_id]);
@@ -131,7 +153,6 @@ try {
                 $stmt_users->execute([$new_email, $student_id]);
             }
 
-            // MODIFIED SQL QUERY: Added self_transport_mode, vehicle_number, and license_number
             $update_student_sql = "UPDATE student SET
                                   student_image = ?, student_name = ?, rollno = ?, std = ?, email = ?, academic_year = ?,
                                   school_id = ?, dob = ?, gender = ?, blood_group = ?, address = ?,
@@ -193,6 +214,16 @@ if (!empty($display_image_path) && file_exists($full_path)) {
     $image_src = $display_image_path;
 } else {
     $image_src = $default_image_path;
+}
+
+try {
+    $school_to_check = $student['school_id'];
+    $stmt_routes = $conn->prepare('SELECT r.route_name, s.id as stop_id, s.stop_name FROM routes r JOIN stops s ON r.id = s.route_id WHERE r.school_id = ? ORDER BY r.route_name, s.stop_name');
+    $stmt_routes->execute([$school_to_check]);
+    $transport_stops = $stmt_routes->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    $transport_stops = [];
+    error_log("Could not fetch transport stops: " . $e->getMessage());
 }
 ?>
 
@@ -369,6 +400,30 @@ if (!empty($display_image_path) && file_exists($full_path)) {
         const selfTransportDiv = document.getElementById('self-transport-div');
         const vehicleDetailsDiv = document.getElementById('vehicle-details-div');
 
+        function fetchTransportStops(schoolId, selectedStopId) {
+            if (!schoolId) {
+                $('#stop_id').html('<option value="">-- No Transport --</option>');
+                return;
+            }
+            
+            $('#stop_id').html('<option value="">-- Loading stops --</option>');
+            
+            fetch('../teacher/get_transport_stops.php?school_id=' + schoolId)
+                .then(response => response.json())
+                .then(data => {
+                    let options = '<option value="">-- No Stop Selected --</option>';
+                    data.forEach(stop => {
+                        const isSelected = stop.stop_id == selectedStopId ? 'selected' : '';
+                        options += `<option value="${stop.stop_id}" ${isSelected}>${stop.stop_name} (Route: ${stop.route_name})</option>`;
+                    });
+                    $('#stop_id').html(options);
+                })
+                .catch(error => {
+                    console.error('Error fetching transport stops:', error);
+                    $('#stop_id').html('<option value="">-- Error loading stops --</option>');
+                });
+        }
+
         function toggleSelfTransportFields() {
             const selectedMode = selfTransportSelect.value;
             if (selectedMode === 'Bike' || selectedMode === 'Car') {
@@ -389,6 +444,12 @@ if (!empty($display_image_path) && file_exists($full_path)) {
                 document.getElementById('self_transport_mode').value = '';
                 document.getElementById('vehicle_number').value = '';
                 document.getElementById('license_number').value = '';
+                
+                const schoolId = document.getElementById('school_id').value;
+                const selectedStopId = <?php echo json_encode($student['stop_id'] ?? null); ?>;
+                if (schoolId) {
+                    fetchTransportStops(schoolId, selectedStopId);
+                }
             } else if (mainMode === 'Self Transport') {
                 selfTransportDiv.style.display = 'block';
                 schoolTransportDiv.style.display = 'none';
@@ -413,6 +474,11 @@ if (!empty($display_image_path) && file_exists($full_path)) {
         // Add event listeners
         transportModeSelect.addEventListener('change', toggleTransportFields);
         selfTransportSelect.addEventListener('change', toggleSelfTransportFields);
+        document.getElementById('school_id').addEventListener('change', function() {
+            if (transportModeSelect.value === 'School Transport') {
+                fetchTransportStops(this.value, null);
+            }
+        });
     </script>
 </body>
 
