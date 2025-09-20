@@ -77,6 +77,7 @@ if (!is_ajax_request()):
         <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
         <link rel="stylesheet" href="../../assets/css/sidebar.css">
         <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+        <link rel="stylesheet" href="../../assets/css/table-to-card.css">
 
         <style>
             .mobile-card-view {

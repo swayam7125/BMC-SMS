@@ -36,36 +36,38 @@ try {
     $stmt_books = $conn->prepare('SELECT * FROM "deleted_books" WHERE "school_id" = ? ORDER BY "deleted_at" DESC');
     $stmt_books->execute([$school_id]);
     $deleted_books = $stmt_books->fetchAll(PDO::FETCH_ASSOC);
-
 } catch (PDOException $e) {
     die("Database Error: " . $e->getMessage());
 }
 
 if (!is_ajax_request()) {
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Past Book Records - School Management System</title>
-    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800,900" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../../assets/css/sidebar.css">
-    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-    <link href="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
-</head>
-<body id="page-top">
-    <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
-        <div id="content-wrapper" class="d-flex flex-column">
-            <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
-<?php
-}
-?>
+    <!DOCTYPE html>
+    <html lang="en">
+
+    <head>
+        <meta charset="utf-8">
+        <title>Past Book Records - School Management System</title>
+        <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800,900" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+        <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+        <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
+        <link href="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="../../assets/css/sidebar.css">
+        <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+        <link rel="stylesheet" href="../../assets/css/table-to-card.css">
+    </head>
+
+    <body id="page-top">
+        <div id="wrapper">
+            <?php include '../../includes/sidebar.php'; ?>
+            <div id="content-wrapper" class="d-flex flex-column">
+                <div id="content">
+                    <?php include_once '../../includes/header.php'; ?>
+                <?php
+            }
+                ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Past Book Records</h1>
                     <div class="card shadow mb-4">
@@ -98,7 +100,9 @@ if (!is_ajax_request()) {
                                                 </tr>
                                             <?php endforeach; ?>
                                         <?php else: ?>
-                                            <tr><td colspan="6" class="text-center">No past book records found.</td></tr>
+                                            <tr>
+                                                <td colspan="6" class="text-center">No past book records found.</td>
+                                            </tr>
                                         <?php endif; ?>
                                     </tbody>
                                 </table>
@@ -106,28 +110,33 @@ if (!is_ajax_request()) {
                         </div>
                     </div>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
+                <?php
+                if (!is_ajax_request()) {
+                ?>
+                </div>
+                <?php include_once '../../includes/footer.php'; ?>
             </div>
-            <?php include_once '../../includes/footer.php'; ?>
         </div>
-    </div>
-    <?php include_once "../../includes/logout_modal.php"?>
-    <script src="../../assets/vendor/jquery/jquery.min.js"></script>
-    <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
-    <script src="../../assets/js/sb-admin-2.min.js"></script>
-    <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
-    <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            $('#dataTable').DataTable({ "order": [[ 4, "desc" ]] });
-        });
-    </script>
-</body>
-</html>
+        <?php include_once "../../includes/logout_modal.php" ?>
+        <script src="../../assets/vendor/jquery/jquery.min.js"></script>
+        <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+        <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
+        <script src="../../assets/js/sb-admin-2.min.js"></script>
+        <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
+        <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+        <script>
+            $(document).ready(function() {
+                $('#dataTable').DataTable({
+                    "order": [
+                        [4, "desc"]
+                    ]
+                });
+            });
+        </script>
+    </body>
+
+    </html>
 <?php
-}
-$conn = null; 
+                }
+                $conn = null;
 ?>
