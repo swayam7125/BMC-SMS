@@ -77,7 +77,7 @@ if (isset($_COOKIE['encrypted_user_role'])) {
                 case 'hr':
                     $table_name = 'hr';
                     $name_field = 'hr_name';
-                    $image_field = 'hr_image'; // This field exists in your table
+                    $image_field = 'hr_image'; 
                     break;
             }
 
@@ -95,9 +95,14 @@ if (isset($_COOKIE['encrypted_user_role'])) {
                         // Set the profile image
                         $db_image_path = $user_details[$image_field];
                         if (!empty($db_image_path)) {
-                            $filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $db_image_path;
+                            // Fetch the image path from the database, which is often a relative path
+                            $imagePathFromDB = $user_details[$image_field];
+                            $full_path = str_starts_with($imagePathFromDB, '/') ? $imagePathFromDB : BASE_WEB_PATH . ltrim($imagePathFromDB, '/');
+                            
+                            $filesystem_path = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $full_path;
+
                             if (file_exists($filesystem_path) && is_file($filesystem_path)) {
-                                $userProfileImage = $db_image_path;
+                                $userProfileImage = $full_path;
                             }
                         }
                     }
@@ -164,6 +169,7 @@ if (!function_exists('getNotificationIcon')) {
             case 'acquisition_status': return 'fas fa-check-circle text-white';
             case 'teacher_salary': return 'fas fa-receipt text-white'; 
             case 'librarian_salary': return 'fas fa-receipt text-white'; 
+            case 'hr_salary': return 'fas fa-receipt text-white'; // ADDED: Icon for HR salary
             default: return 'fas fa-bell text-white';
         }
     }
@@ -348,7 +354,7 @@ if (!function_exists('getNotificationIcon')) {
                     style="width: 32px; height: 32px; object-fit: cover;">
             </a>
             <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="userDropdown">
-                <?php if ($user_role !== 'superadmin' && $user_role !== 'hr'): ?>
+                <?php if ($user_role !== 'superadmin'): ?>
                 <a class="dropdown-item" href="<?php echo BASE_WEB_PATH; ?>pages/user/profile.php">
                     <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
                     Profile
@@ -494,9 +500,9 @@ document.addEventListener('DOMContentLoaded', function() {
         ['title' => 'Enroll Student', 'url' => 'includes/forms/student_enrollment.php', 'roles' => ['principal']],
         ['title' => 'Student List', 'url' => 'pages/student/student_list.php', 'roles' => ['principal']],
         ['title' => 'Generate LC', 'url' => 'pages/principal/generate_lc.php', 'roles' => ['principal']],
-        ['title' => 'Enroll HR User', 'url' => 'includes/forms/payroll_enrollment.php', 'roles' => ['principal']],
-        ['title' => 'HR User List', 'url' => 'pages/payroll/payroll_list.php', 'roles' => ['principal']],
-        ['title' => 'HR Attendance', 'url' => 'pages/principal/payroll_attendance.php', 'roles' => ['principal']],
+        ['title' => 'Enroll HR User', 'url' => 'includes/forms/hr_enrollment.php', 'roles' => ['principal']],
+        ['title' => 'HR User List', 'url' => 'pages/hr/hr_list.php', 'roles' => ['principal']],
+        ['title' => 'HR Attendance', 'url' => 'pages/principal/hr_attendance.php', 'roles' => ['principal']],
         ['title' => 'Manage Vehicles', 'url' => 'pages/transport/manage_vehicles.php', 'roles' => ['principal']],
         ['title' => 'Manage Drivers', 'url' => 'pages/transport/manage_drivers.php', 'roles' => ['principal']],
         ['title' => 'Manage Routes & Stops', 'url' => 'pages/transport/manage_routes.php', 'roles' => ['principal']],
@@ -529,7 +535,8 @@ document.addEventListener('DOMContentLoaded', function() {
         ['title' => 'My Student', 'url' => 'pages/student/student_list.php', 'roles' => ['teacher']],
         ['title' => 'My Attendance', 'url' => 'pages/teacher/view_my_attendance.php', 'roles' => ['teacher']],
         ['title' => 'My Salary History', 'url' => 'pages/teacher/view_salary_history.php', 'roles' => ['teacher']],
-        ['title' => 'Salary History', 'url' => 'pages/payroll/view_salary_history.php', 'roles' => ['teacher']],
+        ['title' => 'Salary History', 'url' => 'pages/hr/view_salary_history.php', 'roles' => ['teacher']],
+        ['title' => 'Salary History', 'url' => 'pages/hr/view_salary_history.php', 'roles' => ['teacher']],
         ['title' => 'Enter Marks', 'url' => 'pages/teacher/marks_entry/marks_entry.php', 'roles' => ['teacher']],
         ['title' => 'View Marks', 'url' => 'pages/teacher/marks_entry/view_marks.php', 'roles' => ['teacher']],
         ['title' => 'Send Assignment', 'url' => 'pages/assignments/send_assignment.php', 'roles' => ['teacher']],
@@ -575,14 +582,21 @@ document.addEventListener('DOMContentLoaded', function() {
         ['title' => 'Acquisition Requests', 'url' => 'pages/librarian/book_requests.php', 'roles' => ['librarian']],
         ['title' => 'Past Book Records', 'url' => 'pages/past_record/past_books.php', 'roles' => ['librarian']],
 
-        // Payroll Pages
+        // HR Pages
         ['title' => 'Dashboard', 'url' => 'dashboard.php', 'roles' => ['hr']],
-        ['title' => 'My Attendance', 'url' => 'pages/payroll/view_my_attendance.php', 'roles' => ['hr']],
-        ['title' => 'Manage Incentives', 'url' => 'pages/payroll/manage_incentives.php', 'roles' => ['hr']],
-        ['title' => 'Teacher Payroll', 'url' => 'pages/payroll/process_teacher_salary.php', 'roles' => ['hr']],
-        ['title' => 'Librarian Payroll', 'url' => 'pages/payroll/process_librarian_salary.php', 'roles' => ['hr']],
-        ['title' => 'Principal Payroll', 'url' => 'pages/payroll/process_principal_salary.php', 'roles' => ['hr']],
-        ['title' => 'Salary History', 'url' => 'pages/payroll/view_salary_history.php', 'roles' => ['hr']],
+        ['title' => 'My Profile', 'url' => 'pages/user/profile.php', 'roles' => ['hr']],
+        ['title' => 'My Attendance', 'url' => 'pages/hr/view_my_attendance.php', 'roles' => ['hr']],
+        ['title' => 'Manage Incentives', 'url' => 'pages/hr/manage_incentives.php', 'roles' => ['hr']],
+        ['title' => 'Teacher Payroll', 'url' => 'pages/hr/process_teacher_salary.php', 'roles' => ['hr']],
+        ['title' => 'Librarian Payroll', 'url' => 'pages/hr/process_librarian_salary.php', 'roles' => ['hr']],
+        ['title' => 'Principal Payroll', 'url' => 'pages/hr/process_principal_salary.php', 'roles' => ['hr']],
+        ['title' => 'Salary History', 'url' => 'pages/hr/view_salary_history.php', 'roles' => ['hr']],
+        ['title' => 'My Attendance', 'url' => 'pages/hr/view_my_attendance.php', 'roles' => ['hr']],
+        ['title' => 'Manage Incentives', 'url' => 'pages/hr/manage_incentives.php', 'roles' => ['hr']],
+        ['title' => 'Teacher Payroll', 'url' => 'pages/hr/process_teacher_salary.php', 'roles' => ['hr']],
+        ['title' => 'Librarian Payroll', 'url' => 'pages/hr/process_librarian_salary.php', 'roles' => ['hr']],
+        ['title' => 'Principal Payroll', 'url' => 'pages/hr/process_principal_salary.php', 'roles' => ['hr']],
+        ['title' => 'Salary History', 'url' => 'pages/hr/view_salary_history.php', 'roles' => ['hr']],
     ];
 
     // Filter the pages based on the current user's role

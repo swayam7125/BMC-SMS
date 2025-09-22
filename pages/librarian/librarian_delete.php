@@ -1,45 +1,48 @@
 <?php
+/*
+ * Filename: librarian_delete.php
+ * Description: Securely deletes a librarian record, archives it, and removes associated files.
+ * This is a backend script with no visual output.
+ */
+
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
-// Check if a user with appropriate permissions is logged in
+// --- Authorization ---
+// Ensure only a user with the 'principal' role can execute this script.
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
-
-// Ensure a user is logged in (you can add more specific role checks, e.g., 'principal' or 'superadmin')
 if (!$role || $role !== 'principal') {
     header("Location: ../../login.php?error=Unauthorized");
     exit;
 }
 
-// Validate that a librarian ID was provided in the URL
-if (!isset($_GET['id']) || empty($_GET['id']) || !filter_var($_GET['id'], FILTER_VALIDATE_INT)) {
-    header("Location: librarian_list.php?error=Invalid librarian ID provided");
+// --- Input Validation ---
+// Check that a valid, integer ID was provided in the URL.
+if (!isset($_GET['id']) || !filter_var($_GET['id'], FILTER_VALIDATE_INT)) {
+    header("Location: librarian_list.php?error=Invalid_ID");
     exit;
 }
-
 $librarian_id = (int)$_GET['id'];
 
 try {
-    // Start a transaction to ensure all operations succeed or none do
+    // --- Database Transaction ---
+    // A transaction ensures that all database operations succeed or fail together,
+    // preventing partial data deletion and maintaining data integrity.
     $conn->beginTransaction();
 
-    // 1. Fetch the complete librarian record before deleting
+    // Step 1: Fetch the full librarian record before deletion for archiving.
     $stmt_fetch = $conn->prepare("SELECT * FROM librarian WHERE id = ?");
     $stmt_fetch->execute([$librarian_id]);
     $librarian_data = $stmt_fetch->fetch(PDO::FETCH_ASSOC);
 
-    // Check if the librarian exists
     if (!$librarian_data) {
         throw new Exception("Librarian with ID $librarian_id not found.");
     }
 
-    // 2. Archive the fetched data into the 'deleted_librarians' table
-    $query_archive_librarian = "INSERT INTO deleted_librarians 
-                                (id, librarian_name, email, phone, dob, gender, blood_group, address, 
-                                 qualification, salary, school_id, deleted_by_role) 
-                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-    $stmt_archive = $conn->prepare($query_archive_librarian);
+    // Step 2: Archive the data into the 'deleted_librarians' table for record-keeping.
+    $query_archive = "INSERT INTO deleted_librarians (id, librarian_name, email, phone, dob, gender, blood_group, address, qualification, salary, school_id, deleted_by_role) 
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    $stmt_archive = $conn->prepare($query_archive);
     $stmt_archive->execute([
         $librarian_data['id'],
         $librarian_data['librarian_name'],
@@ -52,39 +55,34 @@ try {
         $librarian_data['qualification'],
         $librarian_data['salary'],
         $librarian_data['school_id'],
-        $role // The role of the user performing the deletion
+        $role
     ]);
 
-    // 3. Delete the user from the 'users' table.
-    // The 'ON DELETE CASCADE' constraint on the 'librarian' table will automatically delete the corresponding librarian record.
+    // Step 3: Delete the user from the central 'users' table.
+    // The database's 'ON DELETE CASCADE' constraint will automatically delete the corresponding record from the 'librarian' table.
     $stmt_delete_user = $conn->prepare("DELETE FROM users WHERE id = ?");
     $stmt_delete_user->execute([$librarian_id]);
 
-    // Verify that the user was actually deleted to prevent orphaned records
     if ($stmt_delete_user->rowCount() === 0) {
-        throw new Exception("User record associated with the librarian could not be deleted.");
+        throw new Exception("The user record could not be deleted, preventing the librarian deletion.");
     }
 
-    // 4. Delete the librarian's profile image from the server, if it exists
+    // Step 4: Delete the librarian's profile image from the server, if it exists.
     $image_path = $librarian_data['librarian_image'];
     if (!empty($image_path) && file_exists($_SERVER['DOCUMENT_ROOT'] . $image_path)) {
-        // Using a relative path from the document root for security and reliability
         unlink($_SERVER['DOCUMENT_ROOT'] . $image_path);
     }
 
-    // If all steps were successful, commit the transaction
+    // If all steps were successful, commit the transaction.
     $conn->commit();
-    header("Location: librarian_list.php?success=Librarian was successfully deleted and archived.");
+    header("Location: librarian_list.php?success=Librarian has been successfully deleted.");
     exit;
-
 } catch (Exception $e) {
-    // If any step fails, roll back the entire transaction
+    // If any step failed, roll back the entire transaction.
     if ($conn->inTransaction()) {
         $conn->rollBack();
     }
-    // Log the detailed error for debugging and show a generic error to the user
     error_log("Librarian Deletion Error: " . $e->getMessage());
-    header("Location: librarian_list.php?error=" . urlencode("An error occurred during deletion. Please check logs."));
+    header("Location: librarian_list.php?error=" . urlencode("An error occurred during deletion."));
     exit;
 }
-?>

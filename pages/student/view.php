@@ -1,5 +1,4 @@
 <?php
-
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
@@ -7,6 +6,8 @@ $role = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
+$current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+$selectedStd = isset($_GET['std']) ? $_GET['std'] : 'all';
 
 // Redirect to login if not logged in
 if (!$role) {
@@ -16,27 +17,53 @@ if (!$role) {
 
 // Get student ID and standard from URL
 $student_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
-$selectedStd = isset($_GET['std']) ? $_GET['std'] : 'all';
-
 if ($student_id <= 0) {
     header("Location: student_list.php?error=Invalid student ID");
     exit;
 }
 
-// Fetch student data with related information
-$query = "SELECT s.*, sc.school_name, sc.address as school_address, sc.email as school_email, sc.phone as school_phone,
-                st.stop_name, r.route_name, v.vehicle_number as school_vehicle_number
-        FROM student s 
-        LEFT JOIN school sc ON s.school_id = sc.id
-        LEFT JOIN stops st ON s.stop_id = st.id
-        LEFT JOIN routes r ON st.route_id = r.id
-        LEFT JOIN vehicles v ON r.vehicle_id = v.id
-        WHERE s.id = ?";
-
 try {
+    // Check if the user is authorized to view this student
+    $query_access = "SELECT school_id FROM student WHERE id = ?";
+    $stmt_access = $conn->prepare($query_access);
+    $stmt_access->execute([$student_id]);
+    $target_school_id = $stmt_access->fetchColumn();
+    
+    $user_school_id = null;
+    if ($role === 'principal') {
+        $stmt_user_school = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
+        $stmt_user_school->execute([$current_user_id]);
+        $user_school_id = $stmt_user_school->fetchColumn();
+    } elseif ($role === 'hr') {
+        $stmt_user_school = $conn->prepare("SELECT school_id FROM hr WHERE id = ?");
+        $stmt_user_school->execute([$current_user_id]);
+        $user_school_id = $stmt_user_school->fetchColumn();
+    }
+    
+    // Authorization check for principal and HR roles
+    if (($role === 'principal' || $role === 'hr') && $target_school_id != $user_school_id) {
+        header("Location: student_list.php?error=Unauthorized access to this profile.");
+        exit;
+    }
+    
+    // Authorization check for student role (self-view only)
+    if ($role === 'student' && $student_id != $current_user_id) {
+        header("Location: ../../dashboard.php?error=Unauthorized access to this profile.");
+        exit;
+    }
+
+    $query = "SELECT s.*, sc.school_name, sc.address as school_address, sc.email as school_email, sc.phone as school_phone,
+                    st.stop_name, r.route_name, v.vehicle_number as school_vehicle_number
+            FROM student s 
+            LEFT JOIN school sc ON s.school_id = sc.id
+            LEFT JOIN stops st ON s.stop_id = st.id
+            LEFT JOIN routes r ON st.route_id = r.id
+            LEFT JOIN vehicles v ON r.vehicle_id = v.id
+            WHERE s.id = ?";
+
     $stmt = $conn->prepare($query);
     $stmt->execute([$student_id]);
-
+    
     // PDO Change: Use rowCount() to check if a record was found
     if ($stmt->rowCount() == 0) {
         header("Location: student_list.php?error=Student not found");
@@ -102,7 +129,7 @@ if (!empty($photo_path) && file_exists($full_filesystem_path) && is_file($full_f
                             <a href="student_list.php?std=<?php echo urlencode($selectedStd); ?>" class="btn btn-secondary btn-sm mr-2">
                                 <i class="fas fa-arrow-left"></i> Back to List
                             </a>
-                            <?php if ($role === 'principal'): ?>
+                            <?php if ($role === 'principal' || $role === 'hr'): ?>
                                 <a href="edit.php?id=<?php echo $student['id']; ?>" class="btn btn-primary btn-sm">
                                     <i class="fas fa-edit"></i> Edit Student
                                 </a>

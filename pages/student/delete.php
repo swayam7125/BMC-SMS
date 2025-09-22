@@ -12,8 +12,9 @@ if (isset($_COOKIE['encrypted_user_role'])) {
     $userId = decrypt_id($_COOKIE['encrypted_user_id']);
     $acting_user_name = decrypt_id($_COOKIE['encrypted_user_name'] ?? '') ?? 'Principal';
 }
+$user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
 
-// Redirect to login if not logged in or role is not authorized (e.g., principal)
+// Only the 'principal' role is allowed to perform this action.
 if ($role !== 'principal') {
     header("Location: ../../login.php?error=Unauthorized action");
     exit;
@@ -29,9 +30,20 @@ $student_id = intval($_GET['id']);
 $student_name = 'Unknown Student';
 $student_rollno = 'N/A';
 
-// PDO Change: Use PDO transactions and error handling
 try {
-    // Begin a transaction to ensure all operations succeed or none do
+    // Authorization Check: The principal must be in the same school as the student they are deleting.
+    $stmt_principal_school = $conn->prepare('SELECT school_id FROM principal WHERE id = ?');
+    $stmt_principal_school->execute([$user_id]);
+    $principal_school_id = $stmt_principal_school->fetchColumn();
+
+    $stmt_student_school = $conn->prepare('SELECT school_id FROM student WHERE id = ?');
+    $stmt_student_school->execute([$student_id]);
+    $student_school_id = $stmt_student_school->fetchColumn();
+
+    if ($principal_school_id !== $student_school_id) {
+        throw new Exception("Unauthorized access. You can only delete students from your school.");
+    }
+
     $conn->beginTransaction();
 
     // Step 1: Fetch all data for the student to be deleted
@@ -49,7 +61,6 @@ try {
     $query_archive_student = "INSERT INTO deleted_students
                                 (id, student_name, email, rollno, std, academic_year, dob, gender, blood_group, address, father_name, father_phone, mother_name, mother_phone, school_id, deleted_by_role)
                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
     $stmt_archive = $conn->prepare($query_archive_student);
 
     // FIX: Capitalize the first letter of the gender value
@@ -63,7 +74,7 @@ try {
         $student_data['std'],
         $student_data['academic_year'],
         $student_data['dob'],
-        $gender_for_db, // Use the capitalized variable here
+        $gender_for_db,
         $student_data['blood_group'],
         $student_data['address'],
         $student_data['father_name'],
@@ -75,6 +86,7 @@ try {
     ]);
 
     // Step 3: Delete the user record from the 'users' table.
+    
     $stmt_delete = $conn->prepare("DELETE FROM users WHERE id = ?");
     $stmt_delete->execute([$student_id]);
 
@@ -107,4 +119,6 @@ try {
     error_log("Deletion Error: " . $e->getMessage());
     header("Location: student_list.php?error=" . urlencode("An error occurred during deletion. Please check the logs."));
     exit;
+} finally {
+    $conn = null;
 }

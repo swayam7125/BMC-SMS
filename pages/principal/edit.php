@@ -27,7 +27,10 @@ function getWebAccessibleImagePath($db_image_path)
 }
 
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
-if (!$role) {
+$current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+
+// Only superadmin and HR can edit a principal's profile
+if ($role !== 'superadmin' && $role !== 'hr') {
     header("Location: ../../login.php");
     exit;
 }
@@ -48,7 +51,22 @@ if (!defined('BASE_WEB_PATH')) {
 }
 
 try {
-    // --- FETCH EXISTING PRINCIPAL DATA with transportation details ---
+    // Check if the HR user is trying to edit a principal from their own school
+    if ($role === 'hr') {
+        $stmt_hr_school = $conn->prepare("SELECT school_id FROM hr WHERE id = ?");
+        $stmt_hr_school->execute([$current_user_id]);
+        $hr_school_id = $stmt_hr_school->fetchColumn();
+
+        $stmt_principal_school = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
+        $stmt_principal_school->execute([$principal_id]);
+        $principal_school_id = $stmt_principal_school->fetchColumn();
+        
+        if ($hr_school_id !== $principal_school_id) {
+            header("Location: principal_list.php?error=Unauthorized access");
+            exit;
+        }
+    }
+
     $sql_principal = "SELECT p.*, st.stop_name, r.route_name, v.vehicle_number as school_vehicle_number FROM principal p
                     LEFT JOIN stops st ON p.stop_id = st.id
                     LEFT JOIN routes r ON st.route_id = r.id
@@ -108,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     $image_path_for_db = $original_image_path;
         $new_image_was_uploaded = false; // Flag to check if a new image was uploaded
-
+    
     // --- Handle Photo Upload ---
     if (isset($_FILES['principal_image']) && $_FILES['principal_image']['error'] === UPLOAD_ERR_OK) {
         $file = $_FILES['principal_image'];
@@ -469,7 +487,7 @@ $current_image_web_path = getWebAccessibleImagePath($principal['principal_image'
                 fetch('../teacher/get_transport_stops.php?school_id=' + schoolId)
                     .then(response => response.json())
                     .then(data => {
-                        let options = '<option value="">-- No Transport --</option>';
+                        let options = '<option value="">-- No Stop Selected --</option>';
                         data.forEach(stop => {
                             const isSelected = stop.stop_id == selectedStopId ? 'selected' : '';
                             options += `<option value="${stop.stop_id}" ${isSelected}>${stop.stop_name} (Route: ${stop.route_name})</option>`;

@@ -3,7 +3,7 @@ include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 include_once "../../includes/log_system.php"; // ADDED: Log system dependency
 
-// Check user role
+// Only the 'principal' role is allowed to perform this action.
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 $userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
 $acting_user_name = decrypt_id($_COOKIE['encrypted_user_name'] ?? '') ?? 'Admin';
@@ -25,7 +25,7 @@ $teacher_name = 'Unknown Teacher';
 try {
     $conn->beginTransaction();
 
-    // 1. Fetch the teacher's data
+    // 1. Fetch the teacher's data for archiving
     $stmt_fetch = $conn->prepare("SELECT * FROM teacher WHERE id = ?");
     $stmt_fetch->execute([$teacher_id]);
     $teacher_data = $stmt_fetch->fetch(PDO::FETCH_ASSOC);
@@ -41,10 +41,7 @@ try {
                                  qualification, subject, language_known, salary, std, experience, batch, 
                                  class_teacher, class_teacher_std, deleted_by_role) 
                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
     $stmt_archive = $conn->prepare($query_archive_teacher);
-
-    // FINAL FIX: Explicitly convert the boolean value to a string 'true' or 'false'
     $class_teacher_value = !empty($teacher_data['class_teacher']) ? 'true' : 'false'; 
 
     $stmt_archive->execute([
@@ -64,7 +61,7 @@ try {
         $teacher_data['std'],
         $teacher_data['experience'],
         $teacher_data['batch'],
-        $class_teacher_value, // Use the new explicit string value
+        $class_teacher_value,
         $teacher_data['class_teacher_std'],
         $role
     ]);
@@ -94,11 +91,12 @@ try {
     exit;
 
 } catch (Exception $e) {
-    // Roll back on error
-    if ($conn->inTransaction()) {
+    if ($conn && $conn->inTransaction()) {
         $conn->rollBack();
     }
     error_log("Teacher Deletion Error: " . $e->getMessage());
-    header("Location: teacher_list.php?error=" . urlencode("An error occurred during deletion."));
+    header("Location: teacher_list.php?error=" . urlencode("An error occurred during deletion: " . $e->getMessage()));
     exit;
+} finally {
+    $conn = null;
 }

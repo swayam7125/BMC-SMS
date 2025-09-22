@@ -71,7 +71,7 @@ if (!is_ajax_request()) {
                             <h6 class="m-0 font-weight-bold text-primary">Download Salary Slips</h6>
                         </div>
                         <div class="card-body">
-                            <form action="../payroll/download_slips.php" method="POST" target="_blank">
+                            <form action="../hr/download_slips.php" method="POST" target="_blank">
                                 <div class="form-row align-items-end">
                                     <div class="form-group col-md-4">
                                         <label for="download_period">Select Period:</label>
@@ -119,7 +119,7 @@ if (!is_ajax_request()) {
                                                 <td><?php echo formatIndianCurrency($record['net_salary_paid']); ?></td>
                                                 <td><?php echo date('d M, Y', strtotime($record['payment_date'])); ?></td>
                                                 <td>
-                                                    <a href="../payroll/generate_slip.php?id=<?php echo encrypt_id($record['id']); ?>&type=principal" target="_blank" class="btn btn-sm btn-info">
+                                                    <a href="../hr/generate_slip.php?id=<?php echo encrypt_id($record['id']); ?>&type=principal" target="_blank" class="btn btn-sm btn-info">
                                                         <i class="fas fa-eye"></i> View Slip
                                                     </a>
                                                 </td>

@@ -13,9 +13,10 @@ if (isset($_COOKIE['encrypted_user_role'])) {
 }
 
 if (!$role) {
-    header("Location: ../login.php");
+    header("Location: ../../login.php");
     exit;
 }
+$current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
 
 try {
     $query = "SELECT s.id, s.student_name, s.rollno, s.std, s.email, sc.school_name, u.account_status
@@ -28,10 +29,9 @@ try {
     $school_id = null;
     
     if ($role === 'teacher') {
-        $user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
-        if ($user_id) {
+        if ($current_user_id) {
             $stmt_teacher_info = $conn->prepare("SELECT school_id, std FROM teacher WHERE id = ? LIMIT 1");
-            $stmt_teacher_info->execute([$user_id]);
+            $stmt_teacher_info->execute([$current_user_id]);
             $teacher_info = $stmt_teacher_info->fetch(PDO::FETCH_ASSOC);
 
             $school_id = $teacher_info['school_id'] ?? null;
@@ -58,12 +58,11 @@ try {
                 $params = array_merge($params, $availableStandards);
             }
         }
-    } elseif ($role === 'principal') {
-        $user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
-
-        if ($user_id) {
-            $stmt_school = $conn->prepare("SELECT school_id FROM principal WHERE id = ? LIMIT 1");
-            $stmt_school->execute([$user_id]);
+    } elseif ($role === 'principal' || $role === 'hr') {
+        if ($current_user_id) {
+            $table_name = ($role === 'principal') ? 'principal' : 'hr';
+            $stmt_school = $conn->prepare("SELECT school_id FROM {$table_name} WHERE id = ? LIMIT 1");
+            $stmt_school->execute([$current_user_id]);
             $user_data = $stmt_school->fetch(PDO::FETCH_ASSOC);
             $school_id = $user_data['school_id'] ?? null;
         }
@@ -107,7 +106,7 @@ try {
     die("A database error occurred while fetching the student list.");
 }
 
-if (!is_ajax_request()) {
+if (!is_ajax_request()) 
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -129,12 +128,9 @@ if (!is_ajax_request()) {
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
-<?php
-}
-?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">Student Management</h1>
-                    <p class="mb-4">List of all students in <?php echo ($role === 'principal') ? 'your school' : 'your standard'; ?>.</p>
+                    <p class="mb-4">List of all students in your school.</p>
 
                     <?php if (isset($_GET['success'])): ?>
                         <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -150,7 +146,7 @@ if (!is_ajax_request()) {
                     <div class="card shadow mb-4">
                         <div class="card-header py-3 d-flex justify-content-between align-items-center">
                             <h6 class="m-0 font-weight-bold text-primary">Student List</h6>
-                            <?php if ($role === 'principal'): ?>
+                            <?php if ($role === 'principal' || $role === 'hr'): ?>
                                 <a href="/BMC-SMS/includes/forms/student_enrollment.php" class="btn btn-primary btn-icon-split btn-sm">
                                     <span class="icon text-white-50"><i class="fas fa-plus"></i></span>
                                     <span class="text">Add New Student</span>
@@ -188,7 +184,7 @@ if (!is_ajax_request()) {
                                                     <td>
                                                         <a href="view.php?id=<?php echo $row['id']; ?>&std=<?php echo htmlspecialchars($selectedStd); ?>" class="btn btn-info btn-sm" title="View"><i class="fas fa-eye"></i></a>
 
-                                                        <?php if ($role === 'principal'): ?>
+                                                        <?php if ($role === 'principal' || $role === 'hr'): ?>
                                                             <a href="edit.php?id=<?php echo $row['id']; ?>" class="btn btn-primary btn-sm" title="Edit"><i class="fas fa-edit"></i></a>
                                                             <?php
                                                             $return_url = urlencode('/BMC-SMS/pages/student/student_list.php');
@@ -201,6 +197,8 @@ if (!is_ajax_request()) {
                                                             ?>
                                                                 <a href="#" onclick="confirmAction('<?php echo $reactivateUrl; ?>', 'reactivate this student')" class="btn btn-success btn-sm" title="Reactivate"><i class="fas fa-check-circle"></i></a>
                                                             <?php endif; ?>
+                                                        <?php endif; ?>
+                                                        <?php if ($role === 'principal'): ?>
                                                             <button class="btn btn-danger btn-sm" onclick="confirmDelete(<?php echo $row['id']; ?>)" title="Delete"><i class="fas fa-trash"></i></button>
                                                         <?php endif; ?>
                                                     </td>
@@ -247,7 +245,7 @@ if (!is_ajax_request()) {
             </div>
         </div>
     </div>
-    <?php if (($role === 'principal' || $role === 'teacher') && !empty($availableStandards)): ?>
+    <?php if (($role === 'principal' || $role === 'teacher' || $role === 'hr') && !empty($availableStandards)): ?>
         <div id="standardFilterWrapper" class="d-none">
             <label class="mr-3">Filter by Standard: 
                 <select id="standardFilter" class="form-control form-control-sm d-inline-block w-auto">
@@ -276,16 +274,10 @@ if (!is_ajax_request()) {
             var standardFilterWrapper = $('#standardFilterWrapper');
 
             if (filterContainer.length > 0 && standardFilterWrapper.length > 0) {
-                // Extract the content (the label) from the wrapper div
                 var filterContent = standardFilterWrapper.html();
-                
-                // Prepend the actual content, not the div, to the search area
                 filterContainer.prepend(filterContent);
-
-                // Remove the now-empty wrapper from the page
                 standardFilterWrapper.remove();
                 
-                // Attach the event handler to the newly added dropdown
                 $('#standardFilter').on('change', function() {
                     window.location.href = 'student_list.php?std=' + this.value;
                 });

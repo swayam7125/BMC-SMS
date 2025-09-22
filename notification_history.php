@@ -67,20 +67,23 @@ if (!function_exists('getNotificationIcon')) {
             case 'borrow_status': return 'fas fa-book-reader text-white';
             case 'borrow_request': return 'fas fa-hand-holding-hand text-white';
             case 'leave_request': return 'fas fa-calendar-plus text-white';
+            case 'hr_leave_request': return 'fas fa-user-plus text-white';
+            case 'hr_leave_status': return 'fas fa-check-circle text-white';
             case 'new_notice': return 'fas fa-file-alt text-white';
             case 'principal_notice': return 'fas fa-user-tie text-white';
             case 'principal_to_librarian_notice': return 'fas fa-user-graduate text-white';
             case 'leave_status': return 'fas fa-check-circle text-white';
             case 'school_notice': return 'fas fa-chalkboard-teacher text-white';
             case 'new_assignment': return 'fas fa-file-signature text-white';
+            case 'assignment_submission': return 'fas fa-file-upload text-white';
             case 'marks_uploaded': return 'fas fa-award text-white';
             case 'exam_timetable': return 'fas fa-calendar-alt text-white';
             case 'new_notes': return 'fas fa-sticky-note text-white';
             case 'result_published': return 'fas fa-poll-h text-white';
             case 'acquisition_request': return 'fas fa-inbox text-white';
             case 'acquisition_status': return 'fas fa-check-circle text-white';
-            case 'teacher_salary': return 'fas fa-receipt text-white'; 
-            case 'librarian_salary': return 'fas fa-receipt text-white'; 
+            case 'teacher_salary': return 'fas fa-receipt text-white';
+            case 'librarian_salary': return 'fas fa-receipt text-white';
             default: return 'fas fa-bell text-white';
         }
     }
@@ -157,7 +160,7 @@ if (!defined('BASE_WEB_PATH')) {
                                         <?php
                                             $base_link = htmlspecialchars(BASE_WEB_PATH . ltrim($notification['link'], '/'));
                                             $is_unread = !$notification['is_read'];
-                                            
+
                                             // Add a special class and data-attribute for unread notifications to be handled by JS
                                             $link_class = $is_unread ? 'notification-history-link unread' : '';
                                             $data_attr = $is_unread ? 'data-notif-id="' . htmlspecialchars($notification['id']) . '"' : '';
@@ -205,7 +208,7 @@ if (!defined('BASE_WEB_PATH')) {
         document.querySelectorAll('.notification-history-link.unread').forEach(link => {
             link.addEventListener('click', function(event) {
                 event.preventDefault(); // Stop navigation
-                
+
                 const notifId = this.getAttribute('data-notif-id');
                 const targetUrl = this.getAttribute('href');
 

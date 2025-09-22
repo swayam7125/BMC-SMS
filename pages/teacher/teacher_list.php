@@ -6,30 +6,53 @@ include_once "../../includes/ajax_helpers.php";
 $role = null;
 $teachers = [];
 $selected_standard = $_GET['std'] ?? '';
+$current_user_id = null;
 
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
+if (isset($_COOKIE['encrypted_user_id'])) {
+    $current_user_id = decrypt_id($_COOKIE['encrypted_user_id']);
+}
 
-if (!$role) {
+if ($role !== 'principal' && $role !== 'hr' && $role !== 'teacher') {
     header("Location: ../../login.php");
     exit;
 }
 
 try {
-    $principal_school_id = null;
+    $user_school_id = null;
+    $is_class_teacher = false;
+    
     if ($role === 'principal') {
-        $user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
-        if ($user_id) {
-            $stmt_school = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
-            $stmt_school->execute([$user_id]);
-            $user_data = $stmt_school->fetch(PDO::FETCH_ASSOC);
-            $principal_school_id = $user_data['school_id'] ?? null;
-        }
-        if (!$principal_school_id) {
-            die("Error: Could not determine the school for the principal.");
+        $stmt_school = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
+        $stmt_school->execute([$current_user_id]);
+        $user_school_id = $stmt_school->fetchColumn();
+    } elseif ($role === 'hr') {
+        $stmt_school = $conn->prepare("SELECT school_id FROM hr WHERE id = ?");
+        $stmt_school->execute([$current_user_id]);
+        $user_school_id = $stmt_school->fetchColumn();
+    } elseif ($role === 'teacher') {
+        $stmt_teacher_info = $conn->prepare("SELECT school_id, std, class_teacher FROM teacher WHERE id = ? LIMIT 1");
+        $stmt_teacher_info->execute([$current_user_id]);
+        $teacher_info = $stmt_teacher_info->fetch(PDO::FETCH_ASSOC);
+
+        $user_school_id = $teacher_info['school_id'] ?? null;
+        $is_class_teacher = $teacher_info['class_teacher'] ?? false;
+        
+        if (!empty($teacher_info['std'])) {
+            $std_string_from_db = trim($teacher_info['std'], '{}');
+            if (!empty($std_string_from_db)) {
+                $availableStandards = explode(',', $std_string_from_db);
+            }
         }
     }
+
+
+    if (!$user_school_id) {
+        die("Error: Could not determine the school for the user.");
+    }
+    
 
     $query = "SELECT t.id, t.teacher_name, t.email, t.phone, t.subject, t.std, t.batch,
                      sc.school_name, u.account_status
@@ -40,10 +63,8 @@ try {
     $conditions = [];
     $params = [];
 
-    if ($role === 'principal' && $principal_school_id) {
-        $conditions[] = "t.school_id = ?";
-        $params[] = $principal_school_id;
-    }
+    $conditions[] = "t.school_id = ?";
+    $params[] = $user_school_id;
 
     if (!empty($selected_standard)) {
         $conditions[] = "? = ANY(t.std)";
@@ -60,19 +81,16 @@ try {
     $stmt->execute($params);
     $teachers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Get all unique standards for the filter dropdown
     $standards_query = "SELECT DISTINCT unnest(std) as standard FROM teacher";
-    if ($role === 'principal' && $principal_school_id) {
-        $standards_query .= " WHERE school_id = ?";
-        $stmt_standards = $conn->prepare($standards_query);
-        $stmt_standards->execute([$principal_school_id]);
-    } else {
-        $stmt_standards = $conn->query($standards_query);
-    }
+    $standards_query .= " WHERE school_id = ?";
+    $stmt_standards = $conn->prepare($standards_query);
+    $stmt_standards->execute([$user_school_id]);
+    
     $all_standards = $stmt_standards->fetchAll(PDO::FETCH_COLUMN, 0);
     usort($all_standards, function($a, $b) {
         return (int)$a <=> (int)$b;
     });
+    
 } catch (PDOException $e) {
     error_log("Teacher List Error: " . $e->getMessage());
     die("A database error occurred while fetching the teacher list.");
@@ -87,7 +105,7 @@ foreach ($all_standards as $standard) {
 }
 $filter_html .= '</select></label>';
 
-if (!is_ajax_request()) {
+if (!is_ajax_request()) 
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -109,12 +127,9 @@ if (!is_ajax_request()) {
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
-<?php
-}
-?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">Teacher Management</h1>
-                    <p class="mb-4">List of all teachers in <?php echo ($role === 'principal') ? 'your school' : 'the system'; ?>.</p>
+                    <p class="mb-4">List of all teachers in your school.</p>
                     <?php if (isset($_GET['success'])): ?>
                         <div class="alert alert-success alert-dismissible fade show" role="alert"><?php echo htmlspecialchars($_GET['success']); ?><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
                     <?php endif; ?>
@@ -124,7 +139,9 @@ if (!is_ajax_request()) {
                     <div class="card shadow mb-4">
                         <div class="card-header py-3 d-flex justify-content-between align-items-center">
                             <h6 class="m-0 font-weight-bold text-primary">Teacher List</h6>
-                            <a href="/BMC-SMS/includes/forms/teacher_enrollment.php" class="btn btn-primary btn-icon-split btn-sm"><span class="icon text-white-50"><i class="fas fa-plus"></i></span><span class="text">Add New Teacher</span></a>
+                            <?php if ($role === 'principal' || $role === 'hr'): ?>
+                                <a href="/BMC-SMS/includes/forms/teacher_enrollment.php" class="btn btn-primary btn-icon-split btn-sm"><span class="icon text-white-50"><i class="fas fa-plus"></i></span><span class="text">Add New Teacher</span></a>
+                            <?php endif; ?>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
@@ -160,7 +177,7 @@ if (!is_ajax_request()) {
                                                     <td>
                                                         <a href="view.php?id=<?php echo $row['id']; ?>&std=<?php echo $teacher_std_for_url; ?>&from_list_filter=<?php echo urlencode($selected_standard); ?>" class="btn btn-info btn-sm" title="View"><i class="fas fa-eye"></i></a>
                                                         <a href="edit.php?id=<?php echo $row['id']; ?>" class="btn btn-primary btn-sm" title="Edit"><i class="fas fa-edit"></i></a>
-                                                        <?php if ($role === 'principal'):
+                                                        <?php if ($role === 'principal' || $role === 'hr'):
                                                             $return_url = urlencode('/BMC-SMS/pages/teacher/teacher_list.php');
                                                             if ($row['account_status'] === 'active'):
                                                                 $suspendUrl = "../../includes/actions/update_user_status.php?id={$row['id']}&status=suspended&return={$return_url}";
@@ -172,7 +189,9 @@ if (!is_ajax_request()) {
                                                                 <a href="#" onclick="confirmAction('<?php echo $reactivateUrl; ?>', 'reactivate this teacher')" class="btn btn-success btn-sm" title="Reactivate"><i class="fas fa-check-circle"></i></a>
                                                         <?php endif;
                                                         endif; ?>
-                                                        <button class="btn btn-danger btn-sm" onclick="confirmDelete(<?php echo $row['id']; ?>)" title="Delete"><i class="fas fa-trash"></i></button>
+                                                        <?php if ($role === 'principal'): ?>
+                                                            <button class="btn btn-danger btn-sm" onclick="confirmDelete(<?php echo $row['id']; ?>)" title="Delete"><i class="fas fa-trash"></i></button>
+                                                        <?php endif; ?>
                                                     </td>
                                                 </tr>
                                             <?php endforeach;
@@ -227,7 +246,6 @@ if (!is_ajax_request()) {
     $(document).ready(function() {
         $('#teacherListTable').DataTable();
 
-        // Inject the custom filter into the search area
         var filterHtml = '<?php echo addslashes($filter_html); ?>';
         $('#teacherListTable_filter').prepend(filterHtml);
     });
