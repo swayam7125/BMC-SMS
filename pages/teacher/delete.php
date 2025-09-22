@@ -1,9 +1,13 @@
 <?php
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
+include_once "../../includes/log_system.php"; // ADDED: Log system dependency
 
 // Check user role
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
+$userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+$acting_user_name = decrypt_id($_COOKIE['encrypted_user_name'] ?? '') ?? 'Admin';
+
 if (!$role) {
     header("Location: ../../login.php?error=Unauthorized");
     exit;
@@ -15,6 +19,7 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
     exit;
 }
 $teacher_id = intval($_GET['id']);
+$teacher_name = 'Unknown Teacher';
 
 // Start database transaction
 try {
@@ -28,6 +33,7 @@ try {
     if (!$teacher_data) {
         throw new Exception("Teacher with ID $teacher_id not found.");
     }
+    $teacher_name = $teacher_data['teacher_name']; // Captured name for log
 
     // 2. Archive the teacher's data
     $query_archive_teacher = "INSERT INTO deleted_teachers 
@@ -74,11 +80,16 @@ try {
     // 4. Delete the image file
     $image_path = $teacher_data['teacher_image'];
     if (!empty($image_path) && file_exists($image_path)) {
-        unlink($image_path);
+        @unlink($image_path);
     }
 
     // Commit changes
     $conn->commit();
+    
+    // ⭐ LOGGING: Log the critical deletion action
+    $log_message = "DELETION: Teacher '{$teacher_name}' (ID: {$teacher_id}) was successfully deleted and archived.";
+    log_interaction($role, $userId, $log_message, $acting_user_name);
+    
     header("Location: teacher_list.php?success=Teacher was successfully deleted and archived.");
     exit;
 

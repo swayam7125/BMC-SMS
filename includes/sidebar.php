@@ -20,6 +20,9 @@ if (!defined('BASE_WEB_PATH')) {
     define('BASE_WEB_PATH', '/BMC-SMS/');
 }
 
+// ⭐ NEW: Include log system file here. (Does NOT perform automatic logging anymore)
+include_once __DIR__ . '/log_system.php';
+
 // --- START: FETCH UNREAD NOTIFICATION COUNTS (PDO VERSION) ---
 // Initialize all counter variables
 $unread_assignments = 0;

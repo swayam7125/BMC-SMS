@@ -22,13 +22,16 @@ if ($role !== 'principal') {
 // Get the principal's school information
 $admin_school_id = null;
 $admin_school_name = null;
+$principal_name_enrolling = null; // NEW VARIABLE FOR LOGGING
 if ($userId) {
-    $stmt = $conn->prepare('SELECT s."id", s."school_name" FROM "principal" p JOIN "school" s ON p."school_id" = s."id" WHERE p."id" = ?');
+    // UPDATED QUERY TO FETCH PRINCIPAL'S NAME
+    $stmt = $conn->prepare('SELECT s."id", s."school_name", p."principal_name" FROM "principal" p JOIN "school" s ON p."school_id" = s."id" WHERE p."id" = ?');
     $stmt->execute([$userId]);
     $admin_data = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($admin_data) {
         $admin_school_id = $admin_data['id'];
         $admin_school_name = $admin_data['school_name'];
+        $principal_name_enrolling = $admin_data['principal_name']; // STORE NAME
     }
 }
 
@@ -67,6 +70,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt_payroll->execute([$new_user_id, $school_id, $hr_name, $salary]);
 
             $conn->commit();
+            
+            // ⭐ LOGGING: Log the successful HR enrollment action
+            include_once "../../includes/log_system.php";
+            log_interaction($role, $userId, "ENROLLMENT SUCCESS: Enrolled new HR user: {$hr_name} (ID: {$new_user_id})", $principal_name_enrolling);
+
             header("Location: ../../pages/payroll/payroll_list.php?success=HR user enrolled successfully");
             exit();
         } catch (PDOException $e) {

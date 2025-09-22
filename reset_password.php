@@ -2,6 +2,7 @@
 // reset_password.php
 
 include_once "./includes/connect.php";
+include_once "./includes/log_system.php"; // ADDED: Log system dependency
 
 header('Content-Type: application/json');
 $response = [];
@@ -27,7 +28,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 
     try {
-        $stmt = $conn->prepare("SELECT otp_hash, otp_expires_at FROM users WHERE email = ?");
+        // MODIFIED: Fetch id and role for logging
+        $stmt = $conn->prepare("SELECT id, role, otp_hash, otp_expires_at FROM users WHERE email = ?");
         $stmt->execute([$email]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -37,6 +39,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                 $update_stmt = $conn->prepare("UPDATE users SET password = ?, otp_hash = NULL, otp_expires_at = NULL WHERE email = ?");
                 $update_stmt->execute([$hashed_password, $email]);
+                
+                // ⭐ LOGGING: Log the successful external password reset
+                log_interaction($user['role'], $user['id'], 'Password reset successfully via OTP process.', $email);
 
                 $response = ['status' => 'success', 'message' => 'Password has been reset successfully. You can now log in.'];
             } else {

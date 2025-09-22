@@ -19,14 +19,17 @@ if ($role !== 'principal') {
 
 $admin_school_id = null;
 $admin_school_name = null;
+$principal_name_enrolling = null;
 if ($userId) {
     try {
-        $stmt = $conn->prepare('SELECT s."id", s."school_name" FROM "principal" p JOIN "school" s ON p."school_id" = s."id" WHERE p."id" = ?');
+        // UPDATED: Fetch principal_name along with school info
+        $stmt = $conn->prepare('SELECT s."id", s."school_name", p."principal_name" FROM "principal" p JOIN "school" s ON p."school_id" = s."id" WHERE p."id" = ?');
         $stmt->execute([$userId]);
         $admin_data = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($admin_data) {
             $admin_school_id = $admin_data['id'];
             $admin_school_name = $admin_data['school_name'];
+            $principal_name_enrolling = $admin_data['principal_name'];
         }
     } catch (PDOException $e) {
         error_log("Failed to fetch principal's school info: " . $e->getMessage());
@@ -135,6 +138,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $conn->commit();
+            
+            // ⭐ LOGGING: Log the successful librarian enrollment action
+            include_once "../../includes/log_system.php";
+            log_interaction($role, $userId, "ENROLLMENT SUCCESS: Enrolled new librarian: {$librarian_name} (ID: {$new_user_id})", $principal_name_enrolling);
+
             header("Location: ../../pages/librarian/librarian_list.php?success=Librarian enrolled successfully");
             exit();
         } catch (PDOException $e) {
@@ -333,7 +341,7 @@ if (!is_ajax_request()) {
                                                     <div class="input-group-prepend"><span class="input-group-text small">Closes at</span></div>
                                                     <input type="text" class="form-control time-input" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" placeholder="HH:MM" <?php if ($is_closed) echo 'disabled'; ?>>
                                                     <div class="input-group-append">
-                                                        <select class="form-control ampm-select" name="timings[<?php echo $day; ?>][closes_at_ampm]" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                        <select class="form-control ampm-select" name="timings[<?php echo $day; ?>][closes_at_ampm]" <?php if ($closes_at_ampm == 'AM') echo 'selected'; ?>>
                                                             <option value="AM" <?php if ($closes_at_ampm == 'AM') echo 'selected'; ?>>AM</option>
                                                             <option value="PM" <?php if ($closes_at_ampm == 'PM') echo 'selected'; ?>>PM</option>
                                                         </select>
