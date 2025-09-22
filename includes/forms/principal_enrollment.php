@@ -8,9 +8,30 @@ if (!defined('BASE_URL')) {
 }
 
 $role = null;
+$userId = null;
+$enrolling_user_name = null; // NEW VARIABLE FOR LOGGING
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
+if (isset($_COOKIE['encrypted_user_id'])) {
+    $userId = decrypt_id($_COOKIE['encrypted_user_id']);
+}
+
+// Fetch enrolling user's name (email) for logging purposes
+if ($userId) {
+    try {
+        $stmt_user_info = $conn->prepare('SELECT email FROM "users" WHERE "id" = ?');
+        $stmt_user_info->execute([$userId]);
+        $user_info = $stmt_user_info->fetch(PDO::FETCH_ASSOC);
+        if ($user_info) {
+            $enrolling_user_name = $user_info['email'];
+        }
+    } catch (PDOException $e) {
+        error_log("Failed to fetch enrolling user info: " . $e->getMessage());
+    }
+}
+
+
 if (!$role) {
     header("Location: ../../login.php");
     exit;
@@ -160,6 +181,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 $conn->commit();
+                
+                // ⭐ LOGGING: Log the successful principal enrollment action
+                include_once "../../includes/log_system.php";
+                log_interaction($role, $userId, "ENROLLMENT SUCCESS: Enrolled new principal: {$principal_name} (School ID: {$school_id}, Batch: {$batch})", $enrolling_user_name);
+
                 header("Location: ../../pages/principal/principal_list.php?success=Principal enrolled successfully");
                 exit();
             } catch (PDOException $e) {

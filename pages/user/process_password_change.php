@@ -1,6 +1,7 @@
 <?php
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
+include_once "../../includes/log_system.php"; // ADDED: Log system dependency
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header("Location: profile.php?error=Invalid request method.");
@@ -14,6 +15,8 @@ if (!isset($_COOKIE['encrypted_user_id']) || !isset($_COOKIE['encrypted_user_rol
 
 $user_id = decrypt_id($_COOKIE['encrypted_user_id']);
 $user_role = decrypt_id($_COOKIE['encrypted_user_role']);
+// ADDED: Retrieve user name for logging
+$user_name = decrypt_id($_COOKIE['encrypted_user_name'] ?? '') ?? 'N/A';
 
 $current_password = trim($_POST['current_password'] ?? '');
 $new_password = trim($_POST['new_password'] ?? '');
@@ -78,6 +81,9 @@ try {
     $stmt_role->execute([$new_password_hash, $user_id]);
 
     $conn->commit();
+    
+    // ⭐ LOGGING: Log the successful internal password change
+    log_interaction($user_role, $user_id, 'User changed their own password successfully.', $user_name);
 
     header("Location: profile.php?success=Password updated successfully.");
     exit;

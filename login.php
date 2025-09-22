@@ -3,6 +3,7 @@ require_once "./includes/connect.php";
 require_once "./includes/ajax_helpers.php";
 require_once "./includes/response.php";
 require_once "encryption.php";
+require_once "./includes/log_system.php"; // ADDED: Log system dependency
 
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
@@ -127,12 +128,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email']) && isset($_PO
                     setcookie("encrypted_user_role", encrypt_id($user['role']), $cookie_options);
                     setcookie("encrypted_profile_image", encrypt_id($profile_image_for_cookie), $cookie_options);
                     setcookie("encrypted_user_name", encrypt_id($user_name), $cookie_options);
+                    
+                    // --- LOG SUCCESSFUL LOGIN ---
+                    log_interaction($user['role'], $user['id'], 'User logged in successfully.', $user_name);
+                    // -----------------------------
+                    
                 } catch (Exception $e) {
                     error_log("Cookie encryption failed: " . $e->getMessage());
                     // Continue without cookies, session is still set
                 }
-
-                // --- END OF THE FIX ---
 
                 $response = ['status' => 'success', 'redirect' => 'dashboard.php'];
             }
@@ -162,8 +166,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email']) && isset($_PO
 
 /**
  * Calculate the distance between two points using the Haversine formula
- * 
- * @param float $lat1 Latitude of first point
+ * * @param float $lat1 Latitude of first point
  * @param float $lon1 Longitude of first point
  * @param float $lat2 Latitude of second point
  * @param float $lon2 Longitude of second point

@@ -4,10 +4,12 @@ ini_set('display_errors', 1);
 
 include_once "../connect.php";
 include_once "../../encryption.php";
+include_once "../log_system.php"; // ADDED: Log system dependency
 
-// Get current user's role AND ID
+// Retrieve the acting user's full credentials from cookies
 $current_user_role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 $current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+$current_user_name = isset($_COOKIE['encrypted_user_name']) ? decrypt_id($_COOKIE['encrypted_user_name']) : 'N/A';
 
 if (!$current_user_role || !$current_user_id) {
     header("Location: ../../login.php");
@@ -92,6 +94,19 @@ try {
     $stmt_update = $conn->prepare('UPDATE "users" SET "account_status" = ? WHERE "id" = ?');
     if ($stmt_update->execute([$new_status, $user_id_to_update])) {
         $action = ($new_status === 'suspended') ? 'suspended' : 'reactivated';
+        
+        // --- LOG THE CRITICAL STATUS CHANGE ACTION ---
+        $log_message = sprintf("User account (ID: %d, Role: %s) was %s by %s (ID: %s, Role: %s).",
+            $user_id_to_update,
+            $target_role,
+            $action,
+            $current_user_name,
+            $current_user_id,
+            $current_user_role
+        );
+        log_interaction($current_user_role, $current_user_id, $log_message, $current_user_name);
+        // ----------------------------------------------
+        
         header("Location: $return_page?success=User has been successfully {$action}.");
     } else {
         header("Location: $return_page?error=Failed to update user status.");

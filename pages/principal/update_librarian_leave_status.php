@@ -1,8 +1,12 @@
 <?php
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
+include_once "../../includes/log_system.php"; // ADDED: Log system dependency
 
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : '';
+$userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : 'N/A';
+$principal_name_acting = decrypt_id($_COOKIE['encrypted_user_name'] ?? '') ?? 'Principal'; // ADDED: Acting Principal's name
+
 if ($role !== 'principal') {
     header("Location: /BMC-SMS/login.php?error=unauthorized");
     exit;
@@ -49,6 +53,10 @@ try {
             $from_date = $leave_data['from_date'];
             $to_date = $leave_data['to_date'];
 
+            // ⭐ LOGGING: Log the leave action
+            $log_message = "Librarian leave application (ID: {$leave_id}, Librarian: {$librarian_name}) was {$action_status_message} by Principal.";
+            log_interaction($role, $userId, $log_message, $principal_name_acting);
+
             $notification_message = "Your leave application has been " . $action_status_message . ".";
             // Correct the notification link here
             $notification_link = "pages/librarian/my_leave_management.php";
@@ -68,4 +76,3 @@ try {
 
 header("Location: librarian_leave_management.php?status=updated");
 exit;
-?>

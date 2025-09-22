@@ -32,7 +32,7 @@ if ($userId) {
 $selected_batch = $_GET['batch'] ?? '';
 
 // Fetch the list of HR users for the principal's school
-$payroll_users = [];
+$hr_users = [];
 if ($school_id) {
     try {
         $query = '
@@ -52,6 +52,8 @@ if ($school_id) {
         $query .= ' ORDER BY h.hr_name';
         
         $stmt = $conn->prepare($query);
+        $stmt->execute([$school_id]);
+        $hr_users = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $stmt->execute($params);
         $payroll_users = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
@@ -140,12 +142,12 @@ if (!is_ajax_request()) {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php if (empty($payroll_users)): ?>
+                                        <?php if (empty($hr_users)): ?>
                                             <tr>
                                                 <td colspan="7" class="text-center">No HR users found.</td>
                                             </tr>
                                         <?php else: ?>
-                                            <?php foreach ($payroll_users as $user): ?>
+                                            <?php foreach ($hr_users as $user): ?>
                                                 <tr>
                                                     <td><?php echo htmlspecialchars($user['id']); ?></td>
                                                     <td><a href="view.php?id=<?php echo $user['id']; ?>"><?php echo htmlspecialchars($user['hr_name']); ?></a></td>

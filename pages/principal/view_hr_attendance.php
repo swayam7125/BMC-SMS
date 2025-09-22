@@ -49,9 +49,9 @@ try {
     }
 
     $query = "
-        SELECT p.id as payroll_id, pa.attendance_date, pa.status, p.hr_name
+        SELECT p.id as hr_id, pa.attendance_date, pa.status, p.hr_name
         FROM hr p
-        LEFT JOIN hr_attendance pa ON p.id = pa.payroll_id AND pa.attendance_date = ?
+        LEFT JOIN hr_attendance pa ON p.id = pa.hr_id AND pa.attendance_date = ?
         WHERE p.school_id = ?
         ORDER BY p.hr_name ASC
     ";
@@ -159,7 +159,7 @@ if (!is_ajax_request()) {
                                                     ?>
                                                 </td>
                                                 <td>
-                                                    <a href="hr_attendance.php?attendance_date=<?php echo htmlspecialchars($filter_date); ?>&edit_payroll_id=<?php echo $record['payroll_id']; ?>" class="btn btn-sm btn-warning <?php echo $is_editable ? '' : 'disabled'; ?>">
+                                                    <a href="hr_attendance.php?attendance_date=<?php echo htmlspecialchars($filter_date); ?>&edit_hr_id=<?php echo $record['hr_id']; ?>" class="btn btn-sm btn-warning <?php echo $is_editable ? '' : 'disabled'; ?>">
                                                         <i class="fas fa-edit"></i> Edit
                                                     </a>
                                                 </td>

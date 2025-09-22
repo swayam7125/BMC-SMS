@@ -20,6 +20,9 @@ if (!defined('BASE_WEB_PATH')) {
     define('BASE_WEB_PATH', '/BMC-SMS/');
 }
 
+// ⭐ NEW: Include log system file here. (Does NOT perform automatic logging anymore)
+include_once __DIR__ . '/log_system.php';
+
 // --- START: FETCH UNREAD NOTIFICATION COUNTS (PDO VERSION) ---
 // Initialize all counter variables
 $unread_assignments = 0;
@@ -422,13 +425,13 @@ if (isset($conn) && $user_id) {
         </div>
     </li>
     <li class="nav-item">
-        <a class="nav-link <?php echo (is_active_page($payroll_pages)) ? '' : 'collapsed'; ?>" href="#"
+        <a class="nav-link <?php echo (is_active_page($hr_pages)) ? '' : 'collapsed'; ?>" href="#"
             data-toggle="collapse" data-target="#collapsePayrollUsers">
             <div><i class="fas fa-fw fa-users-cog"></i>
                 <span>Manage HR</span>
             </div>
         </a>
-        <div id="collapsePayrollUsers" class="collapse <?php echo (is_active_page($payroll_pages)) ? 'show' : ''; ?>"
+        <div id="collapsePayrollUsers" class="collapse <?php echo (is_active_page($hr_pages)) ? 'show' : ''; ?>"
             data-parent="#accordionSidebar">
             <div class="bg-white py-2 collapse-inner rounded">
                 <a class="collapse-item <?php echo ($current_page == 'hr_enrollment.php') ? 'active' : ''; ?>"
