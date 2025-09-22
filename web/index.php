@@ -1,0 +1,190 @@
+<?php
+// --- Includes & Setup ---
+require_once '../includes/connect.php'; // Adjust this path to your database connection file
+
+try {
+  // --- Dynamic Data Fetching from Database ---
+  // 1. Get total number of students
+  $student_count = $conn->query('SELECT COUNT(*) FROM student')->fetchColumn();
+
+  // 2. Get total number of teachers
+  $teacher_count = $conn->query('SELECT COUNT(*) FROM teacher')->fetchColumn();
+
+  // 3. Static values (can be made dynamic if you add tables for these)
+  $classroom_count = 50;
+  $pass_percentage = 98;
+} catch (PDOException $e) {
+  // --- Fallback values in case of a database error ---
+  $student_count = '1200+';
+  $teacher_count = '75+';
+  $classroom_count = '50+';
+  $pass_percentage = '98%';
+  // Log the error for debugging, but don't show it to the public user
+  error_log("Homepage DB Statistics Error: " . $e->getMessage());
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>Welcome to BMC School | Excellence in Education</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <link rel="stylesheet" href="vendors/mdi/css/materialdesignicons.min.css">
+  <link rel="stylesheet" href="vendors/aos/css/aos.css">
+  <link rel="stylesheet" href="css/style.min.css">
+</head>
+
+<body id="body" data-spy="scroll" data-target=".navbar" data-offset="100">
+
+  <header id="header-section">
+    <nav class="navbar navbar-expand-lg pl-3 pl-sm-0" id="navbar">
+      <div class="container">
+        <div class="navbar-brand-wrapper d-flex w-100">
+          <img src="images/Group2.svg" alt="BMC School Logo">
+          <button class="navbar-toggler ml-auto" type="button" data-toggle="collapse" data-target="#navbarSupportedContent">
+            <span class="mdi mdi-menu navbar-toggler-icon"></span>
+          </button>
+        </div>
+        <div class="collapse navbar-collapse navbar-menu-wrapper" id="navbarSupportedContent">
+          <ul class="navbar-nav align-items-lg-center align-items-start ml-auto">
+            <li class="nav-item"><a class="nav-link" href="index.php">Home <span class="sr-only">(current)</span></a></li>
+            <li class="nav-item"><a class="nav-link" href="admission.php">Admissions</a></li>
+            <li class="nav-item"><a class="nav-link" href="blog.php">Blog</a></li>
+            <li class="nav-item"><a class="nav-link" href="contact.php">Contact</a></li>
+            <li class="nav-item"><a class="nav-link" href="/login.php">Login</a></li>
+            <li class="nav-item btn-contact-us pl-4 pl-lg-0"><a class="btn btn-info" href="/signup.php">Sign Up</a></li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <div class="banner">
+      <div class="container">
+        <h1 class="font-weight-semibold">Nurturing Minds, Shaping Futures.</h1>
+        <h6 class="font-weight-normal text-muted pb-3">Welcome to BMC School, where we are committed to providing an environment of academic excellence and holistic development.</h6>
+        <div>
+          <a href="admission.php" class="btn btn-opacity-light mr-1">Apply for Admission</a>
+          <a href="/login.php" class="btn btn-opacity-success ml-1">Go to Portal</a>
+        </div>
+        <img src="images/Group171.svg" alt="School illustration" class="img-fluid">
+      </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="container">
+
+        <section class="features-overview" id="facilities-section">
+          <div class="content-header">
+            <h2>World-Class Facilities</h2>
+            <h6 class="section-subtitle text-muted">We provide state-of-the-art facilities to ensure the best learning experience.</h6>
+          </div>
+          <div class="d-md-flex justify-content-between">
+            <div class="grid-margin d-flex justify-content-start">
+              <div class="features-width"><img src="images/Group12.svg" alt="Icon for Smart Laboratories" class="img-icons">
+                <h5 class="py-3">Smart<br>Laboratories</h5>
+                <p class="text-muted">Equipped with the latest technology to foster innovation and practical learning.</p>
+              </div>
+            </div>
+            <div class="grid-margin d-flex justify-content-center">
+              <div class="features-width"><img src="images/Group7.svg" alt="Icon for Modern Library" class="img-icons">
+                <h5 class="py-3">Modern<br>Library</h5>
+                <p class="text-muted">A vast collection of books and digital resources to encourage a love for reading.</p>
+              </div>
+            </div>
+            <div class="grid-margin d-flex justify-content-end">
+              <div class="features-width"><img src="images/Group5.svg" alt="Icon for Sports Complex" class="img-icons">
+                <h5 class="py-3">Sports<br>Complex</h5>
+                <p class="text-muted">Extensive grounds and professional coaching for physical and mental well-being.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="digital-marketing-service" id="promo-section">
+          <div class="row align-items-center">
+            <div class="col-12 col-lg-7 grid-margin grid-margin-lg-0" data-aos="fade-right">
+              <h3 class="m-0">Fostering Creativity and<br>Critical Thinking</h3>
+              <div class="col-lg-7 col-xl-6 p-0">
+                <p class="py-4 m-0 text-muted">Our curriculum is designed not just for academic success, but to develop well-rounded individuals who are curious, creative, and ready to take on the world.</p>
+              </div>
+            </div>
+            <div class="col-12 col-lg-5 p-0 img-digital grid-margin grid-margin-lg-0" data-aos="fade-left"><img src="images/Group1.png" alt="Students in a classroom" class="img-fluid"></div>
+          </div>
+          <div class="row align-items-center">
+            <div class="col-12 col-lg-7 text-center flex-item grid-margin" data-aos="fade-right"><img src="images/Group2.png" alt="Students collaborating" class="img-fluid"></div>
+            <div class="col-12 col-lg-5 flex-item grid-margin" data-aos="fade-left">
+              <h3 class="m-0">A Community of<br>Inspired Learners</h3>
+              <div class="col-lg-9 col-xl-8 p-0">
+                <p class="py-4 m-0 text-muted">We believe in a collaborative approach to education, where students, teachers, and parents work together to create a supportive and engaging learning community.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="case-studies" id="stats-section">
+          <div class="row grid-margin">
+            <div class="col-12 text-center pb-5">
+              <h2>Our Achievements at a Glance</h2>
+              <h6 class="section-subtitle text-muted">We are proud of our students and our commitment to excellence.</h6>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3 stretch-card mb-4 mb-lg-0" data-aos="zoom-in">
+              <div class="card color-cards">
+                <div class="card-body p-0">
+                  <div class="bg-primary text-center card-contents">
+                    <h2 class="text-white font-weight-bold"><?php echo htmlspecialchars($student_count); ?>+</h2>
+                    <h5 class="text-white">Students Enrolled</h5>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3 stretch-card mb-4 mb-lg-0" data-aos="zoom-in" data-aos-delay="200">
+              <div class="card color-cards">
+                <div class="card-body p-0">
+                  <div class="bg-warning text-center card-contents">
+                    <h2 class="text-white font-weight-bold"><?php echo htmlspecialchars($teacher_count); ?>+</h2>
+                    <h5 class="text-white">Qualified Teachers</h5>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3 stretch-card mb-4 mb-lg-0" data-aos="zoom-in" data-aos-delay="400">
+              <div class="card color-cards">
+                <div class="card-body p-0">
+                  <div class="bg-violet text-center card-contents">
+                    <h2 class="text-white font-weight-bold"><?php echo htmlspecialchars($classroom_count); ?>+</h2>
+                    <h5 class="text-white">Classrooms</h5>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3 stretch-card" data-aos="zoom-in" data-aos-delay="600">
+              <div class="card color-cards">
+                <div class="card-body p-0">
+                  <div class="bg-success text-center card-contents">
+                    <h2 class="text-white font-weight-bold"><?php echo htmlspecialchars($pass_percentage); ?>%</h2>
+                    <h5 class="text-white">Pass Percentage (10th & 12th)</h5>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <footer class="border-top">
+    <p class="text-center text-muted pt-4">Copyright © <?php echo date("Y"); ?> BMC School. All rights reserved.</p>
+  </footer>
+
+  <script src="vendors/jquery/jquery.min.js"></script>
+  <script src="vendors/bootstrap/bootstrap.min.js"></script>
+  <script src="vendors/aos/js/aos.js"></script>
+  <script src="js/landingpage.js"></script>
+</body>
+
+</html>
