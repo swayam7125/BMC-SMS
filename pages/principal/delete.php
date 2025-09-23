@@ -1,16 +1,16 @@
 <?php
-// No session handling is used, as requested.
-
-// Include your existing PDO connection file for PostgreSQL.
 include_once "../../includes/connect.php";
-
-// Include your custom encryption library.
 include_once "../../encryption.php";
+include_once "../../includes/log_system.php"; // ADDED: Log system dependency
 
 // --- User Authentication and Role Check (using Cookie) ---
 $role = null;
+$userId = null;
+$acting_user_name = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
+    $userId = decrypt_id($_COOKIE['encrypted_user_id']);
+    $acting_user_name = decrypt_id($_COOKIE['encrypted_user_name'] ?? '') ?? 'Admin';
 }
 
 // Redirect to login if the user is not a superadmin
@@ -26,6 +26,7 @@ if (!isset($_GET['id']) || !filter_var($_GET['id'], FILTER_VALIDATE_INT)) {
 }
 
 $principal_id = (int)$_GET['id'];
+$principal_name = 'Unknown Principal'; // Fallback name
 
 // --- Database Transaction Logic ---
 try {
@@ -40,6 +41,7 @@ try {
     if (!$principal_data) {
         throw new Exception("Principal with ID $principal_id not found.");
     }
+    $principal_name = $principal_data['principal_name']; // Captured name for log
 
     // Step 2: Insert the fetched data into the `deleted_principals` table for archiving.
     $sql_archive_principal = "INSERT INTO deleted_principals 
@@ -55,7 +57,6 @@ try {
         $principal_data['email'],
         $principal_data['phone'],
         $principal_data['dob'],
-        // --- CORRECTED: Convert gender to lowercase before archiving ---
         strtolower($principal_data['gender']),
         $principal_data['blood_group'],
         $principal_data['address'],
@@ -74,16 +75,20 @@ try {
     $stmt_delete->execute([$principal_id]);
 
     if ($stmt_delete->rowCount() === 0) {
-        throw new Exception("Principal could not be deleted (record may have already been removed).");
+        throw new Exception("Principal user record could not be deleted (record may have already been removed).");
     }
 
     // Step 4: Delete the principal's image file from the server.
     $image_path = $principal_data['principal_image'] ?? null;
     if (!empty($image_path) && file_exists($image_path)) {
-        unlink($image_path);
+        @unlink($image_path);
     }
 
     $conn->commit();
+    
+    // ⭐ LOGGING: Log the critical deletion action
+    $log_message = "DELETION: Principal '{$principal_name}' (ID: {$principal_id}) was successfully deleted and archived.";
+    log_interaction($role, $userId, $log_message, $acting_user_name);
 
     header("Location: principal_list.php?success=Principal was successfully deleted and archived.");
     exit;

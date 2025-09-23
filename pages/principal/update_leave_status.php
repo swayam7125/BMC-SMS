@@ -1,9 +1,13 @@
 <?php
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
+include_once "../../includes/log_system.php"; // ADDED: Log system dependency
 // include_once '../../includes/email_functions.php'; // Uncomment if email is set up
 
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : '';
+$userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : 'N/A';
+$principal_name_acting = decrypt_id($_COOKIE['encrypted_user_name'] ?? '') ?? 'Principal'; // ADDED: Acting Principal's name
+
 if ($role !== 'principal') {
     header("Location: /BMC-SMS/login.php?error=unauthorized");
     exit;
@@ -49,6 +53,10 @@ try {
             $teacher_email = $leave_data['email'];
             $from_date = $leave_data['from_date'];
             $to_date = $leave_data['to_date'];
+            
+            // ⭐ LOGGING: Log the leave action
+            $log_message = "Teacher leave application (ID: {$leave_id}, Teacher: {$teacher_name}) was {$action_status_message} by Principal.";
+            log_interaction($role, $userId, $log_message, $principal_name_acting);
 
             $notification_message = "Your leave application has been " . $action_status_message . ".";
             // Correct the notification link here
@@ -69,4 +77,3 @@ try {
 
 header("Location: teacher_leave_management.php?status=updated");
 exit;
-?>

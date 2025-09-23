@@ -1,6 +1,7 @@
 <?php
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
+include_once "../../includes/log_system.php"; // ADDED: Log system dependency
 
 // Define the base web path for your project
 if (!defined('BASE_WEB_PATH')) {
@@ -25,8 +26,11 @@ function getWebAccessibleImagePath($db_path) {
     return null;
 }
 
-// Authenticate user role from cookie. Redirect to login if not found.
+// Authenticate user role from cookie and get logging info
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
+$userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+$acting_user_name = decrypt_id($_COOKIE['encrypted_user_name'] ?? '') ?? 'Admin';
+
 if (!$role) {
     header("Location: ../../login.php");
     exit;
@@ -38,6 +42,7 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
 }
 $school_id = intval($_GET['id']);
 $errors = [];
+$school_name_original = 'N/A'; // For logging
 
 try {
     // Fetch existing school data
@@ -49,6 +54,7 @@ try {
         header("Location: school_list.php?error=School not found");
         exit;
     }
+    $school_name_original = $school['school_name']; // Captured name for log
 
     // Prepare arrays for multi-select dropdowns
     $selected_boards = $school['education_board'] ? explode(',', trim($school['education_board'], '{}')) : [];
@@ -120,6 +126,11 @@ try {
             $school_category_pg = '{' . implode(',', $school_category_quoted) . '}';
 
             if ($stmt->execute([$logo_path_for_db, $school_name, $email, $phone, $address, $school_opening, $school_type, $education_board_pg, $school_medium_pg, $school_category_pg, $school_id])) {
+                
+                // ⭐ LOGGING: Log the successful update action
+                $log_message = "UPDATE: School profile for '{$school_name_original}' (ID: {$school_id}) was successfully updated.";
+                log_interaction($role, $userId, $log_message, $acting_user_name);
+                
                 header("Location: ../../pages/school/school_list.php?success=School updated successfully");
                 exit;
             } else {
@@ -160,7 +171,7 @@ $logo_display_path = getWebAccessibleImagePath($school['school_logo']) ?? $defau
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Edit School</h1>
-                        <a href="school_list.php" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i class="fas fa-arrow-left fa-sm"></i> Back to List</a>
+                        <a href="school_list.php" class="btn btn-sm btn-secondary shadow-sm"><i class="fas fa-arrow-left fa-sm"></i> Back to List</a>
                     </div>
                     <?php if (!empty($errors)): ?>
                         <div class="alert alert-danger">

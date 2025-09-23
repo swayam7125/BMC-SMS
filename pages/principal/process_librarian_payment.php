@@ -1,12 +1,14 @@
 <?php
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
+include_once '../../includes/log_system.php'; // ADDED: Log system dependency
 
 date_default_timezone_set('Asia/Kolkata');
 
 // Authorization check for principal using cookies
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 $userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+$acting_user_name = decrypt_id($_COOKIE['encrypted_user_name'] ?? '') ?? 'Principal'; // ADDED: Acting user name
 
 if ($role !== 'principal' || !$userId) {
     header("Location: /BMC-SMS/login.php");
@@ -49,12 +51,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // 3. Create a notification for the librarian
         $monthName = date('F', mktime(0, 0, 0, $salary_month, 10));
-        $message = "Your salary for $monthName $salary_year amounting to " . formatIndianCurrency($net_salary_paid) . " has been processed.";
+        $currency_paid = formatIndianCurrency($net_salary_paid);
+        $message = "Your salary for $monthName $salary_year amounting to " . $currency_paid . " has been processed.";
         
         $notify_stmt = $conn->prepare("INSERT INTO notifications (user_id, message, type, link) VALUES (?, ?, ?, ?)");
         $notify_stmt->execute([$librarian_id, $message, 'librarian_salary', 'pages/librarian/view_salary_history.php']);
 
         $conn->commit();
+        
+        // ⭐ LOGGING: Log the critical payment action
+        $log_message = "PAYROLL: Librarian ID {$librarian_id} salary processed for {$monthName} {$salary_year}. Net amount paid: {$currency_paid}.";
+        log_interaction($role, $userId, $log_message, $acting_user_name);
         
         $success_message = "Salary has been processed successfully!";
         $redirect_url = "generate_librarian_payroll.php?month=" . urlencode($salary_month) . "&year=" . urlencode($salary_year) . "&success=" . urlencode($success_message);
@@ -78,4 +85,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 function formatIndianCurrency($number) {
     $number = (string)round($number, 2); $parts = explode('.', $number); $integer_part = $parts[0]; $decimal_part = isset($parts[1]) ? '.' . str_pad($parts[1], 2, '0', STR_PAD_RIGHT) : ''; $len = strlen($integer_part); if ($len <= 3) { return '₹' . $integer_part . $decimal_part; } $last_three = substr($integer_part, -3); $rest_units = substr($integer_part, 0, -3); $rest_formatted = strrev(implode(',', str_split(strrev($rest_units), 2))); return '₹' . $rest_formatted . ',' . $last_three . $decimal_part;
 }
-?>
+// Omit closing tag

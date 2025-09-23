@@ -1,4 +1,5 @@
 <?php
+
 // Corrected absolute paths for reliability
 include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/connect.php';
 include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/encryption.php';

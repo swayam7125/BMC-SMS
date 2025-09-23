@@ -7,6 +7,7 @@ error_reporting(E_ALL);
 // Includes and session start
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
+include_once "../../includes/log_system.php"; // ADDED: Log system dependency
 
 if (!defined('BASE_URL')) {
     define('BASE_URL', '/BMC-SMS/');
@@ -58,6 +59,9 @@ $success_message = '';
 if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'])) {
     $user_id = decrypt_id($_COOKIE['encrypted_user_id']);
     $user_role = decrypt_id($_COOKIE['encrypted_user_role']);
+    // ADDED: Retrieve user name for logging
+    $user_name = decrypt_id($_COOKIE['encrypted_user_name'] ?? '') ?? 'N/A';
+    
     // Define a path-safe role name for directory creation
     $path_role = $user_role;
 
@@ -217,6 +221,11 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                 $stmt_users->execute([$email, $user_id]);
 
                 $conn->commit();
+                
+                // ⭐ LOGGING: Log the self-service update
+                $log_message = "UPDATE: User profile ({$user_role}) updated successfully.";
+                log_interaction($user_role, $user_id, $log_message, $user_name);
+                
                 header("Location: profile.php?success=Profile updated successfully!");
                 exit();
             }

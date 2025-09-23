@@ -1,11 +1,16 @@
 <?php
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
+include_once "../../includes/log_system.php"; // ADDED: Log system dependency
 
 // Check if user is logged in and has a valid role
 $role = null;
+$userId = null;
+$acting_user_name = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
+    $userId = decrypt_id($_COOKIE['encrypted_user_id']);
+    $acting_user_name = decrypt_id($_COOKIE['encrypted_user_name'] ?? '') ?? 'Principal';
 }
 $user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
 
@@ -22,6 +27,8 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
 }
 
 $student_id = intval($_GET['id']);
+$student_name = 'Unknown Student';
+$student_rollno = 'N/A';
 
 try {
     // Authorization Check: The principal must be in the same school as the student they are deleting.
@@ -47,9 +54,10 @@ try {
     if (!$student_data) {
         throw new Exception("Student with ID $student_id not found.");
     }
+    $student_name = $student_data['student_name'];
+    $student_rollno = $student_data['rollno']; // Captured name and rollno for log
 
     // Step 2: Insert the fetched student data into the `deleted_students` table
-   
     $query_archive_student = "INSERT INTO deleted_students
                                 (id, student_name, email, rollno, std, academic_year, dob, gender, blood_group, address, father_name, father_phone, mother_name, mother_phone, school_id, deleted_by_role)
                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -89,11 +97,15 @@ try {
     // Step 4: Delete the physical image file from the server, if it exists
     $image_path = $student_data['student_image'];
     if (!empty($image_path) && file_exists($image_path)) {
-        unlink($image_path);
+        @unlink($image_path);
     }
 
     // If all steps were successful, commit the changes
     $conn->commit();
+    
+    // ⭐ LOGGING: Log the critical deletion action
+    $log_message = "DELETION: Student '{$student_name}' (Roll No: {$student_rollno}, ID: {$student_id}) was successfully deleted and archived.";
+    log_interaction($role, $userId, $log_message, $acting_user_name);
 
     header("Location: student_list.php?success=Student was successfully deleted and archived.");
     exit;

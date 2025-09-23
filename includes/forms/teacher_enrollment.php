@@ -2,9 +2,11 @@
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 include_once "../../includes/ajax_helpers.php";
+require_once "../../includes/log_system.php";
 
 $role = null;
 $userId = null;
+$enrolling_user_name = null; // ADDED for logging context
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
@@ -20,48 +22,59 @@ if (!$role) {
 $admin_school_id = null;
 $admin_school_name = null;
 if ($role === 'principal' && $userId) {
-    // --- CORRECTED: Using PDO ---
-    $stmt = $conn->prepare('SELECT s."id", s."school_name" FROM "principal" p JOIN "school" s ON p."school_id" = s."id" WHERE p."id" = ?');
+    // --- CORRECTED: Fetching principal's name for logging context ---
+    $stmt = $conn->prepare('SELECT s."id", s."school_name", p."principal_name" AS enrolling_user_name FROM "principal" p JOIN "school" s ON p."school_id" = s."id" WHERE p."id" = ?');
     $stmt->execute([$userId]);
     $admin_data = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($admin_data) {
         $admin_school_id = $admin_data['id'];
         $admin_school_name = $admin_data['school_name'];
+        $enrolling_user_name = $admin_data['enrolling_user_name']; // Captured principal's name
     }
+} else {
+     // Fallback for Superadmin (who is the only other user enrolling a teacher if this is run)
+    $enrolling_user_name = isset($_COOKIE['encrypted_user_name']) ? decrypt_id($_COOKIE['encrypted_user_name']) : 'Unknown Admin';
 }
 
 $errors = [];
+$schools = [];
+$routes_stops = [];
+
+// Fetch schools and routes/stops based on role
+try {
+    if ($role === 'principal' && $admin_school_id) {
+        // Principal is restricted to their school's stops
+        $stmt_routes = $conn->prepare('SELECT r.route_name, s.id as stop_id, s.stop_name FROM routes r JOIN stops s ON r.id = s.route_id WHERE r.school_id = ? ORDER BY r.route_name, s.stop_name');
+        $stmt_routes->execute([$admin_school_id]);
+        $routes_stops = $stmt_routes->fetchAll(PDO::FETCH_ASSOC);
+    } else {
+        // Fetch all schools for superadmin
+        $stmt_schools = $conn->query('SELECT id, school_name FROM school ORDER BY school_name');
+        $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
+    }
+} catch (PDOException $e) {
+    $errors[] = "Database error: " . $e->getMessage();
+}
+
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Form data retrieval remains the same
-    $teacher_name = trim($_POST['teacher_name'] ?? '');
-    $email = trim($_POST['email'] ?? '');
-    $phone = trim($_POST['phone'] ?? '');
-    $dob = $_POST['dob'] ?? '';
-    $gender = $_POST['gender'] ?? '';
-    $blood_group = $_POST['blood_group'] ?? '';
-    $address = trim($_POST['address'] ?? '');
-    $qualification = trim($_POST['qualification'] ?? '');
-    $subject = trim($_POST['subject'] ?? '');
-    $language_known = trim($_POST['language_known'] ?? '');
-    $salary = trim($_POST['salary'] ?? '');
-    $std = isset($_POST['std']) ? $_POST['std'] : [];
-    $experience = trim($_POST['experience'] ?? '');
-    $password = $_POST['password'] ?? '';
-    $batch = $_POST['batch'] ?? '';
-    $timings = $_POST['timings'] ?? [];
-    $class_teacher = isset($_POST['class_teacher']) ? 1 : 0;
-    
-    $class_teacher_std = null;
-    if ($class_teacher && !empty($_POST['class_teacher_std'])) {
-        $class_teacher_std = $_POST['class_teacher_std'];
-    }
-    
-    $school_id = ($role === 'principal') ? $admin_school_id : ($_POST['school_id'] ?? null);
+    $teacher_name = trim($_POST['teacher_name']);
+    $email = trim($_POST['email']);
+    $password = $_POST['password'];
+    $phone = trim($_POST['phone']);
+    $dob = $_POST['dob'];
+    $gender = $_POST['gender'];
+    $blood_group = $_POST['blood_group'];
+    $address = trim($_POST['address']);
+    $qualification = trim($_POST['qualification']);
+    $salary = trim($_POST['salary']);
+    $date_of_joining = $_POST['date_of_joining'] ?? null;
+    $school_id = ($role === 'principal') ? $admin_school_id : $_POST['school_id'];
     $image_path_for_db = null;
-
-    // NEW: Retrieve transport-related fields
+    
+    // Transport details
     $transport_mode = $_POST['transport_mode'] ?? 'Self Transport';
+    $stop_id = ($transport_mode === 'School Transport' && !empty($_POST['stop_id'])) ? (int)$_POST['stop_id'] : null;
     $self_transport_mode = ($transport_mode === 'Self Transport' && !empty($_POST['self_transport_mode'])) ? $_POST['self_transport_mode'] : null;
     $vehicle_number = null;
     $license_number = null;
@@ -69,93 +82,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $vehicle_number = trim($_POST['vehicle_number'] ?? '');
         $license_number = trim($_POST['license_number'] ?? '');
     }
-    $stop_id = ($transport_mode === 'School Transport' && !empty($_POST['stop_id'])) ? (int)$_POST['stop_id'] : null;
 
-    $date_of_joining = $_POST['date_of_joining'] ?? null;
-
-    // --- START: ADDED FILE UPLOAD LOGIC ---
+    // File Upload Logic
     if (isset($_FILES['teacher_image']) && $_FILES['teacher_image']['error'] === UPLOAD_ERR_OK) {
         $file = $_FILES['teacher_image'];
-        $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/teacher/uploads/';
-        
-        if (!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0777, true);
+        $uploadDir = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/teacher/uploads/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
         }
-
-        $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        // Use a unique ID to prevent filename conflicts
-        $new_filename = 'teacher_' . uniqid() . '.' . $file_ext;
-        $destination = $upload_dir . $new_filename;
-        
-        if (move_uploaded_file($file['tmp_name'], $destination)) {
-            $image_path_for_db = '/BMC-SMS/pages/teacher/uploads/' . $new_filename;
+        $fileName = 'teacher_' . uniqid() . '.' . strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        $targetPath = $uploadDir . $fileName;
+        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+            $image_path_for_db = '/BMC-SMS/pages/teacher/uploads/' . $fileName;
         } else {
-            $errors[] = "Failed to move uploaded file.";
+            $errors[] = "Failed to upload image.";
         }
     }
-    // --- END: ADDED FILE UPLOAD LOGIC ---
 
-    if (empty($school_id)) $errors[] = "A school must be selected.";
+    // Validation
     if (empty($teacher_name)) $errors[] = "Teacher name is required.";
-    if (empty($batch)) $errors[] = "Batch selection is required.";
+    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "A valid email is required.";
     if (empty($password)) $errors[] = "Password is required.";
-    if ($class_teacher && empty($_POST['class_teacher_std'])) $errors[] = "Please select a standard for the class teacher.";
-    if(empty($phone)) $errors[] = "Phone is required.";
-    if(empty($gender)) $errors[] = "Gender is required.";
-    if(empty($blood_group)) $errors[] = "Blood group is required.";
-    if(empty($subject)) $errors[] = "Subject is required.";
-
-    // NEW: Validation for transport details
+    if (empty($school_id)) $errors[] = "School must be assigned.";
     if ($transport_mode === 'Self Transport' && empty($self_transport_mode)) $errors[] = "Please specify the mode of self-transport.";
     if (($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') && empty($vehicle_number)) $errors[] = "Vehicle number is required.";
     if (($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') && empty($license_number)) $errors[] = "License number is required.";
 
+    // --- DATABASE INSERTION ---
     if (empty($errors)) {
         try {
             $conn->beginTransaction();
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
             $user_role = 'teacher';
 
-            // --- CORRECTED: Using PDO ---
+            // 1. Insert into users table
             $stmt_user = $conn->prepare('INSERT INTO "users" ("role", "email", "password") VALUES (?, ?, ?)');
             $stmt_user->execute([$user_role, $email, $hashed_password]);
             $new_user_id = $conn->lastInsertId();
 
-            $std_pg = '{' . implode(',', $std) . '}'; // Convert to PostgreSQL array format
-
-            // UPDATED: Added new columns to the INSERT statement
-            $stmt_teacher = $conn->prepare('INSERT INTO "teacher" (id, teacher_image, teacher_name, phone, school_id, dob, gender, blood_group, address, email, password, qualification, subject, language_known, salary, std, experience, batch, class_teacher, class_teacher_std, date_of_joining, transport_mode, self_transport_mode, vehicle_number, license_number, stop_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-            $stmt_teacher->execute([$new_user_id, $image_path_for_db, $teacher_name, $phone, $school_id, $dob, $gender, $blood_group, $address, $email, $hashed_password, $qualification, $subject, $language_known, $salary, $std_pg, $experience, $batch, $class_teacher, $class_teacher_std, $date_of_joining, $transport_mode, $self_transport_mode, $vehicle_number, $license_number, $stop_id]);
-
-            $stmt_timing = $conn->prepare('INSERT INTO "teacher_timings" (teacher_id, day_of_week, opens_at, closes_at, is_closed) VALUES (?, ?, ?, ?, ?)');
-            foreach ($timings as $day => $details) {
-                $is_closed = isset($details['is_closed']) ? 1 : 0;
-                
-                // MODIFIED: Convert 12-hour time with AM/PM to 24-hour format for the database
-                $opens_at = null;
-                if (!$is_closed && !empty($details['opens_at']) && !empty($details['opens_at_ampm'])) {
-                    $opens_at = date("H:i:s", strtotime($details['opens_at'] . ' ' . $details['opens_at_ampm']));
-                }
-
-                $closes_at = null;
-                if (!$is_closed && !empty($details['closes_at']) && !empty($details['closes_at_ampm'])) {
-                    $closes_at = date("H:i:s", strtotime($details['closes_at'] . ' ' . $details['closes_at_ampm']));
-                }
-
-                $stmt_timing->execute([$new_user_id, $day, $opens_at, $closes_at, $is_closed]);
-            }
+            // 2. Insert into teacher table
+            $stmt_teacher = $conn->prepare('
+                INSERT INTO "teacher" (id, teacher_image, teacher_name, school_id, email, password, phone, dob, gender, blood_group, address, qualification, salary, date_of_joining, transport_mode, self_transport_mode, vehicle_number, license_number, stop_id) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ');
+            $stmt_teacher->execute([$new_user_id, $image_path_for_db, $teacher_name, $school_id, $email, $hashed_password, $phone, $dob, $gender, $blood_group, $address, $qualification, $salary, $date_of_joining, $transport_mode, $self_transport_mode, $vehicle_number, $license_number, $stop_id]);
 
             $conn->commit();
+            
+            // ⭐ LOGGING: Log the successful teacher enrollment action
+            log_interaction($role, $userId, "ENROLLMENT SUCCESS: Enrolled new teacher: {$teacher_name} (ID: {$new_user_id})", $enrolling_user_name);
+
             header("Location: ../../pages/teacher/teacher_list.php?success=Teacher enrolled successfully");
             exit();
         } catch (PDOException $e) {
             $conn->rollBack();
             if ($e->getCode() == 23505) {
-                if (strpos($e->getMessage(), 'uq_class_teacher_std_batch') !== false) {
-                    $errors[] = "A teacher for this standard is already assigned as a class teacher in this batch.";
-                } else {
-                    $errors[] = "A teacher with this email or phone number already exists.";
-                }
+                $errors[] = "A user with this email already exists.";
             } else {
                 $errors[] = "Database error: " . $e->getMessage();
             }
@@ -163,38 +145,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// --- CORRECTED: Fetch schools using PDO ---
-$schools = [];
-$stmt_schools = $conn->query('SELECT "id", "school_name" FROM "school" ORDER BY "school_name"');
-$schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
-
 if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <title>Enroll Teacher - School Management System</title>
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
-    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
-
 </head>
-
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
-<?php
-}
-?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Enroll New Teacher</h1>
@@ -214,10 +184,10 @@ if (!is_ajax_request()) {
                                 <div class="row">
                                     <div class="col-md-3 text-center">
                                         <label>Photo Preview</label><br>
-                                        <img src="../../assets/images/undraw_profile.svg" alt="Teacher Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
+                                        <img src="../../assets/images/unisex.png" alt="Teacher Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
                                         <div class="form-group">
                                             <label for="teacher_image" class="small btn btn-sm btn-info"><i class="fas fa-upload fa-sm"></i> Upload Photo</label>
-                                            <input type="file" class="d-none" id="teacher_image" name="teacher_image">
+                                            <input type="file" class="d-none" id="teacher_image" name="teacher_image" accept="image/*">
                                         </div>
                                     </div>
                                     <div class="col-md-9">
@@ -226,68 +196,38 @@ if (!is_ajax_request()) {
                                         </div>
                                         <div class="form-row">
                                             <div class="form-group col-md-6"><label for="email">Email *</label><input type="email" class="form-control" id="email" name="email" value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>" required></div>
-                                            <div class="form-group col-md-6"><label for="password">Password *</label><input type="password" class="form-control" id="password" name="password" required></div>
+                                            <div class="form-group col-md-6"><label for="password">Password *</label><input type="password" class="form-control" id="password" name="password" value="<?php echo htmlspecialchars($_POST['password'] ?? ''); ?>" required></div>
                                         </div>
                                     </div>
                                 </div>
+                                
                                 <hr>
                                 <h6 class="text-primary">Professional Information</h6>
                                 <div class="form-row mt-3">
                                     <div class="form-group col-md-6">
                                         <label for="school_id">Assign to School *</label>
                                         <?php if ($role === 'principal'): ?>
-                                            <select class="form-control" name="school_id_disabled" disabled>
-                                                <option value="<?php echo $admin_school_id; ?>" selected><?php echo htmlspecialchars($admin_school_name); ?></option>
-                                            </select>
-                                            <input type="hidden" name="school_id" value="<?php echo $admin_school_id; ?>">
+                                            <input type="text" class="form-control" value="<?php echo htmlspecialchars($admin_school_name); ?>" disabled>
+                                            <input type="hidden" name="school_id" value="<?php echo htmlspecialchars($admin_school_id); ?>">
                                         <?php else: ?>
                                             <select class="form-control" id="school_id" name="school_id" required>
                                                 <option value="">-- Select School --</option>
-                                                <?php
-                                                if ($schools) {
-                                                    foreach ($schools as $school) {
-                                                        $selected = (isset($_POST['school_id']) && $_POST['school_id'] == $school['id']) ? 'selected' : '';
-                                                        echo "<option value='{$school['id']}' {$selected}>" . htmlspecialchars($school['school_name']) . "</option>";
-                                                    }
-                                                }
-                                                ?>
+                                                <?php foreach ($schools as $school): ?>
+                                                    <option value="<?php echo htmlspecialchars($school['id']); ?>" <?php echo (($_POST['school_id'] ?? '') == $school['id']) ? 'selected' : ''; ?>><?php echo htmlspecialchars($school['school_name']); ?></option>
+                                                <?php endforeach; ?>
                                             </select>
                                         <?php endif; ?>
                                     </div>
                                     <div class="form-group col-md-6">
-                                        <label for="batch">Batch *</label>
-                                        <select class="form-control" id="batch" name="batch" required>
-                                            <option value="">-- Select Batch --</option>
-                                            <option value="Morning" <?php echo (isset($_POST['batch']) && $_POST['batch'] == 'Morning') ? 'selected' : ''; ?>>Morning</option>
-                                            <option value="Evening" <?php echo (isset($_POST['batch']) && $_POST['batch'] == 'Evening') ? 'selected' : ''; ?>>Evening</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group col-md-12">
                                         <label for="date_of_joining">Date of Joining</label>
                                         <input type="date" class="form-control" id="date_of_joining" name="date_of_joining" value="<?php echo htmlspecialchars($_POST['date_of_joining'] ?? ''); ?>">
                                     </div>
                                 </div>
                                 <div class="form-row">
-                                    <div class="form-group col-md-6"><label for="subject">Subject Specialization *</label><input type="text" class="form-control" id="subject" name="subject" value="<?php echo htmlspecialchars($_POST['subject'] ?? ''); ?>" required></div>
                                     <div class="form-group col-md-6"><label for="qualification">Qualification</label><input type="text" class="form-control" id="qualification" name="qualification" value="<?php echo htmlspecialchars($_POST['qualification'] ?? ''); ?>"></div>
+                                    <div class="form-group col-md-6"><label for="salary">Salary</label><input type="number" class="form-control" id="salary" name="salary" step="0.01" min="0" value="<?php echo htmlspecialchars($_POST['salary'] ?? ''); ?>"></div>
                                 </div>
-                                <div class="form-row">
-                                    <div class="form-group col-md-6"><label for="std">Teaching Standards</label><select class="form-control multi-select" id="std" name="std[]" multiple="multiple"><?php $stds = ['Nursery', 'Junior', 'Senior', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
-                                                                                                                                                                                                    foreach ($stds as $std_val): ?><option value="<?php echo $std_val; ?>"><?php echo $std_val; ?></option><?php endforeach; ?></select></div>
-                                    <div class="form-group col-md-6"><label for="language_known">Languages Known</label><input type="text" class="form-control" id="language_known" name="language_known" value="<?php echo htmlspecialchars($_POST['language_known'] ?? ''); ?>"></div>
-                                    <div class="form-group col-md-6"><label for="experience">Experience (yrs)</label><input type="number" class="form-control" id="experience" name="experience" min="0" max="50" value="<?php echo htmlspecialchars($_POST['experience'] ?? ''); ?>"></div>
-                                    <div class="form-group col-md-6"><label for="salary">Salary</label><input type="number" class="form-control" id="salary" name="salary" value="<?php echo htmlspecialchars($_POST['salary'] ?? ''); ?>" step="0.01" min="0"></div>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group col-md-6">
-                                        <div class="form-check mt-2"><input class="form-check-input" type="checkbox" id="class_teacher" name="class_teacher" <?php echo (isset($_POST['class_teacher']) && $_POST['class_teacher'] == '1') ? 'checked' : ''; ?>><label class="form-check-label" for="class_teacher">Is Class Teacher?</label></div>
-                                    </div>
-                                    <div class="form-group col-md-6" id="classTeacherStdGroup" style="display: none;"><label for="class_teacher_std">Class Teacher for Standard *</label><select class="form-control" id="class_teacher_std" name="class_teacher_std">
-                                            <option value="">-- Select Standard --</option><?php $stds_for_class_teacher = ['Nursery', 'Junior', 'Senior', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
-                                                                                            foreach ($stds_for_class_teacher as $std_val): ?><option value="<?php echo $std_val; ?>" <?php echo (isset($_POST['class_teacher_std']) && $_POST['class_teacher_std'] == $std_val) ? 'selected' : ''; ?>><?php echo $std_val; ?></option><?php endforeach; ?>
-                                        </select></div>
-                                </div>
-
+                                
                                 <hr>
                                 <h6 class="text-primary">Transport Details</h6>
                                  <div class="form-row mt-3">
@@ -298,7 +238,7 @@ if (!is_ajax_request()) {
                                             <option value="School Transport" <?php echo (isset($_POST['transport_mode']) && $_POST['transport_mode'] == 'School Transport') ? 'selected' : ''; ?>>School Transport (Bus/Van)</option>
                                         </select>
                                      </div>
-                                     <div class="form-group col-md-6" id="self-transport-div" style="display: none;">
+                                     <div class="form-group col-md-6" id="self-transport-div" style="display: <?php echo (isset($_POST['transport_mode']) && $_POST['transport_mode'] == 'Self Transport') ? 'block' : 'none'; ?>;">
                                         <label for="self_transport_mode">Self Transport Mode *</label>
                                         <select class="form-control" id="self_transport_mode" name="self_transport_mode">
                                             <option value="">-- Select Mode --</option>
@@ -309,32 +249,28 @@ if (!is_ajax_request()) {
                                             <option value="Car" <?php echo (isset($_POST['self_transport_mode']) && $_POST['self_transport_mode'] == 'Car') ? 'selected' : ''; ?>>Car</option>
                                         </select>
                                     </div>
-                                     <div class="form-group col-md-6" id="transport-stop-div" style="display: none;">
+                                     <div class="form-group col-md-6" id="transport-stop-div" style="display: <?php echo (isset($_POST['transport_mode']) && $_POST['transport_mode'] == 'School Transport') ? 'block' : 'none'; ?>;">
                                         <label for="stop_id">Assign Transport Stop (Optional)</label>
                                         <select class="form-control" id="stop_id" name="stop_id">
                                             <option value="">-- No Transport --</option>
                                             <?php
-                                            $school_to_check = ($role === 'principal') ? $admin_school_id : ($_POST['school_id'] ?? null);
-                                            if ($school_to_check) {
-                                                $stmt_routes = $conn->prepare('SELECT r.route_name, s.id as stop_id, s.stop_name FROM routes r JOIN stops s ON r.id = s.route_id WHERE r.school_id = ? ORDER BY r.route_name, s.stop_name');
-                                                $stmt_routes->execute([$school_to_check]);
-                                                $current_route = '';
-                                                while($row = $stmt_routes->fetch(PDO::FETCH_ASSOC)) {
-                                                    if ($row['route_name'] !== $current_route) {
-                                                        if ($current_route !== '') echo '</optgroup>';
-                                                        $current_route = $row['route_name'];
-                                                        echo '<optgroup label="' . htmlspecialchars($current_route) . '">';
-                                                    }
-                                                    $selected = (isset($_POST['stop_id']) && $_POST['stop_id'] == $row['stop_id']) ? 'selected' : '';
-                                                    echo "<option value='" . $row['stop_id'] . "' {$selected}>" . htmlspecialchars($row['stop_name']) . "</option>";
+                                            $stops_to_display = ($role === 'principal' && !empty($admin_school_id)) ? $routes_stops : [];
+                                            $current_route = '';
+                                            foreach($stops_to_display as $row) {
+                                                if ($row['route_name'] !== $current_route) {
+                                                    if ($current_route !== '') echo '</optgroup>';
+                                                    $current_route = $row['route_name'];
+                                                    echo '<optgroup label="' . htmlspecialchars($current_route) . '">';
                                                 }
-                                                if ($current_route !== '') echo '</optgroup>';
+                                                $selected = (isset($_POST['stop_id']) && $_POST['stop_id'] == $row['stop_id']) ? 'selected' : '';
+                                                echo "<option value='" . $row['stop_id'] . "' {$selected}>" . htmlspecialchars($row['stop_name']) . "</option>";
                                             }
+                                            if ($current_route !== '') echo '</optgroup>';
                                             ?>
                                         </select>
                                     </div>
                                 </div>
-                                <div class="form-row mt-3" id="vehicle-details-div" style="display: none;">
+                                <div class="form-row mt-3" id="vehicle-details-div" style="display: <?php echo (isset($_POST['self_transport_mode']) && ($_POST['self_transport_mode'] == 'Bike' || $_POST['self_transport_mode'] == 'Car')) ? 'flex' : 'none'; ?>;">
                                     <div class="form-group col-md-6">
                                         <label for="vehicle_number">Vehicle Number *</label>
                                         <input type="text" class="form-control" id="vehicle_number" name="vehicle_number" value="<?php echo htmlspecialchars($_POST['vehicle_number'] ?? ''); ?>">
@@ -346,73 +282,25 @@ if (!is_ajax_request()) {
                                 </div>
                                 
                                 <hr>
-                                <h6 class="font-weight-bold text-primary mb-3">Weekly Timings</h6>
-                                <div id="timings-schedule">
-                                    <?php
-                                    $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-                                    foreach ($days as $day):
-                                        $posted_day = $_POST['timings'][$day] ?? [];
-                                        $is_closed = isset($posted_day['is_closed']);
-                                        $opens_at = $posted_day['opens_at'] ?? '10:00';
-                                        $opens_at_ampm = $posted_day['opens_at_ampm'] ?? 'AM';
-                                        $closes_at = $posted_day['closes_at'] ?? '06:00';
-                                        $closes_at_ampm = $posted_day['closes_at_ampm'] ?? 'PM';
-                                    ?>
-                                        <div class="form-row align-items-center mb-2 timing-row" data-day="<?php echo $day; ?>">
-                                            <div class="col-md-2"><label class="mb-0"><?php echo $day; ?></label></div>
-                                            <div class="col-md-2">
-                                                <div class="custom-control custom-checkbox">
-                                                    <input type="checkbox" class="custom-control-input closed-checkbox" id="closed_<?php echo $day; ?>" name="timings[<?php echo $day; ?>][is_closed]" <?php if ($is_closed) echo 'checked'; ?>>
-                                                    <label class="custom-control-label" for="closed_<?php echo $day; ?>">Closed</label>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-4">
-                                                <div class="input-group">
-                                                    <div class="input-group-prepend"><span class="input-group-text small">Opens at</span></div>
-                                                    <input type="text" class="form-control time-input" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" placeholder="HH:MM" <?php if ($is_closed) echo 'disabled'; ?>>
-                                                    <div class="input-group-append">
-                                                        <select class="form-control ampm-select" name="timings[<?php echo $day; ?>][opens_at_ampm]" <?php if ($is_closed) echo 'disabled'; ?>>
-                                                            <option value="AM" <?php if ($opens_at_ampm == 'AM') echo 'selected'; ?>>AM</option>
-                                                            <option value="PM" <?php if ($opens_at_ampm == 'PM') echo 'selected'; ?>>PM</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-4">
-                                                <div class="input-group">
-                                                    <div class="input-group-prepend"><span class="input-group-text small">Closes at</span></div>
-                                                    <input type="text" class="form-control time-input" name="timings[<?php echo $day; ?>][closes_at]" value="<?php echo htmlspecialchars($closes_at); ?>" placeholder="HH:MM" <?php if ($is_closed) echo 'disabled'; ?>>
-                                                    <div class="input-group-append">
-                                                        <select class="form-control ampm-select" name="timings[<?php echo $day; ?>][closes_at_ampm]" <?php if ($closes_at_ampm == 'PM') echo 'selected'; ?>>
-                                                            <option value="AM" <?php if ($closes_at_ampm == 'AM') echo 'selected'; ?>>AM</option>
-                                                            <option value="PM" <?php if ($closes_at_ampm == 'PM') echo 'selected'; ?>>PM</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    <?php endforeach; ?>
-                                </div>
-
-                                <hr>
                                 <h6 class="text-primary">Personal Information</h6>
                                 <div class="form-row mt-3">
-                                    <div class="form-group col-md-4"><label for="phone">Phone</label><input type="tel" class="form-control" id="phone" name="phone" value="<?php echo htmlspecialchars($_POST['phone'] ?? ''); ?>" maxlength="10"></div>
+                                    <div class="form-group col-md-4"><label for="phone">Phone</label><input type="tel" class="form-control" id="phone" name="phone" maxlength="10" value="<?php echo htmlspecialchars($_POST['phone'] ?? ''); ?>"></div>
                                     <div class="form-group col-md-4"><label for="dob">Date of Birth</label><input type="date" class="form-control" id="dob" name="dob" value="<?php echo htmlspecialchars($_POST['dob'] ?? ''); ?>"></div>
                                     <div class="form-group col-md-4"><label for="gender">Gender *</label><select class="form-control" id="gender" name="gender" required>
                                             <option value="">-- Select Gender --</option>
-                                            <option value="Male" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Male') ? 'selected' : ''; ?>>Male</option>
-                                            <option value="Female" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Female') ? 'selected' : ''; ?>>Female</option>
-                                            <option value="Others" <?php echo (isset($_POST['gender']) && $_POST['gender'] == 'Others') ? 'selected' : ''; ?>>Others</option>
+                                            <option value="Male" <?= (($_POST['gender'] ?? '') == 'Male') ? 'selected' : '' ?>>Male</option>
+                                            <option value="Female" <?= (($_POST['gender'] ?? '') == 'Female') ? 'selected' : '' ?>>Female</option>
+                                            <option value="Others" <?= (($_POST['gender'] ?? '') == 'Others') ? 'selected' : '' ?>>Others</option>
                                         </select></div>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group col-md-6"><label for="blood_group">Blood Group *</label><select class="form-control" id="blood_group" name="blood_group" required>
-                                            <option value="">-- Select Blood Group --</option><?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-                                                                                                foreach ($bg_options as $bg) {
-                                                                                                    $selected = (isset($_POST['blood_group']) && $_POST['blood_group'] == $bg) ? 'selected' : '';
-                                                                                                    echo "<option value='{$bg}' {$selected}>{$bg}</option>";
-                                                                                                } ?>
+                                            <option value="">-- Select Blood Group --</option>
+                                            <?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+                                            foreach ($bg_options as $bg) {
+                                                $selected = (($_POST['blood_group'] ?? '') == $bg) ? 'selected' : '';
+                                                echo "<option value='{$bg}' {$selected}>" . $bg . "</option>";
+                                            } ?>
                                         </select></div>
                                     <div class="form-group col-md-6"><label for="address">Address</label><textarea class="form-control" id="address" name="address" rows="1"><?php echo htmlspecialchars($_POST['address'] ?? ''); ?></textarea></div>
                                 </div>
@@ -424,59 +312,32 @@ if (!is_ajax_request()) {
                         </div>
                     </div>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
             </div>
             <?php include_once '../../includes/footer.php'; ?>
         </div>
     </div>
     
-    <?php include_once "../../includes/logout_modal.php" ?>
+    <?php include_once "../../includes/logout_modal.php"?>
 
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script>
         $(document).ready(function() {
-            $('.multi-select').select2();
-
-            // Class Teacher checkbox logic
-            const isClassTeacherCheckbox = $('#class_teacher');
-            const classTeacherStdGroup = $('#classTeacherStdGroup');
-            const classTeacherStdSelect = $('#class_teacher_std');
-
-            function toggleClassTeacherStd() {
-                if (isClassTeacherCheckbox.is(':checked')) {
-                    classTeacherStdGroup.show();
-                    classTeacherStdSelect.prop('required', true);
-                } else {
-                    classTeacherStdGroup.hide();
-                    classTeacherStdSelect.prop('required', false);
-                    classTeacherStdSelect.val('');
-                }
-            }
-            isClassTeacherCheckbox.on('change', toggleClassTeacherStd);
-            toggleClassTeacherStd();
-
             // Image Preview
             $('#teacher_image').on('change', function(event) {
-                if (event.target.files[0]) {
-                    $('#imagePreview').attr('src', URL.createObjectURL(event.target.files[0]));
+                if (event.target.files && event.target.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        $('#imagePreview').attr('src', e.target.result);
+                    }
+                    reader.readAsDataURL(event.target.files[0]);
                 }
             });
 
-            // Timings schedule logic
-            $('.closed-checkbox').on('change', function() {
-                const row = $(this).closest('.timing-row');
-                // MODIFIED: Select the new text inputs and AM/PM dropdowns
-                const timeInputs = row.find('.time-input, .ampm-select');
-                timeInputs.prop('disabled', $(this).is(':checked'));
+            $('button[type="reset"]').on('click', function() {
+                $('#imagePreview').attr('src', '../../assets/images/unisex.png');
             });
-
-            // Trigger change on page load to set initial state
-            $('.closed-checkbox').trigger('change');
 
             // Blur past dates for "Date of Joining"
             const dateInput = document.getElementById('date_of_joining');
@@ -489,7 +350,7 @@ if (!is_ajax_request()) {
                 dateInput.setAttribute('min', formattedDate);
             }
 
-            // NEW: JavaScript for transport fields
+            // Transport Logic
             const transportModeSelect = document.getElementById('transport_mode');
             const selfTransportSelect = document.getElementById('self_transport_mode');
             const schoolTransportDiv = document.getElementById('transport-stop-div');

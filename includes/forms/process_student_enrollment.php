@@ -3,6 +3,7 @@ require_once '../../includes/connect.php';
 require_once '../../includes/ajax_helpers.php';
 require_once '../../includes/layout.php';
 require_once '../../encryption.php';
+require_once '../../includes/log_system.php'; // ADDED: Log system dependency
 
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
@@ -10,7 +11,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Check authentication and role
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'school') {
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role'])) {
     Response::send([
         'success' => false,
         'message' => 'Unauthorized access',
@@ -18,6 +19,11 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'school') {
     ], 403);
     exit;
 }
+
+// Identify enrolling user from session
+$enrolling_user_id = $_SESSION['user_id'];
+$enrolling_role = $_SESSION['user_role'];
+$enrolling_user_name = $_SESSION['user_name'] ?? 'Session User'; // Retrieve user name for log
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     Response::send([
@@ -42,66 +48,40 @@ try {
 
     // Validate email
     if (!filter_var($_POST['email'], FILTER_VALIDATE_EMAIL)) {
-        throw new Exception("Invalid email format");
+        throw new Exception("Invalid email format.");
     }
 
-    // Check if email already exists
-    $stmt = $conn->prepare("SELECT id FROM users WHERE email = ?");
-    $stmt->execute([$_POST['email']]);
-    if ($stmt->fetch()) {
-        throw new Exception("Email already registered");
-    }
+    // Retrieve and validate student-specific data
+    $school_id = (int)$_POST['school_id'];
+    $temp_password = substr(bin2hex(random_bytes(4)), 0, 8); // Generate 8-char temp password
+    $hashed_password = password_hash($temp_password, PASSWORD_DEFAULT);
+    $user_role = 'student';
+    $student_name = $_POST['name'];
 
     // Handle file upload
     $photo_path = null;
-    if (!empty($_FILES['photo']['name'])) {
-        $photo = $_FILES['photo'];
-        
-        // Validate file type
-        $allowed_types = ['image/jpeg', 'image/png'];
-        if (!in_array($photo['type'], $allowed_types)) {
-            throw new Exception('Invalid file type. Only JPG and PNG are allowed.');
+    if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
+        $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/uploads/students/';
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0777, true);
         }
+        $file_extension = strtolower(pathinfo($_FILES['photo']['name'], PATHINFO_EXTENSION));
+        $new_file_name = uniqid() . '.' . $file_extension;
+        $target_path = $upload_dir . $new_file_name;
         
-        // Validate file size (2MB max)
-        if ($photo['size'] > 2 * 1024 * 1024) {
-            throw new Exception('File is too large. Maximum size is 2MB.');
+        if (move_uploaded_file($_FILES['photo']['tmp_name'], $target_path)) {
+            $photo_path = '/BMC-SMS/uploads/students/' . $new_file_name;
+        } else {
+            throw new Exception("Failed to upload student photo.");
         }
-        
-        // Generate unique filename
-        $ext = pathinfo($photo['name'], PATHINFO_EXTENSION);
-        $filename = uniqid() . '.' . $ext;
-        $upload_path = '../../uploads/students/' . $filename;
-        
-        // Create directory if it doesn't exist
-        if (!file_exists('../../uploads/students')) {
-            mkdir('../../uploads/students', 0777, true);
-        }
-        
-        // Move uploaded file
-        if (!move_uploaded_file($photo['tmp_name'], $upload_path)) {
-            throw new Exception('Failed to upload file');
-        }
-        
-        $photo_path = $filename;
     }
 
-    // Decrypt school_id
-    $school_id = decrypt_id($_POST['school_id']);
-
-    // Generate temporary password
-    $temp_password = bin2hex(random_bytes(8));
-    $hashed_password = password_hash($temp_password, PASSWORD_DEFAULT);
-
-    // Create user account
-    $stmt = $conn->prepare("
-        INSERT INTO users (email, password, role, account_status, created_at)
-        VALUES (?, ?, 'student', 'active', NOW())
-    ");
-    $stmt->execute([$_POST['email'], $hashed_password]);
+    // 1. Insert into main 'users' table
+    $stmt_user = $conn->prepare('INSERT INTO "users" ("role", "email", "password", "account_status") VALUES (?, ?, ?, ?)');
+    $stmt_user->execute([$user_role, $_POST['email'], $hashed_password, 'active']);
     $user_id = $conn->lastInsertId();
 
-    // Create student record
+    // 2. Insert/update student record
     $stmt = $conn->prepare("
         INSERT INTO student (
             id, student_name, roll_number, class, school_id, 
@@ -128,6 +108,9 @@ try {
 
     // Commit transaction
     $conn->commit();
+    
+    // ⭐ LOGGING: Log the successful student enrollment
+    log_interaction($enrolling_role, $enrolling_user_id, "ENROLLMENT SUCCESS: Enrolled new student: {$student_name} (Roll: {$_POST['roll_number']}, ID: {$user_id})", $enrolling_user_name);
 
     // TODO: Send email with temporary password
     // For now, we'll include it in the response
@@ -147,15 +130,25 @@ try {
         $conn->rollBack();
     }
 
-    // If file was uploaded, delete it
-    if (isset($upload_path) && file_exists($upload_path)) {
-        unlink($upload_path);
+    // If file was uploaded, attempt to delete it
+    if (isset($target_path) && file_exists($target_path)) {
+        unlink($target_path);
+    }
+    
+    // Handle specific constraint errors (e.g., duplicate email)
+    $error_message = $e->getMessage();
+    if (strpos($error_message, 'duplicate key') !== false || strpos($error_message, 'email') !== false) {
+        $error_message = "A user with this email or roll number already exists.";
+    } elseif (strpos($error_message, 'required') !== false) {
+         $error_message = "Please fill in all required fields.";
+    } else {
+        error_log("Student Enrollment Error: " . $error_message);
+        $error_message = "A system error occurred. Please try again later.";
     }
 
     Response::send([
         'success' => false,
-        'message' => $e->getMessage(),
-        'redirect' => 'student_enrollment.php'
-    ], 400);
+        'message' => $error_message
+    ], 500);
 }
 ?>

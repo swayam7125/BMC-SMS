@@ -1,26 +1,13 @@
 <?php
-/*
-|--------------------------------------------------------------------------
-| BACKEND LOGIC (CONTROLLER)
-|--------------------------------------------------------------------------
-|
-| This section handles all server-side operations:
-| 1. Includes necessary files for database connection and security.
-| 2. Authenticates and authorizes the user (ensures they are a librarian).
-| 3. Fetches the librarian's school ID.
-| 4. Processes the form submission to add a new book to the database.
-|
-*/
-
-// Core Includes
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php';
+include_once '../../includes/log_system.php';
 
-// --- Authorization ---
 $role = null;
 $user_id = null;
 $school_id = null;
+$acting_user_name = null;
 
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
@@ -28,6 +15,7 @@ if (isset($_COOKIE['encrypted_user_role'])) {
 if (isset($_COOKIE['encrypted_user_id'])) {
     $user_id = decrypt_id($_COOKIE['encrypted_user_id']);
 }
+$acting_user_name = decrypt_id($_COOKIE['encrypted_user_name'] ?? '') ?? 'Librarian';
 
 if ($role !== 'librarian') {
     header("Location: ../../login.php");
@@ -35,7 +23,6 @@ if ($role !== 'librarian') {
 }
 
 try {
-    // --- Data Fetching ---
     if ($user_id) {
         $stmt = $conn->prepare('SELECT "school_id" FROM "librarian" WHERE "id" = ?');
         $stmt->execute([$user_id]);
@@ -46,7 +33,6 @@ try {
         die("Could not determine the librarian's school. Action denied.");
     }
 
-    // --- Form Submission Handling ---
     $errors = [];
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $title = trim($_POST['title']);
@@ -55,7 +41,6 @@ try {
         $publisher = trim($_POST['publisher']);
         $quantity = (int)$_POST['quantity_total'];
 
-        // Basic Validation
         if (empty($title)) $errors[] = "Book title is required.";
         if (empty($author)) $errors[] = "Author name is required.";
         if ($quantity <= 0) $errors[] = "Quantity must be at least 1.";
@@ -65,12 +50,15 @@ try {
             $stmt = $conn->prepare($sql);
             $stmt->execute([$school_id, $title, $author, $isbn, $publisher, $quantity, $quantity]);
 
+            // ⭐ LOGGING: Log the asset creation action
+            $log_message = "ASSET CREATION: Added {$quantity} copies of book: '{$title}' (ISBN: {$isbn}).";
+            log_interaction($role, $user_id, $log_message, $acting_user_name);
+            
             header("Location: book_list.php?success=Book '" . urlencode($title) . "' was added successfully.");
             exit;
         }
     }
 } catch (PDOException $e) {
-    // In a real application, you would log this error and show a user-friendly message
     die("Database Error: " . $e->getMessage());
 }
 
@@ -78,11 +66,6 @@ $pageTitle = "Add New Book";
 ?>
 
 <?php
-/*
-|--------------------------------------------------------------------------
-| RESPONSIVE & PROFESSIONAL FRONTEND (VIEW)
-|--------------------------------------------------------------------------
-*/
 if (!is_ajax_request()):
 ?>
     <!DOCTYPE html>
@@ -183,6 +166,5 @@ if (!is_ajax_request()):
 
     </html>
 <?php
-endif; // End ajax check
+endif;
 $conn = null;
-?>

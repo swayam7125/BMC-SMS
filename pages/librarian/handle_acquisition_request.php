@@ -8,10 +8,12 @@
 
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
+include_once '../../includes/log_system.php'; // ADDED: Log system dependency
 
 // --- Authorization Check ---
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 $user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+$acting_user_name = decrypt_id($_COOKIE['encrypted_user_name'] ?? '') ?? 'Librarian'; // ADDED: Acting user name
 
 // Only librarians can perform this action.
 if ($role !== 'librarian' || !$user_id) {
@@ -35,7 +37,7 @@ try {
     // either both succeed or both fail, preventing data inconsistency.
     $conn->beginTransaction();
 
-    // Fetch the request details to ensure it's still 'Pending'.
+    // Fetch request details for the notification and logging
     $stmt_fetch = $conn->prepare("SELECT requester_id, book_title FROM book_requests WHERE request_id = ? AND status = 'Pending'");
     $stmt_fetch->execute([$request_id]);
     $request = $stmt_fetch->fetch(PDO::FETCH_ASSOC);
@@ -57,6 +59,10 @@ try {
 
         $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");
         $stmt_notify->execute([$requester_id, $notification_msg, $notification_link, $notification_type]);
+        
+        // ⭐ LOGGING: Log the critical acquisition action
+        $log_message = "ASSET ACTION: Acquisition request for '{$book_title}' (Request ID: {$request_id}) was {$new_status} by Librarian.";
+        log_interaction($role, $user_id, $log_message, $acting_user_name);
     }
 
     // If all database operations were successful, commit the transaction.
@@ -77,4 +83,3 @@ try {
 // Redirect the librarian back to the book requests page with a success message.
 header("Location: book_requests.php?success=status_updated");
 exit;
- 
