@@ -15,6 +15,9 @@ $(document).ready(function() {
     const filePreviewContainer = $('#file-preview-container');
     const filePreviewName = $('#file-preview-name');
     const cancelFileButton = $('#cancel-file-button');
+    
+    // New elements for filtering
+    const standardFilter = $('#standard-filter');
 
     function formatDateSeparator(dateString) {
         const date = new Date(dateString);
@@ -55,12 +58,22 @@ $(document).ready(function() {
         });
     }
 
-    function loadContacts() {
+    function loadContacts(standard = '') {
+        // Clear active contact and interval on new contact load
+        activeContactId = null;
+        if (messageInterval) clearInterval(messageInterval);
+        
+        contactsList.empty();
+        contactsList.html('<div class="text-center p-4"><div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div></div>');
+        
         $.ajax({
             url: api_url,
             type: 'POST',
             dataType: 'json',
-            data: { action: 'get_contacts' },
+            data: { 
+                action: 'get_contacts',
+                standard: standard // Pass the selected standard to the API
+            },
             success: function(response) {
                 contactsList.empty();
                 if (response.status === 'success' && response.contacts.length > 0) {
@@ -132,23 +145,19 @@ $(document).ready(function() {
                             const downloadUrl = `${window.base_url}includes/download.php?file=${encodeURIComponent(uniqueFilename)}`;
                             const fileUrl = window.base_url + msg.file_path;
                             
-                            // =================== MODIFIED BLOCK START ===================
                             if (msg.file_type && msg.file_type.startsWith('image/')) {
-                                // If it's an image, render an <img> tag
                                 attachmentHtml = `
                                     <div class="message-attachment">
-                                        <a href="${downloadUrl}" target="_blank">
+                                        <a href="${fileUrl}" target="_blank">
                                             <img src="${fileUrl}" class="chat-image" alt="Attachment">
                                         </a>
                                     </div>`;
                             } else if (msg.file_type && msg.file_type.startsWith('video/')) {
-                                // If it's a video, render a <video> tag with controls
                                 attachmentHtml = `
                                     <div class="message-attachment">
                                         <video src="${fileUrl}" class="chat-video" controls></video>
                                     </div>`;
                             } else {
-                                // For all other files, render the generic file link
                                 const originalFileName = msg.original_filename || uniqueFilename.substring(14);
                                 attachmentHtml = `
                                 <div class="message-attachment">
@@ -158,7 +167,6 @@ $(document).ready(function() {
                                     </a>
                                 </div>`;
                             }
-                            // =================== MODIFIED BLOCK END ===================
                         }
 
                         const messageHtml = `
@@ -183,7 +191,7 @@ $(document).ready(function() {
                 }
                 
                 if (hadNewMessages) {
-                    loadContacts();
+                    loadContacts(standardFilter.val());
                     pollForNotifications();
                 }
             }
@@ -266,9 +274,15 @@ $(document).ready(function() {
     });
 
     cancelFileButton.on('click', cancelFileSelection);
+    
+    // Event listener for the standard filter dropdown
+    standardFilter.on('change', function() {
+        const selectedStandard = $(this).val();
+        loadContacts(selectedStandard);
+    });
 
     // Initial Load
-    loadContacts();
+    loadContacts(standardFilter.val()); // Pass the initial selected value
     pollForNotifications();
     setInterval(pollForNotifications, 15000);
 

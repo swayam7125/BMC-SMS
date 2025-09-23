@@ -21,9 +21,40 @@ if ($current_user_role !== 'teacher' && $current_user_role !== 'student') {
 // Dynamically set page titles and content based on the user's role
 $page_title = ($current_user_role === 'teacher') ? "Message Students" : "Message Teachers";
 $contacts_title = ($current_user_role === 'teacher') ? "Students" : "Teachers";
+
+// ** UPDATED CODE TO GET TEACHER'S STANDARDS **
+$standards = [];
+$teacher_school_id = null;
+
+if ($current_user_role === 'teacher') {
+    try {
+        // Fetch the teacher's school ID and the standards they teach using PDO
+        $sql = "SELECT school_id, std FROM teacher WHERE id = :id";
+        $stmt = $conn->prepare($sql);
+        $stmt->bindParam(':id', $current_user_id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $teacher_school_id = $row['school_id'];
+            if ($row['std']) {
+                // The PostgreSQL array is often returned as a string, e.g., "{10,11}". 
+                // We need to parse it into a PHP array.
+                // This regex extracts the numeric values from the string.
+                preg_match_all('/(\d+)/', $row['std'], $matches);
+                if (!empty($matches[1])) {
+                    $standards = $matches[1];
+                }
+            }
+        }
+    } catch (PDOException $e) {
+        // Log or handle the database error
+        // die("Database error: " . $e->getMessage()); 
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($page_title); ?> - Dashboard</title>
@@ -33,7 +64,8 @@ $contacts_title = ($current_user_role === 'teacher') ? "Students" : "Teachers";
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link rel="stylesheet" href="../../assets/css/message.css?v=1.4">
-    </head>
+</head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
@@ -45,13 +77,24 @@ $contacts_title = ($current_user_role === 'teacher') ? "Students" : "Teachers";
                     <div class="row">
                         <div class="col-lg-4 mb-4">
                             <div class="card shadow h-100 d-flex flex-column">
-                                <div class="card-header py-3">
+                                <div class="card-header py-3 d-flex justify-content-between align-items-center">
                                     <h6 class="m-0 font-weight-bold text-primary"><?php echo htmlspecialchars($contacts_title); ?></h6>
+                                    <?php if ($current_user_role === 'teacher'): ?>
+                                        <select id="standard-filter" class="form-control form-control-sm" style="width: auto;">
+                                            <?php foreach (array_unique($standards) as $standard): ?>
+                                                <option value="<?php echo htmlspecialchars($standard); ?>">
+                                                    Standard <?php echo htmlspecialchars($standard); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    <?php endif; ?>
                                 </div>
                                 <div class="card-body">
                                     <div id="contacts-list-container" style="max-height: 60vh; overflow-y: auto;">
                                         <ul class="list-group" id="contacts-list">
-                                            <div class="text-center p-4"><div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div></div>
+                                            <div class="text-center p-4">
+                                                <div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div>
+                                            </div>
                                         </ul>
                                     </div>
                                 </div>
@@ -59,9 +102,11 @@ $contacts_title = ($current_user_role === 'teacher') ? "Students" : "Teachers";
                         </div>
                         <div class="col-lg-8 mb-4">
                             <div class="card shadow h-100 d-flex flex-column">
-                                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary" id="chat-with-name">Select a contact to start chatting</h6></div>
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-primary" id="chat-with-name">Select a contact to start chatting</h6>
+                                </div>
                                 <div class="card-body message-display" id="message-area">
-                                     <div class="text-center h-100 d-flex flex-column justify-content-center align-items-center">
+                                    <div class="text-center h-100 d-flex flex-column justify-content-center align-items-center">
                                         <i class="fas fa-comments fa-4x text-gray-300"></i>
                                         <p class="mt-3 text-gray-500">Your messages will appear here.</p>
                                     </div>
@@ -81,7 +126,7 @@ $contacts_title = ($current_user_role === 'teacher') ? "Students" : "Teachers";
                                         <div class="input-group">
                                             <div class="input-group-prepend">
                                                 <button class="btn btn-light" id="attach-file-button" type="button" disabled>
-                                                    <i class="fas fa-paperclip"></i>
+                                                    <i class="fas fa-paper-clip"></i>
                                                 </button>
                                             </div>
                                             <input type="text" id="message-text" class="form-control" placeholder="Type a message..." disabled>
@@ -107,7 +152,9 @@ $contacts_title = ($current_user_role === 'teacher') ? "Students" : "Teachers";
         window.currentUserId = '<?php echo $current_user_id; ?>';
         window.currentUserRole = '<?php echo $current_user_role; ?>';
         window.base_url = '/BMC-SMS/';
+        window.teacherStandards = <?php echo json_encode($standards); ?>;
     </script>
     <script src="/BMC-SMS/assets/js/message.js?v=1.1"></script>
 </body>
+
 </html>
