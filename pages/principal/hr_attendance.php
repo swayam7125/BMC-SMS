@@ -70,7 +70,7 @@ try {
             $interval = new DateInterval('P1D');
             $period = new DatePeriod($start_date, $interval, $target_date);
             
-            $att_count_stmt = $conn->prepare("SELECT COUNT(payroll_id) FROM hr_attendance WHERE school_id = ? AND attendance_date = ?");
+            $att_count_stmt = $conn->prepare("SELECT COUNT(hr_id) FROM hr_attendance WHERE school_id = ? AND attendance_date = ?");
             $holiday_check_stmt = $conn->prepare("SELECT COUNT(*) FROM holidays WHERE school_id = ? AND holiday_date = ?");
             $payroll_expected_stmt = $conn->prepare("SELECT COUNT(id) FROM hr WHERE school_id = ? AND (date_of_joining IS NULL OR date_of_joining <= ?)");
 
@@ -107,9 +107,9 @@ try {
 
         try {
             $conn->beginTransaction();
-            $upsert_sql = "INSERT INTO hr_attendance (payroll_id, school_id, attendance_date, status, marked_by_user_id)
+            $upsert_sql = "INSERT INTO hr_attendance (hr_id, school_id, attendance_date, status, marked_by_user_id)
                            VALUES (?, ?, ?, ?, ?)
-                           ON CONFLICT (payroll_id, attendance_date)
+                           ON CONFLICT (hr_id, attendance_date)
                            DO UPDATE SET status = EXCLUDED.status, marked_by_user_id = EXCLUDED.marked_by_user_id";
             $stmt_upsert = $conn->prepare($upsert_sql);
 
@@ -117,7 +117,11 @@ try {
             if (isset($_POST['attendance'])) {
                 foreach ($_POST['attendance'] as $payroll_id => $details) {
                     $status = $details['status'];
-                    $stmt_upsert->execute([$payroll_id, $school_id, $attendance_date, $status, $userId]);
+                    
+                    // *** FIX: This condition prevents the "Not Applicable" value from being sent to the database ***
+                    if ($status !== 'Not Applicable') {
+                        $stmt_upsert->execute([$payroll_id, $school_id, $attendance_date, $status, $userId]);
+                    }
                 }
                 $success_message = "Attendance for " . htmlspecialchars($attendance_date) . " saved!";
             }
@@ -127,6 +131,7 @@ try {
             exit();
         } catch (Exception $e) {
             $conn->rollBack();
+            // Display the specific SQL error for debugging
             $errorMessage = "Failed to update attendance: " . $e->getMessage();
         }
     }
@@ -139,7 +144,7 @@ try {
             // Updated query to get hr staff with joining date.
             $sql = "SELECT p.id, p.hr_name, p.date_of_joining, pa.status
                     FROM hr p
-                    LEFT JOIN hr_attendance pa ON p.id = pa.payroll_id AND pa.attendance_date = ?
+                    LEFT JOIN hr_attendance pa ON p.id = pa.hr_id AND pa.attendance_date = ?
                     WHERE p.school_id = ?
                     ORDER BY p.hr_name ASC";
             $stmt = $conn->prepare($sql);
@@ -265,7 +270,7 @@ if (!is_ajax_request()) {
                                                                     <input type="hidden" name="attendance[<?php echo $staff['id']; ?>][status]" value="Not Applicable">
                                                                 <?php else: ?>
                                                                     <div class="form-check form-check-inline">
-                                                                        <input class="form-check-input" type="radio" name="attendance[<?php echo $staff['id']; ?>][status]" value="Present" <?php if ($staff['status'] == 'Present') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
+                                                                        <input class="form-check-input" type="radio" name="attendance[<?php echo $staff['id']; ?>][status]" value="Present" <?php if ($staff['status'] == 'Present' || !$staff['status']) echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
                                                                         <label class="form-check-label">Present</label>
                                                                     </div>
                                                                     <div class="form-check form-check-inline">
@@ -275,6 +280,10 @@ if (!is_ajax_request()) {
                                                                     <div class="form-check form-check-inline">
                                                                         <input class="form-check-input" type="radio" name="attendance[<?php echo $staff['id']; ?>][status]" value="Leave" <?php if ($staff['status'] == 'Leave') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
                                                                         <label class="form-check-label">Leave</label>
+                                                                    </div>
+                                                                     <div class="form-check form-check-inline">
+                                                                        <input class="form-check-input" type="radio" name="attendance[<?php echo $staff['id']; ?>][status]" value="Half Day" <?php if ($staff['status'] == 'Half Day') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
+                                                                        <label class="form-check-label">Half Day</label>
                                                                     </div>
                                                                 <?php endif; ?>
                                                             </td>

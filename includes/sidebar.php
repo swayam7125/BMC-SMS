@@ -45,6 +45,7 @@ $unread_hr_requests = 0;
 $unread_salary_notifications = 0; // For librarian salary history
 $unread_teacher_salary = 0; // For teacher salary history
 $unread_principal_salary = 0; // For principal salary history
+$unread_hr_salary = 0; // For hr salary history
 $unread_hr_leave_status = 0; // For HR leave status
 $is_class_teacher = false; // Initialize teacher-specific flag
 
@@ -341,13 +342,14 @@ if (isset($conn) && $user_id) {
             break;
 
         case 'principal':
-            $teacher_pages = ['teacher_enrollment.php', 'teacher_list.php', 'teacher_attendence.php', 'view_teacher_attendence.php'];
+            $teacher_pages = ['teacher_enrollment.php', 'teacher_list.php', 'teacher_attendance.php', 'view_teacher_attendance.php'];
             $librarian_pages = ['librarian_enrollment.php', 'librarian_list.php', 'librarian_attendance.php', 'view_librarian_attendance.php'];
             $student_pages = ['student_enrollment.php', 'student_list.php', 'generate_lc.php'];
+            $hr_pages = ['hr_enrollment.php', 'hr_list.php', 'hr_attendance.php', 'view_hr_attendance.php'];
             $payroll_pages = ['hr_enrollment.php', 'hr_list.php', 'hr_attendance.php', 'view_hr_attendance.php'];
             $notice_pages = ['send_notice.php', 'send_notice_to_bmc.php', 'send_notice_to_librarian.php', 'view_notice.php'];
             $academics_pages = ['manage_subjects.php', 'manage_timetable.php', 'send_exam_timetable.php', 'manage_holidays.php'];
-            $past_data_pages_principal = ['past_teacher.php', 'past_librarian.php', 'past_student.php'];
+            $past_data_pages_principal = ['past_teacher.php', 'past_librarian.php', 'past_hr.php', 'past_student.php'];
             $leave_management_pages = ['teacher_leave_management.php', 'librarian_leave_management.php', 'hr_leave_management.php'];
             $is_leave_management_active = in_array($current_page, $leave_management_pages);
             $reports_pages = ['report_enrollment.php', 'report_attendance.php', 'report_academic.php', 'report_payroll.php', 'report_library.php'];
@@ -375,10 +377,10 @@ if (isset($conn) && $user_id) {
                     href="<?php echo BASE_WEB_PATH; ?>includes/forms/teacher_enrollment.php">Enroll Teacher</a>
                 <a class="collapse-item <?php echo ($current_page == 'teacher_list.php') ? 'active' : ''; ?>"
                     href="<?php echo BASE_WEB_PATH; ?>pages/teacher/teacher_list.php">Teacher List</a>
-                <a class="collapse-item <?php echo ($current_page == 'teacher_attendence.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>pages/principal/teacher_attendence.php">Teacher Attendance</a>
-                <a class="collapse-item <?php echo ($current_page == 'view_teacher_attendence.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_teacher_attendence.php">View Teacher
+                <a class="collapse-item <?php echo ($current_page == 'teacher_attendance.php') ? 'active' : ''; ?>"
+                    href="<?php echo BASE_WEB_PATH; ?>pages/principal/teacher_attendance.php">Teacher Attendance</a>
+                <a class="collapse-item <?php echo ($current_page == 'view_teacher_attendance.php') ? 'active' : ''; ?>"
+                    href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_teacher_attendance.php">View Teacher
                     Attendance</a>
             </div>
         </div>
@@ -622,6 +624,8 @@ if (isset($conn) && $user_id) {
                     href="/BMC-SMS/pages/past_record/past_teacher.php">Past Teacher List</a>
                 <a class="collapse-item <?php echo ($current_page == 'past_librarian.php') ? 'active' : ''; ?>"
                     href="/BMC-SMS/pages/past_record/past_librarian.php">Past Librarian List</a>
+                <a class="collapse-item <?php echo ($current_page == 'past_hr.php') ? 'active' : ''; ?>"
+                    href="/BMC-SMS/pages/past_record/past_hr.php">Past HR List</a>
                 <a class="collapse-item <?php echo ($current_page == 'past_student.php') ? 'active' : ''; ?>"
                     href="/BMC-SMS/pages/past_record/past_student.php">Past Student List</a>
             </div>
@@ -1126,7 +1130,7 @@ if (isset($conn) && $user_id) {
             break;
 
         case 'hr':
-            $payroll_pages = ['process_teacher_salary.php', 'process_librarian_salary.php', 'view_salary_history.php'];
+            $payroll_pages = ['process_teacher_salary.php', 'process_librarian_salary.php', 'process_hr_salary.php', 'process_principal_salary.php', 'view_salary_history.php'];
             $hr_leave_pages = ['my_leave_management.php'];
             $hr_manage_profiles_pages = ['principal_list.php', 'teacher_list.php', 'student_list.php', 'librarian_list.php'];
         ?>
@@ -1135,6 +1139,20 @@ if (isset($conn) && $user_id) {
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/user/profile.php">
                     <div><i class="fas fa-fw fa-id-card"></i>
                         <span>My Profile</span>
+                    </div>
+                </a>
+            </li>
+            <li class="nav-item <?php echo ($current_page == 'view_my_salary.php') ? 'active' : ''; ?>">
+                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/hr/view_my_salary.php"
+                    data-notification-type="hr_salary">
+                    <div>
+                        <i class="fas fa-fw fa-receipt"></i>
+                        <span>My Salary History</span>
+                        <?php if ($unread_hr_salary > 0): ?>
+                            <span class="badge badge-danger badge-counter">
+                                <?php echo ($unread_hr_salary > 9) ? '9+' : $unread_hr_salary; ?>
+                            </span>
+                        <?php endif; ?>
                     </div>
                 </a>
             </li>
@@ -1193,6 +1211,13 @@ if (isset($conn) && $user_id) {
                 <a class="nav-link" href="/BMC-SMS/pages/hr/process_librarian_salary.php">
                     <div><i class="fas fa-file-invoice-dollar"></i>
                         <span>Librarian Payroll</span>
+                    </div>
+                </a>
+            </li>
+            <li class="nav-item <?php echo ($current_page == 'process_hr_salary.php') ? 'active' : ''; ?>">
+                <a class="nav-link" href="/BMC-SMS/pages/hr/process_hr_salary.php">
+                    <div><i class="fas fa-file-invoice-dollar"></i>
+                        <span>HR Payroll</span>
                     </div>
                 </a>
             </li>

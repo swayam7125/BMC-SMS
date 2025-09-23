@@ -50,7 +50,7 @@ $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_
 $userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
 $period = $_POST['period'] ?? 'current_month';
 
-if ((!$role || !$userId) || !in_array($role, ['teacher', 'librarian', 'principal'])) {
+if ((!$role || !$userId) || !in_array($role, ['teacher', 'librarian', 'principal', 'hr'])) {
     die("Unauthorized access.");
 }
 
@@ -97,10 +97,15 @@ try {
                 FROM librarian_payroll pr JOIN librarian l ON pr.librarian_id = l.id JOIN school s ON pr.school_id = s.id
                 WHERE pr.librarian_id = ? {$where_clause}
                 ORDER BY pr.salary_year DESC, pr.salary_month DESC";
-    } else { // Principal
+    } elseif ($role === 'principal') {
         $sql = "SELECT pr.*, p.principal_name as employee_name, s.school_name, s.school_logo, s.address as school_address
                 FROM principal_payroll pr JOIN principal p ON pr.principal_id = p.id JOIN school s ON pr.school_id = s.id
                 WHERE pr.principal_id = ? {$where_clause}
+                ORDER BY pr.salary_year DESC, pr.salary_month DESC";
+    } else { // HR role
+        $sql = "SELECT pr.*, p.hr_name as employee_name, s.school_name, s.school_logo, s.address as school_address
+                FROM hr_payroll pr JOIN hr p ON pr.hr_id = p.id JOIN school s ON pr.school_id = s.id
+                WHERE pr.hr_id = ? {$where_clause}
                 ORDER BY pr.salary_year DESC, pr.salary_month DESC";
     }
     $stmt = $conn->prepare($sql);

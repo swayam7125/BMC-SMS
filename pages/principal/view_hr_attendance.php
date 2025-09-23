@@ -18,8 +18,8 @@ try {
     $stmt->execute([$principal_id]);
     $school_id = $stmt->fetchColumn();
     
-    // The hr table doesn't have a date_of_joining column, but for consistency, we'll fetch the earliest hr_attendance date.
-    $joining_stmt = $conn->prepare("SELECT MIN(attendance_date) FROM hr_attendance WHERE school_id = ?");
+    // Correctly fetch the earliest joining date from the hr table for the date picker
+    $joining_stmt = $conn->prepare("SELECT MIN(date_of_joining) FROM hr WHERE school_id = ?");
     $joining_stmt->execute([$school_id]);
     $earliest_joining_date = $joining_stmt->fetchColumn();
 
@@ -35,7 +35,7 @@ $current_date = date('Y-m-d');
 $filter_date = $_GET['date'] ?? $current_date;
 
 if ($filter_date > $current_date) {
-    $filter_date = $current_date;
+    $filter_date = $current_date; // Prevent viewing future dates
 }
 
 try {
@@ -48,8 +48,9 @@ try {
         $holiday_description_for_date = $holiday_info['description'];
     }
 
+    // FIX: Added p.date_of_joining to the SELECT statement to resolve the "Undefined array key" warning.
     $query = "
-        SELECT p.id as hr_id, pa.attendance_date, pa.status, p.hr_name
+        SELECT p.id as hr_id, pa.attendance_date, pa.status, p.hr_name, p.date_of_joining
         FROM hr p
         LEFT JOIN hr_attendance pa ON p.id = pa.hr_id AND pa.attendance_date = ?
         WHERE p.school_id = ?
@@ -71,7 +72,6 @@ if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($page_title); ?></title>
@@ -82,13 +82,9 @@ if (!is_ajax_request()) {
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link href="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
 </head>
-
 <body id="page-top">
     <div id="wrapper">
         <?php include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/sidebar.php'; ?>
-        <?php 
-        } 
-        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/header.php'; ?>
@@ -111,7 +107,7 @@ if (!is_ajax_request()) {
                                  <form method="GET" action="" class="form-inline">
                                     <div class="form-group">
                                         <label for="date" class="mr-2">Date:</label>
-                                        <input type="date" id="date" name="date" class="form-control" value="<?php echo htmlspecialchars($filter_date); ?>" min="<?php echo htmlspecialchars($earliest_joining_date); ?>" max="<?php echo date('Y-m-d'); ?>">
+                                        <input type="date" id="date" name="date" class="form-control" value="<?php echo htmlspecialchars($filter_date); ?>" min="<?php echo htmlspecialchars($earliest_joining_date ?? ''); ?>" max="<?php echo date('Y-m-d'); ?>">
                                     </div>
                                     <button type="submit" class="btn btn-primary ml-2"><i class="fas fa-search fa-sm"></i> View</button>
                                 </form>
@@ -130,7 +126,7 @@ if (!is_ajax_request()) {
                                     </thead>
                                     <tbody>
                                         <?php if (empty($records)): ?>
-                                            <tr><td colspan="3" class="text-center">No attendance records found for this school or date.</td></tr>
+                                            <tr><td colspan="3" class="text-center">No HR staff found for this school or date.</td></tr>
                                         <?php else: ?>
                                             <?php foreach ($records as $record): ?>
                                             <tr>
@@ -141,12 +137,13 @@ if (!is_ajax_request()) {
                                                         $badge_class = 'badge-secondary';
                                                         $is_editable = true;
 
-                                                        if ($record['date_of_joining'] && $filter_date < $record['date_of_joining']) {
+                                                        if (!empty($record['date_of_joining']) && $filter_date < $record['date_of_joining']) {
                                                             $status = 'Joined on ' . date('d M, Y', strtotime($record['date_of_joining']));
-                                                            $badge_class = 'badge-secondary';
+                                                            $badge_class = 'badge-light text-dark';
                                                             $is_editable = false;
                                                         } elseif ($is_holiday_for_date) {
-                                                            $status = 'Holiday';
+                                                            // IMPROVEMENT: Display holiday description
+                                                            $status = 'Holiday (' . htmlspecialchars($holiday_description_for_date) . ')';
                                                             $badge_class = 'badge-primary';
                                                             $is_editable = false;
                                                         } else {
@@ -172,13 +169,10 @@ if (!is_ajax_request()) {
                         </div>
                     </div>
                 </div>
-                <?php
-if (!is_ajax_request()) {
-?>
             </div>
             <?php include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/footer.php'; ?>
         </div>
-        </div>
+    </div>
     <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
     <?php include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/logout_modal.php'; ?>
     <script src="/BMC-SMS/assets/vendor/jquery/jquery.min.js"></script>
@@ -189,11 +183,10 @@ if (!is_ajax_request()) {
     <script src="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
     <script>
         $(document).ready(function() { 
-            $('#dataTable').DataTable({"order": [[0, "desc"]]}); 
+            $('#dataTable').DataTable({ "order": [[0, "asc"]] }); 
         });
     </script>
 </body>
-
 </html>
 <?php
 }

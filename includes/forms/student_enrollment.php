@@ -45,7 +45,8 @@ try {
     $stmt_schools = $conn->query('SELECT "id", "school_name" FROM "school" ORDER BY "school_name"');
     $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
     
-    $stmt_standards = $conn->query('SELECT * FROM "standards" ORDER BY standard_name');
+    // ⭐ FIX: Changed "standards" to the correct table name "standard_categories_mapping"
+    $stmt_standards = $conn->query('SELECT DISTINCT standard_name FROM "standard_categories_mapping" ORDER BY standard_name');
     $standards = $stmt_standards->fetchAll(PDO::FETCH_ASSOC);
 
     // Fetch transport stops for the current school if the user is a principal

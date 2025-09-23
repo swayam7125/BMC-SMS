@@ -40,41 +40,55 @@ $salary_history = [];
 $params = [':school_id' => $school_id];
 $where_clauses = "pr.school_id = :school_id";
 $where_clauses_lpr = "lpr.school_id = :school_id";
+$where_clauses_hpr = "hpr.school_id = :school_id"; // New where clause for HR
 
 if ($filter_month !== 'all') {
     $where_clauses .= " AND pr.salary_month = :month";
     $where_clauses_lpr .= " AND lpr.salary_month = :month";
+    $where_clauses_hpr .= " AND hpr.salary_month = :month"; // Add month filter for HR
     $params[':month'] = $filter_month;
 }
 if ($filter_year !== 'all') {
     $where_clauses .= " AND pr.salary_year = :year";
     $where_clauses_lpr .= " AND lpr.salary_year = :year";
+    $where_clauses_hpr .= " AND hpr.salary_year = :year"; // Add year filter for HR
     $params[':year'] = $filter_year;
 }
 
-// UPDATED: Use the new 'teacher_payroll' table
+// Query for teachers
 $teacher_query = "
-    SELECT 'Teacher' as staff_role, t.teacher_name as staff_name, pr.salary_month, pr.salary_year, pr.net_salary_paid, pr.payment_date
+    SELECT 'Teacher' as staff_role, t.teacher_name as staff_name, pr.salary_month, pr.salary_year, pr.net_salary_paid, pr.payment_date, pr.id, 'teacher' as type
     FROM teacher_payroll pr
     JOIN teacher t ON pr.teacher_id = t.id
     WHERE $where_clauses
 ";
 
-// UPDATED: Use the new 'librarian_payroll' table
+// Query for librarians
 $librarian_query = "
-    SELECT 'Librarian' as staff_role, l.librarian_name as staff_name, lpr.salary_month, lpr.salary_year, lpr.net_salary_paid, lpr.payment_date
+    SELECT 'Librarian' as staff_role, l.librarian_name as staff_name, lpr.salary_month, lpr.salary_year, lpr.net_salary_paid, lpr.payment_date, lpr.id, 'librarian' as type
     FROM librarian_payroll lpr
     JOIN librarian l ON lpr.librarian_id = l.id
     WHERE $where_clauses_lpr
 ";
+
+// ** NEW: Query for HR **
+$hr_query = "
+    SELECT 'HR' as staff_role, h.hr_name as staff_name, hpr.salary_month, hpr.salary_year, hpr.net_salary_paid, hpr.payment_date, hpr.id, 'hr' as type
+    FROM hr_payroll hpr
+    JOIN hr h ON hpr.hr_id = h.id
+    WHERE $where_clauses_hpr
+";
+
 
 // Combine queries based on role filter
 if ($filter_role === 'teacher') {
     $query = $teacher_query;
 } elseif ($filter_role === 'librarian') {
     $query = $librarian_query;
-} else {
-    $query = "$teacher_query UNION ALL $librarian_query";
+} elseif ($filter_role === 'hr') { // ** NEW: Handle HR filter **
+    $query = $hr_query;
+} else { // ** UPDATED: Include HR in the 'all' view **
+    $query = "$teacher_query UNION ALL $librarian_query UNION ALL $hr_query";
 }
 
 $query .= " ORDER BY payment_date DESC, salary_year DESC, salary_month DESC";
@@ -111,7 +125,6 @@ try {
                         <div class="alert alert-danger"><?php echo $errorMessage; ?></div>
                     <?php endif; ?>
 
-                    <!-- Filter Form -->
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
                             <h6 class="m-0 font-weight-bold text-primary">Filter History</h6>
@@ -142,7 +155,7 @@ try {
                                         <option value="all" <?php if ($filter_role == 'all') echo 'selected'; ?>>All Roles</option>
                                         <option value="teacher" <?php if ($filter_role == 'teacher') echo 'selected'; ?>>Teacher</option>
                                         <option value="librarian" <?php if ($filter_role == 'librarian') echo 'selected'; ?>>Librarian</option>
-                                    </select>
+                                        <option value="hr" <?php if ($filter_role == 'hr') echo 'selected'; ?>>HR</option> </select>
                                 </div>
                                 <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Filter</button>
                             </form>
