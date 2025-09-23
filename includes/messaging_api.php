@@ -57,13 +57,20 @@ switch ($action) {
                         $sql_students .= " AND std = :standard";
                         $params['standard'] = $standard;
                     } else {
-                        $placeholders = implode(',', array_fill(0, count($teacher_standards), '?'));
-                        $sql_students .= " AND std IN ($placeholders)";
-                        $params = array_merge($params, $teacher_standards);
+                        // Correctly build the IN clause with named placeholders
+                        $placeholders = [];
+                        foreach ($teacher_standards as $index => $std) {
+                            $placeholder = ":std" . $index;
+                            $placeholders[] = $placeholder;
+                            $params[$placeholder] = (int)$std; // Cast to int for security
+                        }
+                        $sql_students .= " AND std IN (" . implode(',', $placeholders) . ")";
                     }
-
+                    
+                    // The bug was here: execute() was not correctly handling parameters.
+                    // Pass the $params array directly to execute()
                     $stmt_students = $conn->prepare($sql_students);
-                    $stmt_students->execute(array_values($params));
+                    $stmt_students->execute($params);
                     $contacts = $stmt_students->fetchAll(PDO::FETCH_ASSOC);
 
                     echo json_encode(['status' => 'success', 'contacts' => $contacts]);
