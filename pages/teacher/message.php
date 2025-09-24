@@ -78,16 +78,21 @@ endif; // End of the header/template section wrapper.
                     <div class="row">
                         <div class="col-lg-4 mb-4">
                             <div class="card shadow h-100 d-flex flex-column">
-                                <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                                    <h6 class="m-0 font-weight-bold text-primary"><?php echo htmlspecialchars($contacts_title); ?></h6>
+                                <div class="card-header py-3 d-flex align-items-center">
                                     <?php if ($current_user_role === 'teacher'): ?>
-                                        <select id="standard-filter" class="form-control form-control-sm" style="width: auto;">
-                                            <?php foreach (array_unique($standards) as $standard): ?>
-                                                <option value="<?php echo htmlspecialchars($standard); ?>">
-                                                    Standard <?php echo htmlspecialchars($standard); ?>
-                                                </option>
+                                        <ul class="nav nav-pills" id="standard-tabs" role="tablist">
+                                            <?php foreach (array_unique($standards) as $index => $standard): ?>
+                                                <li class="nav-item mr-2" role="presentation">
+                                                    <a class="nav-link btn btn-outline-primary <?php echo $index === 0 ? 'active' : ''; ?>"
+                                                       id="standard-<?php echo htmlspecialchars($standard); ?>-tab"
+                                                       data-toggle="tab"
+                                                       role="tab"
+                                                       data-standard-id="<?php echo htmlspecialchars($standard); ?>">
+                                                        Std <?php echo htmlspecialchars($standard); ?>
+                                                    </a>
+                                                </li>
                                             <?php endforeach; ?>
-                                        </select>
+                                        </ul>
                                     <?php endif; ?>
                                 </div>
                                 <div class="card-body">

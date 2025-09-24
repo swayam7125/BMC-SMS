@@ -156,6 +156,7 @@ if (!is_ajax_request()):
     <script>
         window.currentUserId = '<?php echo $current_user_id; ?>';
         window.currentUserRole = '<?php echo $current_user_role; ?>';
+        window.isStudentPanel = <?php echo ($current_user_role === 'student') ? 'true' : 'false'; ?>;
         window.base_url = '/BMC-SMS/';
         window.teacherStandards = <?php echo json_encode($standards); ?>;
     </script>

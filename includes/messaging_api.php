@@ -57,12 +57,45 @@ switch ($action) {
                 $teacher = $stmt_teacher->fetch(PDO::FETCH_ASSOC);
 
                 if ($teacher) {
-                    $sql_students = "SELECT s.id, s.student_name AS name, s.student_image AS image_path, COUNT(m.id) FILTER (WHERE m.is_read = false AND m.sender_id = s.id) as unread_count
-                                     FROM student s
-                                     LEFT JOIN messages m ON s.id = m.sender_id AND m.receiver_id = :current_user_id
-                                     WHERE s.school_id = :school_id AND s.std = :standard
-                                     GROUP BY s.id, s.student_name, s.student_image
-                                     ORDER BY s.student_name ASC";
+                    $school_id = $teacher['school_id'];
+                    $teacher_standards_str = trim($teacher['std'], '{}'); 
+                    $teacher_standards = explode(',', $teacher_standards_str);
+
+                    // Updated SQL query to include order by last message
+                    $sql_students = "
+                        SELECT 
+                            s.id, 
+                            s.student_name AS name, 
+                            s.student_image AS image_path, 
+                            s.std,
+                            (SELECT MAX(timestamp) FROM messages m WHERE (m.sender_id = s.id AND m.receiver_id = :current_user_id) OR (m.sender_id = :current_user_id AND m.receiver_id = s.id)) AS last_message_timestamp
+                        FROM student s
+                        WHERE s.school_id = :school_id
+                    ";
+                    $params = [
+                        'school_id' => $school_id,
+                        'current_user_id' => $current_user_id
+                    ];
+
+                    // Corrected logic:
+                    // If a specific standard is selected, filter by it.
+                    if (!empty($standard)) {
+                        $sql_students .= " AND s.std = :standard";
+                        $params['standard'] = $standard;
+                    } else {
+                        // If no standard is selected (initial load), filter by all standards the teacher teaches.
+                        $placeholders = [];
+                        foreach ($teacher_standards as $index => $std) {
+                            $placeholder = ":std" . $index;
+                            $placeholders[] = $placeholder;
+                            $params[$placeholder] = (int)$std;
+                        }
+                        $sql_students .= " AND s.std IN (" . implode(',', $placeholders) . ")";
+                    }
+                    
+                    // Add the ORDER BY clause to the final query
+                    $sql_students .= " ORDER BY last_message_timestamp DESC, s.student_name ASC";
+
                     $stmt_students = $conn->prepare($sql_students);
                     $stmt_students->execute([':school_id' => $teacher['school_id'], ':standard' => $standard, ':current_user_id' => $current_user_id]);
                     $contacts = $stmt_students->fetchAll(PDO::FETCH_ASSOC);
@@ -74,12 +107,11 @@ switch ($action) {
                 $student = $stmt_student->fetch(PDO::FETCH_ASSOC);
 
                 if ($student) {
-                    $sql_teachers = "SELECT t.id, t.teacher_name AS name, t.teacher_image AS image_path, COUNT(m.id) FILTER (WHERE m.is_read = false AND m.sender_id = t.id) as unread_count
-                                     FROM teacher t
-                                     LEFT JOIN messages m ON t.id = m.sender_id AND m.receiver_id = :current_user_id
-                                     WHERE t.school_id = :school_id AND :standard = ANY(t.std)
-                                     GROUP BY t.id, t.teacher_name, t.teacher_image
-                                     ORDER BY t.teacher_name ASC";
+                    $student_school_id = $student['school_id'];
+                    $student_standard = $student['std'];
+                    
+                    // Use a proper PostgreSQL array check instead of LIKE
+                    $sql_teachers = "SELECT id, teacher_name AS name, teacher_image AS image_path, subject FROM teacher WHERE school_id = :school_id AND :student_standard = ANY(std)";
                     $stmt_teachers = $conn->prepare($sql_teachers);
                     $stmt_teachers->execute([':school_id' => $student['school_id'], ':standard' => $student['std'], ':current_user_id' => $current_user_id]);
                     $contacts = $stmt_teachers->fetchAll(PDO::FETCH_ASSOC);
@@ -152,7 +184,9 @@ switch ($action) {
         try {
             $sql = "SELECT COUNT(*) FROM messages WHERE receiver_id = :current_user_id AND is_read = FALSE";
             $stmt = $conn->prepare($sql);
-            $stmt->execute([':current_user_id' => $current_user_id]);
+            $stmt->bindParam(':current_user_id', $current_user_id, PDO::PARAM_INT);
+            $stmt->execute();
+        
             $total_unread = $stmt->fetchColumn();
             echo json_encode(['status' => 'success', 'total_unread' => $total_unread]);
         } catch (PDOException $e) {
