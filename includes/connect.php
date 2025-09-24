@@ -34,5 +34,3 @@ try {
     // Display a generic error to users
     die("Connection failed. Please try again later.");
 }
-
-// The $conn variable is now ready to be used for queries in other files.
