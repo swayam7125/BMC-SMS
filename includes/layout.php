@@ -21,9 +21,13 @@ class Layout {
                 'vendor/bootstrap/js/bootstrap.bundle.min.js',
                 'vendor/jquery-easing/jquery.easing.min.js',
                 'assets/js/sb-admin-2.min.js',
+                
+                // ADDED: The new script for fast, single-page application style navigation
+                'assets/js/spa-navigation.js',
+
                 // Application scripts
                 'assets/js/app.js',
-                'assets/js/ajax-navigation.js',
+                // 'assets/js/ajax-navigation.js', // REMOVED: Replaced by spa-navigation.js
                 'assets/js/ajax-upload.js'
             ],
             $options['scripts'] ?? []
@@ -49,7 +53,9 @@ class Layout {
         }
 
         // Check if user is logged in
-        session_start();
+        if (session_status() == PHP_SESSION_NONE) {
+            session_start();
+        }
         if (!isset($_SESSION['user_id'])) {
             header("Location: login.php");
             exit();
@@ -68,10 +74,8 @@ class Layout {
 
     <base href="<?php echo base_url(); ?>">
     
-    <!-- Core Fonts -->
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
     
-    <!-- Styles -->
     <?php foreach($this->styles as $style): ?>
         <link href="<?php echo h($style); ?>" rel="stylesheet">
     <?php endforeach; ?>
@@ -93,7 +97,6 @@ class Layout {
 
     <?php include 'logout_modal.php'; ?>
     
-    <!-- Scripts -->
     <?php foreach($this->scripts as $script): ?>
         <script src="<?php echo h($script); ?>"></script>
     <?php endforeach; ?>
@@ -120,5 +123,3 @@ if (basename($_SERVER['SCRIPT_FILENAME']) === basename(__FILE__)) {
     $layout->render();
 }
 ?>
-</body>
-</html>

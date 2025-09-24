@@ -48,13 +48,14 @@ $successMessage = '';
  *
  * @param PDO $conn The database connection object.
  * @param int $staff_id The ID of the staff member.
- * @param string $staff_role The role of the staff member ('teacher', 'principal', 'librarian').
+ * @param string $staff_role The role of the staff member ('teacher', 'principal', 'librarian', 'hr').
  * @param int $incentive_id The ID of the incentive.
  * @return float|null The calculated amount or null on error.
  */
 function calculateIncentiveAmount($conn, $staff_id, $staff_role, $incentive_id)
 {
-    $allowed_roles = ['teacher', 'principal', 'librarian'];
+    // *** ADDED 'hr' to the list of allowed roles.
+    $allowed_roles = ['teacher', 'principal', 'librarian', 'hr'];
     if (!in_array($staff_role, $allowed_roles)) {
         return null;
     }
@@ -149,7 +150,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $total_assignments = 0;
                 foreach ($incentive_ids as $incentive_id) {
                     foreach ($assign_to as $role_to_assign) {
-                        $role_map = ['all_teachers' => 'teacher', 'all_librarians' => 'librarian', 'all_principals' => 'principal'];
+                        // *** ADDED 'all_hr' to the role map.
+                        $role_map = ['all_teachers' => 'teacher', 'all_librarians' => 'librarian', 'all_principals' => 'principal', 'all_hr' => 'hr'];
                         $staff_role_name = $role_map[$role_to_assign] ?? null;
                         if ($staff_role_name) {
                             $staff_stmt = $conn->prepare("SELECT id FROM {$staff_role_name} WHERE school_id = ?");
@@ -272,35 +274,42 @@ $incentives->execute([$school_id]);
 $incentive_list = $incentives->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch all staff for dropdowns
+// *** ADDED the HR staff to the main query, excluding the logged-in user.
 $all_staff_query = "
     (SELECT id, teacher_name AS name, 'teacher' AS role FROM teacher WHERE school_id = ?)
     UNION ALL
     (SELECT id, principal_name AS name, 'principal' AS role FROM principal WHERE school_id = ?)
     UNION ALL
     (SELECT id, librarian_name AS name, 'librarian' AS role FROM librarian WHERE school_id = ?)
+    UNION ALL
+    (SELECT id, hr_name AS name, 'hr' AS role FROM hr WHERE school_id = ? AND id != ?)
     ORDER BY role, name";
 $all_staff_stmt = $conn->prepare($all_staff_query);
-$all_staff_stmt->execute([$school_id, $school_id, $school_id]);
+$all_staff_stmt->execute([$school_id, $school_id, $school_id, $school_id, $userId]);
 $all_staff_list = $all_staff_stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch all incentive assignments for the school
+// *** ADDED a LEFT JOIN for the HR table to get HR staff names and salaries.
 $assigned_incentives_query = "
     SELECT si.id, si.staff_id, si.staff_role, si.amount, si.salary_month, si.salary_year, si.assigned_at, i.incentive_name,
         CASE
             WHEN si.staff_role = 'teacher' THEN t.teacher_name
             WHEN si.staff_role = 'principal' THEN p.principal_name
             WHEN si.staff_role = 'librarian' THEN l.librarian_name
+            WHEN si.staff_role = 'hr' THEN h.hr_name
         END AS staff_name,
         CASE
             WHEN si.staff_role = 'teacher' THEN t.salary
             WHEN si.staff_role = 'principal' THEN p.salary
             WHEN si.staff_role = 'librarian' THEN l.salary
+            WHEN si.staff_role = 'hr' THEN h.salary
         END AS base_salary
     FROM staff_incentives si
     JOIN incentives i ON si.incentive_id = i.id
     LEFT JOIN teacher t ON si.staff_id = t.id AND si.staff_role = 'teacher'
     LEFT JOIN principal p ON si.staff_id = p.id AND si.staff_role = 'principal'
     LEFT JOIN librarian l ON si.staff_id = l.id AND si.staff_role = 'librarian'
+    LEFT JOIN hr h ON si.staff_id = h.id AND si.staff_role = 'hr'
     WHERE i.school_id = ? ORDER BY si.assigned_at DESC";
 $assigned_stmt = $conn->prepare($assigned_incentives_query);
 $assigned_stmt->execute([$school_id]);
@@ -457,6 +466,7 @@ $staff_incentives_json = json_encode($staff_incentives_map);
                                                             <div class="form-check"><input class="form-check-input" type="checkbox" name="assign_to[]" value="all_teachers" id="assign_teachers"><label class="form-check-label" for="assign_teachers">All Teachers</label></div>
                                                             <div class="form-check"><input class="form-check-input" type="checkbox" name="assign_to[]" value="all_librarians" id="assign_librarians"><label class="form-check-label" for="assign_librarians">All Librarians</label></div>
                                                             <div class="form-check"><input class="form-check-input" type="checkbox" name="assign_to[]" value="all_principals" id="assign_principals"><label class="form-check-label" for="assign_principals">All Principals</label></div>
+                                                            <div class="form-check"><input class="form-check-input" type="checkbox" name="assign_to[]" value="all_hr" id="assign_hr"><label class="form-check-label" for="assign_hr">All HR</label></div>
                                                         </div>
                                                     </div>
                                                     <div class="form-group searchable-dropdown col-lg-12" id="groupIncentiveDropdown">
@@ -535,7 +545,7 @@ $staff_incentives_json = json_encode($staff_incentives_map);
                                 </div>
                                 <div class="card-body">
                                     <div class="table-responsive">
-                                        <table class="table table-bordered table-hover" id="incentivesTable" width="100%" cellspacing="0">
+                                        <table class="table table-bordered table-hover" id="incentivesTable_display" width="100%" cellspacing="0">
                                             <thead>
                                                 <tr>
                                                     <th>Incentive Name</th>
@@ -576,6 +586,7 @@ $staff_incentives_json = json_encode($staff_incentives_map);
                                         <li class="nav-item"><a class="nav-link" href="#" data-role="Teacher">Teachers</a></li>
                                         <li class="nav-item"><a class="nav-link" href="#" data-role="Principal">Principals</a></li>
                                         <li class="nav-item"><a class="nav-link" href="#" data-role="Librarian">Librarians</a></li>
+                                        <li class="nav-item"><a class="nav-link" href="#" data-role="Hr">HR</a></li>
                                     </ul>
                                     <div class="table-responsive">
                                         <table class="table table-hover" id="assignedIncentivesTable" width="100%" cellspacing="0">
@@ -710,7 +721,7 @@ $staff_incentives_json = json_encode($staff_incentives_map);
     <script>
         $(document).ready(function() {
             const staffIncentivesData = <?php echo $staff_incentives_json; ?>;
-            $('#incentivesTable').DataTable();
+            $('#incentivesTable_display').DataTable();
             var assignedTable = $('#assignedIncentivesTable').DataTable({
                 "order": [],
                 "columnDefs": [{
@@ -771,13 +782,13 @@ $staff_incentives_json = json_encode($staff_incentives_map);
                 }
             });
 
-            $('#incentivesTable').on('click', '.edit-btn', function() {
+            $('#incentivesTable_display').on('click', '.edit-btn', function() {
                 $('#edit_incentive_id').val($(this).data('id'));
                 $('#edit_incentive_name').val($(this).data('name'));
                 $('#edit_percentage').val($(this).data('percentage'));
                 $('#edit_type').val($(this).data('type'));
             });
-            $('#incentivesTable').on('click', '.delete-btn', function() {
+            $('#incentivesTable_display').on('click', '.delete-btn', function() {
                 $('#delete_incentive_id').val($(this).data('id'));
             });
 

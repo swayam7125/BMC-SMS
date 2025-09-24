@@ -33,184 +33,312 @@ function getIndianCurrencyInWords(float $number)
     }
     $Rupees = implode('', array_reverse($str));
     $paise = ($decimal > 0) ? "." . ($words[$decimal / 10] . " " . $words[$decimal % 10]) . ' Paise' : '';
-    return ($Rupees ? 'Rupees ' . ucwords($Rupees) : '') . ucwords($paise) . " Only";
+    return ($Rupees ? $Rupees . 'Rupees ' : '') . $paise;
 }
 
-$role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
-$userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+// --- DATA FETCHING ---
+$slip_id = isset($_GET['id']) ? decrypt_id($_GET['id']) : null;
+$type = $_GET['type'] ?? '';
+$record = null;
+$staff_details = null;
+$school_details = null;
 
-$record_id = isset($_GET['id']) ? decrypt_id($_GET['id']) : null;
-$type = isset($_GET['type']) ? $_GET['type'] : null;
+if ($slip_id && $type) {
+    try {
+        switch ($type) {
+            case 'teacher':
+                $stmt = $conn->prepare("SELECT * FROM teacher_payroll WHERE id = ?");
+                $stmt->execute([$slip_id]);
+                $record = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($record) {
+                    $staff_stmt = $conn->prepare("SELECT teacher_name as name, school_id FROM teacher WHERE id = ?");
+                    $staff_stmt->execute([$record['teacher_id']]);
+                    $staff_details = $staff_stmt->fetch(PDO::FETCH_ASSOC);
+                }
+                break;
+            case 'librarian':
+                $stmt = $conn->prepare("SELECT * FROM librarian_payroll WHERE id = ?");
+                $stmt->execute([$slip_id]);
+                $record = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($record) {
+                    $staff_stmt = $conn->prepare("SELECT librarian_name as name, school_id FROM librarian WHERE id = ?");
+                    $staff_stmt->execute([$record['librarian_id']]);
+                    $staff_details = $staff_stmt->fetch(PDO::FETCH_ASSOC);
+                }
+                break;
+            case 'principal':
+                $stmt = $conn->prepare("SELECT * FROM principal_payroll WHERE id = ?");
+                $stmt->execute([$slip_id]);
+                $record = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($record) {
+                    $staff_stmt = $conn->prepare("SELECT principal_name as name, school_id FROM principal WHERE id = ?");
+                    $staff_stmt->execute([$record['principal_id']]);
+                    $staff_details = $staff_stmt->fetch(PDO::FETCH_ASSOC);
+                }
+                break;
+            // *** ADDED: New case to handle HR staff slips.
+            case 'hr':
+                $stmt = $conn->prepare("SELECT * FROM hr_payroll WHERE id = ?");
+                $stmt->execute([$slip_id]);
+                $record = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($record) {
+                    $staff_stmt = $conn->prepare("SELECT hr_name as name, school_id FROM hr WHERE id = ?");
+                    $staff_stmt->execute([$record['hr_id']]);
+                    $staff_details = $staff_stmt->fetch(PDO::FETCH_ASSOC);
+                }
+                break;
+        }
 
-if (!$record_id || !$type || !$userId || !$role) {
-    die("Invalid request or unauthorized access.");
-}
-
-$details = null;
-try {
-    if ($type === 'teacher' && $role === 'teacher') {
-        $sql = "SELECT pr.*, t.teacher_name as employee_name, s.school_name, s.school_logo, s.address as school_address 
-                FROM teacher_payroll pr JOIN teacher t ON pr.teacher_id = t.id JOIN school s ON pr.school_id = s.id
-                WHERE pr.id = ? AND pr.teacher_id = ?";
-        $stmt = $conn->prepare($sql);
-        $stmt->execute([$record_id, $userId]);
-        $details = $stmt->fetch(PDO::FETCH_ASSOC);
-    } elseif ($type === 'librarian' && $role === 'librarian') {
-        $sql = "SELECT pr.*, l.librarian_name as employee_name, s.school_name, s.school_logo, s.address as school_address 
-                FROM librarian_payroll pr JOIN librarian l ON pr.librarian_id = l.id JOIN school s ON pr.school_id = s.id
-                WHERE pr.id = ? AND pr.librarian_id = ?";
-        $stmt = $conn->prepare($sql);
-        $stmt->execute([$record_id, $userId]);
-        $details = $stmt->fetch(PDO::FETCH_ASSOC);
-    } elseif ($type === 'principal' && $role === 'principal') {
-        $sql = "SELECT pr.*, p.principal_name as employee_name, s.school_name, s.school_logo, s.address as school_address 
-                FROM principal_payroll pr JOIN principal p ON pr.principal_id = p.id JOIN school s ON pr.school_id = s.id
-                WHERE pr.id = ? AND pr.principal_id = ?";
-        $stmt = $conn->prepare($sql);
-        $stmt->execute([$record_id, $userId]);
-        $details = $stmt->fetch(PDO::FETCH_ASSOC);
-    } else {
-        die("Unauthorized access.");
+        if ($staff_details) {
+            $school_stmt = $conn->prepare("SELECT school_name, school_logo, address FROM school WHERE id = ?");
+            $school_stmt->execute([$staff_details['school_id']]);
+            $school_details = $school_stmt->fetch(PDO::FETCH_ASSOC);
+        }
+    } catch (Exception $e) {
+        die("Error: " . $e->getMessage());
     }
-
-    if (!$details) {
-        die("Salary slip not found or you do not have permission to view it.");
-    }
-} catch (Exception $e) {
-    die("Error fetching salary slip details: " . $e->getMessage());
 }
 
-$base_salary_formatted = '₹ ' . number_format($details['base_salary'], 2);
-$deduction_formatted = '₹ ' . number_format($details['deduction_amount'], 2);
-$incentives_formatted = '₹ ' . number_format($details['total_incentives'], 2);
-$net_paid_formatted = '₹ ' . number_format($details['net_salary_paid'], 2);
-$amount_in_words = getIndianCurrencyInWords($details['net_salary_paid']);
+if (!$record || !$staff_details || !$school_details) {
+    die("<h1>Payslip not found or invalid access.</h1>");
+}
 
+$salary_period = date('F Y', mktime(0, 0, 0, $record['salary_month'], 1, $record['salary_year']));
+$amount_in_words = getIndianCurrencyInWords($record['net_salary_paid']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
-    <title>Salary Slip - <?php echo date('F Y', mktime(0, 0, 0, $details['salary_month'], 1, $details['salary_year'])); ?></title>
-    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
+    <title>Payslip for <?php echo htmlspecialchars($staff_details['name']); ?> - <?php echo $salary_period; ?></title>
+    <link href="https://fonts.googleapis.com/css?family=Nunito:400,600,700" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
-        body { background-color: #e0e0e0; font-family: 'Nunito', sans-serif; }
-        .payslip { max-width: 800px; margin: 30px auto; background: #fff; padding: 30px; border: 1px solid #ddd; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); color: #333; font-size: 14px; }
-        .header { text-align: center; margin-bottom: 20px; position: relative; padding: 10px 0; border-bottom: 2px solid #333; }
-        .header img { max-height: 70px; position: absolute; top: 0; left: 0; }
-        .school-name { font-size: 26px; font-weight: bold; }
-        .school-address { font-size: 13px; }
-        .slip-title { font-size: 18px; font-weight: bold; text-align: center; margin: 20px 0; text-decoration: underline; }
-        .employee-details { width: 100%; border-collapse: collapse; margin-bottom: 20px; border: 1px solid #ccc; }
-        .employee-details td { padding: 8px 12px; }
-        .employee-details .label { font-weight: bold; width: 150px; }
-        .salary-table { width: 100%; border-collapse: collapse; }
-        .salary-table th, .salary-table td { border: 1px solid #ccc; padding: 10px; text-align: left; }
-        .salary-table th { background-color: #f2f2f2; font-weight: bold; }
-        .salary-table .amount { text-align: right; }
-        .salary-table tfoot td { font-weight: bold; }
-        .salary-table tfoot .net-salary-row { background-color: #e9e9e9; font-size: 16px; }
-        .amount-in-words { margin-top: 20px; font-size: 13px; }
-        .amount-in-words span { font-weight: bold; }
-        .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #777; }
-        .print-download-buttons { text-align: center; margin: 30px auto; max-width: 800px; }
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        #payslip {
+            width: 800px;
+            background: #fff;
+            border: 1px solid #ddd;
+            box-shadow: 0 0 15px rgba(0,0,0,0.05);
+            padding: 40px;
+            margin-bottom: 20px;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #343a40;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+        .header img {
+            max-height: 80px;
+            margin-right: 20px;
+        }
+        .header-text {
+            text-align: left;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 700;
+        }
+        .header p {
+            margin: 0;
+            font-size: 14px;
+        }
+        .slip-title {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .slip-title h2 {
+            display: inline-block;
+            border-bottom: 2px solid #343a40;
+            padding-bottom: 5px;
+            font-size: 20px;
+            font-weight: 600;
+            margin: 0;
+        }
+        .employee-details {
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .details-table {
+            width: 100%;
+        }
+        .details-table td {
+            padding: 5px 0;
+            font-size: 14px;
+        }
+        .details-table td:first-child {
+            font-weight: 600;
+            width: 25%;
+        }
+        .salary-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .salary-table th, .salary-table td {
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            font-size: 14px;
+        }
+        .salary-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        .salary-table tfoot td {
+            font-weight: bold;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .amount {
+            text-align: right;
+        }
+        .earnings, .deductions {
+            width: 50%;
+            vertical-align: top;
+        }
+        .net-salary-row td {
+            border-top: 2px solid #343a40;
+        }
+        .amount-in-words {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .amount-in-words span {
+            font-weight: 600;
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 12px;
+            color: #888;
+        }
+        .print-download-buttons {
+            text-align: center;
+        }
         @media print {
-            body { background-color: #fff; }
-            .payslip { margin: 0; border: none; box-shadow: none; }
-            .print-download-buttons { display: none; }
+            body {
+                background-color: #fff;
+            }
+            .print-download-buttons {
+                display: none;
+            }
+            #payslip {
+                box-shadow: none;
+                border: none;
+                padding: 0;
+                margin: 0;
+            }
         }
     </style>
 </head>
-
 <body>
-    <div class="payslip" id="payslip">
+    <div id="payslip">
         <div class="header">
-            <?php if (!empty($details['school_logo'])): ?>
-                <img src="/BMC-SMS/<?php echo htmlspecialchars($details['school_logo']); ?>" alt="School Logo">
-            <?php endif; ?>
-            <div class="school-name"><?php echo htmlspecialchars($details['school_name']); ?></div>
-            <div class="school-address"><?php echo htmlspecialchars($details['school_address']); ?></div>
+            <img src="<?php echo htmlspecialchars($school_details['school_logo']); ?>" alt="School Logo">
+            <div class="header-text">
+                <h1><?php echo htmlspecialchars($school_details['school_name']); ?></h1>
+                <p><?php echo htmlspecialchars($school_details['address']); ?></p>
+            </div>
         </div>
-        <div class="slip-title">Salary Slip for <?php echo date('F Y', mktime(0, 0, 0, $details['salary_month'], 1, $details['salary_year'])); ?></div>
-
-        <table class="employee-details">
-            <tr>
-                <td class="label">Employee Name</td>
-                <td>: <?php echo htmlspecialchars($details['employee_name']); ?></td>
-                <td class="label">Payment Date</td>
-                <td>: <?php echo date('d M, Y', strtotime($details['payment_date'])); ?></td>
-            </tr>
-            <tr>
-                <td class="label">Designation</td>
-                <td>: <?php echo ucfirst(htmlspecialchars($type)); ?></td>
-                <td class="label">Working Days</td>
-                <td>: <?php echo $details['total_working_days']; ?></td>
-            </tr>
-            <tr>
-                <td class="label">Days Present</td>
-                <td>: <?php echo $details['present_days']; ?></td>
-                <td class="label">Days Absent</td>
-                <td>: <?php echo $details['absent_days']; ?></td>
-            </tr>
-        </table>
-
-        <table class="salary-table table">
+        <div class="slip-title">
+            <h2>Payslip for <?php echo $salary_period; ?></h2>
+        </div>
+        <div class="employee-details">
+            <table class="details-table">
+                <tr>
+                    <td>Employee Name:</td>
+                    <td><?php echo htmlspecialchars($staff_details['name']); ?></td>
+                    <td>Payment Date:</td>
+                    <td><?php echo date('d-m-Y', strtotime($record['payment_date'])); ?></td>
+                </tr>
+                <tr>
+                    <td>Designation:</td>
+                    <td><?php echo ucfirst($type); ?></td>
+                    <td>Total Working Days:</td>
+                    <td><?php echo $record['total_working_days']; ?></td>
+                </tr>
+                 <tr>
+                    <td>Present Days:</td>
+                    <td><?php echo $record['present_days']; ?></td>
+                    <td>Absent Days:</td>
+                    <td><?php echo $record['absent_days']; ?></td>
+                </tr>
+            </table>
+        </div>
+        <table class="salary-table">
             <thead>
                 <tr>
-                    <th>Description</th>
-                    <th class="amount">Amount</th>
+                    <th>Earnings</th>
+                    <th class="text-right">Amount</th>
+                    <th>Deductions</th>
+                    <th class="text-right">Amount</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
-                    <td>Base Salary</td>
-                    <td class="amount"><?php echo $base_salary_formatted; ?></td>
-                </tr>
-                 <tr>
-                    <td>Incentives / Adjustments</td>
-                    <td class="amount"><?php echo $incentives_formatted; ?></td>
+                    <td>Basic Salary</td>
+                    <td class="text-right"><?php echo number_format($record['base_salary'], 2); ?></td>
+                    <td>Absence Deduction</td>
+                    <td class="text-right"><?php echo number_format($record['deduction_amount'], 2); ?></td>
                 </tr>
                 <tr>
-                    <td>Absent Day Deduction</td>
-                    <td class="amount">- <?php echo $deduction_formatted; ?></td>
+                    <td>Incentives</td>
+                    <td class="text-right"><?php echo number_format($record['total_incentives'], 2); ?></td>
+                    <td></td>
+                    <td class="text-right"></td>
                 </tr>
             </tbody>
             <tfoot>
+                <?php
+                    $total_earnings = $record['base_salary'] + $record['total_incentives'];
+                    $total_deductions = $record['deduction_amount'];
+                    $earnings_formatted = number_format($total_earnings, 2);
+                    $deduction_formatted = number_format($total_deductions, 2);
+                    $net_paid_formatted = number_format($record['net_salary_paid'], 2);
+                ?>
                 <tr>
-                    <td class="text-dark"><strong>Gross Earnings</strong></td>
-                    <td class="amount text-dark"><strong><?php echo '₹ ' . number_format($details['base_salary'] + $details['total_incentives'], 2); ?></strong></td>
-                </tr>
-                <tr>
-                    <td class="text-dark"><strong>Total Deductions</strong></td>
-                    <td class="amount text-dark"><strong>- <?php echo $deduction_formatted; ?></strong></td>
+                    <td><strong>Total Earnings</strong></td>
+                    <td class="amount"><strong><?php echo $earnings_formatted; ?></strong></td>
+                    <td><strong>Total Deductions</strong></td>
+                    <td class="amount"><strong><?php echo $deduction_formatted; ?></strong></td>
                 </tr>
                 <tr class="net-salary-row">
-                    <td class="text-dark"><strong>Net Salary Paid</strong></td>
-                    <td class="amount text-dark"><strong><?php echo $net_paid_formatted; ?></strong></td>
+                    <td colspan="3"><strong>Net Salary Paid</strong></td>
+                    <td class="amount"><strong><?php echo $net_paid_formatted; ?></strong></td>
                 </tr>
             </tfoot>
         </table>
-
         <div class="amount-in-words">
-            <span>Amount in Words:</span> <?php echo $amount_in_words; ?>
+            <span>Amount in Words:</span> <?php echo ucwords($amount_in_words); ?>
         </div>
-
         <div class="footer">
             This is a computer-generated salary slip and does not require a signature.
         </div>
     </div>
-
     <div class="print-download-buttons">
         <button class="btn btn-secondary" onclick="window.print();"><i class="fas fa-print"></i> Print</button>
         <button class="btn btn-primary" id="download-pdf"><i class="fas fa-file-pdf"></i> Download as PDF</button>
     </div>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
     <script>
         document.getElementById('download-pdf').addEventListener('click', function() {
             const slipElement = document.getElementById('payslip');
@@ -222,10 +350,9 @@ $amount_in_words = getIndianCurrencyInWords($details['net_salary_paid']);
                 const pdfWidth = pdf.internal.pageSize.getWidth();
                 const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
                 pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-                pdf.save("Salary-Slip-<?php echo date('F-Y', mktime(0, 0, 0, $details['salary_month'], 1, $details['salary_year'])); ?>.pdf");
+                pdf.save("Payslip-<?php echo $salary_period; ?>-<?php echo htmlspecialchars($staff_details['name']); ?>.pdf");
             });
         });
     </script>
 </body>
-
 </html>

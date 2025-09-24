@@ -3,7 +3,10 @@ require_once __DIR__ . "/includes/ajax_helpers.php";
 require_once __DIR__ . "/includes/connect.php";
 require_once __DIR__ . "/encryption.php";
 
-// Enable error reporting for debugging
+// This is the new check to see if the page is being requested by the AJAX script
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
+// All of your original PHP logic for fetching data remains here, unchanged.
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
@@ -243,10 +246,14 @@ try {
                         SELECT SUM(net_salary_paid) as total_paid FROM teacher_payroll WHERE salary_month = ? AND salary_year = ? AND school_id = ?
                         UNION ALL
                         SELECT SUM(net_salary_paid) as total_paid FROM librarian_payroll WHERE salary_month = ? AND salary_year = ? AND school_id = ?
+                        UNION ALL
+                        SELECT SUM(net_salary_paid) as total_paid FROM principal_payroll WHERE salary_month = ? AND salary_year = ? AND school_id = ?
+                        UNION ALL
+                        SELECT SUM(net_salary_paid) as total_paid FROM hr_payroll WHERE salary_month = ? AND salary_year = ? AND school_id = ?
                     ) as combined_payroll
                 ';
                 $salary_stmt = $conn->prepare($salary_query);
-                $salary_stmt->execute([$current_month, $current_year, $schoolId, $current_month, $current_year, $schoolId]);
+                $salary_stmt->execute([$current_month, $current_year, $schoolId, $current_month, $current_year, $schoolId, $current_month, $current_year, $schoolId, $current_month, $current_year, $schoolId]);
                 $totalSalaryDisbursed = $salary_stmt->fetchColumn() ?: 0;
 
                 // Get counts of staff FOR THE ASSIGNED SCHOOL
@@ -388,7 +395,9 @@ if ($userId && isset($conn)) {
         error_log("Dashboard notification fetch error: " . $e->getMessage());
     }
 }
+
 ?>
+<?php if (!$is_ajax_request) : // If it's a normal page load, show the full HTML shell ?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -433,6 +442,8 @@ if ($userId && isset($conn)) {
                 <?php include './includes/header.php'; ?>
                 <div id="main-content">
                     <div class="container-fluid">
+<?php endif; ?>
+
                         <div class="d-sm-flex align-items-center justify-content-between mb-4">
                             <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
                         </div>
@@ -842,6 +853,7 @@ if ($userId && isset($conn)) {
                                 </div>
                             </div>
                         </div>
+                        <?php if (!$is_ajax_request) : // If it's a normal page load, close the HTML shell ?>
                     </div>
                 </div>
                 <?php include './includes/footer.php'; ?>
@@ -898,6 +910,7 @@ if ($userId && isset($conn)) {
             });
         </script>
 
-</body>
+    </div> </body>
 
 </html>
+<?php endif; // End the check for normal page load ?>

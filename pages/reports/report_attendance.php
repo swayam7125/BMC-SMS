@@ -11,14 +11,14 @@ if (isset($_POST['download_pdf'])) {
     $dompdf = new Dompdf($options);
     $html = $_POST['pdf_html'];
 
-    // ⭐ Get the dynamic filename from the POST request
+    // Get the dynamic filename from the POST request
     $filename = $_POST['pdf_filename'] ?? 'Attendance_Report.pdf';
 
     $dompdf->loadHtml($html);
     $dompdf->setPaper('A4', 'portrait');
     $dompdf->render();
 
-    // ⭐ Use the dynamic filename for the download
+    // Use the dynamic filename for the download
     $dompdf->stream($filename, ["Attachment" => 1]);
     exit();
 }
@@ -91,7 +91,7 @@ try {
         $report_title = "Attendance Report (All Schools)";
     }
 
-    // ⭐ Logic to determine the PDF filename
+    // Logic to determine the PDF filename
     $pdf_filename = "Attendance_Report.pdf"; // Default fallback
     if ($school_id) {
         // This covers both principal and superadmin with a selected school
@@ -146,7 +146,8 @@ try {
             'teacher' => ['name_col' => 'teacher_name', 'att_table' => 'teacher_attendance', 'id_col' => 'teacher_id'],
             'librarian' => ['name_col' => 'librarian_name', 'att_table' => 'librarian_attendance', 'id_col' => 'librarian_id'],
             'principal' => ['name_col' => 'principal_name', 'att_table' => 'principal_attendance', 'id_col' => 'principal_id'],
-            'hr' => ['name_col' => 'hr_name', 'att_table' => 'hr_attendance', 'id_col' => 'payroll_id'] 
+            // FIX: Corrected the column name from 'payroll_id' to 'hr_id' to match the database schema.
+            'hr' => ['name_col' => 'hr_name', 'att_table' => 'hr_attendance', 'id_col' => 'hr_id'] 
         ];
         
         if (!isset($table_map[$current_role])) continue;
@@ -421,7 +422,7 @@ $total_leave = array_sum(array_column($individual_staff_attendance, 'leave'));
         },
     });
 
-    // ⭐ MODIFIED PDF Download Logic
+    // MODIFIED PDF Download Logic
     function generateAndSubmitPdf(htmlContent, filename) {
         const form = document.createElement('form');
         form.method = 'POST'; form.action = '?';
@@ -430,7 +431,7 @@ $total_leave = array_sum(array_column($individual_staff_attendance, 'leave'));
         hiddenInputHtml.type = 'hidden'; hiddenInputHtml.name = 'pdf_html'; hiddenInputHtml.value = htmlContent;
         form.appendChild(hiddenInputHtml);
         
-        // ⭐ NEW: Add the filename to the form
+        // NEW: Add the filename to the form
         const hiddenInputFilename = document.createElement('input');
         hiddenInputFilename.type = 'hidden'; hiddenInputFilename.name = 'pdf_filename'; hiddenInputFilename.value = filename;
         form.appendChild(hiddenInputFilename);
@@ -443,7 +444,7 @@ $total_leave = array_sum(array_column($individual_staff_attendance, 'leave'));
         form.submit();
     }
 
-    // ⭐ Get the main filename determined by PHP
+    // Get the main filename determined by PHP
     const mainPdfFilename = '<?php echo $pdf_filename; ?>';
 
     document.getElementById('download-full-report-btn').addEventListener('click', function() {
@@ -463,7 +464,7 @@ $total_leave = array_sum(array_column($individual_staff_attendance, 'leave'));
                 <div class="row"><div class="col-6">${staffTableHtml}</div><div class="col-6"><div class="chart-container"><img src="${staffChartImage}"></div></div></div>
             </body></html>`;
         
-        // ⭐ Pass the dynamic filename
+        // Pass the dynamic filename
         generateAndSubmitPdf(pdfHtml, mainPdfFilename);
     });
 
@@ -494,7 +495,7 @@ $total_leave = array_sum(array_column($individual_staff_attendance, 'leave'));
                     ${contentHtml}
                 </body></html>`;
             
-            // ⭐ Pass the dynamic filename for the section
+            // Pass the dynamic filename for the section
             generateAndSubmitPdf(pdfHtml, sectionFilename);
         });
     });
