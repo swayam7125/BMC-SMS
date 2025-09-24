@@ -4,6 +4,12 @@ include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 include_once "../../includes/ajax_helpers.php";
 
+// Check if this is an AJAX request
+if (is_ajax_request()) {
+    // Start output buffering to capture the HTML
+    ob_start();
+}
+
 if (!defined('BASE_URL')) {
     define('BASE_URL', '/BMC-SMS/');
 }
@@ -165,11 +171,14 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
         }
     }
 } else {
-    header("Location: ../../login.php");
-    exit;
+    // For a non-AJAX request, redirect to login. For AJAX, the front-end will handle it.
+    if (!is_ajax_request()) {
+        header("Location: ../../login.php");
+        exit;
+    }
 }
 
-if (!is_ajax_request()) {
+if (!is_ajax_request()):
 ?>
     <!DOCTYPE html>
     <html lang="en">
@@ -200,9 +209,7 @@ if (!is_ajax_request()) {
             <div id="content-wrapper" class="d-flex flex-column">
                 <div id="content">
                     <?php include_once '../../includes/header.php'; ?>
-                <?php
-            }
-                ?>
+                    <?php endif; ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">User Profile</h1>
@@ -1007,8 +1014,10 @@ if (!is_ajax_request()) {
             <?php endif; ?>
                 </div>
                 <?php
-                if (!is_ajax_request()) {
-                ?>
+// If it's NOT an AJAX request, print the full HTML footer.
+if (!is_ajax_request()):
+?>
+
             </div>
             <?php include_once '../../includes/footer.php'; ?>
         </div>
@@ -1050,8 +1059,23 @@ if (!is_ajax_request()) {
             });
         </script>
     </body>
+    <?php
+// Add this block at the very end of the file
+if (is_ajax_request()) {
+    // Get the captured HTML
+    $content = ob_get_clean();
+    
+    // Extract just the main content area for the AJAX response
+    if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
+        echo '<div class="container-fluid">' . $matches[1] . '</div>';
+    } else {
+        // Fallback if the main container isn't found
+        echo $content;
+    }
+    // Stop the script for AJAX requests
+    exit;
+}
+?>
 
     </html>
-<?php
-                }
-?>
+    <?php endif; ?>

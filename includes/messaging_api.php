@@ -4,7 +4,21 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 include_once "connect.php";
-include_once "../../BMC-SMS/encryption.php";
+include_once "../../BMC-SMS/encryption.php"; // Adjust path if needed
+
+header('Content-Type: application/json');
+
+// --- Helper function to build a correct, full image path ---
+function build_image_url($db_path) {
+    if (empty($db_path)) {
+        return null;
+    }
+    $base_path = '/BMC-SMS/';
+    if (strpos($db_path, $base_path) === 0) {
+        return $db_path;
+    }
+    return $base_path . ltrim($db_path, '/');
+}
 
 $current_user_id = null;
 $current_user_role = null;
@@ -241,6 +255,16 @@ switch ($action) {
             echo json_encode(['status' => 'error', 'message' => 'Receiver ID and a message or attachment are required.']);
             exit();
         }
+        
+        try {
+            $stmt_role = $conn->prepare("SELECT role FROM users WHERE id = :id");
+            $stmt_role->execute([':id' => $receiver_id]);
+            $receiver_user = $stmt_role->fetch(PDO::FETCH_ASSOC);
+            if (!$receiver_user) {
+                echo json_encode(['status' => 'error', 'message' => 'Receiver not found.']);
+                exit();
+            }
+            $receiver_role = $receiver_user['role'];
 
         if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] === UPLOAD_ERR_OK) {
             $file = $_FILES['attachment'];

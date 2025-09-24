@@ -180,7 +180,7 @@ if (!is_ajax_request()) {
                             <h6 class="m-0 font-weight-bold text-primary">Teacher Information</h6>
                         </div>
                         <div class="card-body">
-                            <form method="POST" enctype="multipart/form-data">
+                            <form method="POST" action="your-handler.php" data-ajax="true" data-validate="true" enctype="multipart/form-data">
                                 <div class="row">
                                     <div class="col-md-3 text-center">
                                         <label>Photo Preview</label><br>

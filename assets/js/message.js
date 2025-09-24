@@ -203,8 +203,10 @@ $(document).ready(function() {
                     messageArea.html('<div class="text-center h-100 d-flex justify-content-center align-items-center text-muted"><p>Start the conversation!</p></div>');
                 }
                 
-                // Poll for new notifications
-                pollForNotifications();
+                if (hadNewMessages) {
+                    // loadContacts(standardFilter.val()); // <--- PROBLEM SOLVED BY REMOVING THIS LINE
+                    pollForNotifications();
+                }
             }
         });
     }
@@ -260,8 +262,12 @@ $(document).ready(function() {
         filePreviewContainer.hide();
     }
 
-    contactsList.on('click', '.contact-item', function() {
-    contactsList.on('click', '.contact-item', function() {
+    contactsList.on('click', '.contact-item', function(e) { // <--- CHANGE 1: Added 'e' here
+        e.preventDefault(); // <--- CHANGE 2: Added this line to prevent page reload
+    
+        // Immediately find the badge within the clicked item and fade it out.
+        $(this).find('.badge-counter').fadeOut('fast');
+        
         const contactId = $(this).data('contact-id');
         if (activeContactId === contactId) return;
         

@@ -236,7 +236,7 @@ if (!is_ajax_request()) {
                             <h6 class="m-0 font-weight-bold text-primary">Principal Information</h6>
                         </div>
                         <div class="card-body">
-                            <form method="POST" enctype="multipart/form-data" id="principalForm">
+                            <form method="POST" action="your-handler.php" data-ajax="true" data-validate="true" enctype="multipart/form-data" id="principalForm">
                                 <input type="hidden" name="temp_image_path" value="<?php echo htmlspecialchars($temp_image_path ?? ''); ?>">
                                 <input type="hidden" name="image_preview_data" id="imagePreviewData" value="<?php echo htmlspecialchars($_POST['image_preview_data'] ?? ''); ?>">
                                 <div class="row">

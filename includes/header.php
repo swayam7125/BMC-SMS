@@ -31,6 +31,10 @@ if (!defined('BASE_WEB_PATH')) {
     define('BASE_WEB_PATH', '/BMC-SMS/');
 }
 
+
+// ⭐ NEW: Include log system file here. (Does NOT perform automatic logging anymore)
+include_once __DIR__ . '/log_system.php';
+
 // Set default values
 $userName = 'Guest';
 $user_role = 'User';
@@ -231,7 +235,78 @@ if (!function_exists('getNotificationIcon')) {
     .history-item .remove-history:hover {
         color: #e74a3b;
     }
-    /* ⭐ END: Styles for Search History */
+
+.btn-loading {
+    position: relative;
+    pointer-events: none;
+}
+
+.btn-loading::after {
+    content: "";
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    margin: auto;
+    border: 2px solid transparent;
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Progress bar for file uploads */
+.upload-progress {
+    display: none;
+    margin-top: 10px;
+}
+
+.upload-progress .progress {
+    height: 20px;
+}
+
+/* AJAX loading overlay */
+#ajaxLoader {
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(2px);
+}
+
+#ajaxLoader .spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+/* Notification badges animation */
+.badge-counter {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+/* Form validation styles */
+.is-invalid {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+
+.invalid-feedback {
+    display: block;
+    width: 100%;
+    margin-top: 0.25rem;
+    font-size: 0.875em;
+    color: #dc3545;
+}
 </style>
 <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
 
@@ -345,7 +420,7 @@ if (!function_exists('getNotificationIcon')) {
 
         <?php if ($isLoggedIn): ?>
         <li class="nav-item dropdown no-arrow">
-            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-toggle="dropdown"
+            <a class="nav-link dropdown-toggle" href="" id="userDropdown" role="button" data-toggle="dropdown"
                 aria-haspopup="true" aria-expanded="false">
                 <span
                     class="mr-2 d-none d-lg-inline text-gray-600 small"><?php echo htmlspecialchars($userName); ?></span>
@@ -789,6 +864,41 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+});
+</script>
+
+<script>
+// Enhanced sidebar functionality for AJAX
+$(document).ready(function() {
+    // Add AJAX data attributes to navigation links
+    $('.nav-link, .collapse-item').each(function() {
+        const href = $(this).attr('href');
+        if (href && !href.startsWith('#') && !href.startsWith('javascript:') && !href.startsWith('http')) {
+            $(this).attr('data-ajax', 'true');
+        }
+    });
+    
+    // Update active states based on current URL
+    function updateActiveStates() {
+        const currentPath = window.location.pathname;
+        const currentPage = currentPath.substring(currentPath.lastIndexOf('/') + 1);
+        
+        $('.nav-link, .collapse-item').removeClass('active');
+        $('.nav-item').removeClass('active');
+        
+        // Find and activate current page
+        $(`.nav-link[href*="${currentPage}"], .collapse-item[href*="${currentPage}"]`).each(function() {
+            $(this).addClass('active');
+            $(this).closest('.nav-item').addClass('active');
+            $(this).closest('.collapse').addClass('show');
+        });
+    }
+    
+    // Update active states on page load
+    updateActiveStates();
+    
+    // Listen for AJAX page loads to update active states
+    $(document).on('ajax:page:loaded', updateActiveStates);
 });
 </script>
 

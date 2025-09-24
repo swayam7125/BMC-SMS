@@ -262,5 +262,21 @@ try {
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
-
+<?php
+// Add this block at the very end of the file
+if (is_ajax_request()) {
+    // Get the captured HTML
+    $content = ob_get_clean();
+    
+    // Extract just the main content area for the AJAX response
+    if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
+        echo '<div class="container-fluid">' . $matches[1] . '</div>';
+    } else {
+        // Fallback if the main container isn't found
+        echo $content;
+    }
+    // Stop the script for AJAX requests
+    exit;
+}
+?>
 </html>
