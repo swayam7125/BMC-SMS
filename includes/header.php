@@ -638,7 +638,7 @@ document.addEventListener('DOMContentLoaded', function() {
         ['title' => 'View Notes', 'url' => 'pages/student/view_notes.php', 'roles' => ['student']],
         ['title' => 'View Lecture Timetable', 'url' => 'pages/student/view_timetable.php', 'roles' => ['student']],
         ['title' => 'View Exam Timetable', 'url' => 'pages/student/view_exam_timetable.php', 'roles' => ['student']],
-        ['title' => 'Pay Fees', 'url' => 'pages/student/pay_fees.php', 'roles' => ['student']],
+        ['title' => 'View Fees', 'url' => 'pages/student/view_fees.php', 'roles' => ['student']],
         ['title' => 'Browse & Request Books', 'url' => 'pages/student/browse_books.php', 'roles' => ['student']],
         ['title' => 'My Borrowing Record', 'url' => 'pages/student/my_library_record.php', 'roles' => ['student']],
         ['title' => 'Request New Book', 'url' => 'pages/user/request_new_book.php', 'roles' => ['student']],

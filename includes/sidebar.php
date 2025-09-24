@@ -954,10 +954,10 @@ if (isset($conn) && $user_id) {
                 </a>
             </li>
 
-            <li class="nav-item <?php echo ($current_page == 'pay_fees.php') ? 'active' : ''; ?>">
-                <a class="nav-link" href="/BMC-SMS/pages/student/pay_fees.php">
+            <li class="nav-item <?php echo ($current_page == 'view_fees.php') ? 'active' : ''; ?>">
+                <a class="nav-link" href="/BMC-SMS/pages/student/view_fees.php">
                     <div><i class="fas fa-dollar-sign"></i>
-                        <span>Pay Fees</span>
+                        <span>View Fees</span>
                     </div>
                 </a>
             </li>
