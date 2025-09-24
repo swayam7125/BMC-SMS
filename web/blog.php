@@ -1,13 +1,10 @@
 <?php
 require_once '../includes/connect.php';
-
 try {
-  // Fetches the featured_image_path for the main blog grid
   $stmt = $conn->query("SELECT id, title, content, featured_image_path FROM blog_posts ORDER BY created_at DESC");
   $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
   $posts = [];
-  error_log("Blog page DB Error: " . $e->getMessage());
 }
 ?>
 <!DOCTYPE html>
@@ -17,37 +14,13 @@ try {
   <title>Blog | BMC School</title>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <link rel="stylesheet" href="vendors/mdi/css/materialdesignicons.min.css">
   <link rel="stylesheet" href="vendors/aos/css/aos.css">
   <link rel="stylesheet" href="css/style.min.css">
 </head>
 
 <body>
-
-  <header id="header-section">
-    <nav class="navbar navbar-expand-lg pl-3 pl-sm-0" id="navbar">
-      <div class="container">
-        <div class="navbar-brand-wrapper d-flex w-100">
-          <img src="images/Group2.svg" alt="BMC School Logo">
-          <button class="navbar-toggler ml-auto" type="button" data-toggle="collapse" data-target="#navbarSupportedContent">
-            <span class="mdi mdi-menu navbar-toggler-icon"></span>
-          </button>
-        </div>
-        <div class="collapse navbar-collapse navbar-menu-wrapper" id="navbarSupportedContent">
-          <ul class="navbar-nav align-items-lg-center align-items-start ml-auto">
-            <li class="nav-item"><a class="nav-link" href="index.php">Home</a></li>
-            <li class="nav-item"><a class="nav-link" href="admission.php">Admissions</a></li>
-            <li class="nav-item"><a class="nav-link" href="blog.php">Blog <span class="sr-only">(current)</span></a></li>
-            <li class="nav-item"><a class="nav-link" href="contact.php">Contact</a></li>
-            <li class="nav-item"><a class="nav-link" href="/login.php">Login</a></li>
-            <li class="nav-item btn-contact-us pl-4 pl-lg-0"><a class="btn btn-info" href="/signup.php">Sign Up</a></li>
-          </ul>
-        </div>
-      </div>
-    </nav>
-  </header>
-
+  <?php include 'header.php'; ?>
   <main>
     <div class="content-wrapper">
       <div class="container">
@@ -59,7 +32,7 @@ try {
           <div class="row">
             <?php if (empty($posts)): ?>
               <div class="col-12">
-                <div class="alert alert-info text-center">No blog posts found at this time. Please check back later!</div>
+                <div class="alert alert-info text-center">No blog posts found. Please check back later!</div>
               </div>
             <?php else: ?>
               <?php foreach ($posts as $post): ?>
@@ -80,11 +53,7 @@ try {
       </div>
     </div>
   </main>
-
-  <footer class="border-top">
-    <p class="text-center text-muted pt-4">Copyright © <?php echo date("Y"); ?> BMC School. All rights reserved.</p>
-  </footer>
-
+  <?php include 'footer.php'; ?>
   <script src="vendors/jquery/jquery.min.js"></script>
   <script src="vendors/bootstrap/bootstrap.min.js"></script>
   <script src="vendors/aos/js/aos.js"></script>
