@@ -2,6 +2,7 @@
 require_once __DIR__ . "/includes/ajax_helpers.php";
 require_once __DIR__ . "/includes/connect.php";
 require_once __DIR__ . "/encryption.php";
+require_once __DIR__ . '/includes/ajax_helpers.php'; 
 
 // This is the new check to see if the page is being requested by the AJAX script
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
@@ -205,7 +206,6 @@ try {
                 $payableDaysStmt->execute([$userId, $current_year, $current_month]);
                 $totalPresent = (float)$payableDaysStmt->fetchColumn();
 
-
                 $absentStmt = $conn->prepare('SELECT COUNT(*) FROM "teacher_attendance" WHERE "teacher_id" = ? AND "status" = \'Absent\' AND EXTRACT(YEAR FROM "attendance_date") = ? AND EXTRACT(MONTH FROM "attendance_date") = ?');
                 $absentStmt->execute([$userId, $current_year, $current_month]);
                 $totalAbsent = $absentStmt->fetchColumn();
@@ -302,7 +302,6 @@ try {
                 $payableDaysStmt->execute([$userId, $current_year, $current_month]);
                 $monthly_present_days = (float)$payableDaysStmt->fetchColumn();
 
-
                 $absentStmt = $conn->prepare('SELECT COUNT(*) FROM "librarian_attendance" WHERE "librarian_id" = ? AND "status" = \'Absent\' AND EXTRACT(YEAR FROM "attendance_date") = ? AND EXTRACT(MONTH FROM "attendance_date") = ?');
                 $absentStmt->execute([$userId, $current_year, $current_month]);
                 $librarian_total_absent = $absentStmt->fetchColumn();
@@ -397,7 +396,7 @@ if ($userId && isset($conn)) {
 }
 
 ?>
-<?php if (!$is_ajax_request) : // If it's a normal page load, show the full HTML shell ?>
+<?php if (!$is_ajax_request): // If it's a normal page load, show the full HTML shell ?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -853,7 +852,7 @@ if ($userId && isset($conn)) {
                                 </div>
                             </div>
                         </div>
-                        <?php if (!$is_ajax_request) : // If it's a normal page load, close the HTML shell ?>
+                        <?php if (!$is_ajax_request): // If it's a normal page load, close the HTML shell ?>
                     </div>
                 </div>
                 <?php include './includes/footer.php'; ?>
@@ -869,7 +868,6 @@ if ($userId && isset($conn)) {
         <script src="/BMC-SMS/assets/js/dynamic_chart.js"></script>
         <script src="/BMC-SMS/assets/js/notification.js"></script>
         <script src="/BMC-SMS/assets/js/sidebar.js"></script>
-        <script src="/BMC-SMS/assets/js/ajax-navigation.js"></script>
 
         <script>
             // New script block to handle notification clicks on the dashboard
@@ -911,6 +909,5 @@ if ($userId && isset($conn)) {
         </script>
 
     </div> </body>
-
 </html>
 <?php endif; // End the check for normal page load ?>

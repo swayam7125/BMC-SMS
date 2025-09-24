@@ -2,6 +2,13 @@
 // Include necessary files
 include_once '../../includes/connect.php'; // Database connection
 include_once '../../encryption.php';    // Encryption functions
+include_once '../../includes/ajax_helpers.php';
+
+// Check if this is an AJAX request
+if (is_ajax_request()) {
+    // Start output buffering to capture the HTML
+    ob_start();
+}
 
 // IMPROVEMENT: Set a consistent timezone for all date operations
 date_default_timezone_set('Asia/Kolkata');
@@ -252,5 +259,21 @@ try {
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
-
+<?php
+// Add this block at the very end of the file
+if (is_ajax_request()) {
+    // Get the captured HTML
+    $content = ob_get_clean();
+    
+    // Extract just the main content area for the AJAX response
+    if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
+        echo '<div class="container-fluid">' . $matches[1] . '</div>';
+    } else {
+        // Fallback if the main container isn't found
+        echo $content;
+    }
+    // Stop the script for AJAX requests
+    exit;
+}
+?>
 </html>

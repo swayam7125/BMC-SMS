@@ -1,6 +1,9 @@
 <?php
+// /pages/user/message.php (UPDATED AND FINAL CODE)
+
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
+include_once '../../includes/ajax_helpers.php';
 
 $current_user_id = null;
 $current_user_role = null;
@@ -12,23 +15,19 @@ if (isset($_COOKIE['encrypted_user_id'])) {
     $current_user_id = decrypt_id($_COOKIE['encrypted_user_id']);
 }
 
-// Security check to ensure a valid user is logged in
 if ($current_user_role !== 'teacher' && $current_user_role !== 'student') {
     header("Location: ../../login.php");
     exit();
 }
 
-// Dynamically set page titles and content based on the user's role
 $page_title = ($current_user_role === 'teacher') ? "Message Students" : "Message Teachers";
 $contacts_title = ($current_user_role === 'teacher') ? "Students" : "Teachers";
 
-// ** UPDATED CODE TO GET TEACHER'S STANDARDS **
 $standards = [];
 $teacher_school_id = null;
 
 if ($current_user_role === 'teacher') {
     try {
-        // Fetch the teacher's school ID and the standards they teach using PDO
         $sql = "SELECT school_id, std FROM teacher WHERE id = :id";
         $stmt = $conn->prepare($sql);
         $stmt->bindParam(':id', $current_user_id, PDO::PARAM_INT);
@@ -37,9 +36,6 @@ if ($current_user_role === 'teacher') {
         if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $teacher_school_id = $row['school_id'];
             if ($row['std']) {
-                // The PostgreSQL array is often returned as a string, e.g., "{10,11}". 
-                // We need to parse it into a PHP array.
-                // This regex extracts the numeric values from the string.
                 preg_match_all('/(\d+)/', $row['std'], $matches);
                 if (!empty($matches[1])) {
                     $standards = $matches[1];
@@ -47,14 +43,15 @@ if ($current_user_role === 'teacher') {
             }
         }
     } catch (PDOException $e) {
-        // Log or handle the database error
-        // die("Database error: " . $e->getMessage()); 
+        // Handle error
     }
 }
+
+// This part will ONLY run on a normal page load, NOT during an AJAX call.
+if (!is_ajax_request()):
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($page_title); ?> - Dashboard</title>
@@ -65,13 +62,17 @@ if ($current_user_role === 'teacher') {
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link rel="stylesheet" href="../../assets/css/message.css?v=1.4">
 </head>
-
 <body id="page-top">
     <div id="wrapper">
         <?php include '../../includes/sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include '../../includes/header.php'; ?>
+<?php
+endif; // End of the header/template section wrapper.
+
+// This is the main content. It will run for BOTH normal loads and AJAX requests.
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800"><?php echo htmlspecialchars($page_title); ?></h1>
                     <div class="row">
@@ -140,6 +141,10 @@ if ($current_user_role === 'teacher') {
                         </div>
                     </div>
                 </div>
+<?php
+// This part will also ONLY run on a normal page load.
+if (!is_ajax_request()):
+?>
             </div>
             <?php include_once '../../includes/footer.php'; ?>
         </div>
@@ -156,5 +161,6 @@ if ($current_user_role === 'teacher') {
     </script>
     <script src="/BMC-SMS/assets/js/message.js?v=1.1"></script>
 </body>
-
 </html>
+<?php
+endif;

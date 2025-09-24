@@ -3,6 +3,11 @@ include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 include_once "../../includes/ajax_helpers.php";
 
+if (is_ajax_request()) {
+    // For AJAX requests, only return the content without full HTML
+    ob_start();
+}
+
 $role = null;
 $principals = [];
 $current_user_id = null;
@@ -22,10 +27,10 @@ if ($role !== 'superadmin' && $role !== 'hr') {
 
 try {
     $query = "SELECT p.id, p.principal_name, p.email, p.phone, p.batch, 
-                     sc.school_name, u.account_status
-              FROM principal p 
-              LEFT JOIN school sc ON p.school_id = sc.id
-              LEFT JOIN users u ON p.id = u.id";
+                    sc.school_name, u.account_status
+            FROM principal p 
+            LEFT JOIN school sc ON p.school_id = sc.id
+            LEFT JOIN users u ON p.id = u.id";
 
     if ($role === 'hr') {
         $stmt_school = $conn->prepare("SELECT school_id FROM hr WHERE id = ?");
@@ -50,7 +55,6 @@ try {
     die("A database error occurred.");
 }
 
-if (!is_ajax_request()) 
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -146,9 +150,6 @@ if (!is_ajax_request())
                         </div>
                     </div>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
             </div>
             <?php include '../../includes/footer.php'; ?>
         </div>
@@ -199,9 +200,50 @@ if (!is_ajax_request()) {
             $('#deleteModal').modal('show');
         }
     </script>
-</body>
+    <script>
+        function initializePrincipalList() {
+            // Add data-action attributes to action buttons
+            $('.btn-warning[title="Suspend"]').attr('data-action', 'suspend')
+                .attr('data-confirm', 'Are you sure you want to suspend this principal?');
+            
+            $('.btn-success[title="Reactivate"]').attr('data-action', 'reactivate')
+                .attr('data-confirm', 'Are you sure you want to reactivate this principal?');
+            
+            $('.btn-danger[title="Delete"]').attr('data-action', 'delete')
+                .attr('data-confirm', 'Are you sure you want to delete this principal? This action cannot be undone.');
 
-</html>
+            // Initialize DataTable with AJAX support
+            if (!$.fn.DataTable.isDataTable('#principalListTable')) {
+                $('#principalListTable').DataTable({
+                    processing: true,
+                    serverSide: false, // Set to true if you want server-side processing
+                    responsive: true,
+                    pageLength: 25,
+                    order: [[0, 'asc']],
+                    columnDefs: [
+                        { targets: [-1], orderable: false } // Disable sorting on Actions column
+                    ]
+                });
+            }
+        }
+
+        // Call initialization function when page loads
+        $(document).ready(function() {
+            initializePrincipalList();
+        });
+    </script>
+</body>
 <?php
+if (is_ajax_request()) {
+    $content = ob_get_clean();
+    
+    // Extract just the container-fluid content
+    if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
+        echo '<div class="container-fluid">' . $matches[1] . '</div>';
+    } else {
+        echo $content;
+    }
+    exit;
 }
 ?>
+</html>

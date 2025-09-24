@@ -191,7 +191,7 @@ $(document).ready(function() {
                 }
                 
                 if (hadNewMessages) {
-                    loadContacts(standardFilter.val());
+                    // loadContacts(standardFilter.val()); // <--- PROBLEM SOLVED BY REMOVING THIS LINE
                     pollForNotifications();
                 }
             }
@@ -240,7 +240,12 @@ $(document).ready(function() {
         filePreviewContainer.hide();
     }
 
-    contactsList.on('click', '.contact-item', function() {
+    contactsList.on('click', '.contact-item', function(e) { // <--- CHANGE 1: Added 'e' here
+        e.preventDefault(); // <--- CHANGE 2: Added this line to prevent page reload
+    
+        // Immediately find the badge within the clicked item and fade it out.
+        $(this).find('.badge-counter').fadeOut('fast');
+        
         const contactId = $(this).data('contact-id');
         if (activeContactId === contactId) return;
         
@@ -251,7 +256,7 @@ $(document).ready(function() {
         $('#chat-with-name').text('Chat with ' + $(this).data('contact-name'));
         messageText.add(sendButton).add(attachButton).prop('disabled', false);
         messageText.focus();
-
+    
         if (messageInterval) clearInterval(messageInterval);
         cancelFileSelection();
         loadMessages(contactId, true);
