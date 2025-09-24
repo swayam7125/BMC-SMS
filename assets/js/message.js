@@ -261,6 +261,7 @@ $(document).ready(function() {
     }
 
     contactsList.on('click', '.contact-item', function() {
+    contactsList.on('click', '.contact-item', function() {
         const contactId = $(this).data('contact-id');
         if (activeContactId === contactId) return;
         
@@ -271,6 +272,7 @@ $(document).ready(function() {
         $('#chat-with-name').text('Chat with ' + $(this).data('contact-name'));
         messageText.add(sendButton).add(attachButton).prop('disabled', false);
         messageText.focus();
+
 
         if (messageInterval) clearInterval(messageInterval);
         cancelFileSelection();

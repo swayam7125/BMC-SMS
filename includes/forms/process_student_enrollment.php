@@ -1,9 +1,10 @@
 <?php
+
 require_once '../../includes/connect.php';
 require_once '../../includes/ajax_helpers.php';
 require_once '../../includes/layout.php';
 require_once '../../encryption.php';
-require_once '../../includes/log_system.php'; // ADDED: Log system dependency
+require_once '../../includes/log_system.php';
 
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
@@ -23,8 +24,7 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role'])) {
 // Identify enrolling user from session
 $enrolling_user_id = $_SESSION['user_id'];
 $enrolling_role = $_SESSION['user_role'];
-$enrolling_user_name = $_SESSION['user_name'] ?? 'Session User'; // Retrieve user name for log
-
+$enrolling_user_name = $_SESSION['user_name'] ?? 'Session User';
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     Response::send([
         'success' => false,
