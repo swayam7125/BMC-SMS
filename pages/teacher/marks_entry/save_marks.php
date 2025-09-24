@@ -2,6 +2,7 @@
 header('Content-Type: application/json');
 include_once "../../../includes/connect.php";
 include_once "../../../encryption.php";
+include_once "../../../includes/log_system.php"; // ADDED: Log system dependency
 // include_once "../../../includes/email_functions.php"; // Uncomment if you have email sending setup
 
 $response = ['success' => false, 'message' => 'An error occurred.'];
@@ -10,6 +11,7 @@ $role = null;
 $teacher_id = null;
 if (isset($_COOKIE['encrypted_user_role'])) $role = decrypt_id($_COOKIE['encrypted_user_role']);
 if (isset($_COOKIE['encrypted_user_id'])) $teacher_id = decrypt_id($_COOKIE['encrypted_user_id']);
+$acting_user_name = decrypt_id($_COOKIE['encrypted_user_name'] ?? '') ?? 'Teacher'; // ADDED: Retrieve acting user name
 
 if ($role !== 'teacher' || !$teacher_id) {
     $response['message'] = 'Authentication failed.';
@@ -68,6 +70,11 @@ if (isset($_POST['marks']) && isset($_POST['class_std']) && isset($_POST['exam_t
         }
 
         $conn->commit();
+        
+        // ⭐ LOGGING: Log the marks entry action
+        $log_message = "ACADEMICS: Saved/Updated {$saved_count} marks entries for class {$class_std} in {$exam_type} for academic year {$academic_year}.";
+        log_interaction($role, $teacher_id, $log_message, $acting_user_name);
+        
         $response['success'] = true;
         $response['message'] = "Successfully saved/updated {$saved_count} marks entries!";
 

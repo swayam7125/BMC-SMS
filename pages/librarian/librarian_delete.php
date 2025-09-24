@@ -7,10 +7,14 @@
 
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
+include_once "../../includes/log_system.php"; // ADDED: Log system dependency
 
 // --- Authorization ---
 // Ensure only a user with the 'principal' role can execute this script.
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
+$current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null; // Added for logging
+$acting_user_name = decrypt_id($_COOKIE['encrypted_user_name'] ?? '') ?? 'Principal'; // Added for logging
+
 if (!$role || $role !== 'principal') {
     header("Location: ../../login.php?error=Unauthorized");
     exit;
@@ -23,6 +27,7 @@ if (!isset($_GET['id']) || !filter_var($_GET['id'], FILTER_VALIDATE_INT)) {
     exit;
 }
 $librarian_id = (int)$_GET['id'];
+$librarian_name = 'Unknown Librarian';
 
 try {
     // --- Database Transaction ---
@@ -38,6 +43,7 @@ try {
     if (!$librarian_data) {
         throw new Exception("Librarian with ID $librarian_id not found.");
     }
+    $librarian_name = $librarian_data['librarian_name']; // Capture name for log
 
     // Step 2: Archive the data into the 'deleted_librarians' table for record-keeping.
     $query_archive = "INSERT INTO deleted_librarians (id, librarian_name, email, phone, dob, gender, blood_group, address, qualification, salary, school_id, deleted_by_role) 
@@ -75,6 +81,11 @@ try {
 
     // If all steps were successful, commit the transaction.
     $conn->commit();
+    
+    // ⭐ LOGGING: Log the critical deletion action
+    $log_message = "DELETION: Librarian '{$librarian_name}' (ID: {$librarian_id}) was successfully deleted and archived by {$role}.";
+    log_interaction($role, $current_user_id, $log_message, $acting_user_name);
+    
     header("Location: librarian_list.php?success=Librarian has been successfully deleted.");
     exit;
 } catch (Exception $e) {

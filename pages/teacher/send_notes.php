@@ -4,6 +4,12 @@ include_once "../../includes/connect.php";
 include_once "../../includes/ajax_helpers.php";
 // include_once "../../includes/email_functions.php"; // Uncomment if email is set up
 
+// Check if this is an AJAX request
+if (is_ajax_request()) {
+    // Start output buffering to capture the HTML
+    ob_start();
+}
+
 $role = null;
 $userId = null;
 $schoolId = null;
@@ -185,7 +191,8 @@ if (!is_ajax_request()) {
                                                         <tr>
                                                             <td><?php echo htmlspecialchars($note['title']); ?></td>
                                                             <td><?php echo htmlspecialchars($note['target_standard']); ?></td>
-                                                            <td><?php echo date('d-m-Y H:i', strtotime($note['created_at'])); ?></td>
+                                                            <td><?php echo date('d-m-Y H:i', strtotime($note['created_at'])); ?></td>
+
                                                         </tr>
                                                     <?php endforeach;
                                                 else: ?>
@@ -213,7 +220,23 @@ if (!is_ajax_request()) {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
-
+<?php
+// Add this block at the very end of the file
+if (is_ajax_request()) {
+    // Get the captured HTML
+    $content = ob_get_clean();
+    
+    // Extract just the main content area for the AJAX response
+    if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
+        echo '<div class="container-fluid">' . $matches[1] . '</div>';
+    } else {
+        // Fallback if the main container isn't found
+        echo $content;
+    }
+    // Stop the script for AJAX requests
+    exit;
+}
+?>
 </html>
 <?php
 }

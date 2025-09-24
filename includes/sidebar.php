@@ -1281,3 +1281,38 @@ if (isset($conn) && $user_id) {
         }
     });
 </script>
+
+<script>
+// Enhanced sidebar functionality for AJAX
+$(document).ready(function() {
+    // Add AJAX data attributes to navigation links
+    $('.nav-link, .collapse-item').each(function() {
+        const href = $(this).attr('href');
+        if (href && !href.startsWith('#') && !href.startsWith('javascript:') && !href.startsWith('http')) {
+            $(this).attr('data-ajax', 'true');
+        }
+    });
+    
+    // Update active states based on current URL
+    function updateActiveStates() {
+        const currentPath = window.location.pathname;
+        const currentPage = currentPath.substring(currentPath.lastIndexOf('/') + 1);
+        
+        $('.nav-link, .collapse-item').removeClass('active');
+        $('.nav-item').removeClass('active');
+        
+        // Find and activate current page
+        $(`.nav-link[href*="${currentPage}"], .collapse-item[href*="${currentPage}"]`).each(function() {
+            $(this).addClass('active');
+            $(this).closest('.nav-item').addClass('active');
+            $(this).closest('.collapse').addClass('show');
+        });
+    }
+    
+    // Update active states on page load
+    updateActiveStates();
+    
+    // Listen for AJAX page loads to update active states
+    $(document).on('ajax:page:loaded', updateActiveStates);
+});
+</script>

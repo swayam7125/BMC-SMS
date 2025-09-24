@@ -1,6 +1,7 @@
 <?php
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
+include_once "../../includes/log_system.php"; // ADDED: Log system dependency
 
 // Check if user is logged in
 $role = null;
@@ -8,6 +9,7 @@ if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
 $current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+$acting_user_name = decrypt_id($_COOKIE['encrypted_user_name'] ?? '') ?? 'System Admin'; // Added for logging
 
 // Only principal and hr can edit a teacher's profile
 if ($role !== 'principal' && $role !== 'hr') {
@@ -224,6 +226,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $conn->commit();
+            
+            // ⭐ LOGGING: Log the teacher profile update
+            $log_message = "UPDATE: Teacher profile for '{$teacher_name}' (ID: {$teacher_id}) was successfully updated by {$role}.";
+            log_interaction($role, $current_user_id, $log_message, $acting_user_name);
             
             $redirect_url = 'teacher_list.php';
             header("Location: " . $redirect_url . "?success=Teacher updated successfully");

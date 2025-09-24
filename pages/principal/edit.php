@@ -2,6 +2,7 @@
 // Includes for database connection and encryption functions.
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
+include_once "../../includes/log_system.php"; // ADDED: Log system dependency
 
 if (!defined('BASE_URL')) {
     define('BASE_URL', '/BMC-SMS/');
@@ -28,6 +29,7 @@ function getWebAccessibleImagePath($db_image_path)
 
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 $current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+$acting_user_name = decrypt_id($_COOKIE['encrypted_user_name'] ?? '') ?? 'System Admin'; // Added for logging
 
 // Only superadmin and HR can edit a principal's profile
 if ($role !== 'superadmin' && $role !== 'hr') {
@@ -220,6 +222,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $conn->commit();
+            
+            // ⭐ LOGGING: Log the principal profile update
+            $log_message = "UPDATE: Principal profile for '{$principal_name}' (ID: {$principal_id}) was successfully updated by {$role}.";
+            log_interaction($role, $current_user_id, $log_message, $acting_user_name);
             
             if ($new_image_was_uploaded && $principal_id == decrypt_id($_COOKIE['encrypted_user_id'])) {
                 $encrypted_image_path = encrypt_id($image_path_for_db);
