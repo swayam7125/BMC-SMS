@@ -30,9 +30,17 @@ $(document).on('submit', 'form[data-ajax-form]', function(e) {
         method: $form.attr('method') || 'POST',
         data: serializeFormToJSON($form[0]),
         success: function(response) {
+            // Check if a specific alert placeholder is available for the form
+            let alertPlaceholder = $form.closest('.card-body').find('#fee-alert-placeholder');
+            if (alertPlaceholder.length === 0) {
+                // Fallback to a general placeholder if the specific one is not found
+                alertPlaceholder = $('#fee-alert-placeholder');
+            }
+            alertPlaceholder.empty(); // Clear previous alerts
+
             if (response.success) {
                 // Show success message
-                showNotification('success', response.message || 'Operation completed successfully');
+                showNotification('success', response.message || 'Operation completed successfully', alertPlaceholder);
                 
                 // If redirect URL is provided, navigate to it
                 if (response.redirect) {
@@ -47,11 +55,18 @@ $(document).on('submit', 'form[data-ajax-form]', function(e) {
                 // Trigger success event for custom handling
                 $form.trigger('ajaxFormSuccess', [response]);
             } else {
-                showNotification('error', response.message || 'An error occurred');
+                showNotification('error', response.message || 'An error occurred', alertPlaceholder);
             }
         },
         error: function(xhr, status, error) {
-            showNotification('error', 'Server error: ' + error);
+            // Check if a specific alert placeholder is available for the form
+            let alertPlaceholder = $form.closest('.card-body').find('#fee-alert-placeholder');
+            if (alertPlaceholder.length === 0) {
+                // Fallback to a general placeholder if the specific one is not found
+                alertPlaceholder = $('#fee-alert-placeholder');
+            }
+            
+            showNotification('error', 'Server error: ' + error, alertPlaceholder);
         },
         complete: function() {
             // Re-enable submit button and restore original text
@@ -61,7 +76,7 @@ $(document).on('submit', 'form[data-ajax-form]', function(e) {
 });
 
 // Function to show notifications
-function showNotification(type, message) {
+function showNotification(type, message, placeholder) {
     const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
     const alert = $(`
         <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
@@ -72,9 +87,13 @@ function showNotification(type, message) {
         </div>
     `);
     
-    // Add alert to the page
-    $('#main-content').prepend(alert);
-    
+    // Add alert to the specified placeholder or a default location
+    if (placeholder && placeholder.length > 0) {
+        placeholder.prepend(alert);
+    } else {
+        $('#main-content').prepend(alert);
+    }
+
     // Auto-dismiss after 5 seconds
     setTimeout(() => {
         alert.alert('close');

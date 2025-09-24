@@ -954,6 +954,14 @@ if (isset($conn) && $user_id) {
                 </a>
             </li>
 
+            <li class="nav-item <?php echo ($current_page == 'pay_fees.php') ? 'active' : ''; ?>">
+                <a class="nav-link" href="/BMC-SMS/pages/student/pay_fees.php">
+                    <div><i class="fas fa-dollar-sign"></i>
+                        <span>Pay Fees</span>
+                    </div>
+                </a>
+            </li>
+
             <hr class="sidebar-divider">
             <div class="sidebar-heading font-weight-semibold">Library</div>
             <li class="nav-item">
@@ -1197,6 +1205,13 @@ if (isset($conn) && $user_id) {
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/hr/view_my_attendance.php">
                     <div><i class="fas fa-fw fa-user-check"></i>
                         <span>My Attendance</span>
+                    </div>
+                </a>
+            </li>
+            <li class="nav-item <?php echo ($current_page == 'manage_fees.php') ? 'active' : ''; ?>">
+                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/hr/manage_fees.php">
+                    <div><i class="fas fa-fw fa-user-check"></i>
+                        <span>Add Fees</span>
                     </div>
                 </a>
             </li>

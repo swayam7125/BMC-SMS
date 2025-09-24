@@ -113,6 +113,7 @@ $page_map = [
     'view_exam_timetable' => __DIR__ . '/pages/student/view_exam_timetable.php',
     'browse_books' => __DIR__ . '/pages/student/browse_books.php',
     'request_new_book' => __DIR__ . '/pages/user/request_new_book.php',
+    'view_fees' => __DIR__ . '/pages/student/view_fees.php',
 
     // Librarian
     'view_my_attendance' => __DIR__ . '/pages/librarian/view_my_attendance.php',
@@ -126,6 +127,7 @@ $page_map = [
     'past_books' => __DIR__ . '/pages/past_record/past_books.php',
 
     // HR
+    'manage_fees' => __DIR__ . '/pages/hr/manage_fees.php',
     'manage_incentives' => __DIR__ . '/pages/hr/manage_incentives.php',
     'process_teacher_salary' => __DIR__ . '/pages/hr/process_teacher_salary.php',
     'process_librarian_salary' => __DIR__ . '/pages/hr/process_librarian_salary.php',

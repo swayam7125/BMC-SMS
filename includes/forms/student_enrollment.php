@@ -44,10 +44,40 @@ $standards = [];
 try {
     $stmt_schools = $conn->query('SELECT "id", "school_name" FROM "school" ORDER BY "school_name"');
     $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
+
+    // Fetch standards based on school category with custom sorting
+    if ($admin_school_id) {
+    $stmt_standards = $conn->prepare('
+        SELECT DISTINCT scm.standard_name,
+        CASE
+            WHEN scm.standard_name = \'Nursery\' THEN 1
+            WHEN scm.standard_name = \'Junior\' THEN 2
+            WHEN scm.standard_name = \'Senior\' THEN 3
+            ELSE 4
+        END AS custom_order_group,
+
+        CASE
+            WHEN scm.standard_name ~ \'^[0-9]+$\' THEN CAST(scm.standard_name AS INTEGER)
+            ELSE 999
+        END AS custom_order_numeric
+        FROM "school" s
+        JOIN "standard_categories_mapping" scm ON scm.category_name = ANY(s.school_category)
+        WHERE s.id = ?
+        ORDER BY
+            custom_order_group,
+            custom_order_numeric,
+            scm.standard_name
+
+    ');
+
+    $stmt_standards->execute([$admin_school_id]);
+    $standards = $stmt_standards->fetchAll(PDO::FETCH_ASSOC);
     
-    // ⭐ FIX: Changed "standards" to the correct table name "standard_categories_mapping"
+} else {
+    // Fallback for non-principal roles or if no school ID is found
     $stmt_standards = $conn->query('SELECT DISTINCT standard_name FROM "standard_categories_mapping" ORDER BY standard_name');
     $standards = $stmt_standards->fetchAll(PDO::FETCH_ASSOC);
+}
 
     // Fetch transport stops for the current school if the user is a principal
     $transport_stops = [];
@@ -110,8 +140,8 @@ if (!is_ajax_request()) {
                                             <div class="form-group col-md-12"><label for="name">Student Name *</label><input type="text" class="form-control" id="name" name="name" required></div>
                                         </div>
                                         <div class="form-row">
-                                            <div class="form-group col-md-6"><label for="roll_number">Roll Number *</label><input type="text" class="form-control" id="roll_number" name="roll_number" required></div>
                                             <div class="form-group col-md-6"><label for="email">Email *</label><input type="email" class="form-control" id="email" name="email" required></div>
+                                            <div class="form-group col-md-6"><label for="password">Password *</label><input type="password" class="form-control" id="password" name="password" required></div>
                                         </div>
                                     </div>
                                 </div>
@@ -133,7 +163,24 @@ if (!is_ajax_request()) {
                                             </select>
                                         <?php endif; ?>
                                     </div>
-                                    <div class="form-group col-md-6"><label for="class">Class / Standard *</label>
+                                    <div class="form-group col-md-6">
+                                        <label for="academic_year">Academic Year *</label>
+                                        <select class="form-control" id="academic_year" name="academic_year" required>
+                                            <option value="">-- Select Year --</option>
+                                            <?php
+                                            $currentYear = date('Y');
+                                            for ($i = -2; $i <= 2; $i++):
+                                                $year = $currentYear + $i;
+                                                $academicYear = $year . '-' . ($year + 1);
+                                                echo "<option value='" . $academicYear . "'>" . $academicYear . "</option>";
+                                            endfor;
+                                            ?>
+                                        </select>
+                                    </div>
+                                    </div>
+                                <div class="form-row">
+                                    <div class="form-group col-md-6">
+                                        <label for="class">Class / Standard *</label>
                                         <select class="form-control" id="class" name="class" required>
                                             <option value="">-- Select Class --</option>
                                             <?php foreach ($standards as $standard): ?>
@@ -141,8 +188,43 @@ if (!is_ajax_request()) {
                                             <?php endforeach; ?>
                                         </select>
                                     </div>
+                                    <div class="form-group col-md-6">
+                                        <label for="roll_number">Roll Number *</label>
+                                        <input type="text" class="form-control" id="roll_number" name="roll_number" required>
+                                    </div>
+                                
+                                </div>
+
+                                <hr>
+                                <h6 class="text-primary">Personal Information</h6>
+                                <div class="form-row mt-3">
+                                    <div class="form-group col-md-6"><label for="dob">Date of Birth *</label><input type="date" class="form-control" id="dob" name="dob" required></div>
+                                    <div class="form-group col-md-6"><label for="gender">Gender *</label><select class="form-control" id="gender" name="gender" required>
+                                            <option value="">-- Select Gender --</option>
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                            <option value="Others">Others</option>
+                                        </select></div>
+                                    <div class="form-group col-md-6"><label for="blood_group">Blood Group *</label><select class="form-control" id="blood_group" name="blood_group" required>
+                                            <option value="">-- Select Blood Group --</option>
+                                            <option value="A+">A+</option><option value="A-">A-</option><option value="B+">B+</option><option value="B-">B-</option><option value="AB+">AB+</option><option value="AB-">AB-</option><option value="O+">O+</option><option value="O-">O-</option>
+                                        </select></div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group col-md-6"><label for="address">Residential Address</label><textarea class="form-control" id="address" name="address" rows="1"></textarea></div>
                                 </div>
                                 
+                                <hr>
+                                <h6 class="text-primary">Parent/Guardian Information</h6>
+                                <div class="form-row mt-3">
+                                    <div class="form-group col-md-6"><label for="father_name">Father's Name *</label><input type="text" class="form-control" id="father_name" name="father_name" required></div>
+                                    <div class="form-group col-md-6"><label for="father_phone">Father's Contact Number *</label><input type="tel" class="form-control" id="father_phone" name="father_phone" maxlength="10" required></div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group col-md-6"><label for="mother_name">Mother's Name *</label><input type="text" class="form-control" id="mother_name" name="mother_name" required></div>
+                                    <div class="form-group col-md-6"><label for="mother_phone">Mother's Contact Number *</label><input type="tel" class="form-control" id="mother_phone" name="mother_phone" maxlength="10" required></div>
+                                </div>
+
                                 <hr>
                                 <h6 class="text-primary">Transport Details</h6>
                                  <div class="form-row mt-3">
@@ -194,25 +276,6 @@ if (!is_ajax_request()) {
                                     </div>
                                 </div>
 
-                                <hr>
-                                <h6 class="text-primary">Personal Information</h6>
-                                <div class="form-row mt-3">
-                                    <div class="form-group col-md-4"><label for="contact_number">Contact Number</label><input type="tel" class="form-control" id="contact_number" name="contact_number" maxlength="10"></div>
-                                    <div class="form-group col-md-4"><label for="dob">Date of Birth</label><input type="date" class="form-control" id="dob" name="dob"></div>
-                                    <div class="form-group col-md-4"><label for="gender">Gender *</label><select class="form-control" id="gender" name="gender" required>
-                                            <option value="">-- Select Gender --</option>
-                                            <option value="Male">Male</option>
-                                            <option value="Female">Female</option>
-                                            <option value="Others">Others</option>
-                                        </select></div>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group col-md-6"><label for="blood_group">Blood Group *</label><select class="form-control" id="blood_group" name="blood_group" required>
-                                            <option value="">-- Select Blood Group --</option>
-                                            <option value="A+">A+</option><option value="A-">A-</option><option value="B+">B+</option><option value="B-">B-</option><option value="AB+">AB+</option><option value="AB-">AB-</option><option value="O+">O+</option><option value="O-">O-</option>
-                                        </select></div>
-                                    <div class="form-group col-md-6"><label for="address">Address</label><textarea class="form-control" id="address" name="address" rows="1"></textarea></div>
-                                </div>
                                 <div class="form-group mt-4">
                                     <button type="submit" class="btn btn-primary"><i class="fas fa-user-plus"></i> Enroll Student</button>
                                     <button type="reset" class="btn btn-secondary"><i class="fas fa-times"></i> Reset Form</button>
