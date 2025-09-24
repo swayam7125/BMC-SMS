@@ -1,6 +1,7 @@
 <?php
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
+include_once "../../includes/log_system.php"; // ADDED: Log system dependency
 
 // Check if user is logged in
 $role = null;
@@ -8,6 +9,7 @@ if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
 $current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+$acting_user_name = decrypt_id($_COOKIE['encrypted_user_name'] ?? '') ?? 'System Admin'; // Added for logging
 
 // Allow principal and hr to edit student profiles
 if ($role !== 'principal' && $role !== 'hr') {
@@ -156,7 +158,7 @@ try {
             $update_student_sql = "UPDATE student SET
                                   student_image = ?, student_name = ?, rollno = ?, std = ?, email = ?, academic_year = ?,
                                   school_id = ?, dob = ?, gender = ?, blood_group = ?, address = ?,
-                                  father_name = ?, father_phone = ?, mother_name = ?, mother_phone = ?,
+                                  father_name = ?, father_phone = ?, mother_name = ?, mother_name = ?, mother_phone = ?,
                                   stop_id = ?, transport_mode = ?, self_transport_mode = ?, vehicle_number = ?, license_number = ?
                                   WHERE id = ?";
 
@@ -186,6 +188,11 @@ try {
             ]);
 
             $conn->commit();
+            
+            // ⭐ LOGGING: Log the student profile update
+            $log_message = "UPDATE: Student profile for '{$student_name}' (Roll No: {$rollno}, ID: {$student_id}) was successfully updated by {$role}.";
+            log_interaction($role, $current_user_id, $log_message, $acting_user_name);
+            
             header("Location: student_list.php?success=Student updated successfully");
             exit;
         }

@@ -3,11 +3,66 @@ require_once 'response.php';
 
 /**
  * Check if the current request is an AJAX request
- * @return boolean
  */
 function is_ajax_request() {
-    return (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
-            strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest');
+    return isset($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+           strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+}
+
+/**
+ * Send JSON response and exit
+ */
+function json_response($success = false, $message = '', $data = [], $redirect = null) {
+    header('Content-Type: application/json');
+    
+    $response = [
+        'success' => $success,
+        'message' => $message,
+        'data' => $data
+    ];
+    
+    if ($redirect) {
+        $response['redirect'] = $redirect;
+    }
+    
+    echo json_encode($response);
+    exit;
+}
+
+/**
+ * Handle form validation errors
+ */
+function handle_validation_errors($errors) {
+    if (is_ajax_request()) {
+        json_response(false, 'Please fix the errors below', ['errors' => $errors]);
+    } else {
+        // Handle non-AJAX requests normally
+        $error_string = implode(', ', $errors);
+        header("Location: " . $_SERVER['HTTP_REFERER'] . "?error=" . urlencode($error_string));
+        exit;
+    }
+}
+
+/**
+ * Handle success responses
+ */
+function handle_success($message, $redirect = null, $reload = false) {
+    if (is_ajax_request()) {
+        $data = [];
+        if ($redirect) {
+            $data['redirect'] = $redirect;
+        } elseif ($reload) {
+            $data['reload'] = true;
+        }
+        json_response(true, $message, $data);
+    } else {
+        if ($redirect) {
+            header("Location: " . $redirect . "?success=" . urlencode($message));
+        } else {
+            header("Location: " . $_SERVER['HTTP_REFERER'] . "?success=" . urlencode($message));
+        }
+        exit;
+    }
 }
 
 /**

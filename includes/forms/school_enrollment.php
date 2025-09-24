@@ -179,7 +179,7 @@ if (!is_ajax_request()) {
                         <h6 class="m-0 font-weight-bold text-primary">School Details</h6>
                     </div>
                     <div class="card-body">
-                        <form method="POST" enctype="multipart/form-data">
+                        <form method="POST" action="your-handler.php" data-ajax="true" data-validate="true" enctype="multipart/form-data">
                             <div class="form-row">
                                 <div class="form-group col-md-6">
                                     <label for="school_name">School Name *</label>

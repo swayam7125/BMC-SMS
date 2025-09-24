@@ -7,10 +7,12 @@
 
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
+include_once '../../includes/log_system.php'; // ADDED: Log system dependency
 
 // --- Authorization ---
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 $librarian_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+$acting_user_name = decrypt_id($_COOKIE['encrypted_user_name'] ?? '') ?? 'Librarian'; // ADDED: Retrieve acting user name
 
 if ($role !== 'librarian' || !$librarian_user_id) {
     header("Location: ../../login.php");
@@ -35,6 +37,7 @@ try {
         $stmt_info = $conn->prepare('SELECT br.borrower_id, br.borrower_role, b.title FROM "borrow_requests" br JOIN "books" b ON br.book_id = b.book_id WHERE br.request_id = ?');
         $stmt_info->execute([$request_id]);
         $info = $stmt_info->fetch(PDO::FETCH_ASSOC);
+        $book_title = $info['title'] ?? 'Unknown Book'; // Capture title for log
 
         // Update the request status to 'Rejected'.
         $stmt_reject = $conn->prepare("UPDATE \"borrow_requests\" SET status = 'Rejected', librarian_id = ?, action_date = CURRENT_TIMESTAMP, rejection_reason = ? WHERE request_id = ? AND status = 'Pending'");
@@ -47,6 +50,10 @@ try {
                 $link = ($info['borrower_role'] === 'student') ? 'pages/student/my_library_record.php' : 'pages/teacher/my_library_record.php';
                 $stmt_notify = $conn->prepare('INSERT INTO "notifications" (user_id, message, link, type) VALUES (?, ?, ?, ?)');
                 $stmt_notify->execute([$info['borrower_id'], $message, $link, "borrow_status"]);
+                
+                // ⭐ LOGGING: Log the rejection
+                $log_message = "LIBRARY ACTION: Rejected borrow request (ID: {$request_id}) for book '{$book_title}'. Reason: {$rejection_reason}";
+                log_interaction($role, $librarian_user_id, $log_message, $acting_user_name);
             }
             header("Location: $redirect_url?success=" . urlencode("Request successfully rejected."));
             exit;
@@ -81,6 +88,9 @@ try {
         if (!$book || $book['quantity_available'] < 1) {
             throw new Exception("Approval failed: This book is no longer available.");
         }
+        $book_title = $book['title']; // Capture title for log
+        $borrower_id = $request['borrower_id'];
+        $borrower_role = $request['borrower_role'];
 
         // Step 3: Update book quantity.
         $stmt_update_book = $conn->prepare('UPDATE "books" SET "quantity_available" = "quantity_available" - 1 WHERE "book_id" = ?');
@@ -102,6 +112,11 @@ try {
         $stmt_notify->execute([$request['borrower_id'], $message, $link, "borrow_status"]);
 
         $conn->commit();
+        
+        // ⭐ LOGGING: Log the approval
+        $log_message = "LIBRARY ACTION: Approved borrow request (ID: {$request_id}) for book '{$book_title}'. Issued to {$borrower_role} ID: {$borrower_id}.";
+        log_interaction($role, $librarian_user_id, $log_message, $acting_user_name);
+        
         header("Location: $redirect_url?success=" . urlencode("Request approved and book issued successfully."));
         exit;
     }

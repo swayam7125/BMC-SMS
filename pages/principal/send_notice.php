@@ -4,6 +4,7 @@ include_once "../../encryption.php";
 include_once "../../includes/connect.php"; // Your PDO connection file
 include_once "../../includes/email_functions.php"; // Email functions
 include_once "../../includes/ajax_helpers.php";
+include_once "../../includes/log_system.php"; // ADDED: Log system dependency
 
 // Initialize variables
 $role = null;
@@ -12,6 +13,7 @@ $schoolId = null;
 $principalName = 'Principal';
 $availableStandards = [];
 $availableTeachers = [];
+$acting_user_name = null; // Initialize for logging
 
 // Get user info from cookies
 if (isset($_COOKIE['encrypted_user_role'])) {
@@ -21,6 +23,7 @@ if (isset($_COOKIE['encrypted_user_role'])) {
 if (isset($_COOKIE['encrypted_user_id'])) {
     $userId = decrypt_id($_COOKIE['encrypted_user_id']);
 }
+$acting_user_name = decrypt_id($_COOKIE['encrypted_user_name'] ?? '') ?? 'Principal'; // ADDED: Retrieve acting user name
 
 // Security check: ensure user is a principal and logged in
 if ($role !== 'principal' || !$userId) {
@@ -125,6 +128,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
         }
 
         $conn->commit();
+        
+        // ⭐ LOGGING: Log the notice creation action
+        $recipient_count = count($teacher_ids_to_notify) + count($standards_to_notify);
+        $recipients = $send_to_group === 'both' ? 'All Teachers & Students' : ($send_to_group === 'teacher' ? 'Teachers' : 'Students/Standards');
+        $log_message = "NOTICE SENT: Notice titled '{$title}' sent to {$recipient_count} recipients/groups ({$recipients}).";
+        log_interaction($role, $userId, $log_message, $acting_user_name);
+        
     } catch (Exception $e) {
         if ($conn->inTransaction()) {
             $conn->rollBack();
@@ -303,7 +313,23 @@ if (!is_ajax_request()) {
         });
     </script>
 </body>
-
+<?php
+// Add this block at the very end of the file
+if (is_ajax_request()) {
+    // Get the captured HTML
+    $content = ob_get_clean();
+    
+    // Extract just the main content area for the AJAX response
+    if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
+        echo '<div class="container-fluid">' . $matches[1] . '</div>';
+    } else {
+        // Fallback if the main container isn't found
+        echo $content;
+    }
+    // Stop the script for AJAX requests
+    exit;
+}
+?>
 </html>
 <?php
 }

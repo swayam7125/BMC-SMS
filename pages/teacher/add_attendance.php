@@ -2,6 +2,7 @@
 // Include necessary files
 include_once '../../includes/connect.php'; // Database connection
 include_once '../../encryption.php';    // Encryption functions
+include_once '../../includes/log_system.php'; // ADDED: Log system dependency
 
 // IMPROVEMENT: Set a consistent timezone for all date operations
 date_default_timezone_set('Asia/Kolkata');
@@ -15,6 +16,7 @@ $students = [];
 $all_missing_dates = []; // To hold ALL dates with incomplete attendance
 $is_holiday = false; // NEW: Holiday flag
 $holiday_description = ''; // NEW: Holiday description
+$acting_user_name = null; // Initialize for logging
 
 // Retrieve and decrypt user role and ID from cookies
 if (isset($_COOKIE['encrypted_user_role'])) {
@@ -23,6 +25,8 @@ if (isset($_COOKIE['encrypted_user_role'])) {
 if (isset($_COOKIE['encrypted_user_id'])) {
     $userId = decrypt_id($_COOKIE['encrypted_user_id']);
 }
+$acting_user_name = decrypt_id($_COOKIE['encrypted_user_name'] ?? '') ?? 'Teacher'; // ADDED: Retrieve acting user name
+
 
 // Authorization Check: Ensure user is a logged-in teacher
 if (!$role || $role !== 'teacher') {
@@ -89,6 +93,7 @@ try {
         $attendance_data = $_POST['attendance'];
         $class_std = $teacherDetails['class_teacher_std'];
         $school_id = $teacherDetails['school_id'];
+        $attendance_count = count($attendance_data);
 
         $conn->beginTransaction();
 
@@ -104,6 +109,11 @@ try {
         }
 
         $conn->commit();
+        
+        // ⭐ LOGGING: Log the attendance entry action
+        $log_message = "ATTENDANCE: Saved/Updated attendance for {$attendance_count} students in class {$class_std} for date {$attendance_date}.";
+        log_interaction($role, $userId, $log_message, $acting_user_name);
+        
         $successMessage = "Attendance for " . htmlspecialchars($attendance_date) . " has been saved successfully!";
     }
 
@@ -252,5 +262,21 @@ try {
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
-
+<?php
+// Add this block at the very end of the file
+if (is_ajax_request()) {
+    // Get the captured HTML
+    $content = ob_get_clean();
+    
+    // Extract just the main content area for the AJAX response
+    if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
+        echo '<div class="container-fluid">' . $matches[1] . '</div>';
+    } else {
+        // Fallback if the main container isn't found
+        echo $content;
+    }
+    // Stop the script for AJAX requests
+    exit;
+}
+?>
 </html>

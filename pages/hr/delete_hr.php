@@ -2,6 +2,7 @@
 // Include necessary files with corrected paths
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
+include_once "../../includes/log_system.php"; // ADDED: Log system dependency
 
 // Get user role and ID from cookies
 $role = null;
@@ -12,6 +13,7 @@ if (isset($_COOKIE['encrypted_user_role'])) {
 if (isset($_COOKIE['encrypted_user_id'])) {
     $userId = decrypt_id($_COOKIE['encrypted_user_id']);
 }
+$acting_user_name = decrypt_id($_COOKIE['encrypted_user_name'] ?? '') ?? 'Principal'; // Added for logging
 
 // Security: Only principals can perform this action
 if ($role !== 'principal') {
@@ -33,6 +35,7 @@ if ($userId) {
     $stmt->execute([$userId]);
     $admin_school_id = $stmt->fetchColumn();
 }
+$hr_name = 'Unknown HR User'; // Fallback name
 
 try {
     // Start database transaction
@@ -48,6 +51,7 @@ try {
         header("Location: hr_list.php?error=You do not have permission to delete this user.");
         exit;
     }
+    $hr_name = $hr_data['hr_name']; // Capture name for log
     
     // 2. Archive the HR user's data before deletion
     $query_archive_hr = "INSERT INTO deleted_hr
@@ -103,6 +107,10 @@ try {
     // Commit the transaction
     $conn->commit();
 
+    // ⭐ LOGGING: Log the critical deletion action
+    $log_message = "DELETION: HR user '{$hr_name}' (ID: {$hr_user_id_to_delete}) was successfully deleted and archived by {$role}.";
+    log_interaction($role, $userId, $log_message, $acting_user_name);
+    
     header("Location: hr_list.php?success=HR user deleted and archived successfully.");
     exit();
 

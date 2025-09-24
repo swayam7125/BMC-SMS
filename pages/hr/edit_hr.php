@@ -1,12 +1,18 @@
 <?php
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
+include_once "../../includes/log_system.php"; // ADDED: Log system dependency
 
 // Check if user is logged in
 $role = null;
+$current_user_id = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
+if (isset($_COOKIE['encrypted_user_id'])) {
+    $current_user_id = decrypt_id($_COOKIE['encrypted_user_id']);
+}
+$acting_user_name = decrypt_id($_COOKIE['encrypted_user_name'] ?? '') ?? 'System Admin'; // Added for logging
 
 if ($role !== 'principal') {
     header("Location: ../../login.php?error=Unauthorized");
@@ -190,6 +196,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $conn->commit();
+            
+            // ⭐ LOGGING: Log the HR user profile update
+            $log_message = "UPDATE: HR user profile for '{$hr_name}' (ID: {$hr_id}) was successfully updated by {$role}.";
+            log_interaction($role, $current_user_id, $log_message, $acting_user_name);
+            
             header("Location: hr_list.php?success=HR user updated successfully");
             exit;
         } catch (PDOException $e) {
@@ -387,7 +398,7 @@ try {
                                             <div class="col-md-4">
                                                 <div class="input-group">
                                                     <div class="input-group-prepend"><span class="input-group-text small">Opens at</span></div>
-                                                    <input type="text" class="form-control time-input" name="timings[<?php echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" placeholder="HH:MM" <?php if ($is_closed) echo 'disabled'; ?>>
+                                                    <input type="text" class="form-control time-input" name="timings[<? echo $day; ?>][opens_at]" value="<?php echo htmlspecialchars($opens_at); ?>" placeholder="HH:MM" <?php if ($is_closed) echo 'disabled'; ?>>
                                                     <div class="input-group-append">
                                                         <select class="form-control ampm-select" name="timings[<?php echo $day; ?>][opens_at_ampm]" <?php if ($is_closed) echo 'disabled'; ?>>
                                                             <option value="AM" <?php if ($opens_at_ampm == 'AM') echo 'selected'; ?>>AM</option>
