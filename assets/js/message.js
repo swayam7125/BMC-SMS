@@ -4,6 +4,7 @@ $(document).ready(function() {
     const api_url = window.base_url + 'includes/messaging_api.php';
     const default_avatar = window.base_url + 'assets/images/unisex.png';
     let messageInterval = null;
+    let lastMessageDate = null; // Add a variable to track the date of the last displayed message
 
     const contactsList = $('#contacts-list');
     const messageArea = $('#message-area');
@@ -17,7 +18,7 @@ $(document).ready(function() {
     const cancelFileButton = $('#cancel-file-button');
     
     // New elements for filtering
-    const standardFilter = $('#standard-filter');
+    const standardTabs = $('#standard-tabs');
 
     function formatDateSeparator(dateString) {
         const date = new Date(dateString);
@@ -59,7 +60,7 @@ $(document).ready(function() {
     }
 
     function loadContacts(standard = '') {
-        // Clear active contact and interval on new contact load
+        // This is a new contact load, so we clear the active chat
         activeContactId = null;
         if (messageInterval) clearInterval(messageInterval);
         
@@ -105,27 +106,38 @@ $(document).ready(function() {
         });
     }
 
+    // ** Corrected logic for loading messages **
     function loadMessages(contactId, isInitialLoad = false) {
         if (!contactId) return;
         
+        // This variable should be scoped locally to the function call
+        let lastMessageDate = null; 
+
         $.ajax({
             url: api_url,
             type: 'POST',
             dataType: 'json',
             data: { action: 'get_messages', other_user_id: contactId },
             success: function(response) {
-                if (isInitialLoad) messageArea.empty();
                 let hadNewMessages = false;
-                let lastMessageDate = null;
                 
+                if (isInitialLoad) {
+                    messageArea.empty();
+                }
+
                 if (response.status === 'success' && response.messages.length > 0) {
-                    if(isInitialLoad) messageArea.empty();
+                    const existingMessageIds = new Set(messageArea.find('.message-wrapper').map(function() {
+                        return $(this).data('message-id');
+                    }).get());
 
                     response.messages.forEach(msg => {
-                        if ($(`.message-wrapper[data-message-id="${msg.id}"]`).length > 0) return;
+                        // Prevent duplicate messages
+                        if (existingMessageIds.has(msg.id)) return;
                         hadNewMessages = true;
 
                         const currentMessageDate = new Date(msg.timestamp).toDateString();
+                        
+                        // Check if the current message date is different from the last message date
                         if (currentMessageDate !== lastMessageDate) {
                             const separatorHtml = `
                                 <div class="date-separator">
@@ -183,6 +195,7 @@ $(document).ready(function() {
                         messageArea.append(messageHtml);
                     });
                     
+                    // Auto-scroll to the bottom only if new messages were added or it's an initial load
                     if (hadNewMessages || isInitialLoad) {
                         messageArea.scrollTop(messageArea[0].scrollHeight);
                     }
@@ -190,19 +203,20 @@ $(document).ready(function() {
                     messageArea.html('<div class="text-center h-100 d-flex justify-content-center align-items-center text-muted"><p>Start the conversation!</p></div>');
                 }
                 
-                if (hadNewMessages) {
-                    loadContacts(standardFilter.val());
-                    pollForNotifications();
-                }
+                // Poll for new notifications
+                pollForNotifications();
             }
         });
     }
-
+    
+    // ** Corrected logic for sending messages **
     function sendMessage() {
         const messageTextVal = messageText.val().trim();
         if ((messageTextVal === '' && !selectedFile) || !activeContactId) return;
 
         sendButton.prop('disabled', true);
+        messageText.prop('disabled', true);
+        
         const formData = new FormData();
         formData.append('action', 'send_message');
         formData.append('receiver_id', activeContactId);
@@ -220,16 +234,22 @@ $(document).ready(function() {
             dataType: 'json',
             success: function(response) {
                 if (response.status === 'success') {
-                    messageText.val('');
+                    messageText.val(''); // Clear the input field
                     cancelFileSelection();
-                    loadMessages(activeContactId, false);
+                    loadMessages(activeContactId, true); // Re-load all messages to ensure correct order
                 } else {
                     alert('Error sending message: ' + (response.message || 'Unknown error'));
                 }
             },
+            error: function(xhr, status, error) {
+                console.error("Error sending message:", xhr.responseText);
+                alert('Failed to send message. Please try again.');
+            },
             complete: function() {
+                // Re-enable the button and input field regardless of success or failure
                 sendButton.prop('disabled', false);
-                messageText.focus();
+                messageText.prop('disabled', false); 
+                messageText.focus(); // Return focus to the input field
             }
         });
     }
@@ -254,7 +274,7 @@ $(document).ready(function() {
 
         if (messageInterval) clearInterval(messageInterval);
         cancelFileSelection();
-        loadMessages(contactId, true);
+        loadMessages(contactId, true); // Pass true to clear the chat area and load all messages
         messageInterval = setInterval(() => loadMessages(contactId, false), 5000);
     });
 
@@ -275,14 +295,21 @@ $(document).ready(function() {
 
     cancelFileButton.on('click', cancelFileSelection);
     
-    // Event listener for the standard filter dropdown
-    standardFilter.on('change', function() {
-        const selectedStandard = $(this).val();
+    // ** UPDATED EVENT LISTENER FOR TABS **
+    standardTabs.on('click', 'a.nav-link', function(e) {
+        e.preventDefault();
+        
+        standardTabs.find('a.nav-link').removeClass('active');
+        $(this).addClass('active');
+        
+        const selectedStandard = $(this).data('standard-id');
+        
         loadContacts(selectedStandard);
     });
 
     // Initial Load
-    loadContacts(standardFilter.val()); // Pass the initial selected value
+    const initialStandard = standardTabs.find('a.nav-link.active').data('standard-id');
+    loadContacts(initialStandard);
     pollForNotifications();
     setInterval(pollForNotifications, 15000);
 

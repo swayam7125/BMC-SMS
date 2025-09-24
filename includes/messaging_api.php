@@ -50,25 +50,41 @@ switch ($action) {
                     $teacher_standards_str = trim($teacher['std'], '{}'); 
                     $teacher_standards = explode(',', $teacher_standards_str);
 
-                    $sql_students = "SELECT id, student_name AS name, student_image AS image_path FROM student WHERE school_id = :school_id";
-                    $params = ['school_id' => $school_id];
+                    // Updated SQL query to include order by last message
+                    $sql_students = "
+                        SELECT 
+                            s.id, 
+                            s.student_name AS name, 
+                            s.student_image AS image_path, 
+                            s.std,
+                            (SELECT MAX(timestamp) FROM messages m WHERE (m.sender_id = s.id AND m.receiver_id = :current_user_id) OR (m.sender_id = :current_user_id AND m.receiver_id = s.id)) AS last_message_timestamp
+                        FROM student s
+                        WHERE s.school_id = :school_id
+                    ";
+                    $params = [
+                        'school_id' => $school_id,
+                        'current_user_id' => $current_user_id
+                    ];
 
+                    // Corrected logic:
+                    // If a specific standard is selected, filter by it.
                     if (!empty($standard)) {
-                        $sql_students .= " AND std = :standard";
+                        $sql_students .= " AND s.std = :standard";
                         $params['standard'] = $standard;
                     } else {
-                        // Correctly build the IN clause with named placeholders
+                        // If no standard is selected (initial load), filter by all standards the teacher teaches.
                         $placeholders = [];
                         foreach ($teacher_standards as $index => $std) {
                             $placeholder = ":std" . $index;
                             $placeholders[] = $placeholder;
-                            $params[$placeholder] = (int)$std; // Cast to int for security
+                            $params[$placeholder] = (int)$std;
                         }
-                        $sql_students .= " AND std IN (" . implode(',', $placeholders) . ")";
+                        $sql_students .= " AND s.std IN (" . implode(',', $placeholders) . ")";
                     }
                     
-                    // The bug was here: execute() was not correctly handling parameters.
-                    // Pass the $params array directly to execute()
+                    // Add the ORDER BY clause to the final query
+                    $sql_students .= " ORDER BY last_message_timestamp DESC, s.student_name ASC";
+
                     $stmt_students = $conn->prepare($sql_students);
                     $stmt_students->execute($params);
                     $contacts = $stmt_students->fetchAll(PDO::FETCH_ASSOC);
@@ -95,7 +111,7 @@ switch ($action) {
                     $student_standard = $student['std'];
                     
                     // Use a proper PostgreSQL array check instead of LIKE
-                    $sql_teachers = "SELECT id, teacher_name AS name, teacher_image AS image_path FROM teacher WHERE school_id = :school_id AND :student_standard = ANY(std)";
+                    $sql_teachers = "SELECT id, teacher_name AS name, teacher_image AS image_path, subject FROM teacher WHERE school_id = :school_id AND :student_standard = ANY(std)";
                     $stmt_teachers = $conn->prepare($sql_teachers);
                     $stmt_teachers->bindParam(':school_id', $student_school_id, PDO::PARAM_INT);
                     $stmt_teachers->bindParam(':student_standard', $student_standard);
@@ -147,6 +163,7 @@ switch ($action) {
             $stmt = $conn->prepare($sql);
             $stmt->bindParam(':current_user_id', $current_user_id, PDO::PARAM_INT);
             $stmt->execute();
+        
             $total_unread = $stmt->fetchColumn();
             
             echo json_encode(['status' => 'success', 'total_unread' => $total_unread]);
