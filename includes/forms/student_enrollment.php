@@ -132,6 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && is_ajax_request()) {
     exit;
 }
 
+
 if (!$role) {
     header("Location: ../../login.php");
     exit;
@@ -140,6 +141,7 @@ if (!$role) {
 $admin_school_id = null;
 $admin_school_name = null;
 if ($role === 'principal' && $userId) {
+    $stmt = $conn->prepare('SELECT s."id", s."school_name" FROM "principal" p JOIN "school" s ON p."school_id" = s."id" WHERE p."id" = ?');
     $stmt = $conn->prepare('SELECT s."id", s."school_name" FROM "principal" p JOIN "school" s ON p."school_id" = s."id" WHERE p."id" = ?');
     $stmt->execute([$userId]);
     $admin_data = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -153,6 +155,7 @@ $schools = [];
 $stmt_schools = $conn->query('SELECT "id", "school_name" FROM "school" ORDER BY "school_name"');
 $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
 
+if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -178,7 +181,6 @@ $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
                         <h1 class="h3 mb-0 text-gray-800">Enroll New Student</h1>
                         <a href="../../pages/student/student_list.php" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to List</a>
                     </div>
-                    
                     <div id="enrollment-alert-placeholder"></div>
 
                     <div class="card shadow mb-4">
@@ -189,6 +191,7 @@ $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
                              <form id="studentEnrollmentForm" method="POST" action="" enctype="multipart/form-data">
                                 <div class="row">
                                     <div class="col-md-3 text-center">
+                                        <label>Photo Preview</label><br>
                                         <label>Photo Preview</label><br>
                                         <img src="../../assets/images/unisex.png" alt="Student Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
                                         <div class="form-group">
@@ -209,6 +212,7 @@ $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
                                         </div>
                                     </div>
                                 </div>
+                                
                                 <hr>
                                 <h6 class="text-primary">Academic Information</h6>
                                 <div class="form-row mt-3">
@@ -232,7 +236,7 @@ $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
                                         <label for="std">Standard/Class *</label>
                                         <input type="text" class="form-control" id="std" name="std" required>
                                     </div>
-                                </div>
+                                    </div>
                                 <div class="form-row">
                                     <div class="form-group col-md-6">
                                         <label for="rollno">Roll Number *</label>
@@ -249,6 +253,7 @@ $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
                                         <input type="date" class="form-control" id="date_of_joining" name="date_of_joining" value="<?php echo date('Y-m-d'); ?>">
                                     </div>
                                 </div>
+
                                 <hr>
                                 <h6 class="text-primary">Personal Information</h6>
                                 <div class="form-row mt-3">
@@ -281,8 +286,11 @@ $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
                                     <div class="form-group col-md-6"><label for="mother_phone">Mother's Phone</label><input type="tel" class="form-control" id="mother_phone" name="mother_phone" maxlength="10"></div>
                                 </div>
 
+
                                 <hr>
                                 <h6 class="text-primary">Transport Details</h6>
+                                 <div class="form-row mt-3">
+                                     <div class="form-group col-md-6">
                                  <div class="form-row mt-3">
                                      <div class="form-group col-md-6">
                                         <label for="transport_mode">Mode of Transport *</label>
@@ -304,6 +312,8 @@ $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
                                     </div>
                                      <div class="form-group col-md-6" id="transport-stop-div" style="display: none;">
                                         <label for="stop_id">Assign Transport Stop (Optional)</label>
+                                     <div class="form-group col-md-6" id="transport-stop-div" style="display: none;">
+                                        <label for="stop_id">Assign Transport Stop (Optional)</label>
                                         <select class="form-control" id="stop_id" name="stop_id">
                                             <option value="">-- No Transport --</option>
                                         </select>
@@ -318,10 +328,19 @@ $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
                                         <label for="license_number">License Number *</label>
                                         <input type="text" class="form-control" id="license_number" name="license_number">
                                     </div>
+                                    <div class="form-group col-md-6">
+                                        <label for="vehicle_number">Vehicle Number *</label>
+                                        <input type="text" class="form-control" id="vehicle_number" name="vehicle_number">
+                                    </div>
+                                    <div class="form-group col-md-6">
+                                        <label for="license_number">License Number *</label>
+                                        <input type="text" class="form-control" id="license_number" name="license_number">
+                                    </div>
                                 </div>
 
                                 <div class="form-group mt-4">
                                     <button type="submit" class="btn btn-primary"><i class="fas fa-user-plus"></i> Enroll Student</button>
+                                    <button type="reset" class="btn btn-secondary"><i class="fas fa-times"></i> Reset Form</button>
                                     <button type="reset" class="btn btn-secondary"><i class="fas fa-times"></i> Reset Form</button>
                                 </div>
                             </form>
@@ -338,6 +357,7 @@ $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
+    <script src="../../assets/js/ajax-forms.js"></script>
     <script>
         $(document).ready(function() {
             $('#studentEnrollmentForm').on('submit', function(e) {

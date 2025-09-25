@@ -158,4 +158,3 @@ function handle_form_submission($options) {
         }
     }
 }
-?>

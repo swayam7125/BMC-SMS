@@ -8,10 +8,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   $email = trim($_POST['contactEmail']);
   $content = trim($_POST['contactMessage']);
 
+  // Simple validation
   if (empty($name) || !filter_var($email, FILTER_VALIDATE_EMAIL) || empty($content)) {
     $message = '<div class="alert alert-danger">Please fill out all fields correctly.</div>';
   } else {
     try {
+      // Insert message into the database
       $stmt = $conn->prepare("INSERT INTO contact_messages (sender_name, sender_email, message) VALUES (?, ?, ?)");
       $stmt->execute([$name, $email, $content]);
       $message = '<div class="alert alert-success">Thank you for your message! We will get back to you soon.</div>';
@@ -20,6 +22,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       error_log("Contact form error: " . $e->getMessage());
     }
   }
+}
+
+// Fetch dynamic contact details for the main content area
+try {
+  $stmt_contact = $conn->query("SELECT address, phone, email FROM school_info WHERE id = 1");
+  $contact_info = $stmt_contact->fetch(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+  // Fallback info in case of a database error
+  $contact_info = ['address' => '123 Education Lane, Knowledge City, 456789', 'phone' => '+91 123 456 7890', 'email' => 'info@bmcschool.com'];
 }
 ?>
 <!DOCTYPE html>
@@ -35,23 +46,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 <body>
 
-  <header id="header-section">
-    <nav class="navbar navbar-expand-lg pl-3 pl-sm-0" id="navbar">
-      <div class="container">
-        <div class="navbar-brand-wrapper d-flex w-100"><img src="images/Group2.svg" alt="BMC School Logo"><button class="navbar-toggler ml-auto" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"><span class="mdi mdi-menu navbar-toggler-icon"></span></button></div>
-        <div class="collapse navbar-collapse navbar-menu-wrapper" id="navbarSupportedContent">
-          <ul class="navbar-nav align-items-lg-center align-items-start ml-auto">
-            <li class="nav-item"><a class="nav-link" href="index.php">Home</a></li>
-            <li class="nav-item"><a class="nav-link" href="admission.php">Admissions</a></li>
-            <li class="nav-item"><a class="nav-link" href="blog.php">Blog</a></li>
-            <li class="nav-item"><a class="nav-link" href="contact.php">Contact <span class="sr-only">(current)</span></a></li>
-            <li class="nav-item"><a class="nav-link" href="/login.php">Login</a></li>
-            <li class="nav-item btn-contact-us pl-4 pl-lg-0"><a class="btn btn-info" href="/signup.php">Sign Up</a></li>
-          </ul>
-        </div>
-      </div>
-    </nav>
-  </header>
+  <?php include 'header.php'; ?>
 
   <main>
     <div class="content-wrapper">
@@ -82,9 +77,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
               <div class="card shadow-sm h-100">
                 <div class="card-body p-4 p-md-5">
                   <h5 class="mb-4 text-primary">Our Information</h5>
-                  <p><strong><i class="mdi mdi-map-marker mr-2"></i>Address:</strong><br><span class="ml-4">123 Education Lane, Knowledge City, 456789</span></p>
-                  <p><strong><i class="mdi mdi-phone mr-2"></i>Phone:</strong><br><span class="ml-4">+91 123 456 7890</span></p>
-                  <p><strong><i class="mdi mdi-email mr-2"></i>Email:</strong><br><span class="ml-4">info@bmcschool.com</span></p>
+                  <p><strong><i class="mdi mdi-map-marker mr-2"></i>Address:</strong><br><span class="ml-4"><?php echo nl2br(htmlspecialchars($contact_info['address'])); ?></span></p>
+                  <p><strong><i class="mdi mdi-phone mr-2"></i>Phone:</strong><br><span class="ml-4"><?php echo htmlspecialchars($contact_info['phone']); ?></span></p>
+                  <p><strong><i class="mdi mdi-email mr-2"></i>Email:</strong><br><span class="ml-4"><?php echo htmlspecialchars($contact_info['email']); ?></span></p>
                   <p><strong><i class="mdi mdi-clock mr-2"></i>Office Hours:</strong><br><span class="ml-4">Monday - Friday: 8:00 AM - 4:00 PM</span></p>
                 </div>
               </div>
@@ -95,9 +90,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </div>
   </main>
 
-  <footer class="border-top">
-    <p class="text-center text-muted pt-4">Copyright © <?php echo date("Y"); ?> BMC School. All rights reserved.</p>
-  </footer>
+  <?php include 'footer.php'; ?>
 
   <script src="vendors/jquery/jquery.min.js"></script>
   <script src="vendors/bootstrap/bootstrap.min.js"></script>

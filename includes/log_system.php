@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Logs an interaction to a weekly file, named after the Monday of the current week.
  *
@@ -58,4 +57,3 @@ function log_interaction($role, $userId, $action, $userName = 'Unknown User') {
         error_log("BMC-SMS LOGGING SYSTEM ERROR: " . $e->getMessage());
     }
 }
-// The previous automated page view logging block is removed here.
