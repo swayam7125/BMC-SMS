@@ -155,10 +155,11 @@ try {
                 $stmt_users->execute([$new_email, $student_id]);
             }
 
+            // FIXED: Removed duplicate 'mother_name' field in the UPDATE statement
             $update_student_sql = "UPDATE student SET
                                   student_image = ?, student_name = ?, rollno = ?, std = ?, email = ?, academic_year = ?,
                                   school_id = ?, dob = ?, gender = ?, blood_group = ?, address = ?,
-                                  father_name = ?, father_phone = ?, mother_name = ?, mother_name = ?, mother_phone = ?,
+                                  father_name = ?, father_phone = ?, mother_name = ?, mother_phone = ?,
                                   stop_id = ?, transport_mode = ?, self_transport_mode = ?, vehicle_number = ?, license_number = ?
                                   WHERE id = ?";
 

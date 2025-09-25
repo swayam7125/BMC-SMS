@@ -192,7 +192,6 @@ if (!is_ajax_request()) {
                                 <div class="row">
                                     <div class="col-md-3 text-center">
                                         <label>Photo Preview</label><br>
-                                        <label>Photo Preview</label><br>
                                         <img src="../../assets/images/unisex.png" alt="Student Photo" id="imagePreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: cover;">
                                         <div class="form-group">
                                             <label for="student_image" class="small btn btn-sm btn-info"><i class="fas fa-upload fa-sm"></i> Upload Photo</label>
@@ -457,3 +456,6 @@ if (!is_ajax_request()) {
 </body>
 
 </html>
+<?php
+}
+?>
