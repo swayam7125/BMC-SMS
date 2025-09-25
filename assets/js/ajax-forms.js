@@ -1,115 +1,80 @@
-// Utility function to serialize form data to JSON
-function serializeFormToJSON(form) {
-    const formData = new FormData(form);
-    const object = {};
-    formData.forEach((value, key) => {
-        if (object[key] !== undefined) {
-            if (!Array.isArray(object[key])) {
-                object[key] = [object[key]];
-            }
-            object[key].push(value);
-        } else {
-            object[key] = value;
-        }
-    });
-    return object;
-}
+// assets/js/ajax-forms.js (Corrected)
 
-// Handle form submissions via AJAX
-$(document).on('submit', 'form[data-ajax-form]', function(e) {
-    e.preventDefault();
-    const $form = $(this);
-    const submitBtn = $form.find('[type="submit"]');
-    const originalBtnText = submitBtn.html();
-    
-    // Disable submit button and show loading state
-    submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading...');
-    
-    $.ajax({
-        url: $form.attr('action'),
-        method: $form.attr('method') || 'POST',
-        data: serializeFormToJSON($form[0]),
-        success: function(response) {
-            if (response.success) {
-                // Show success message
-                showNotification('success', response.message || 'Operation completed successfully');
-                
-                // If redirect URL is provided, navigate to it
-                if (response.redirect) {
-                    loadPage(response.redirect);
+document.addEventListener('DOMContentLoaded', function() {
+
+    // Find the student enrollment form on the page
+    const studentForm = document.getElementById('studentEnrollmentForm');
+
+    // If the form exists, attach our AJAX submission logic
+    if (studentForm) {
+        studentForm.addEventListener('submit', function(event) {
+            // Prevent the browser's default form submission
+            event.preventDefault();
+
+            const alertPlaceholder = document.getElementById('enrollment-alert-placeholder');
+            const submitButton = this.querySelector('button[type="submit"]');
+            const originalButtonText = submitButton.innerHTML;
+
+            // Disable the button and show a loading indicator to prevent multiple clicks
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+
+            // Use FormData to correctly package all form fields, including the photo
+            const formData = new FormData(this);
+
+            // Send the data to the server using the Fetch API
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    // This header tells the PHP script that it's an AJAX request
+                    'X-Requested-With': 'XMLHttpRequest'
                 }
-                
-                // If form should be reset after success
-                if ($form.data('reset-on-success')) {
-                    $form[0].reset();
+            })
+            .then(response => {
+                // Check for network errors
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
                 }
-                
-                // Trigger success event for custom handling
-                $form.trigger('ajaxFormSuccess', [response]);
-            } else {
-                showNotification('error', response.message || 'An error occurred');
-            }
-        },
-        error: function(xhr, status, error) {
-            showNotification('error', 'Server error: ' + error);
-        },
-        complete: function() {
-            // Re-enable submit button and restore original text
-            submitBtn.prop('disabled', false).html(originalBtnText);
-        }
-    });
-});
+                return response.json(); // Parse the JSON response from the server
+            })
+            .then(data => {
+                // Display the success or error message from the server
+                const alertClass = data.success ? 'alert-success' : 'alert-danger';
+                alertPlaceholder.innerHTML = `
+                    <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                        ${data.message}
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>`;
 
-// Function to show notifications
-function showNotification(type, message) {
-    const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
-    const alert = $(`
-        <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
-            ${message}
-            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-            </button>
-        </div>
-    `);
-    
-    // Add alert to the page
-    $('#main-content').prepend(alert);
-    
-    // Auto-dismiss after 5 seconds
-    setTimeout(() => {
-        alert.alert('close');
-    }, 5000);
-}
-
-// Function to handle data tables reinitialization
-function reinitializeDataTables() {
-    if ($.fn.DataTable) {
-        $('table.dataTable').each(function() {
-            // Destroy existing DataTable instance if it exists
-            if ($.fn.DataTable.isDataTable(this)) {
-                $(this).DataTable().destroy();
-            }
-            // Reinitialize DataTable
-            $(this).DataTable();
+                // If enrollment was successful, redirect to the student list
+                if (data.success && data.redirect) {
+                    setTimeout(() => {
+                        window.location.href = data.redirect;
+                    }, 2000); // Wait 2 seconds to allow the user to read the message
+                }
+            })
+            .catch(error => {
+                // Handle any unexpected errors during the submission
+                console.error('Form submission error:', error);
+                alertPlaceholder.innerHTML = `
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        An unexpected error occurred. Please check the console and try again.
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>`;
+            })
+            .finally(() => {
+                // This block runs whether the submission succeeded or failed
+                // Re-enable the button unless a redirect is happening
+                if (!document.querySelector('.alert-success')) {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = originalButtonText;
+                }
+            });
         });
     }
-}
-
-// Function to handle select2 reinitialization
-function reinitializeSelect2() {
-    if ($.fn.select2) {
-        $('.select2').select2();
-    }
-}
-
-// Listen for content loaded event
-$(document).on('contentLoaded', function() {
-    reinitializeDataTables();
-    reinitializeSelect2();
-    
-    // Initialize tooltips
-    $('[data-toggle="tooltip"]').tooltip();
-    
-    // Initialize popovers
-    $('[data-toggle="popover"]').popover();
 });

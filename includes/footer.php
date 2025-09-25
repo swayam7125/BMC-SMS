@@ -242,12 +242,3 @@
         }, 5000);
     }
 </script>
-
-<script src="/BMC-SMS/assets/js/ajax-handler.js"></script>
-
-<script>
-    $(document).ready(function() {
-        // Initialize AJAX functionality
-        window.ajaxHandler = new AjaxHandler();
-    });
-</script>
