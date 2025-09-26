@@ -34,6 +34,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && is_ajax_request()) {
     $latitude = !empty($_POST['latitude']) ? trim($_POST['latitude']) : null;
     $longitude = !empty($_POST['longitude']) ? trim($_POST['longitude']) : null;
     
+    // ⭐ NEW: Social Links
+    $facebook_url = !empty($_POST['facebook_url']) ? trim($_POST['facebook_url']) : null;
+    $twitter_url = !empty($_POST['twitter_url']) ? trim($_POST['twitter_url']) : null;
+    $instagram_url = !empty($_POST['instagram_url']) ? trim($_POST['instagram_url']) : null;
+    
     $education_board = $_POST['education_board'] ?? [];
     $school_medium = $_POST['school_medium'] ?? [];
     $school_category = $_POST['school_category'] ?? [];
@@ -80,13 +85,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && is_ajax_request()) {
         $category_pg_array = !empty($school_category) ? '{' . implode(',', $school_category) . '}' : null;
 
         $sql = 'INSERT INTO school 
-                (school_logo, school_name, email, phone, school_opening, school_type, education_board, school_medium, school_category, address, latitude, longitude) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+                (school_logo, school_name, email, phone, school_opening, school_type, 
+                 education_board, school_medium, school_category, address, latitude, longitude,
+                 facebook_url, twitter_url, instagram_url) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
         $stmt = $conn->prepare($sql);
         $stmt->execute([
             $logo_path_for_db, $school_name, $email, $phone, $school_opening, $school_type, 
             $board_pg_array, $medium_pg_array, $category_pg_array, 
-            $address, $latitude, $longitude
+            $address, $latitude, $longitude,
+            $facebook_url, $twitter_url, $instagram_url
         ]);
         $new_school_id = $conn->lastInsertId();
 
@@ -178,6 +186,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && is_ajax_request()) {
                             </div>
 
                             <hr>
+                            <h6 class="m-0 font-weight-bold text-primary mb-3">Social Links (Optional)</h6>
+                            <div class="form-row">
+                                <div class="form-group col-md-4">
+                                    <label for="facebook_url"><i class="fab fa-facebook"></i> Facebook URL</label>
+                                    <input type="url" class="form-control" id="facebook_url" name="facebook_url" placeholder="e.g., https://facebook.com/myschool">
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <label for="twitter_url"><i class="fab fa-twitter"></i> Twitter URL</label>
+                                    <input type="url" class="form-control" id="twitter_url" name="twitter_url" placeholder="e.g., https://twitter.com/myschool">
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <label for="instagram_url"><i class="fab fa-instagram"></i> Instagram URL</label>
+                                    <input type="url" class="form-control" id="instagram_url" name="instagram_url" placeholder="e.g., https://instagram.com/myschool">
+                                </div>
+                            </div>
+                            <hr>
+                            
                             <h6 class="m-0 font-weight-bold text-primary mb-3">Location (Optional)</h6>
                             <div class="form-row">
                                 <div class="form-group col-md-6">

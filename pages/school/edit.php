@@ -77,6 +77,12 @@ try {
         $address = trim($_POST['address']);
         $school_opening = $_POST['school_opening'];
         $school_type = $_POST['school_type'];
+        
+        // ⭐ NEW: Get social links from POST
+        $facebook_url = !empty($_POST['facebook_url']) ? trim($_POST['facebook_url']) : null;
+        $twitter_url = !empty($_POST['twitter_url']) ? trim($_POST['twitter_url']) : null;
+        $instagram_url = !empty($_POST['instagram_url']) ? trim($_POST['instagram_url']) : null;
+        
         $education_board = isset($_POST['education_board']) ? $_POST['education_board'] : [];
         $school_medium = isset($_POST['school_medium']) ? $_POST['school_medium'] : [];
         $school_category = isset($_POST['school_category']) ? $_POST['school_category'] : [];
@@ -113,7 +119,12 @@ try {
         }
 
         if (empty($errors)) {
-            $update_query = 'UPDATE "school" SET "school_logo"=?, "school_name"=?, "email"=?, "phone"=?, "address"=?, "school_opening"=?, "school_type"=?, "education_board"=?, "school_medium"=?, "school_category"=? WHERE "id"=?';
+            // ⭐ UPDATED QUERY: Included new social link columns
+            $update_query = 'UPDATE "school" SET 
+                                "school_logo"=?, "school_name"=?, "email"=?, "phone"=?, "address"=?, 
+                                "school_opening"=?, "school_type"=?, "education_board"=?, "school_medium"=?, 
+                                "school_category"=?, "facebook_url"=?, "twitter_url"=?, "instagram_url"=? 
+                             WHERE "id"=?';
             $stmt = $conn->prepare($update_query);
 
             $education_board_pg = '{' . implode(',', $education_board) . '}';
@@ -125,7 +136,11 @@ try {
             }, $school_category);
             $school_category_pg = '{' . implode(',', $school_category_quoted) . '}';
 
-            if ($stmt->execute([$logo_path_for_db, $school_name, $email, $phone, $address, $school_opening, $school_type, $education_board_pg, $school_medium_pg, $school_category_pg, $school_id])) {
+            if ($stmt->execute([
+                $logo_path_for_db, $school_name, $email, $phone, $address, 
+                $school_opening, $school_type, $education_board_pg, $school_medium_pg, 
+                $school_category_pg, $facebook_url, $twitter_url, $instagram_url, $school_id
+            ])) {
                 
                 // ⭐ LOGGING: Log the successful update action
                 $log_message = "UPDATE: School profile for '{$school_name_original}' (ID: {$school_id}) was successfully updated.";
@@ -204,6 +219,24 @@ $logo_display_path = getWebAccessibleImagePath($school['school_logo']) ?? $defau
                                     </div>
                                 </div>
                                 <hr>
+                                
+                                <h6 class="m-0 font-weight-bold text-primary mb-3">Social Links (Optional)</h6>
+                                <div class="form-row">
+                                    <div class="form-group col-md-4">
+                                        <label for="facebook_url"><i class="fab fa-facebook"></i> Facebook URL</label>
+                                        <input type="url" class="form-control" id="facebook_url" name="facebook_url" value="<?php echo htmlspecialchars($school['facebook_url'] ?? ''); ?>" placeholder="e.g., https://facebook.com/myschool">
+                                    </div>
+                                    <div class="form-group col-md-4">
+                                        <label for="twitter_url"><i class="fab fa-twitter"></i> Twitter URL</label>
+                                        <input type="url" class="form-control" id="twitter_url" name="twitter_url" value="<?php echo htmlspecialchars($school['twitter_url'] ?? ''); ?>" placeholder="e.g., https://twitter.com/myschool">
+                                    </div>
+                                    <div class="form-group col-md-4">
+                                        <label for="instagram_url"><i class="fab fa-instagram"></i> Instagram URL</label>
+                                        <input type="url" class="form-control" id="instagram_url" name="instagram_url" value="<?php echo htmlspecialchars($school['instagram_url'] ?? ''); ?>" placeholder="e.g., https://instagram.com/myschool">
+                                    </div>
+                                </div>
+                                <hr>
+                                
                                 <div class="form-row">
                                     <div class="form-group col-md-6"><label for="school_opening">School Opening Date *</label><input type="date" class="form-control" name="school_opening" value="<?php echo htmlspecialchars($school['school_opening']); ?>" required></div>
                                     <div class="form-group col-md-6"><label for="school_type">School Type *</label><select class="form-control" name="school_type" required>

@@ -48,6 +48,8 @@ $unread_principal_salary = 0; // For principal salary history
 $unread_hr_salary = 0; // For hr salary history
 $unread_hr_leave_status = 0; // For HR leave status
 $unread_admissions = 0; 
+$unread_contact_messages = 0; // ⭐ NEW: Contact message counter
+$unread_update_requests = 0; // ⭐ NEW: School update request counter for SA
 $is_class_teacher = false; // Initialize teacher-specific flag
 
 // Fetch counts based on the user's role if a valid user ID and connection exist
@@ -159,17 +161,40 @@ if (isset($conn) && $user_id) {
                 break;
 
             case 'superadmin':
-                $sql_counts = "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND type = 'principal_notice' AND is_read = false";
+                // ⭐ UPDATED: Fetching Principal Notices AND School Update Requests
+                $sql_counts = "SELECT 
+                                    COUNT(*) FILTER (WHERE type = 'principal_notice' AND is_read = false) AS principal_notices,
+                                    COUNT(*) FILTER (WHERE type = 'school_update_request' AND is_read = false) AS update_requests
+                                FROM notifications WHERE user_id = ?";
                 $stmt_counts = $conn->prepare($sql_counts);
                 $stmt_counts->execute([$user_id]);
-                $unread_principal_notices = (int) $stmt_counts->fetchColumn();
+                $result = $stmt_counts->fetch(PDO::FETCH_ASSOC);
+                if ($result) {
+                    $unread_principal_notices = (int) ($result['principal_notices'] ?? 0);
+                    $unread_update_requests = (int) ($result['update_requests'] ?? 0);
+                }
                 break;
                 
             case 'hr':
-                $sql_hr_leave_status = "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND type = 'hr_leave_status' AND is_read = false";
-                $stmt_hr_leave_status = $conn->prepare($sql_hr_leave_status);
-                $stmt_hr_leave_status->execute([$user_id]);
-                $unread_hr_leave_status = (int) $stmt_hr_leave_status->fetchColumn();
+                $sql_hr_counts = "SELECT 
+                                    COUNT(*) FILTER (WHERE type = 'hr_leave_status' AND is_read = false) AS hr_leave_status,
+                                    COUNT(*) FILTER (WHERE type = 'new_contact_message' AND is_read = false) AS contact_messages,
+                                    COUNT(*) FILTER (WHERE type = 'new_admission_request' AND is_read = false) AS admissions
+                                FROM notifications WHERE user_id = ?";
+                $stmt_hr_counts = $conn->prepare($sql_hr_counts);
+                $stmt_hr_counts->execute([$user_id]);
+                $result = $stmt_hr_counts->fetch(PDO::FETCH_ASSOC);
+                
+                if ($result) {
+                    $unread_hr_leave_status = (int) ($result['hr_leave_status'] ?? 0);
+                    $unread_contact_messages = (int) ($result['contact_messages'] ?? 0); // ⭐ NEW: Fetch contact message count
+                    $unread_admissions = (int) ($result['admissions'] ?? 0);
+                }
+                
+                $sql_hr_salary = "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND type = 'hr_salary' AND is_read = false";
+                $stmt_hr_salary = $conn->prepare($sql_hr_salary);
+                $stmt_hr_salary->execute([$user_id]);
+                $unread_hr_salary = (int) $stmt_hr_salary->fetchColumn();
                 break;
         }
     } catch (PDOException $e) {
@@ -259,6 +284,21 @@ if (isset($conn) && $user_id) {
                             href="<?php echo BASE_WEB_PATH; ?>pages/school/school_list.php">School List</a>
                     </div>
                 </div>
+            </li>
+            
+            <li class="nav-item <?php echo ($current_page == 'manage_school_requests.php') ? 'active' : ''; ?>">
+                <a class="nav-link" href="/BMC-SMS/pages/bmc/manage_school_requests.php"
+                    data-notification-type="school_update_request">
+                    <div>
+                        <i class="fas fa-fw fa-pencil-ruler"></i>
+                        <span>School Update Requests</span>
+                        <?php if ($unread_update_requests > 0): ?>
+                            <span class="badge badge-danger badge-counter">
+                                <?php echo ($unread_update_requests > 9) ? '9+' : $unread_update_requests; ?>
+                            </span>
+                        <?php endif; ?>
+                    </div>
+                </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link <?php echo (is_active_page($principal_pages)) ? '' : 'collapsed'; ?>" href="#"
@@ -1143,6 +1183,14 @@ if (isset($conn) && $user_id) {
                     </div>
                 </a>
             </li>
+            
+            <li class="nav-item <?php echo ($current_page == 'request_school_update.php') ? 'active' : ''; ?>">
+                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/hr/request_school_update.php">
+                    <div><i class="fas fa-fw fa-edit"></i>
+                        <span>Request School Update</span>
+                    </div>
+                </a>
+            </li>
             <li class="nav-item <?php echo ($current_page == 'manage_admissions.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/hr/manage_admissions.php"
                     data-notification-type="new_admission_request">
@@ -1152,6 +1200,21 @@ if (isset($conn) && $user_id) {
                         <?php if ($unread_admissions > 0): ?>
                             <span class="badge badge-danger badge-counter">
                                 <?php echo ($unread_admissions > 9) ? '9+' : $unread_admissions; ?>
+                            </span>
+                        <?php endif; ?>
+                    </div>
+                </a>
+            </li>
+            
+            <li class="nav-item <?php echo ($current_page == 'view_contact_messages.php') ? 'active' : ''; ?>">
+                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/hr/view_contact_messages.php"
+                    data-notification-type="new_contact_message">
+                    <div>
+                        <i class="fas fa-fw fa-envelope-open-text"></i>
+                        <span>Contact Messages</span>
+                        <?php if ($unread_contact_messages > 0): ?>
+                            <span class="badge badge-danger badge-counter">
+                                <?php echo ($unread_contact_messages > 9) ? '9+' : $unread_contact_messages; ?>
                             </span>
                         <?php endif; ?>
                     </div>

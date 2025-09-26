@@ -5,20 +5,22 @@ require_once '../includes/connect.php';
 // Define the ID of the school to feature for statistics
 $school_id_to_feature = 4;
 
-// --- CRITICAL CHANGE: Set INITIAL/FALLBACK values to match your image's minimal counts ---
+// --- CRITICAL CHANGE: Set INITIAL/FALLBACK values ---
 $student_count = '7+'; 
 $teacher_count = '9+'; 
 $classroom_count = '50+';
-$pass_percentage = '98%';
+$pass_percentage = '98%'; // Initial fallback value
 
 try {
   // Fetch count statistics dynamically for the specified school ID (4)
   $student_count_raw = $conn->query("SELECT COUNT(*) FROM student WHERE school_id = {$school_id_to_feature}")->fetchColumn();
   $teacher_count_raw = $conn->query("SELECT COUNT(*) FROM teacher WHERE school_id = {$school_id_to_feature}")->fetchColumn();
   
+  // --- NEW: Fetch overall passing percentage from the school table ---
+  $pass_percentage_raw = $conn->query("SELECT passing_percentage FROM school WHERE id = {$school_id_to_feature}")->fetchColumn();
+  
   // These variables are placeholders or come from another table, but we use the displayed defaults for safety:
   $classroom_count_raw = 50; 
-  $pass_percentage_raw = 98;
 
   // Format the numbers for display, using the fetched data
   if ($student_count_raw > 0) {
@@ -28,10 +30,14 @@ try {
       $teacher_count = $teacher_count_raw . '+';
   }
   $classroom_count = $classroom_count_raw . '+';
-  $pass_percentage = $pass_percentage_raw . '%';
+  
+  // Use the fetched passing percentage if available, otherwise keep the fallback
+  if ($pass_percentage_raw !== false && $pass_percentage_raw !== null) {
+      $pass_percentage = htmlspecialchars(number_format($pass_percentage_raw, 2)) . '%';
+  }
 
 } catch (PDOException $e) {
-  // If connection fails, the initial fallback values ('7+', '9+', '50+', '98%') are automatically used.
+  // If connection fails, the initial fallback values are automatically used.
   error_log("Homepage DB Error: " . $e->getMessage());
 }
 ?>
