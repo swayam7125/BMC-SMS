@@ -9,6 +9,8 @@ include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 include_once "../../includes/log_system.php"; // ADDED: Log system dependency
 
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 if (!defined('BASE_URL')) {
     define('BASE_URL', '/BMC-SMS/');
 }
@@ -256,11 +258,17 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
-        <div id="content-wrapper" class="d-flex flex-column">
+<?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?>        <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
-                <div class="container-fluid">
+<?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
+}
+?>                <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Edit Profile</h1>
                         <a href="profile.php" class="btn btn-sm btn-secondary shadow-sm"><i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Profile</a>
@@ -355,8 +363,11 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
                     </div>
                 </div>
             </div>
-            <?php include_once '../../includes/footer.php'; ?>
-        </div>
+<?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?>        </div>
     </div>
     <?php include_once "../../includes/logout_modal.php" ?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>

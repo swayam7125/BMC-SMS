@@ -2,6 +2,8 @@
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 $userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
 
@@ -107,11 +109,17 @@ try {
 </head>
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
-        <div id="content-wrapper" class="d-flex flex-column">
+<?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?>        <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
-                <div class="container-fluid">
+<?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
+}
+?>                <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Manage Vehicles</h1>
                     
                     <?php if (!empty($errors)): ?>
@@ -195,8 +203,11 @@ try {
 
                 </div>
             </div>
-            <?php include '../../includes/footer.php'; ?>
-        </div>
+<?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?>        </div>
     </div>
 
     <?php include_once "../../includes/logout_modal.php"; ?>

@@ -3,6 +3,8 @@ include_once "../../encryption.php";
 include_once "../../includes/connect.php";
 include_once "../../includes/ajax_helpers.php";
 
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 // --- USER AUTHENTICATION & DATA FETCHING ---
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 $userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
@@ -124,8 +126,6 @@ try {
 
 $days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 $pageTitle = 'View Timetable';
-
-if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -140,192 +140,197 @@ if (!is_ajax_request()) {
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <style>
-        .timetable-table th,
-        .timetable-table td {
-            vertical-align: middle;
-            text-align: center;
-            min-width: 150px;
-        }
+    .timetable-table th,
+    .timetable-table td {
+        vertical-align: middle;
+        text-align: center;
+        min-width: 150px;
+    }
 
-        .timetable-table .period-cell {
-            font-weight: bold;
-            background-color: #f8f9fc;
-        }
+    .timetable-table .period-cell {
+        font-weight: bold;
+        background-color: #f8f9fc;
+    }
 
-        .timetable-table .lecture-block {
-            padding: 10px;
-            border-radius: 5px;
-            background-color: #e9f5ff;
-            border: 1px solid #bde0ff;
-            min-height: 80px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
+    .timetable-table .lecture-block {
+        padding: 10px;
+        border-radius: 5px;
+        background-color: #e9f5ff;
+        border: 1px solid #bde0ff;
+        min-height: 80px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
 
-        .timetable-table .lecture-block .subject {
-            font-weight: bold;
-            color: #0056b3;
-        }
+    .timetable-table .lecture-block .subject {
+        font-weight: bold;
+        color: #0056b3;
+    }
 
-        .table-timings th {
-            width: 30%;
-        }
+    .table-timings th {
+        width: 30%;
+    }
 
-        .table-timings td {
-            width: 70%;
-        }
+    .table-timings td {
+        width: 70%;
+    }
     </style>
 </head>
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
-        <div id="content-wrapper" class="d-flex flex-column">
+        <?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?> <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include '../../includes/header.php'; ?>
                 <?php
-                }
-                ?>
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
+}
+?>
                 <div class="container-fluid">
                     <?php if (in_array($role, ['teacher', 'principal'])): ?>
-                        <div class="card shadow mb-4">
-                            <div class="card-body">
-                                <form method="GET" class="form-inline">
-                                    <label for="standard" class="mr-2">View Class Timetable for Standard:</label>
-                                    <select name="standard" id="standard" class="form-control mr-2"
-                                        onchange="this.form.submit()">
-                                        <option value="">-- Select --</option>
-                                        <?php foreach ($availableStandards as $standard): ?>
-                                            <option value="<?php echo htmlspecialchars($standard); ?>"
-                                                <?php if ($selected_std == $standard) echo 'selected'; ?>>
-                                                <?php echo htmlspecialchars($standard); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </form>
-                            </div>
+                    <div class="card shadow mb-4">
+                        <div class="card-body">
+                            <form method="GET" class="form-inline">
+                                <label for="standard" class="mr-2">View Class Timetable for Standard:</label>
+                                <select name="standard" id="standard" class="form-control mr-2"
+                                    onchange="this.form.submit()">
+                                    <option value="">-- Select --</option>
+                                    <?php foreach ($availableStandards as $standard): ?>
+                                    <option value="<?php echo htmlspecialchars($standard); ?>"
+                                        <?php if ($selected_std == $standard) echo 'selected'; ?>>
+                                        <?php echo htmlspecialchars($standard); ?>
+                                    </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </form>
                         </div>
+                    </div>
                     <?php endif; ?>
 
                     <?php if ($selected_std && !empty($timetable_grid)): ?>
-                        <div class="card shadow mb-4">
-                            <div class="card-header py-3">
-                                <h6 class="m-0 font-weight-bold text-primary">Weekly Class Schedule for Standard
-                                    <?php echo htmlspecialchars($selected_std); ?></h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-bordered timetable-table" id="timetableTable" width="100%" cellspacing="0">
-                                        <thead>
-                                            <tr class="bg-primary text-white">
-                                                <th>Period</th>
-                                                <?php foreach ($days_of_week as $day) echo "<th>$day</th>"; ?>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php for ($p = 1; $p <= $total_periods; $p++): ?>
-                                                <tr>
-                                                    <td class="period-cell">Period <?php echo $p; ?></td>
-                                                    <?php foreach ($days_of_week as $day): ?>
-                                                        <td>
-                                                            <?php if (isset($timetable_grid[$p][$day])):
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">Weekly Class Schedule for Standard
+                                <?php echo htmlspecialchars($selected_std); ?></h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-bordered timetable-table" id="timetableTable" width="100%"
+                                    cellspacing="0">
+                                    <thead>
+                                        <tr class="bg-primary text-white">
+                                            <th>Period</th>
+                                            <?php foreach ($days_of_week as $day) echo "<th>$day</th>"; ?>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php for ($p = 1; $p <= $total_periods; $p++): ?>
+                                        <tr>
+                                            <td class="period-cell">Period <?php echo $p; ?></td>
+                                            <?php foreach ($days_of_week as $day): ?>
+                                            <td>
+                                                <?php if (isset($timetable_grid[$p][$day])):
                                                                 $lecture = $timetable_grid[$p][$day];
 
                                                                 if ($role === 'teacher'):
                                                                     if (($is_class_teacher && $selected_std == $class_teacher_std) || ($lecture['teacher_id'] == $teacher_id)): ?>
-                                                                        <div class="lecture-block">
-                                                                            <div class="subject">
-                                                                                <?php echo htmlspecialchars($lecture['subject_name']); ?></div>
-                                                                            <div class="teacher small text-muted">
-                                                                                <?php echo htmlspecialchars($lecture['teacher_name']); ?></div>
-                                                                            <div class="time small font-italic mt-1">
-                                                                                <?php echo date('h:i A', strtotime($lecture['start_time'])) . ' - ' . date('h:i A', strtotime($lecture['end_time'])); ?>
-                                                                            </div>
-                                                                        </div>
-                                                                    <?php else: ?>
-                                                                        -
-                                                                    <?php endif; ?>
-                                                                <?php else: ?>
-                                                                    <div class="lecture-block">
-                                                                        <div class="subject">
-                                                                            <?php echo htmlspecialchars($lecture['subject_name']); ?></div>
-                                                                        <div class="teacher small text-muted">
-                                                                            <?php echo htmlspecialchars($lecture['teacher_name']); ?></div>
-                                                                        <div class="time small font-italic mt-1">
-                                                                            <?php echo date('h:i A', strtotime($lecture['start_time'])) . ' - ' . date('h:i A', strtotime($lecture['end_time'])); ?>
-                                                                        </div>
-                                                                    </div>
-                                                                <?php endif; ?>
-                                                            <?php else: ?>
-                                                                -
-                                                            <?php endif; ?>
-                                                        </td>
-                                                    <?php endforeach; ?>
-                                                </tr>
-                                            <?php endfor; ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    <?php endif; ?>
-                    
-                    <?php if ($role === 'teacher' && !isset($_GET['standard'])): ?>
-                        <div class="alert alert-info">Please select a standard to view its class timetable.</div>
-                        <h1 class="h3 mb-4 text-gray-800">Timetable</h1>
-                        <div class="card shadow mb-4">
-                            <div class="card-header py-3">
-                                <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-user-clock mr-2"></i>Your Personal Weekly Schedule</h6>
-                            </div>
-                            <div class="card-body">
-                                <table class="table table-sm table-bordered table-striped table-timings">
-                                    <tbody>
-                                        <?php
-                                        $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-                                        foreach ($days as $day):
-                                            $day_timing = $teacher_timings[$day] ?? null;
-                                        ?>
-                                            <tr>
-                                                <th><?php echo $day; ?></th>
-                                                <td>
-                                                    <?php if ($day_timing && !empty($day_timing['is_closed'])): ?>
-                                                        <span class="badge badge-danger">Closed</span>
-                                                    <?php elseif ($day_timing && !empty($day_timing['opens_at'])): ?>
-                                                        <?php echo date("g:i A", strtotime($day_timing['opens_at'])); ?> - <?php echo date("g:i A", strtotime($day_timing['closes_at'])); ?>
-                                                    <?php else: ?>
-                                                        <span class="text-muted">Not Set</span>
-                                                    <?php endif; ?>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
+                                                <div class="lecture-block">
+                                                    <div class="subject">
+                                                        <?php echo htmlspecialchars($lecture['subject_name']); ?></div>
+                                                    <div class="teacher small text-muted">
+                                                        <?php echo htmlspecialchars($lecture['teacher_name']); ?></div>
+                                                    <div class="time small font-italic mt-1">
+                                                        <?php echo date('h:i A', strtotime($lecture['start_time'])) . ' - ' . date('h:i A', strtotime($lecture['end_time'])); ?>
+                                                    </div>
+                                                </div>
+                                                <?php else: ?>
+                                                -
+                                                <?php endif; ?>
+                                                <?php else: ?>
+                                                <div class="lecture-block">
+                                                    <div class="subject">
+                                                        <?php echo htmlspecialchars($lecture['subject_name']); ?></div>
+                                                    <div class="teacher small text-muted">
+                                                        <?php echo htmlspecialchars($lecture['teacher_name']); ?></div>
+                                                    <div class="time small font-italic mt-1">
+                                                        <?php echo date('h:i A', strtotime($lecture['start_time'])) . ' - ' . date('h:i A', strtotime($lecture['end_time'])); ?>
+                                                    </div>
+                                                </div>
+                                                <?php endif; ?>
+                                                <?php else: ?>
+                                                -
+                                                <?php endif; ?>
+                                            </td>
+                                            <?php endforeach; ?>
+                                        </tr>
+                                        <?php endfor; ?>
                                     </tbody>
                                 </table>
                             </div>
                         </div>
+                    </div>
+                    <?php endif; ?>
+
+                    <?php if ($role === 'teacher' && !isset($_GET['standard'])): ?>
+                    <div class="alert alert-info">Please select a standard to view its class timetable.</div>
+                    <h1 class="h3 mb-4 text-gray-800">Timetable</h1>
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-user-clock mr-2"></i>Your
+                                Personal Weekly Schedule</h6>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm table-bordered table-striped table-timings">
+                                <tbody>
+                                    <?php
+                                        $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                                        foreach ($days as $day):
+                                            $day_timing = $teacher_timings[$day] ?? null;
+                                        ?>
+                                    <tr>
+                                        <th><?php echo $day; ?></th>
+                                        <td>
+                                            <?php if ($day_timing && !empty($day_timing['is_closed'])): ?>
+                                            <span class="badge badge-danger">Closed</span>
+                                            <?php elseif ($day_timing && !empty($day_timing['opens_at'])): ?>
+                                            <?php echo date("g:i A", strtotime($day_timing['opens_at'])); ?> -
+                                            <?php echo date("g:i A", strtotime($day_timing['closes_at'])); ?>
+                                            <?php else: ?>
+                                            <span class="text-muted">Not Set</span>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                     <?php elseif ($role === 'principal' && !$selected_std): ?>
-                         <div class="alert alert-info">Please select a standard to view its class timetable.</div>
+                    <div class="alert alert-info">Please select a standard to view its class timetable.</div>
                     <?php elseif (!$selected_std): ?>
-                        <div class="alert alert-warning">The timetable has not been set for your class yet.</div>
+                    <div class="alert alert-warning">The timetable has not been set for your class yet.</div>
                     <?php endif; ?>
                 </div>
-                <?php
-                if (!is_ajax_request()) {
-                ?>
-                </div>
-                <?php include '../../includes/footer.php'; ?>
             </div>
+            <?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?>
         </div>
+    </div>
 
-        <?php include_once "../../includes/logout_modal.php" ?>
+    <?php include_once "../../includes/logout_modal.php" ?>
 
-        <script src="../../assets/vendor/jquery/jquery.min.js"></script>
-        <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-        <script src="../../assets/js/sb-admin-2.min.js"></script>
-        <script src="../../assets/js/custom_student_scripts.js"></script>
-    </body>
+    <script src="../../assets/vendor/jquery/jquery.min.js"></script>
+    <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="../../assets/js/sb-admin-2.min.js"></script>
+    <script src="../../assets/js/custom_student_scripts.js"></script>
+</body>
 
 </html>
-<?php
-                }
-?>

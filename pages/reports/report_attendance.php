@@ -26,6 +26,8 @@ if (isset($_POST['download_pdf'])) {
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 // Authorization check
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 $userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
@@ -223,6 +225,7 @@ $total_leave = array_sum(array_column($individual_staff_attendance, 'leave'));
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Attendance Analysis Report</title>
@@ -235,29 +238,42 @@ $total_leave = array_sum(array_column($individual_staff_attendance, 'leave'));
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link href="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
     <style>
-        .staff-list-container {
-            max-height: 250px; /* Same as chart height */
-            overflow-y: auto;
-            position: relative;
-        }
-        .staff-list-container .table thead th {
-            position: sticky;
-            top: 0;
-            background-color: #f8f9fc; /* A light background to match the theme */
-            z-index: 1;
-        }
+    .staff-list-container {
+        max-height: 250px;
+        /* Same as chart height */
+        overflow-y: auto;
+        position: relative;
+    }
+
+    .staff-list-container .table thead th {
+        position: sticky;
+        top: 0;
+        background-color: #f8f9fc;
+        /* A light background to match the theme */
+        z-index: 1;
+    }
     </style>
 </head>
+
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
+        <?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
+                <?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
+}
+?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800"><?php echo htmlspecialchars($report_title); ?></h1>
-                        <button id="download-full-report-btn" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+                        <button id="download-full-report-btn"
+                            class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
                             <i class="fas fa-download fa-sm text-white-50"></i> Generate Full Report
                         </button>
                     </div>
@@ -268,12 +284,14 @@ $total_leave = array_sum(array_column($individual_staff_attendance, 'leave'));
                             <form method="GET" action="" class="form-inline">
                                 <div class="form-group mr-3">
                                     <label for="school_id" class="mr-2"><strong>Filter by School:</strong></label>
-                                    <select name="school_id" id="school_id" class="form-control" onchange="this.form.submit()">
+                                    <select name="school_id" id="school_id" class="form-control"
+                                        onchange="this.form.submit()">
                                         <option value="">-- All Schools --</option>
                                         <?php foreach($schools as $school): ?>
-                                            <option value="<?php echo $school['id']; ?>" <?php if ($school['id'] == $school_id) echo 'selected'; ?>>
-                                                <?php echo htmlspecialchars($school['school_name']); ?>
-                                            </option>
+                                        <option value="<?php echo $school['id']; ?>"
+                                            <?php if ($school['id'] == $school_id) echo 'selected'; ?>>
+                                            <?php echo htmlspecialchars($school['school_name']); ?>
+                                        </option>
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
@@ -282,13 +300,15 @@ $total_leave = array_sum(array_column($individual_staff_attendance, 'leave'));
                     </div>
                     <?php endif; ?>
 
-                    <?php if ($errorMessage): ?><div class="alert alert-danger"><?php echo $errorMessage; ?></div><?php endif; ?>
-                    
+                    <?php if ($errorMessage): ?><div class="alert alert-danger"><?php echo $errorMessage; ?></div>
+                    <?php endif; ?>
+
                     <div id="report-content">
                         <div class="card shadow mb-4" id="overall-attendance-section">
                             <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                                 <h6 class="m-0 font-weight-bold text-primary">Overall School Attendance</h6>
-                                <a href="#" class="download-section-btn" data-section="overall-attendance" title="Download this section"><i class="fas fa-download fa-sm"></i></a>
+                                <a href="#" class="download-section-btn" data-section="overall-attendance"
+                                    title="Download this section"><i class="fas fa-download fa-sm"></i></a>
                             </div>
                             <div class="card-body">
                                 <div class="row">
@@ -296,17 +316,29 @@ $total_leave = array_sum(array_column($individual_staff_attendance, 'leave'));
                                         <form method="GET" class="form-inline">
                                             <input type="hidden" name="school_id" value="<?php echo $school_id; ?>">
                                             <label for="report_date" class="mr-2">Daily Attendance For:</label>
-                                            <input type="date" id="report_date" name="report_date" value="<?php echo $selected_date; ?>" class="form-control mr-2" onchange="this.form.submit()">
+                                            <input type="date" id="report_date" name="report_date"
+                                                value="<?php echo $selected_date; ?>" class="form-control mr-2"
+                                                onchange="this.form.submit()">
                                         </form>
-                                        <div class="mt-3"><h4><?php echo $daily_percentage; ?>%</h4><p class="text-muted">On <?php echo date("d M, Y", strtotime($selected_date)); ?></p></div>
+                                        <div class="mt-3">
+                                            <h4><?php echo $daily_percentage; ?>%</h4>
+                                            <p class="text-muted">On
+                                                <?php echo date("d M, Y", strtotime($selected_date)); ?></p>
+                                        </div>
                                     </div>
                                     <div class="col-md-6 mb-4">
                                         <form method="GET" class="form-inline">
                                             <input type="hidden" name="school_id" value="<?php echo $school_id; ?>">
                                             <label for="report_month" class="mr-2">Monthly Attendance For:</label>
-                                            <input type="month" id="report_month" name="report_month" value="<?php echo $selected_month; ?>" class="form-control mr-2" onchange="this.form.submit()">
+                                            <input type="month" id="report_month" name="report_month"
+                                                value="<?php echo $selected_month; ?>" class="form-control mr-2"
+                                                onchange="this.form.submit()">
                                         </form>
-                                        <div class="mt-3"><h4><?php echo $monthly_percentage; ?>%</h4><p class="text-muted">In <?php echo date("F Y", strtotime($selected_month)); ?></p></div>
+                                        <div class="mt-3">
+                                            <h4><?php echo $monthly_percentage; ?>%</h4>
+                                            <p class="text-muted">In
+                                                <?php echo date("F Y", strtotime($selected_month)); ?></p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -319,41 +351,67 @@ $total_leave = array_sum(array_column($individual_staff_attendance, 'leave'));
                                     <form method="GET" class="form-inline mr-2">
                                         <input type="hidden" name="school_id" value="<?php echo $school_id; ?>">
                                         <label for="threshold" class="mr-2">Threshold (%):</label>
-                                        <input type="number" name="threshold" id="threshold" value="<?php echo $low_attendance_threshold; ?>" class="form-control form-control-sm" style="width: 80px;" onchange="this.form.submit()">
+                                        <input type="number" name="threshold" id="threshold"
+                                            value="<?php echo $low_attendance_threshold; ?>"
+                                            class="form-control form-control-sm" style="width: 80px;"
+                                            onchange="this.form.submit()">
                                     </form>
-                                    <a href="#" class="download-section-btn" data-section="low-attendance" title="Download this section"><i class="fas fa-download fa-sm"></i></a>
+                                    <a href="#" class="download-section-btn" data-section="low-attendance"
+                                        title="Download this section"><i class="fas fa-download fa-sm"></i></a>
                                 </div>
                             </div>
                             <div class="card-body">
                                 <div class="table-responsive" id="low-attendance-table">
                                     <table class="table table-bordered">
-                                        <thead><tr><th>Student Name</th><th>Standard</th><th>Attendance %</th></tr></thead>
+                                        <thead>
+                                            <tr>
+                                                <th>Student Name</th>
+                                                <th>Standard</th>
+                                                <th>Attendance %</th>
+                                            </tr>
+                                        </thead>
                                         <tbody>
                                             <?php foreach ($low_attendance_students as $student): ?>
-                                            <tr><td><?php echo htmlspecialchars($student['student_name']); ?></td><td><?php echo htmlspecialchars($student['std']); ?></td><td><?php echo $student['attendance_percentage']; ?>%</td></tr>
+                                            <tr>
+                                                <td><?php echo htmlspecialchars($student['student_name']); ?></td>
+                                                <td><?php echo htmlspecialchars($student['std']); ?></td>
+                                                <td><?php echo $student['attendance_percentage']; ?>%</td>
+                                            </tr>
                                             <?php endforeach; ?>
                                         </tbody>
                                     </table>
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="card shadow mb-4" id="staff-attendance-section">
                             <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                                <h6 class="m-0 font-weight-bold text-primary">Staff Attendance (<?php echo date("F Y", strtotime($selected_month)); ?>)</h6>
+                                <h6 class="m-0 font-weight-bold text-primary">Staff Attendance
+                                    (<?php echo date("F Y", strtotime($selected_month)); ?>)</h6>
                                 <div class="d-flex align-items-center">
                                     <form method="GET" class="form-inline mr-2">
                                         <input type="hidden" name="school_id" value="<?php echo $school_id; ?>">
                                         <label for="staff_role" class="mr-2">Role:</label>
-                                        <select name="staff_role" id="staff_role" class="form-control form-control-sm" onchange="this.form.submit()">
-                                            <option value="all" <?php if ($filter_staff_role == 'all') echo 'selected'; ?>>All Staff</option>
-                                            <option value="teacher" <?php if ($filter_staff_role == 'teacher') echo 'selected'; ?>>Teachers</option>
-                                            <option value="librarian" <?php if ($filter_staff_role == 'librarian') echo 'selected'; ?>>Librarians</option>
-                                            <option value="principal" <?php if ($filter_staff_role == 'principal') echo 'selected'; ?>>Principals</option>
-                                            <option value="hr" <?php if ($filter_staff_role == 'hr') echo 'selected'; ?>>HR</option>
+                                        <select name="staff_role" id="staff_role" class="form-control form-control-sm"
+                                            onchange="this.form.submit()">
+                                            <option value="all"
+                                                <?php if ($filter_staff_role == 'all') echo 'selected'; ?>>All Staff
+                                            </option>
+                                            <option value="teacher"
+                                                <?php if ($filter_staff_role == 'teacher') echo 'selected'; ?>>Teachers
+                                            </option>
+                                            <option value="librarian"
+                                                <?php if ($filter_staff_role == 'librarian') echo 'selected'; ?>>
+                                                Librarians</option>
+                                            <option value="principal"
+                                                <?php if ($filter_staff_role == 'principal') echo 'selected'; ?>>
+                                                Principals</option>
+                                            <option value="hr"
+                                                <?php if ($filter_staff_role == 'hr') echo 'selected'; ?>>HR</option>
                                         </select>
                                     </form>
-                                    <a href="#" class="download-section-btn" data-section="staff-attendance" title="Download this section"><i class="fas fa-download fa-sm"></i></a>
+                                    <a href="#" class="download-section-btn" data-section="staff-attendance"
+                                        title="Download this section"><i class="fas fa-download fa-sm"></i></a>
                                 </div>
                             </div>
                             <div class="card-body">
@@ -361,17 +419,32 @@ $total_leave = array_sum(array_column($individual_staff_attendance, 'leave'));
                                     <div class="col-lg-6">
                                         <div class="staff-list-container" id="staff-list-wrapper">
                                             <table class="table table-bordered">
-                                                <thead><tr><th>Staff Name</th><th>Role</th><th>Present</th><th>Absent</th><th>On Leave</th></tr></thead>
+                                                <thead>
+                                                    <tr>
+                                                        <th>Staff Name</th>
+                                                        <th>Role</th>
+                                                        <th>Present</th>
+                                                        <th>Absent</th>
+                                                        <th>On Leave</th>
+                                                    </tr>
+                                                </thead>
                                                 <tbody>
-                                                <?php foreach($individual_staff_attendance as $record): ?>
-                                                    <tr><td><?php echo htmlspecialchars($record['name']); ?></td><td><?php echo htmlspecialchars($record['role']); ?></td><td><?php echo $record['present']; ?></td><td><?php echo $record['absent']; ?></td><td><?php echo $record['leave']; ?></td></tr>
-                                                <?php endforeach; ?>
+                                                    <?php foreach($individual_staff_attendance as $record): ?>
+                                                    <tr>
+                                                        <td><?php echo htmlspecialchars($record['name']); ?></td>
+                                                        <td><?php echo htmlspecialchars($record['role']); ?></td>
+                                                        <td><?php echo $record['present']; ?></td>
+                                                        <td><?php echo $record['absent']; ?></td>
+                                                        <td><?php echo $record['leave']; ?></td>
+                                                    </tr>
+                                                    <?php endforeach; ?>
                                                 </tbody>
                                             </table>
                                         </div>
                                     </div>
                                     <div class="col-lg-6">
-                                        <div class="chart-pie pt-4 pb-2" style="height: 250px;"><canvas id="staffAttendanceChart"></canvas></div>
+                                        <div class="chart-pie pt-4 pb-2" style="height: 250px;"><canvas
+                                                id="staffAttendanceChart"></canvas></div>
                                     </div>
                                 </div>
                             </div>
@@ -380,7 +453,11 @@ $total_leave = array_sum(array_column($individual_staff_attendance, 'leave'));
                     </div>
                 </div>
             </div>
-            <?php include_once '../../includes/footer.php'; ?>
+            <?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?>
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php"; ?>
@@ -397,7 +474,9 @@ $total_leave = array_sum(array_column($individual_staff_attendance, 'leave'));
         data: {
             labels: ['Present', 'Absent', 'On Leave'],
             datasets: [{
-                data: [<?php echo $total_present; ?>, <?php echo $total_absent; ?>, <?php echo $total_leave; ?>],
+                data: [<?php echo $total_present; ?>, <?php echo $total_absent; ?>,
+                    <?php echo $total_leave; ?>
+                ],
                 backgroundColor: ['#1cc88a', '#e74a3b', '#f6c23e'],
                 hoverBackgroundColor: ['#17a673', '#c73e31', '#d4a12c'],
                 hoverBorderColor: "rgba(234, 236, 244, 1)",
@@ -425,21 +504,28 @@ $total_leave = array_sum(array_column($individual_staff_attendance, 'leave'));
     // MODIFIED PDF Download Logic
     function generateAndSubmitPdf(htmlContent, filename) {
         const form = document.createElement('form');
-        form.method = 'POST'; form.action = '?';
-        
+        form.method = 'POST';
+        form.action = '?';
+
         const hiddenInputHtml = document.createElement('input');
-        hiddenInputHtml.type = 'hidden'; hiddenInputHtml.name = 'pdf_html'; hiddenInputHtml.value = htmlContent;
+        hiddenInputHtml.type = 'hidden';
+        hiddenInputHtml.name = 'pdf_html';
+        hiddenInputHtml.value = htmlContent;
         form.appendChild(hiddenInputHtml);
-        
+
         // NEW: Add the filename to the form
         const hiddenInputFilename = document.createElement('input');
-        hiddenInputFilename.type = 'hidden'; hiddenInputFilename.name = 'pdf_filename'; hiddenInputFilename.value = filename;
+        hiddenInputFilename.type = 'hidden';
+        hiddenInputFilename.name = 'pdf_filename';
+        hiddenInputFilename.value = filename;
         form.appendChild(hiddenInputFilename);
 
         const hiddenInputFlag = document.createElement('input');
-        hiddenInputFlag.type = 'hidden'; hiddenInputFlag.name = 'download_pdf'; hiddenInputFlag.value = '1';
+        hiddenInputFlag.type = 'hidden';
+        hiddenInputFlag.name = 'download_pdf';
+        hiddenInputFlag.value = '1';
         form.appendChild(hiddenInputFlag);
-        
+
         document.body.appendChild(form);
         form.submit();
     }
@@ -449,7 +535,8 @@ $total_leave = array_sum(array_column($individual_staff_attendance, 'leave'));
 
     document.getElementById('download-full-report-btn').addEventListener('click', function() {
         const staffChartImage = staffChart.toBase64Image();
-        const overallHtml = `<div class="row"><div class="col-6"><h4>Daily: <?php echo $daily_percentage; ?>%</h4></div><div class="col-6"><h4>Monthly: <?php echo $monthly_percentage; ?>%</h4></div></div>`;
+        const overallHtml =
+            `<div class="row"><div class="col-6"><h4>Daily: <?php echo $daily_percentage; ?>%</h4></div><div class="col-6"><h4>Monthly: <?php echo $monthly_percentage; ?>%</h4></div></div>`;
         const lowAttHtml = document.getElementById('low-attendance-table').innerHTML;
         const staffTableHtml = document.getElementById('staff-list-wrapper').innerHTML;
 
@@ -463,7 +550,7 @@ $total_leave = array_sum(array_column($individual_staff_attendance, 'leave'));
                 <h3>Staff Attendance Summary (<?php echo date("F Y", strtotime($selected_month)); ?>)</h3>
                 <div class="row"><div class="col-6">${staffTableHtml}</div><div class="col-6"><div class="chart-container"><img src="${staffChartImage}"></div></div></div>
             </body></html>`;
-        
+
         // Pass the dynamic filename
         generateAndSubmitPdf(pdfHtml, mainPdfFilename);
     });
@@ -477,15 +564,17 @@ $total_leave = array_sum(array_column($individual_staff_attendance, 'leave'));
             let contentHtml = '';
 
             if (sectionId === 'overall-attendance') {
-                contentHtml = `<div class="row"><div class="col-6"><h4>Daily Attendance (<?php echo $selected_date; ?>):</h4><p style="font-size:24px;">${'<?php echo $daily_percentage; ?>'}</p></div><div class="col-6"><h4>Monthly Attendance (<?php echo $selected_month; ?>):</h4><p style="font-size:24px;">${'<?php echo $monthly_percentage; ?>'}</p></div></div>`;
+                contentHtml =
+                    `<div class="row"><div class="col-6"><h4>Daily Attendance (<?php echo $selected_date; ?>):</h4><p style="font-size:24px;">${'<?php echo $daily_percentage; ?>'}</p></div><div class="col-6"><h4>Monthly Attendance (<?php echo $selected_month; ?>):</h4><p style="font-size:24px;">${'<?php echo $monthly_percentage; ?>'}</p></div></div>`;
             } else if (sectionId === 'low-attendance') {
                 contentHtml = document.getElementById('low-attendance-table').innerHTML;
             } else if (sectionId === 'staff-attendance') {
                 const staffChartImage = staffChart.toBase64Image();
                 const staffTableHtml = document.getElementById('staff-list-wrapper').innerHTML;
-                contentHtml = `<div class="row"><div class="col-6">${staffTableHtml}</div><div class="col-6"><div class="chart-container"><img src="${staffChartImage}"></div></div></div>`;
+                contentHtml =
+                    `<div class="row"><div class="col-6">${staffTableHtml}</div><div class="col-6"><div class="chart-container"><img src="${staffChartImage}"></div></div></div>`;
             }
-            
+
             const sectionFilename = title.replace(/[^a-zA-Z0-9]+/g, '_') + '_Report.pdf';
             const pdfHtml = `
                 <!DOCTYPE html><html><head><title>${title}</title><style>
@@ -494,11 +583,12 @@ $total_leave = array_sum(array_column($individual_staff_attendance, 'leave'));
                     <div class="header"><h1><?php echo htmlspecialchars($school_name); ?></h1><h2>${title}</h2></div>
                     ${contentHtml}
                 </body></html>`;
-            
+
             // Pass the dynamic filename for the section
             generateAndSubmitPdf(pdfHtml, sectionFilename);
         });
     });
     </script>
 </body>
+
 </html>

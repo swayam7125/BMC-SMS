@@ -3,6 +3,8 @@
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 // Initialize variables
 $role = null;
 $userId = null;
@@ -73,35 +75,47 @@ foreach ($attendance_records as $record) {
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
-        <div id="content-wrapper" class="d-flex flex-column">
+        <?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?> <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
-                <div class="container-fluid">
+                <?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
+}
+?> <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">My Attendance</h1>
 
                     <div class="row mb-4">
                         <div class="col-md-4 mb-4">
                             <div class="card border-left-success shadow h-100 py-2">
                                 <div class="card-body">
-                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Present</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $summary['Present']; ?> Days</div>
+                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Present
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                        <?php echo $summary['Present']; ?> Days</div>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-4 mb-4">
                             <div class="card border-left-danger shadow h-100 py-2">
                                 <div class="card-body">
-                                    <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Total Absent</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $summary['Absent']; ?> Days</div>
+                                    <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Total Absent
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                        <?php echo $summary['Absent']; ?> Days</div>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-4 mb-4">
                             <div class="card border-left-warning shadow h-100 py-2">
                                 <div class="card-body">
-                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Total Leave</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $summary['Leave']; ?> Days</div>
+                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Total Leave
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $summary['Leave']; ?>
+                                        Days</div>
                                 </div>
                             </div>
                         </div>
@@ -116,13 +130,18 @@ foreach ($attendance_records as $record) {
                                 <div class="form-group mr-2">
                                     <label for="month" class="mr-2">Month:</label>
                                     <select name="month" id="month" class="form-control">
-                                        <?php for ($m = 1; $m <= 12; $m++): ?><option value="<?php echo $m; ?>" <?php echo ($m == $filter_month) ? 'selected' : ''; ?>><?php echo date('F', mktime(0, 0, 0, $m, 10)); ?></option><?php endfor; ?>
+                                        <?php for ($m = 1; $m <= 12; $m++): ?><option value="<?php echo $m; ?>"
+                                            <?php echo ($m == $filter_month) ? 'selected' : ''; ?>>
+                                            <?php echo date('F', mktime(0, 0, 0, $m, 10)); ?></option><?php endfor; ?>
                                     </select>
                                 </div>
                                 <div class="form-group mr-2">
                                     <label for="year" class="mr-2">Year:</label>
                                     <select name="year" id="year" class="form-control">
-                                        <?php for ($y = date('Y'); $y >= date('Y') - 5; $y--): ?><option value="<?php echo $y; ?>" <?php echo ($y == $filter_year) ? 'selected' : ''; ?>><?php echo $y; ?></option><?php endfor; ?>
+                                        <?php for ($y = date('Y'); $y >= date('Y') - 5; $y--): ?><option
+                                            value="<?php echo $y; ?>"
+                                            <?php echo ($y == $filter_year) ? 'selected' : ''; ?>><?php echo $y; ?>
+                                        </option><?php endfor; ?>
                                     </select>
                                 </div>
                                 <button type="submit" class="btn btn-primary">Filter</button>
@@ -137,11 +156,12 @@ foreach ($attendance_records as $record) {
                                     </thead>
                                     <tbody>
                                         <?php if (!empty($attendance_records)): ?>
-                                            <?php foreach ($attendance_records as $record): ?>
-                                                <tr>
-                                                    <td><?php echo date("l, F j, Y", strtotime($record['attendance_date'])); ?></td>
-                                                    <td>
-                                                        <?php
+                                        <?php foreach ($attendance_records as $record): ?>
+                                        <tr>
+                                            <td><?php echo date("l, F j, Y", strtotime($record['attendance_date'])); ?>
+                                            </td>
+                                            <td>
+                                                <?php
                                                         $status = htmlspecialchars($record['status']);
                                                         $badge_class = 'badge-secondary';
                                                         if ($status == 'Present') $badge_class = 'badge-success';
@@ -149,13 +169,14 @@ foreach ($attendance_records as $record) {
                                                         if ($status == 'Leave') $badge_class = 'badge-warning';
                                                         echo "<span class='badge {$badge_class}'>{$status}</span>";
                                                         ?>
-                                                    </td>
-                                                </tr>
-                                            <?php endforeach; ?>
+                                            </td>
+                                        </tr>
+                                        <?php endforeach; ?>
                                         <?php else: ?>
-                                            <tr>
-                                                <td colspan="2" class="text-center">No attendance records found for the selected period.</td>
-                                            </tr>
+                                        <tr>
+                                            <td colspan="2" class="text-center">No attendance records found for the
+                                                selected period.</td>
+                                        </tr>
                                         <?php endif; ?>
                                     </tbody>
                                 </table>
@@ -164,7 +185,11 @@ foreach ($attendance_records as $record) {
                     </div>
                 </div>
             </div>
-            <?php include_once '../../includes/footer.php'; ?>
+            <?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?>
         </div>
     </div>
 

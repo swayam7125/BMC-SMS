@@ -4,6 +4,8 @@ require_once __DIR__ . "/includes/connect.php";
 require_once __DIR__ . "/encryption.php";
 require_once __DIR__ . '/includes/ajax_helpers.php'; 
 
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 // This is the new check to see if the page is being requested by the AJAX script
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
@@ -435,11 +437,17 @@ if ($userId && isset($conn)) {
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include './includes/sidebar.php'; ?>
-        <div id="content-wrapper" class="d-flex flex-column">
+<?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?>        <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include './includes/header.php'; ?>
-                <div id="main-content">
+<?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
+}
+?>                <div id="main-content">
                     <div class="container-fluid">
 <?php endif; ?>
 
@@ -855,8 +863,11 @@ if ($userId && isset($conn)) {
                         <?php if (!$is_ajax_request): // If it's a normal page load, close the HTML shell ?>
                     </div>
                 </div>
-                <?php include './includes/footer.php'; ?>
-            </div>
+<?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?>            </div>
         </div>
         <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
         <?php include_once "./includes/logout_modal.php" ?>

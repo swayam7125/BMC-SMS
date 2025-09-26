@@ -2,6 +2,8 @@
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 $role = null;
 $user_id = null;
 $school_id = null;
@@ -76,18 +78,32 @@ try {
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
+        <?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
+                <?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Browse & Request Books</h1>
 
                     <?php if (isset($_GET['success'])): ?>
-                        <div class="alert alert-success alert-dismissible fade show" role="alert"><?php echo htmlspecialchars($_GET['success']); ?><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <?php echo htmlspecialchars($_GET['success']); ?><button type="button" class="close"
+                            data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    </div>
                     <?php endif; ?>
                     <?php if (isset($_GET['error'])): ?>
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert"><?php echo htmlspecialchars($_GET['error']); ?><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <?php echo htmlspecialchars($_GET['error']); ?><button type="button" class="close"
+                            data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    </div>
                     <?php endif; ?>
 
                     <div class="card shadow mb-4">
@@ -97,15 +113,18 @@ try {
                         <div class="card-body">
                             <form method="GET" action="browse_books.php" class="mb-4">
                                 <div class="input-group">
-                                    <input type="text" name="search" class="form-control" placeholder="Search by title, author, publisher..." value="<?php echo htmlspecialchars($search_query); ?>">
+                                    <input type="text" name="search" class="form-control"
+                                        placeholder="Search by title, author, publisher..."
+                                        value="<?php echo htmlspecialchars($search_query); ?>">
                                     <div class="input-group-append">
                                         <button class="btn btn-primary" type="submit" aria-label="Search">
                                             <i class="fas fa-search fa-sm"></i>
                                         </button>
                                         <?php if (!empty($search_query)): ?>
-                                            <a href="browse_books.php" class="btn btn-secondary" title="Clear Search" aria-label="Clear Search">
-                                                <i class="fas fa-times fa-sm"></i>
-                                            </a>
+                                        <a href="browse_books.php" class="btn btn-secondary" title="Clear Search"
+                                            aria-label="Clear Search">
+                                            <i class="fas fa-times fa-sm"></i>
+                                        </a>
                                         <?php endif; ?>
                                     </div>
                                 </div>
@@ -122,32 +141,32 @@ try {
                                     </thead>
                                     <tbody>
                                         <?php if (!empty($books)): ?>
-                                            <?php foreach ($books as $book): ?>
-                                                <tr>
-                                                    <td><?php echo htmlspecialchars($book['title']); ?></td>
-                                                    <td><?php echo htmlspecialchars($book['author']); ?></td>
-                                                    <td><?php echo htmlspecialchars($book['publisher']); ?></td>
-                                                    <td>
-                                                        <button type="button" class="btn btn-primary btn-sm request-btn"
-                                                            data-toggle="modal"
-                                                            data-target="#requestModal"
-                                                            data-book-id="<?php echo $book['book_id']; ?>"
-                                                            data-book-title="<?php echo htmlspecialchars($book['title']); ?>">
-                                                            <i class="fas fa-hand-holding-hand"></i> Request to Borrow
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            <?php endforeach; ?>
+                                        <?php foreach ($books as $book): ?>
+                                        <tr>
+                                            <td><?php echo htmlspecialchars($book['title']); ?></td>
+                                            <td><?php echo htmlspecialchars($book['author']); ?></td>
+                                            <td><?php echo htmlspecialchars($book['publisher']); ?></td>
+                                            <td>
+                                                <button type="button" class="btn btn-primary btn-sm request-btn"
+                                                    data-toggle="modal" data-target="#requestModal"
+                                                    data-book-id="<?php echo $book['book_id']; ?>"
+                                                    data-book-title="<?php echo htmlspecialchars($book['title']); ?>">
+                                                    <i class="fas fa-hand-holding-hand"></i> Request to Borrow
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <?php endforeach; ?>
                                         <?php else: ?>
-                                            <tr>
-                                                <td colspan="4" class="text-center">
-                                                    <?php if (!empty($search_query)): ?>
-                                                        No books found matching your search for "<?php echo htmlspecialchars($search_query); ?>".
-                                                    <?php else: ?>
-                                                        No books are currently available in the library.
-                                                    <?php endif; ?>
-                                                </td>
-                                            </tr>
+                                        <tr>
+                                            <td colspan="4" class="text-center">
+                                                <?php if (!empty($search_query)): ?>
+                                                No books found matching your search for
+                                                "<?php echo htmlspecialchars($search_query); ?>".
+                                                <?php else: ?>
+                                                No books are currently available in the library.
+                                                <?php endif; ?>
+                                            </td>
+                                        </tr>
                                         <?php endif; ?>
                                     </tbody>
                                 </table>
@@ -156,16 +175,22 @@ try {
                     </div>
                 </div>
             </div>
-            <?php include_once '../../includes/footer.php'; ?>
+            <?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?>
         </div>
     </div>
 
-    <div class="modal fade" id="requestModal" tabindex="-1" role="dialog" aria-labelledby="requestModalLabel" aria-hidden="true">
+    <div class="modal fade" id="requestModal" tabindex="-1" role="dialog" aria-labelledby="requestModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="requestModalLabel">Request to Borrow Book</h5>
-                    <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                    <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span
+                            aria-hidden="true">×</span></button>
                 </div>
                 <form action="../../includes/actions/handle_borrow_request_user.php" method="POST">
                     <div class="modal-body">
@@ -173,8 +198,10 @@ try {
                         <input type="hidden" name="book_id" id="modal_book_id">
                         <div class="form-group">
                             <label for="requested_due_date">Desired Return Date *</label>
-                            <input type="text" class="form-control" id="requested_due_date" name="requested_due_date" required onfocus="(this.type='date')" onblur="(this.type='text')">
-                            <small class="form-text text-muted">Please select your preferred return date. The librarian will confirm the final due date upon approval.</small>
+                            <input type="text" class="form-control" id="requested_due_date" name="requested_due_date"
+                                required onfocus="(this.type='date')" onblur="(this.type='text')">
+                            <small class="form-text text-muted">Please select your preferred return date. The librarian
+                                will confirm the final due date upon approval.</small>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -192,17 +219,17 @@ try {
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script>
-        $(document).ready(function() {
-            var today = new Date().toISOString().split('T')[0];
-            $('#requested_due_date').attr('min', today);
+    $(document).ready(function() {
+        var today = new Date().toISOString().split('T')[0];
+        $('#requested_due_date').attr('min', today);
 
-            $('.request-btn').on('click', function() {
-                var bookId = $(this).data('book-id');
-                var bookTitle = $(this).data('book-title');
-                $('#modal_book_id').val(bookId);
-                $('#modal_book_title').text(bookTitle);
-            });
+        $('.request-btn').on('click', function() {
+            var bookId = $(this).data('book-id');
+            var bookTitle = $(this).data('book-title');
+            $('#modal_book_id').val(bookId);
+            $('#modal_book_title').text(bookTitle);
         });
+    });
     </script>
 </body>
 

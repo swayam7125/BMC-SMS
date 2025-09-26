@@ -4,6 +4,8 @@ include_once '../../encryption.php';
 include_once '../../includes/email_functions.php';
 include_once '../../includes/ajax_helpers.php';
 
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 // Check if this is an AJAX request
 if (is_ajax_request()) {
     // Start output buffering to capture the HTML
@@ -75,10 +77,8 @@ try {
     }
     $message = '<div class="alert alert-danger">An error occurred: ' . $e->getMessage() . '</div>';
     error_log("Leave Management Error: " . $e->getMessage());
-}
+}?>
 
-if (!is_ajax_request()) {
-?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -94,11 +94,15 @@ if (!is_ajax_request()) {
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
-        <div id="content-wrapper" class="d-flex flex-column">
+        <?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?> <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include '../../includes/header.php'; ?>
-<?php
+                <?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
 }
 ?>
                 <div class="container-fluid">
@@ -110,21 +114,29 @@ if (!is_ajax_request()) {
                         </div>
                         <div class="card-body">
                             <form method="POST" action="teacher_leave_management.php">
-                                <div class="form-group"><label>Name</label><input type="text" class="form-control" value="<?php echo htmlspecialchars($teacher_name); ?>" readonly></div>
+                                <div class="form-group"><label>Name</label><input type="text" class="form-control"
+                                        value="<?php echo htmlspecialchars($teacher_name); ?>" readonly></div>
                                 <div class="row">
                                     <div class="col-md-6">
-                                        <div class="form-group"><label for="from_date">From Date</label><input type="date" class="form-control" id="from_date" name="from_date" required></div>
+                                        <div class="form-group"><label for="from_date">From Date</label><input
+                                                type="date" class="form-control" id="from_date" name="from_date"
+                                                required></div>
                                     </div>
                                     <div class="col-md-6">
-                                        <div class="form-group"><label for="to_date">To Date</label><input type="date" class="form-control" id="to_date" name="to_date" required></div>
+                                        <div class="form-group"><label for="to_date">To Date</label><input type="date"
+                                                class="form-control" id="to_date" name="to_date" required></div>
                                     </div>
                                 </div>
-                                <div class="form-group" id="leave_type_container" style="display: none;"><label for="leave_type">Leave Type</label><select class="form-control" id="leave_type" name="leave_type">
+                                <div class="form-group" id="leave_type_container" style="display: none;"><label
+                                        for="leave_type">Leave Type</label><select class="form-control" id="leave_type"
+                                        name="leave_type">
                                         <option value="Full Day">Full Day</option>
                                         <option value="First Half">First Half</option>
                                         <option value="Second Half">Second Half</option>
                                     </select></div>
-                                <div class="form-group"><label for="reason">Reason for Leave</label><textarea class="form-control" id="reason" name="reason" rows="4" required></textarea></div>
+                                <div class="form-group"><label for="reason">Reason for Leave</label><textarea
+                                        class="form-control" id="reason" name="reason" rows="4" required></textarea>
+                                </div>
                                 <button type="submit" class="btn btn-primary">Submit Application</button>
                             </form>
                         </div>
@@ -149,25 +161,26 @@ if (!is_ajax_request()) {
                                     </thead>
                                     <tbody>
                                         <?php if (!empty($leave_history)): foreach ($leave_history as $row): ?>
-                                                <tr>
-                                                    <td><?php echo htmlspecialchars($row['from_date']); ?></td>
-                                                    <td><?php echo htmlspecialchars($row['to_date']); ?></td>
-                                                    <td><?php echo htmlspecialchars($row['leave_type']); ?></td>
-                                                    <td><?php echo htmlspecialchars($row['reason']); ?></td>
-                                                    <td><?php echo htmlspecialchars(date('d-m-Y H:i', strtotime($row['applied_on']))); ?></td>
-                                                    <td>
-                                                        <?php $status_color = 'secondary';
+                                        <tr>
+                                            <td><?php echo htmlspecialchars($row['from_date']); ?></td>
+                                            <td><?php echo htmlspecialchars($row['to_date']); ?></td>
+                                            <td><?php echo htmlspecialchars($row['leave_type']); ?></td>
+                                            <td><?php echo htmlspecialchars($row['reason']); ?></td>
+                                            <td><?php echo htmlspecialchars(date('d-m-Y H:i', strtotime($row['applied_on']))); ?>
+                                            </td>
+                                            <td>
+                                                <?php $status_color = 'secondary';
                                                         if ($row['status'] == 'Approved') $status_color = 'success';
                                                         elseif ($row['status'] == 'Rejected') $status_color = 'danger';
                                                         echo '<span class="badge badge-' . $status_color . ' p-2">' . htmlspecialchars($row['status']) . '</span>'; ?>
-                                                    </td>
-                                                    <td><?php echo htmlspecialchars($row['rejection_reason'] ?? 'N/A'); ?></td>
-                                                </tr>
-                                            <?php endforeach;
+                                            </td>
+                                            <td><?php echo htmlspecialchars($row['rejection_reason'] ?? 'N/A'); ?></td>
+                                        </tr>
+                                        <?php endforeach;
                                         else: ?>
-                                            <tr>
-                                                <td colspan="7" class="text-center">No leave applications found.</td>
-                                            </tr>
+                                        <tr>
+                                            <td colspan="7" class="text-center">No leave applications found.</td>
+                                        </tr>
                                         <?php endif; ?>
                                     </tbody>
                                 </table>
@@ -175,11 +188,12 @@ if (!is_ajax_request()) {
                         </div>
                     </div>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
             </div>
-            <?php include '../../includes/footer.php'; ?>
+            <?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?>
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php" ?>
@@ -187,32 +201,32 @@ if (!is_ajax_request()) {
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const fromDateInput = document.getElementById('from_date');
-            const toDateInput = document.getElementById('to_date');
-            const leaveTypeContainer = document.getElementById('leave_type_container');
+    document.addEventListener('DOMContentLoaded', function() {
+        const fromDateInput = document.getElementById('from_date');
+        const toDateInput = document.getElementById('to_date');
+        const leaveTypeContainer = document.getElementById('leave_type_container');
 
-            // --- ADDED: Set min attribute for from_date to today's date ---
-            const today = new Date().toISOString().split('T')[0];
-            fromDateInput.setAttribute('min', today);
+        // --- ADDED: Set min attribute for from_date to today's date ---
+        const today = new Date().toISOString().split('T')[0];
+        fromDateInput.setAttribute('min', today);
 
-            function toggleLeaveTypeVisibility() {
-                if (fromDateInput.value && fromDateInput.value === toDateInput.value) {
-                    leaveTypeContainer.style.display = 'block';
-                } else {
-                    leaveTypeContainer.style.display = 'none';
-                }
+        function toggleLeaveTypeVisibility() {
+            if (fromDateInput.value && fromDateInput.value === toDateInput.value) {
+                leaveTypeContainer.style.display = 'block';
+            } else {
+                leaveTypeContainer.style.display = 'none';
             }
-            fromDateInput.addEventListener('change', function() {
-                toDateInput.min = fromDateInput.value;
-                if (new Date(toDateInput.value) < new Date(fromDateInput.value)) {
-                    toDateInput.value = fromDateInput.value;
-                }
-                toggleLeaveTypeVisibility();
-            });
-            toDateInput.addEventListener('change', toggleLeaveTypeVisibility);
+        }
+        fromDateInput.addEventListener('change', function() {
+            toDateInput.min = fromDateInput.value;
+            if (new Date(toDateInput.value) < new Date(fromDateInput.value)) {
+                toDateInput.value = fromDateInput.value;
+            }
             toggleLeaveTypeVisibility();
         });
+        toDateInput.addEventListener('change', toggleLeaveTypeVisibility);
+        toggleLeaveTypeVisibility();
+    });
     </script>
 </body>
 <?php
@@ -222,17 +236,15 @@ if (is_ajax_request()) {
     $content = ob_get_clean();
     
     // Extract just the main content area for the AJAX response
-    if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
-        echo '<div class="container-fluid">' . $matches[1] . '</div>';
+    if (preg_match('/<div class="container-fluid".*?>(.*?)<\ /div>/s', $content, $matches)) {
+    echo '<div class="container-fluid">' . $matches[1] . '</div>';
     } else {
-        // Fallback if the main container isn't found
-        echo $content;
+    // Fallback if the main container isn't found
+    echo $content;
     }
     // Stop the script for AJAX requests
     exit;
-}
-?>
+    }
+    ?>
+
 </html>
-<?php
-}
-?>

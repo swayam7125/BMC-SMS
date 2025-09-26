@@ -3,6 +3,8 @@ include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php';
 
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 // Check if this is an AJAX request
 if (is_ajax_request()) {
     // Start output buffering to capture the HTML
@@ -80,8 +82,6 @@ try {
     $errorMessage = "A database error occurred: " . $e->getMessage();
     error_log("View Lecture Attendance Error: " . $e->getMessage());
 }
-
-if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -98,11 +98,15 @@ if (!is_ajax_request()) {
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
-        <div id="content-wrapper" class="d-flex flex-column">
+        <?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?> <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include '../../includes/header.php'; ?>
-<?php
+                <?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
 }
 ?>
                 <div class="container-fluid">
@@ -123,7 +127,8 @@ if (!is_ajax_request()) {
                                 </div>
                                 <div class="form-group mr-3">
                                     <label for="lecture_id" class="mr-2">Lecture:</label>
-                                    <select id="lecture_id" name="lecture_id" class="form-control" <?php echo $is_holiday ? 'disabled' : 'required'; ?>>
+                                    <select id="lecture_id" name="lecture_id" class="form-control"
+                                        <?php echo $is_holiday ? 'disabled' : 'required'; ?>>
                                         <option value="">-- Select a Lecture --</option>
                                         <?php foreach ($teacher_lectures as $lec): ?>
                                         <option value="<?php echo $lec['id']; ?>"
@@ -135,7 +140,8 @@ if (!is_ajax_request()) {
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
-                                <button type="submit" class="btn btn-primary" <?php echo $is_holiday ? 'disabled' : ''; ?>>View Records</button>
+                                <button type="submit" class="btn btn-primary"
+                                    <?php echo $is_holiday ? 'disabled' : ''; ?>>View Records</button>
                             </form>
                         </div>
                     </div>
@@ -201,11 +207,12 @@ if (!is_ajax_request()) {
                     </div>
                     <?php endif; ?>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
             </div>
-            <?php include '../../includes/footer.php'; ?>
+            <?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?>
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php" ?>
@@ -214,29 +221,29 @@ if (!is_ajax_request()) {
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
     <script>
-        $(document).ready(function() {
-            $('#attendanceTable').DataTable();
-            
-            // Set max date for the date picker
-            var today = new Date().toISOString().split('T')[0];
-            document.getElementById('view_date').setAttribute('max', today);
+    $(document).ready(function() {
+        $('#attendanceTable').DataTable();
 
-            // Handle date change event
-            $('#view_date').on('change', function() {
-                // Get the current URL and the selected date
-                var url = new URL(window.location.href);
-                var selectedDate = $(this).val();
+        // Set max date for the date picker
+        var today = new Date().toISOString().split('T')[0];
+        document.getElementById('view_date').setAttribute('max', today);
 
-                // Set the new date as a URL parameter
-                url.searchParams.set('view_date', selectedDate);
-                
-                // Clear the lecture_id parameter to ensure the holiday check is performed first
-                url.searchParams.delete('lecture_id');
+        // Handle date change event
+        $('#view_date').on('change', function() {
+            // Get the current URL and the selected date
+            var url = new URL(window.location.href);
+            var selectedDate = $(this).val();
 
-                // Reload the page
-                window.location.href = url.toString();
-            });
+            // Set the new date as a URL parameter
+            url.searchParams.set('view_date', selectedDate);
+
+            // Clear the lecture_id parameter to ensure the holiday check is performed first
+            url.searchParams.delete('lecture_id');
+
+            // Reload the page
+            window.location.href = url.toString();
         });
+    });
     </script>
 </body>
 <?php
@@ -246,15 +253,15 @@ if (is_ajax_request()) {
     $content = ob_get_clean();
     
     // Extract just the main content area for the AJAX response
-    if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
-        echo '<div class="container-fluid">' . $matches[1] . '</div>';
+    if (preg_match('/<div class="container-fluid".*?>(.*?)<\ /div>/s', $content, $matches)) {
+    echo '<div class="container-fluid">' . $matches[1] . '</div>';
     } else {
-        // Fallback if the main container isn't found
-        echo $content;
+    // Fallback if the main container isn't found
+    echo $content;
     }
     // Stop the script for AJAX requests
     exit;
-}
-?>
-</html> 
-<?php } ?>
+    }
+    ?>
+
+</html>

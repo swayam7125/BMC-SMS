@@ -3,6 +3,8 @@ include_once "../../encryption.php";
 include_once "../../includes/connect.php";
 include_once "../../includes/ajax_helpers.php";
 
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 // Check if this is an AJAX request
 if (is_ajax_request()) {
     // Start output buffering to capture the HTML
@@ -52,8 +54,6 @@ try {
 }
 
 $pageTitle = 'Exam Timetables';
-
-if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -73,42 +73,52 @@ if (!is_ajax_request()) {
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
-        <div id="content-wrapper" class="d-flex flex-column">
+        <?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?> <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include '../../includes/header.php'; ?>
-<?php
+                <?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
 }
 ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Exam Timetables</h1>
 
                     <?php if (empty($timetables)): ?>
-                        <div class="card shadow mb-4">
-                            <div class="card-body text-center">No exam timetables have been published yet.</div>
+                    <div class="card shadow mb-4">
+                        <div class="card-body text-center">No exam timetables have been published yet.</div>
+                    </div>
+                    <?php else: foreach ($timetables as $tt): ?>
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary"><?php echo htmlspecialchars($tt['title']); ?>
+                            </h6>
                         </div>
-                        <?php else: foreach ($timetables as $tt): ?>
-                            <div class="card shadow mb-4">
-                                <div class="card-header py-3">
-                                    <h6 class="m-0 font-weight-bold text-primary"><?php echo htmlspecialchars($tt['title']); ?></h6>
-                                </div>
-                                <div class="card-body">
-                                    <?php if (!empty($tt['description'])): ?><p><?php echo nl2br(htmlspecialchars($tt['description'])); ?></p><?php endif; ?>
-                                    <p class="small text-muted">Published on: <?php echo date('d F, Y', strtotime($tt['created_at'])); ?></p>
+                        <div class="card-body">
+                            <?php if (!empty($tt['description'])): ?><p>
+                                <?php echo nl2br(htmlspecialchars($tt['description'])); ?></p><?php endif; ?>
+                            <p class="small text-muted">Published on:
+                                <?php echo date('d F, Y', strtotime($tt['created_at'])); ?></p>
 
-                                    <a href="<?php echo htmlspecialchars(BASE_WEB_PATH . ltrim($tt['file_path'], '/')); ?>" class="btn btn-primary" download="<?php echo htmlspecialchars($tt['original_filename']); ?>">
-                                        <i class="fas fa-download fa-sm"></i> Download Timetable
-                                    </a>
-                                </div>
-                            </div>
+                            <a href="<?php echo htmlspecialchars(BASE_WEB_PATH . ltrim($tt['file_path'], '/')); ?>"
+                                class="btn btn-primary"
+                                download="<?php echo htmlspecialchars($tt['original_filename']); ?>">
+                                <i class="fas fa-download fa-sm"></i> Download Timetable
+                            </a>
+                        </div>
+                    </div>
                     <?php endforeach;
                     endif; ?>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
             </div>
-            <?php include '../../includes/footer.php'; ?>
+            <?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?>
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php" ?>
@@ -123,17 +133,15 @@ if (is_ajax_request()) {
     $content = ob_get_clean();
     
     // Extract just the main content area for the AJAX response
-    if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
-        echo '<div class="container-fluid">' . $matches[1] . '</div>';
+    if (preg_match('/<div class="container-fluid".*?>(.*?)<\ /div>/s', $content, $matches)) {
+    echo '<div class="container-fluid">' . $matches[1] . '</div>';
     } else {
-        // Fallback if the main container isn't found
-        echo $content;
+    // Fallback if the main container isn't found
+    echo $content;
     }
     // Stop the script for AJAX requests
     exit;
-}
-?>
+    }
+    ?>
+
 </html>
-<?php
-}
-?>

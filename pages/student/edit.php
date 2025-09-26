@@ -3,6 +3,8 @@ include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 include_once "../../includes/log_system.php"; // ADDED: Log system dependency
 
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 // Check if user is logged in
 $role = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
@@ -250,19 +252,28 @@ try {
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
-        <div id="content-wrapper" class="d-flex flex-column">
+        <?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?> <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
-                <div class="container-fluid">
+                <?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
+}
+?> <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Edit Student</h1>
-                        <a href="student_list.php" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm"><i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to List</a>
+                        <a href="student_list.php"
+                            class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm"><i
+                                class="fas fa-arrow-left fa-sm text-white-50"></i> Back to List</a>
                     </div>
                     <?php if (!empty($errors)): ?>
-                        <div class="alert alert-danger">
-                            <ul class="mb-0"><?php foreach ($errors as $error): ?><li><?php echo htmlspecialchars($error); ?></li><?php endforeach; ?></ul>
-                        </div>
+                    <div class="alert alert-danger">
+                        <ul class="mb-0"><?php foreach ($errors as $error): ?><li>
+                                <?php echo htmlspecialchars($error); ?></li><?php endforeach; ?></ul>
+                    </div>
                     <?php endif; ?>
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
@@ -272,36 +283,67 @@ try {
                             <form method="POST" enctype="multipart/form-data">
                                 <div class="row">
                                     <div class="col-md-3 text-center">
-                                        <img src="<?php echo htmlspecialchars($image_src); ?>" alt="Student Photo" id="imagePreview" class="img-thumbnail mb-2 mt-3 h-50 w-50" style="width: 150px; height: 150px; object-fit: cover;">
-                                        <div class="form-group mt-3"><label for="student_image" class="small btn btn-sm btn-primary"><i class="fas fa-upload fa-sm"></i> Change Photo</label><input type="file" class="d-none" id="student_image" name="student_image" onchange="document.getElementById('imagePreview').src = window.URL.createObjectURL(this.files[0])"></div>
+                                        <img src="<?php echo htmlspecialchars($image_src); ?>" alt="Student Photo"
+                                            id="imagePreview" class="img-thumbnail mb-2 mt-3 h-50 w-50"
+                                            style="width: 150px; height: 150px; object-fit: cover;">
+                                        <div class="form-group mt-3"><label for="student_image"
+                                                class="small btn btn-sm btn-primary"><i class="fas fa-upload fa-sm"></i>
+                                                Change Photo</label><input type="file" class="d-none" id="student_image"
+                                                name="student_image"
+                                                onchange="document.getElementById('imagePreview').src = window.URL.createObjectURL(this.files[0])">
+                                        </div>
                                     </div>
                                     <div class="col-md-9">
                                         <div class="row">
-                                            <div class="col-md-6 form-group"><label for="student_name">Student Name *</label><input type="text" class="form-control" id="student_name" name="student_name" value="<?php echo htmlspecialchars($student['student_name'] ?? ''); ?>" required></div>
-                                            <div class="col-md-6 form-group"><label for="email">Email *</label><input type="email" class="form-control" id="email" name="email" value="<?php echo htmlspecialchars($student['email'] ?? ''); ?>" required></div>
-                                            <div class="col-md-6 form-group"><label for="dob">Date of Birth</label><input type="date" class="form-control" id="dob" name="dob" value="<?php echo htmlspecialchars($student['dob'] ?? ''); ?>"></div>
+                                            <div class="col-md-6 form-group"><label for="student_name">Student Name
+                                                    *</label><input type="text" class="form-control" id="student_name"
+                                                    name="student_name"
+                                                    value="<?php echo htmlspecialchars($student['student_name'] ?? ''); ?>"
+                                                    required></div>
+                                            <div class="col-md-6 form-group"><label for="email">Email *</label><input
+                                                    type="email" class="form-control" id="email" name="email"
+                                                    value="<?php echo htmlspecialchars($student['email'] ?? ''); ?>"
+                                                    required></div>
+                                            <div class="col-md-6 form-group"><label for="dob">Date of
+                                                    Birth</label><input type="date" class="form-control" id="dob"
+                                                    name="dob"
+                                                    value="<?php echo htmlspecialchars($student['dob'] ?? ''); ?>">
+                                            </div>
                                             <div class="col-md-6 form-group">
                                                 <label for="gender">Gender</label>
                                                 <select class="form-control" id="gender" name="gender">
-                                                    <option value="Male" <?php echo (isset($student['gender']) && $student['gender'] === 'Male') ? 'selected' : ''; ?>>Male</option>
-                                                    <option value="Female" <?php echo (isset($student['gender']) && $student['gender'] === 'Female') ? 'selected' : ''; ?>>Female</option>
-                                                    <option value="Others" <?php echo (isset($student['gender']) && $student['gender'] === 'Others') ? 'selected' : ''; ?>>Others</option>
+                                                    <option value="Male"
+                                                        <?php echo (isset($student['gender']) && $student['gender'] === 'Male') ? 'selected' : ''; ?>>
+                                                        Male</option>
+                                                    <option value="Female"
+                                                        <?php echo (isset($student['gender']) && $student['gender'] === 'Female') ? 'selected' : ''; ?>>
+                                                        Female</option>
+                                                    <option value="Others"
+                                                        <?php echo (isset($student['gender']) && $student['gender'] === 'Others') ? 'selected' : ''; ?>>
+                                                        Others</option>
                                                 </select>
                                             </div>
-                                            <div class="col-md-6 form-group"><label for="blood_group">Blood Group</label><select class="form-control" id="blood_group" name="blood_group"><?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+                                            <div class="col-md-6 form-group"><label for="blood_group">Blood
+                                                    Group</label><select class="form-control" id="blood_group"
+                                                    name="blood_group"><?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
                                                 foreach ($bg_options as $bg) {
                                                     $selected = (($student['blood_group'] ?? '') == $bg) ? 'selected' : '';
                                                     echo "<option value='{$bg}' {$selected}>" . strtoupper($bg) . "</option>";
                                                 } ?></select>
                                             </div>
-                                            <div class="col-md-6 form-group"><label for="address">Address</label><textarea class="form-control" id="address" name="address" rows="1"><?php echo htmlspecialchars($student['address'] ?? ''); ?></textarea></div>
+                                            <div class="col-md-6 form-group"><label
+                                                    for="address">Address</label><textarea class="form-control"
+                                                    id="address" name="address"
+                                                    rows="1"><?php echo htmlspecialchars($student['address'] ?? ''); ?></textarea>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                                 <hr>
                                 <h6 class="text-primary font-weight-bold">Academic Details</h6>
                                 <div class="row">
-                                    <div class="col-md-6 form-group"><label for="school_id">School *</label><select class="form-control" id="school_id" name="school_id" required><?php
+                                    <div class="col-md-6 form-group"><label for="school_id">School *</label><select
+                                            class="form-control" id="school_id" name="school_id" required><?php
                                         if (isset($schools_result)) {
                                             foreach ($schools_result as $school) {
                                                 $selected = ($school['id'] == ($student['school_id'] ?? '')) ? 'selected' : '';
@@ -309,9 +351,19 @@ try {
                                             }
                                         } ?></select>
                                     </div>
-                                    <div class="col-md-6 form-group"><label for="rollno">Roll Number *</label><input type="text" class="form-control" id="rollno" name="rollno" value="<?php echo htmlspecialchars($student['rollno'] ?? ''); ?>" required></div>
-                                    <div class="col-md-6 form-group"><label for="std">Class (Standard) *</label><input type="text" class="form-control" id="std" name="std" value="<?php echo htmlspecialchars($student['std'] ?? ''); ?>" required></div>
-                                    <div class="col-md-6 form-group"><label for="academic_year">Academic Year *</label><input type="text" class="form-control" id="academic_year" name="academic_year" value="<?php echo htmlspecialchars($student['academic_year'] ?? ''); ?>" required></div>
+                                    <div class="col-md-6 form-group"><label for="rollno">Roll Number *</label><input
+                                            type="text" class="form-control" id="rollno" name="rollno"
+                                            value="<?php echo htmlspecialchars($student['rollno'] ?? ''); ?>" required>
+                                    </div>
+                                    <div class="col-md-6 form-group"><label for="std">Class (Standard) *</label><input
+                                            type="text" class="form-control" id="std" name="std"
+                                            value="<?php echo htmlspecialchars($student['std'] ?? ''); ?>" required>
+                                    </div>
+                                    <div class="col-md-6 form-group"><label for="academic_year">Academic Year
+                                            *</label><input type="text" class="form-control" id="academic_year"
+                                            name="academic_year"
+                                            value="<?php echo htmlspecialchars($student['academic_year'] ?? ''); ?>"
+                                            required></div>
                                 </div>
 
                                 <hr>
@@ -320,21 +372,36 @@ try {
                                     <div class="col-md-6 form-group">
                                         <label for="transport_mode">Mode of Transport *</label>
                                         <select class="form-control" id="transport_mode" name="transport_mode" required>
-                                            <option value="Self Transport" <?php echo (isset($student['transport_mode']) && $student['transport_mode'] == 'Self Transport') ? 'selected' : ''; ?>>Self (Own Vehicle/Walking)</option>
-                                            <option value="School Transport" <?php echo (isset($student['transport_mode']) && $student['transport_mode'] == 'School Transport') ? 'selected' : ''; ?>>School Transport (Bus/Van)</option>
+                                            <option value="Self Transport"
+                                                <?php echo (isset($student['transport_mode']) && $student['transport_mode'] == 'Self Transport') ? 'selected' : ''; ?>>
+                                                Self (Own Vehicle/Walking)</option>
+                                            <option value="School Transport"
+                                                <?php echo (isset($student['transport_mode']) && $student['transport_mode'] == 'School Transport') ? 'selected' : ''; ?>>
+                                                School Transport (Bus/Van)</option>
                                         </select>
                                     </div>
-                                    <div class="col-md-6 form-group" id="self-transport-div" style="display: <?php echo (isset($student['transport_mode']) && $student['transport_mode'] == 'Self Transport') ? 'block' : 'none'; ?>;">
+                                    <div class="col-md-6 form-group" id="self-transport-div"
+                                        style="display: <?php echo (isset($student['transport_mode']) && $student['transport_mode'] == 'Self Transport') ? 'block' : 'none'; ?>;">
                                         <label for="self_transport_mode">Self Transport Mode *</label>
-                                        <select class="form-control" id="self_transport_mode" name="self_transport_mode">
+                                        <select class="form-control" id="self_transport_mode"
+                                            name="self_transport_mode">
                                             <option value="">-- Select Mode --</option>
-                                            <option value="Walking" <?php echo (isset($student['self_transport_mode']) && $student['self_transport_mode'] == 'Walking') ? 'selected' : ''; ?>>Walking</option>
-                                            <option value="Parents" <?php echo (isset($student['self_transport_mode']) && $student['self_transport_mode'] == 'Parents') ? 'selected' : ''; ?>>Parents</option>
-                                            <option value="Bike" <?php echo (isset($student['self_transport_mode']) && $student['self_transport_mode'] == 'Bike') ? 'selected' : ''; ?>>Bike</option>
-                                            <option value="Car" <?php echo (isset($student['self_transport_mode']) && $student['self_transport_mode'] == 'Car') ? 'selected' : ''; ?>>Car</option>
+                                            <option value="Walking"
+                                                <?php echo (isset($student['self_transport_mode']) && $student['self_transport_mode'] == 'Walking') ? 'selected' : ''; ?>>
+                                                Walking</option>
+                                            <option value="Parents"
+                                                <?php echo (isset($student['self_transport_mode']) && $student['self_transport_mode'] == 'Parents') ? 'selected' : ''; ?>>
+                                                Parents</option>
+                                            <option value="Bike"
+                                                <?php echo (isset($student['self_transport_mode']) && $student['self_transport_mode'] == 'Bike') ? 'selected' : ''; ?>>
+                                                Bike</option>
+                                            <option value="Car"
+                                                <?php echo (isset($student['self_transport_mode']) && $student['self_transport_mode'] == 'Car') ? 'selected' : ''; ?>>
+                                                Car</option>
                                         </select>
                                     </div>
-                                    <div class="col-md-6 form-group" id="transport-stop-div" style="display: <?php echo (isset($student['transport_mode']) && $student['transport_mode'] == 'School Transport') ? 'block' : 'none'; ?>;">
+                                    <div class="col-md-6 form-group" id="transport-stop-div"
+                                        style="display: <?php echo (isset($student['transport_mode']) && $student['transport_mode'] == 'School Transport') ? 'block' : 'none'; ?>;">
                                         <label for="stop_id">Assign School Transport Stop</label>
                                         <select class="form-control" id="stop_id" name="stop_id">
                                             <option value="">-- No Stop Selected --</option>
@@ -358,35 +425,62 @@ try {
                                         </select>
                                     </div>
                                 </div>
-                                <div class="row mt-3" id="vehicle-details-div" style="display: <?php echo (isset($student['self_transport_mode']) && ($student['self_transport_mode'] == 'Bike' || $student['self_transport_mode'] == 'Car')) ? 'flex' : 'none'; ?>;">
+                                <div class="row mt-3" id="vehicle-details-div"
+                                    style="display: <?php echo (isset($student['self_transport_mode']) && ($student['self_transport_mode'] == 'Bike' || $student['self_transport_mode'] == 'Car')) ? 'flex' : 'none'; ?>;">
                                     <div class="col-md-6 form-group">
                                         <label for="vehicle_number">Vehicle Number *</label>
-                                        <input type="text" class="form-control" id="vehicle_number" name="vehicle_number" value="<?php echo htmlspecialchars($student['vehicle_number'] ?? ''); ?>">
+                                        <input type="text" class="form-control" id="vehicle_number"
+                                            name="vehicle_number"
+                                            value="<?php echo htmlspecialchars($student['vehicle_number'] ?? ''); ?>">
                                     </div>
                                     <div class="col-md-6 form-group">
                                         <label for="license_number">License Number *</label>
-                                        <input type="text" class="form-control" id="license_number" name="license_number" value="<?php echo htmlspecialchars($student['license_number'] ?? ''); ?>">
+                                        <input type="text" class="form-control" id="license_number"
+                                            name="license_number"
+                                            value="<?php echo htmlspecialchars($student['license_number'] ?? ''); ?>">
                                     </div>
                                 </div>
                                 <hr>
                                 <h6 class="text-primary font-weight-bold">Parent Details</h6>
                                 <div class="row">
-                                    <div class="col-md-6 form-group"><label for="father_name">Father's Name *</label><input type="text" class="form-control" id="father_name" name="father_name" value="<?php echo htmlspecialchars($student['father_name'] ?? ''); ?>" required></div>
-                                    <div class="col-md-6 form-group"><label for="father_phone">Father's Phone *</label><input type="text" class="form-control" id="father_phone" name="father_phone" value="<?php echo htmlspecialchars($student['father_phone'] ?? ''); ?>" maxlength="10" required></div>
-                                    <div class="col-md-6 form-group"><label for="mother_name">Mother's Name</label><input type="text" class="form-control" id="mother_name" name="mother_name" value="<?php echo htmlspecialchars($student['mother_name'] ?? ''); ?>"></div>
-                                    <div class="col-md-6 form-group"><label for="mother_phone">Mother's Phone</label><input type="text" class="form-control" id="mother_phone" name="mother_phone" value="<?php echo htmlspecialchars($student['mother_phone'] ?? ''); ?>" maxlength="10"></div>
+                                    <div class="col-md-6 form-group"><label for="father_name">Father's Name
+                                            *</label><input type="text" class="form-control" id="father_name"
+                                            name="father_name"
+                                            value="<?php echo htmlspecialchars($student['father_name'] ?? ''); ?>"
+                                            required></div>
+                                    <div class="col-md-6 form-group"><label for="father_phone">Father's Phone
+                                            *</label><input type="text" class="form-control" id="father_phone"
+                                            name="father_phone"
+                                            value="<?php echo htmlspecialchars($student['father_phone'] ?? ''); ?>"
+                                            maxlength="10" required></div>
+                                    <div class="col-md-6 form-group"><label for="mother_name">Mother's
+                                            Name</label><input type="text" class="form-control" id="mother_name"
+                                            name="mother_name"
+                                            value="<?php echo htmlspecialchars($student['mother_name'] ?? ''); ?>">
+                                    </div>
+                                    <div class="col-md-6 form-group"><label for="mother_phone">Mother's
+                                            Phone</label><input type="text" class="form-control" id="mother_phone"
+                                            name="mother_phone"
+                                            value="<?php echo htmlspecialchars($student['mother_phone'] ?? ''); ?>"
+                                            maxlength="10"></div>
                                 </div>
 
                                 <div class="form-group mt-4">
-                                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update Student</button>
-                                    <a href="student_list.php" class="btn btn-secondary"><i class="fas fa-times"></i> Cancel</a>
+                                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update
+                                        Student</button>
+                                    <a href="student_list.php" class="btn btn-secondary"><i class="fas fa-times"></i>
+                                        Cancel</a>
                                 </div>
                             </form>
                         </div>
                     </div>
                 </div>
             </div>
-            <?php include '../../includes/footer.php'; ?>
+            <?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?>
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php" ?>
@@ -395,98 +489,99 @@ try {
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script>
-        document.getElementById('student_image').onchange = function(evt) {
-            const [file] = this.files
-            if (file) {
-                document.getElementById('imagePreview').src = window.URL.createObjectURL(file)
-            }
-        };
+    document.getElementById('student_image').onchange = function(evt) {
+        const [file] = this.files
+        if (file) {
+            document.getElementById('imagePreview').src = window.URL.createObjectURL(file)
+        }
+    };
 
-        const transportModeSelect = document.getElementById('transport_mode');
-        const selfTransportSelect = document.getElementById('self_transport_mode');
-        const schoolTransportDiv = document.getElementById('transport-stop-div');
-        const selfTransportDiv = document.getElementById('self-transport-div');
-        const vehicleDetailsDiv = document.getElementById('vehicle-details-div');
+    const transportModeSelect = document.getElementById('transport_mode');
+    const selfTransportSelect = document.getElementById('self_transport_mode');
+    const schoolTransportDiv = document.getElementById('transport-stop-div');
+    const selfTransportDiv = document.getElementById('self-transport-div');
+    const vehicleDetailsDiv = document.getElementById('vehicle-details-div');
 
-        function fetchTransportStops(schoolId, selectedStopId) {
-            if (!schoolId) {
-                $('#stop_id').html('<option value="">-- No Transport --</option>');
-                return;
-            }
-            
-            $('#stop_id').html('<option value="">-- Loading stops --</option>');
-            
-            fetch('../teacher/get_transport_stops.php?school_id=' + schoolId)
-                .then(response => response.json())
-                .then(data => {
-                    let options = '<option value="">-- No Stop Selected --</option>';
-                    data.forEach(stop => {
-                        const isSelected = stop.stop_id == selectedStopId ? 'selected' : '';
-                        options += `<option value="${stop.stop_id}" ${isSelected}>${stop.stop_name} (Route: ${stop.route_name})</option>`;
-                    });
-                    $('#stop_id').html(options);
-                })
-                .catch(error => {
-                    console.error('Error fetching transport stops:', error);
-                    $('#stop_id').html('<option value="">-- Error loading stops --</option>');
+    function fetchTransportStops(schoolId, selectedStopId) {
+        if (!schoolId) {
+            $('#stop_id').html('<option value="">-- No Transport --</option>');
+            return;
+        }
+
+        $('#stop_id').html('<option value="">-- Loading stops --</option>');
+
+        fetch('../teacher/get_transport_stops.php?school_id=' + schoolId)
+            .then(response => response.json())
+            .then(data => {
+                let options = '<option value="">-- No Stop Selected --</option>';
+                data.forEach(stop => {
+                    const isSelected = stop.stop_id == selectedStopId ? 'selected' : '';
+                    options +=
+                        `<option value="${stop.stop_id}" ${isSelected}>${stop.stop_name} (Route: ${stop.route_name})</option>`;
                 });
+                $('#stop_id').html(options);
+            })
+            .catch(error => {
+                console.error('Error fetching transport stops:', error);
+                $('#stop_id').html('<option value="">-- Error loading stops --</option>');
+            });
+    }
+
+    function toggleSelfTransportFields() {
+        const selectedMode = selfTransportSelect.value;
+        if (selectedMode === 'Bike' || selectedMode === 'Car') {
+            vehicleDetailsDiv.style.display = 'flex';
+        } else {
+            vehicleDetailsDiv.style.display = 'none';
+            document.getElementById('vehicle_number').value = '';
+            document.getElementById('license_number').value = '';
         }
+    }
 
-        function toggleSelfTransportFields() {
-            const selectedMode = selfTransportSelect.value;
-            if (selectedMode === 'Bike' || selectedMode === 'Car') {
-                vehicleDetailsDiv.style.display = 'flex';
-            } else {
-                vehicleDetailsDiv.style.display = 'none';
-                document.getElementById('vehicle_number').value = '';
-                document.getElementById('license_number').value = '';
+    function toggleTransportFields() {
+        const mainMode = transportModeSelect.value;
+        if (mainMode === 'School Transport') {
+            schoolTransportDiv.style.display = 'block';
+            selfTransportDiv.style.display = 'none';
+            vehicleDetailsDiv.style.display = 'none';
+            document.getElementById('self_transport_mode').value = '';
+            document.getElementById('vehicle_number').value = '';
+            document.getElementById('license_number').value = '';
+
+            const schoolId = document.getElementById('school_id').value;
+            const selectedStopId = <?php echo json_encode($student['stop_id'] ?? null); ?>;
+            if (schoolId) {
+                fetchTransportStops(schoolId, selectedStopId);
             }
+        } else if (mainMode === 'Self Transport') {
+            selfTransportDiv.style.display = 'block';
+            schoolTransportDiv.style.display = 'none';
+            document.getElementById('stop_id').value = '';
+            toggleSelfTransportFields();
+        } else {
+            selfTransportDiv.style.display = 'none';
+            schoolTransportDiv.style.display = 'none';
+            vehicleDetailsDiv.style.display = 'none';
+            document.getElementById('self_transport_mode').value = '';
+            document.getElementById('stop_id').value = '';
+            document.getElementById('vehicle_number').value = '';
+            document.getElementById('license_number').value = '';
         }
+    }
 
-        function toggleTransportFields() {
-            const mainMode = transportModeSelect.value;
-            if (mainMode === 'School Transport') {
-                schoolTransportDiv.style.display = 'block';
-                selfTransportDiv.style.display = 'none';
-                vehicleDetailsDiv.style.display = 'none';
-                document.getElementById('self_transport_mode').value = '';
-                document.getElementById('vehicle_number').value = '';
-                document.getElementById('license_number').value = '';
-                
-                const schoolId = document.getElementById('school_id').value;
-                const selectedStopId = <?php echo json_encode($student['stop_id'] ?? null); ?>;
-                if (schoolId) {
-                    fetchTransportStops(schoolId, selectedStopId);
-                }
-            } else if (mainMode === 'Self Transport') {
-                selfTransportDiv.style.display = 'block';
-                schoolTransportDiv.style.display = 'none';
-                document.getElementById('stop_id').value = '';
-                toggleSelfTransportFields(); 
-            } else {
-                selfTransportDiv.style.display = 'none';
-                schoolTransportDiv.style.display = 'none';
-                vehicleDetailsDiv.style.display = 'none';
-                document.getElementById('self_transport_mode').value = '';
-                document.getElementById('stop_id').value = '';
-                document.getElementById('vehicle_number').value = '';
-                document.getElementById('license_number').value = '';
-            }
+    // Initial check on page load to set the correct display state
+    document.addEventListener('DOMContentLoaded', function() {
+        toggleTransportFields();
+    });
+
+    // Add event listeners
+    transportModeSelect.addEventListener('change', toggleTransportFields);
+    selfTransportSelect.addEventListener('change', toggleSelfTransportFields);
+    document.getElementById('school_id').addEventListener('change', function() {
+        if (transportModeSelect.value === 'School Transport') {
+            fetchTransportStops(this.value, null);
         }
-
-        // Initial check on page load to set the correct display state
-        document.addEventListener('DOMContentLoaded', function() {
-            toggleTransportFields();
-        });
-
-        // Add event listeners
-        transportModeSelect.addEventListener('change', toggleTransportFields);
-        selfTransportSelect.addEventListener('change', toggleSelfTransportFields);
-        document.getElementById('school_id').addEventListener('change', function() {
-            if (transportModeSelect.value === 'School Transport') {
-                fetchTransportStops(this.value, null);
-            }
-        });
+    });
     </script>
 </body>
 

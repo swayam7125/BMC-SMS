@@ -3,6 +3,8 @@ include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php';
 
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 // Decrypt user role and ID from cookies, handle cases where they might not be set.
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : '';
 $userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : '';
@@ -46,8 +48,6 @@ foreach ($attendance_records as $record) {
     }
 }
 $attendance_percentage = ($total_lectures > 0) ? round(($present_count / $total_lectures) * 100, 2) : 0;
-
-if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -68,11 +68,15 @@ if (!is_ajax_request()) {
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
-        <div id="content-wrapper" class="d-flex flex-column">
+        <?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?> <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include '../../includes/header.php'; ?>
-<?php
+                <?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
 }
 ?>
                 <div class="container-fluid">
@@ -83,24 +87,30 @@ if (!is_ajax_request()) {
                         <div class="col-md-4 mb-4">
                             <div class="card border-left-info shadow h-100 py-2">
                                 <div class="card-body">
-                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Total Lectures Held</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $total_lectures; ?></div>
+                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Total Lectures
+                                        Held</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $total_lectures; ?>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-4 mb-4">
                             <div class="card border-left-success shadow h-100 py-2">
                                 <div class="card-body">
-                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Lectures Attended</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $present_count; ?></div>
+                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Lectures
+                                        Attended</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $present_count; ?>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-4 mb-4">
                             <div class="card border-left-primary shadow h-100 py-2">
                                 <div class="card-body">
-                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Attendance Percentage</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $attendance_percentage; ?>%</div>
+                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Attendance
+                                        Percentage</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                        <?php echo $attendance_percentage; ?>%</div>
                                 </div>
                             </div>
                         </div>
@@ -133,20 +143,20 @@ if (!is_ajax_request()) {
                                         // DataTables will handle showing the "No records" message.
                                         foreach ($attendance_records as $record):
                                         ?>
-                                            <tr>
-                                                <td><?php echo date("d-m-Y", strtotime($record['attendance_date'])); ?></td>
-                                                <td><?php echo htmlspecialchars($record['period_number']); ?></td>
-                                                <td><?php echo htmlspecialchars($record['subject']); ?></td>
-                                                <td>
-                                                    <?php
+                                        <tr>
+                                            <td><?php echo date("d-m-Y", strtotime($record['attendance_date'])); ?></td>
+                                            <td><?php echo htmlspecialchars($record['period_number']); ?></td>
+                                            <td><?php echo htmlspecialchars($record['subject']); ?></td>
+                                            <td>
+                                                <?php
                                                     $status = htmlspecialchars($record['status']);
                                                     $badge_class = 'badge-secondary'; // Default badge
                                                     if (strtolower($status) == 'present') $badge_class = 'badge-success';
                                                     if (strtolower($status) == 'absent') $badge_class = 'badge-danger';
                                                     echo "<span class='badge {$badge_class}'>{$status}</span>";
                                                     ?>
-                                                </td>
-                                            </tr>
+                                            </td>
+                                        </tr>
                                         <?php endforeach; ?>
                                     </tbody>
                                 </table>
@@ -154,11 +164,12 @@ if (!is_ajax_request()) {
                         </div>
                     </div>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
             </div>
-            <?php include '../../includes/footer.php'; ?>
+            <?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?>
         </div>
     </div>
 
@@ -169,22 +180,19 @@ if (!is_ajax_request()) {
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
     <script>
-        // Initialize the DataTable with custom settings
-        $(document).ready(function() {
-            $('#dataTable').DataTable({
-                "order": [
-                    [0, "desc"] // Default order by date descending
-                ],
-                // FIX: Let DataTables handle the empty table message
-                "language": {
-                    "emptyTable": "No attendance records found for the selected filter."
-                }
-            });
+    // Initialize the DataTable with custom settings
+    $(document).ready(function() {
+        $('#dataTable').DataTable({
+            "order": [
+                [0, "desc"] // Default order by date descending
+            ],
+            // FIX: Let DataTables handle the empty table message
+            "language": {
+                "emptyTable": "No attendance records found for the selected filter."
+            }
         });
+    });
     </script>
 </body>
 
 </html>
-<?php
-}
-?>

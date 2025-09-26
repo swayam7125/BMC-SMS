@@ -3,6 +3,8 @@ include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 include_once "../../includes/log_system.php"; // ADDED: Log system dependency
 
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 // Check if user is logged in
 $role = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
@@ -296,11 +298,17 @@ if (is_string($raw_stds) && !empty($raw_stds)) {
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
-        <div id="content-wrapper" class="d-flex flex-column">
+<?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?>        <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
-                <div class="container-fluid">
+<?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
+}
+?>                <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Edit Teacher</h1>
                         <a href="teacher_list.php" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm"><i class="fas fa-arrow-left fa-sm"></i> Back to List</a>
@@ -485,8 +493,11 @@ if (is_string($raw_stds) && !empty($raw_stds)) {
                     </div>
                 </div>
             </div>
-            <?php include '../../includes/footer.php'; ?>
-        </div>
+<?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?>        </div>
     </div>
 
     <?php include_once "../../includes/logout_modal.php" ?>

@@ -3,6 +3,8 @@ include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 include_once "../../includes/log_system.php"; // ADDED: Log system dependency
 
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 // Define the base web path for your project
 if (!defined('BASE_WEB_PATH')) {
     define('BASE_WEB_PATH', '/BMC-SMS/');
@@ -152,6 +154,7 @@ $logo_display_path = getWebAccessibleImagePath($school['school_logo']) ?? $defau
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Edit School - School Management System</title>
@@ -162,21 +165,31 @@ $logo_display_path = getWebAccessibleImagePath($school['school_logo']) ?? $defau
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
-        <div id="content-wrapper" class="d-flex flex-column">
+        <?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?> <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
+                <?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
+}
+?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Edit School</h1>
-                        <a href="school_list.php" class="btn btn-sm btn-secondary shadow-sm"><i class="fas fa-arrow-left fa-sm"></i> Back to List</a>
+                        <a href="school_list.php" class="btn btn-sm btn-secondary shadow-sm"><i
+                                class="fas fa-arrow-left fa-sm"></i> Back to List</a>
                     </div>
                     <?php if (!empty($errors)): ?>
-                        <div class="alert alert-danger">
-                            <ul class="mb-0"><?php foreach ($errors as $error): ?><li><?php echo htmlspecialchars($error); ?></li><?php endforeach; ?></ul>
-                        </div>
+                    <div class="alert alert-danger">
+                        <ul class="mb-0"><?php foreach ($errors as $error): ?><li>
+                                <?php echo htmlspecialchars($error); ?></li><?php endforeach; ?></ul>
+                    </div>
                     <?php endif; ?>
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
@@ -187,60 +200,111 @@ $logo_display_path = getWebAccessibleImagePath($school['school_logo']) ?? $defau
                                 <div class="row">
                                     <div class="col-md-3 text-center">
                                         <label>School Logo</label><br>
-                                        <img src="<?php echo $logo_display_path; ?>" alt="School Logo" id="logoPreview" class="img-thumbnail mb-2" style="width: 150px; height: 150px; object-fit: contain;">
+                                        <img src="<?php echo $logo_display_path; ?>" alt="School Logo" id="logoPreview"
+                                            class="img-thumbnail mb-2"
+                                            style="width: 150px; height: 150px; object-fit: contain;">
                                         <div class="form-group">
-                                            <label for="school_logo" class="small btn btn-sm btn-info"><i class="fas fa-upload fa-sm"></i> Change Logo</label>
-                                            <input type="file" class="d-none" id="school_logo" name="school_logo" onchange="document.getElementById('logoPreview').src = window.URL.createObjectURL(this.files[0])">
+                                            <label for="school_logo" class="small btn btn-sm btn-info"><i
+                                                    class="fas fa-upload fa-sm"></i> Change Logo</label>
+                                            <input type="file" class="d-none" id="school_logo" name="school_logo"
+                                                onchange="document.getElementById('logoPreview').src = window.URL.createObjectURL(this.files[0])">
                                         </div>
                                     </div>
                                     <div class="col-md-9">
                                         <div class="form-row">
-                                            <div class="form-group col-md-12"><label for="school_name">School Name *</label><input type="text" class="form-control" name="school_name" value="<?php echo htmlspecialchars($school['school_name']); ?>" required></div>
+                                            <div class="form-group col-md-12"><label for="school_name">School Name
+                                                    *</label><input type="text" class="form-control" name="school_name"
+                                                    value="<?php echo htmlspecialchars($school['school_name']); ?>"
+                                                    required></div>
                                         </div>
                                         <div class="form-row">
-                                            <div class="form-group col-md-6"><label for="email">Email Address *</label><input type="email" class="form-control" name="email" value="<?php echo htmlspecialchars($school['email']); ?>" required></div>
-                                            <div class="form-group col-md-6"><label for="phone">Phone Number *</label><input type="tel" class="form-control" name="phone" value="<?php echo htmlspecialchars($school['phone']); ?>" maxlength="10" required></div>
+                                            <div class="form-group col-md-6"><label for="email">Email Address
+                                                    *</label><input type="email" class="form-control" name="email"
+                                                    value="<?php echo htmlspecialchars($school['email']); ?>" required>
+                                            </div>
+                                            <div class="form-group col-md-6"><label for="phone">Phone Number
+                                                    *</label><input type="tel" class="form-control" name="phone"
+                                                    value="<?php echo htmlspecialchars($school['phone']); ?>"
+                                                    maxlength="10" required></div>
                                         </div>
                                     </div>
                                 </div>
                                 <hr>
                                 <div class="form-row">
-                                    <div class="form-group col-md-6"><label for="school_opening">School Opening Date *</label><input type="date" class="form-control" name="school_opening" value="<?php echo htmlspecialchars($school['school_opening']); ?>" required></div>
-                                    <div class="form-group col-md-6"><label for="school_type">School Type *</label><select class="form-control" name="school_type" required>
-                                            <option value="Government" <?php if ($school['school_type'] == 'Government') echo 'selected'; ?>>Government</option>
-                                            <option value="Private" <?php if ($school['school_type'] == 'Private') echo 'selected'; ?>>Private</option>
+                                    <div class="form-group col-md-6"><label for="school_opening">School Opening Date
+                                            *</label><input type="date" class="form-control" name="school_opening"
+                                            value="<?php echo htmlspecialchars($school['school_opening']); ?>" required>
+                                    </div>
+                                    <div class="form-group col-md-6"><label for="school_type">School Type
+                                            *</label><select class="form-control" name="school_type" required>
+                                            <option value="Government"
+                                                <?php if ($school['school_type'] == 'Government') echo 'selected'; ?>>
+                                                Government</option>
+                                            <option value="Private"
+                                                <?php if ($school['school_type'] == 'Private') echo 'selected'; ?>>
+                                                Private</option>
                                         </select></div>
                                 </div>
                                 <div class="form-row">
-                                    <div class="form-group col-md-6"><label for="education_board">Education Board *</label><select class="form-control multi-select" name="education_board[]" multiple="multiple" required><?php $boards = ['CBSE', 'State', 'IGCSE']; foreach ($boards as $board): ?><option value="<?php echo $board; ?>" <?php if (in_array($board, $selected_boards)) echo 'selected'; ?>><?php echo $board; ?></option><?php endforeach; ?></select></div>
-                                    <div class="form-group col-md-6"><label for="school_medium">School Medium *</label><select class="form-control multi-select" name="school_medium[]" multiple="multiple" required><?php $mediums = ['English', 'Hindi', 'Regional Language']; foreach ($mediums as $medium): ?><option value="<?php echo $medium; ?>" <?php if (in_array($medium, $selected_mediums)) echo 'selected'; ?>><?php echo $medium; ?></option><?php endforeach; ?></select></div>
+                                    <div class="form-group col-md-6"><label for="education_board">Education Board
+                                            *</label><select class="form-control multi-select" name="education_board[]"
+                                            multiple="multiple"
+                                            required><?php $boards = ['CBSE', 'State', 'IGCSE']; foreach ($boards as $board): ?>
+                                            <option value="<?php echo $board; ?>"
+                                                <?php if (in_array($board, $selected_boards)) echo 'selected'; ?>>
+                                                <?php echo $board; ?></option><?php endforeach; ?>
+                                        </select></div>
+                                    <div class="form-group col-md-6"><label for="school_medium">School Medium
+                                            *</label><select class="form-control multi-select" name="school_medium[]"
+                                            multiple="multiple"
+                                            required><?php $mediums = ['English', 'Hindi', 'Regional Language']; foreach ($mediums as $medium): ?>
+                                            <option value="<?php echo $medium; ?>"
+                                                <?php if (in_array($medium, $selected_mediums)) echo 'selected'; ?>>
+                                                <?php echo $medium; ?></option><?php endforeach; ?>
+                                        </select></div>
                                 </div>
                                 <div class="form-row">
-                                    <div class="form-group col-md-12"><label for="school_category">School Category *</label><select class="form-control multi-select" name="school_category[]" multiple="multiple" required><?php $categories = ['Pre-Primary', 'Primary', 'Upper Primary', 'Secondary', 'Higher Secondary']; foreach ($categories as $cat): ?><option value="<?php echo $cat; ?>" <?php if (in_array($cat, $selected_categories)) echo 'selected'; ?>><?php echo $cat; ?></option><?php endforeach; ?></select></div>
+                                    <div class="form-group col-md-12"><label for="school_category">School Category
+                                            *</label><select class="form-control multi-select" name="school_category[]"
+                                            multiple="multiple"
+                                            required><?php $categories = ['Pre-Primary', 'Primary', 'Upper Primary', 'Secondary', 'Higher Secondary']; foreach ($categories as $cat): ?>
+                                            <option value="<?php echo $cat; ?>"
+                                                <?php if (in_array($cat, $selected_categories)) echo 'selected'; ?>>
+                                                <?php echo $cat; ?></option><?php endforeach; ?>
+                                        </select></div>
                                 </div>
-                                <div class="form-group"><label for="address">Address *</label><textarea class="form-control" name="address" rows="3" required><?php echo htmlspecialchars($school['address']); ?></textarea></div>
+                                <div class="form-group"><label for="address">Address *</label><textarea
+                                        class="form-control" name="address" rows="3"
+                                        required><?php echo htmlspecialchars($school['address']); ?></textarea></div>
                                 <hr>
                                 <div class="form-group mt-4">
-                                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update School</button>
-                                    <a href="school_list.php" class="btn btn-secondary"><i class="fas fa-times"></i> Cancel</a>
+                                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update
+                                        School</button>
+                                    <a href="school_list.php" class="btn btn-secondary"><i class="fas fa-times"></i>
+                                        Cancel</a>
                                 </div>
                             </form>
                         </div>
                     </div>
                 </div>
             </div>
-            <?php include '../../includes/footer.php'; ?>
+            <?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?>
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php"?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
-        $(document).ready(function() {
-            $('.multi-select').select2();
-        });
+    $(document).ready(function() {
+        $('.multi-select').select2();
+    });
     </script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
+
 </html>

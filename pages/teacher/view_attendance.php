@@ -3,6 +3,8 @@ include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php';
 
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 // Check if this is an AJAX request
 if (is_ajax_request()) {
     // Start output buffering to capture the HTML
@@ -69,62 +71,76 @@ try {
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
-        <div id="content-wrapper" class="d-flex flex-column">
+        <?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?> <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
-                <div class="container-fluid">
+                <?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
+}
+?> <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">View Class Attendance</h1>
                     <?php if (!empty($errorMessage)): ?>
-                        <div class="alert alert-danger"><?php echo $errorMessage; ?></div>
+                    <div class="alert alert-danger"><?php echo $errorMessage; ?></div>
                     <?php else: ?>
-                        <div class="card shadow mb-4">
-                            <div class="card-header py-3">
-                                <h6 class="m-0 font-weight-bold text-primary">Attendance Records for Class: <?php echo htmlspecialchars($teacherDetails['class_teacher_std']); ?></h6>
-                            </div>
-                            <div class="card-body">
-                                <form method="GET" action="" class="form-inline mb-4">
-                                    <div class="form-group"><label for="view_date" class="mr-2">Select Date:</label><input type="date" id="view_date" name="view_date" class="form-control" value="<?php echo htmlspecialchars($view_date); ?>"></div>
-                                    <button type="submit" class="btn btn-primary ml-2">View Records</button>
-                                </form>
-                                <div class="table-responsive">
-                                    <table class="table table-bordered" id="attendanceTable" width="100%" cellspacing="0">
-                                        <thead>
-                                            <tr>
-                                                <th>Roll No</th>
-                                                <th>Student Name</th>
-                                                <th>Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php if (!empty($attendance_records)): foreach ($attendance_records as $record): ?>
-                                                    <tr>
-                                                        <td><?php echo htmlspecialchars($record['rollno']); ?></td>
-                                                        <td><?php echo htmlspecialchars($record['student_name']); ?></td>
-                                                        <td>
-                                                            <?php $status = htmlspecialchars($record['status']);
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">Attendance Records for Class:
+                                <?php echo htmlspecialchars($teacherDetails['class_teacher_std']); ?></h6>
+                        </div>
+                        <div class="card-body">
+                            <form method="GET" action="" class="form-inline mb-4">
+                                <div class="form-group"><label for="view_date" class="mr-2">Select Date:</label><input
+                                        type="date" id="view_date" name="view_date" class="form-control"
+                                        value="<?php echo htmlspecialchars($view_date); ?>"></div>
+                                <button type="submit" class="btn btn-primary ml-2">View Records</button>
+                            </form>
+                            <div class="table-responsive">
+                                <table class="table table-bordered" id="attendanceTable" width="100%" cellspacing="0">
+                                    <thead>
+                                        <tr>
+                                            <th>Roll No</th>
+                                            <th>Student Name</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if (!empty($attendance_records)): foreach ($attendance_records as $record): ?>
+                                        <tr>
+                                            <td><?php echo htmlspecialchars($record['rollno']); ?></td>
+                                            <td><?php echo htmlspecialchars($record['student_name']); ?></td>
+                                            <td>
+                                                <?php $status = htmlspecialchars($record['status']);
                                                             $badge_class = 'badge-secondary';
                                                             if ($status == 'Present') $badge_class = 'badge-success';
                                                             if ($status == 'Absent') $badge_class = 'badge-danger';
                                                             if ($status == 'Leave') $badge_class = 'badge-warning';
                                                             echo "<span class='badge {$badge_class}'>{$status}</span>"; ?>
-                                                        </td>
-                                                    </tr>
-                                                <?php endforeach;
+                                            </td>
+                                        </tr>
+                                        <?php endforeach;
                                             else: ?>
-                                                <tr>
-                                                    <td colspan="3" class="text-center">No attendance records found for <?php echo htmlspecialchars($view_date); ?>.</td>
-                                                </tr>
-                                            <?php endif; ?>
-                                        </tbody>
-                                    </table>
-                                </div>
+                                        <tr>
+                                            <td colspan="3" class="text-center">No attendance records found for
+                                                <?php echo htmlspecialchars($view_date); ?>.</td>
+                                        </tr>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
+                    </div>
                     <?php endif; ?>
                 </div>
             </div>
-            <?php include_once '../../includes/footer.php'; ?>
+            <?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?>
         </div>
     </div>
     <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
@@ -135,9 +151,9 @@ try {
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script>
-        $(document).ready(function() {
-            $('#attendanceTable').DataTable();
-        });
+    $(document).ready(function() {
+        $('#attendanceTable').DataTable();
+    });
     </script>
 </body>
 <?php
@@ -147,14 +163,15 @@ if (is_ajax_request()) {
     $content = ob_get_clean();
     
     // Extract just the main content area for the AJAX response
-    if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
-        echo '<div class="container-fluid">' . $matches[1] . '</div>';
+    if (preg_match('/<div class="container-fluid".*?>(.*?)<\ /div>/s', $content, $matches)) {
+    echo '<div class="container-fluid">' . $matches[1] . '</div>';
     } else {
-        // Fallback if the main container isn't found
-        echo $content;
+    // Fallback if the main container isn't found
+    echo $content;
     }
     // Stop the script for AJAX requests
     exit;
-}
-?>
+    }
+    ?>
+
 </html>

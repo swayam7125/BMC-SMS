@@ -5,6 +5,8 @@ include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 include_once '../../includes/ajax_helpers.php';
 
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 $current_user_id = null;
 $current_user_role = null;
 
@@ -52,6 +54,7 @@ if (!is_ajax_request()):
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($page_title); ?> - Dashboard</title>
@@ -62,13 +65,21 @@ if (!is_ajax_request()):
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link rel="stylesheet" href="../../assets/css/message.css?v=1.4">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
+        <?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include '../../includes/header.php'; ?>
-<?php
+                <?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
+}
+?><?php
 endif; // End of the header/template section wrapper.
 
 // This is the main content. It will run for BOTH normal loads and AJAX requests.
@@ -79,22 +90,25 @@ endif; // End of the header/template section wrapper.
                         <div class="col-lg-4 mb-4">
                             <div class="card shadow h-100 d-flex flex-column">
                                 <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                                    <h6 class="m-0 font-weight-bold text-primary"><?php echo htmlspecialchars($contacts_title); ?></h6>
+                                    <h6 class="m-0 font-weight-bold text-primary">
+                                        <?php echo htmlspecialchars($contacts_title); ?></h6>
                                     <?php if ($current_user_role === 'teacher'): ?>
-                                        <select id="standard-filter" class="form-control form-control-sm" style="width: auto;">
-                                            <?php foreach (array_unique($standards) as $standard): ?>
-                                                <option value="<?php echo htmlspecialchars($standard); ?>">
-                                                    Standard <?php echo htmlspecialchars($standard); ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </select>
+                                    <select id="standard-filter" class="form-control form-control-sm"
+                                        style="width: auto;">
+                                        <?php foreach (array_unique($standards) as $standard): ?>
+                                        <option value="<?php echo htmlspecialchars($standard); ?>">
+                                            Standard <?php echo htmlspecialchars($standard); ?>
+                                        </option>
+                                        <?php endforeach; ?>
+                                    </select>
                                     <?php endif; ?>
                                 </div>
                                 <div class="card-body">
                                     <div id="contacts-list-container" style="max-height: 60vh; overflow-y: auto;">
                                         <ul class="list-group" id="contacts-list">
                                             <div class="text-center p-4">
-                                                <div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div>
+                                                <div class="spinner-border text-primary" role="status"><span
+                                                        class="sr-only">Loading...</span></div>
                                             </div>
                                         </ul>
                                     </div>
@@ -104,10 +118,12 @@ endif; // End of the header/template section wrapper.
                         <div class="col-lg-8 mb-4">
                             <div class="card shadow h-100 d-flex flex-column">
                                 <div class="card-header py-3">
-                                    <h6 class="m-0 font-weight-bold text-primary" id="chat-with-name">Select a contact to start chatting</h6>
+                                    <h6 class="m-0 font-weight-bold text-primary" id="chat-with-name">Select a contact
+                                        to start chatting</h6>
                                 </div>
                                 <div class="card-body message-display" id="message-area">
-                                    <div class="text-center h-100 d-flex flex-column justify-content-center align-items-center">
+                                    <div
+                                        class="text-center h-100 d-flex flex-column justify-content-center align-items-center">
                                         <i class="fas fa-comments fa-4x text-gray-300"></i>
                                         <p class="mt-3 text-gray-500">Your messages will appear here.</p>
                                     </div>
@@ -117,22 +133,27 @@ endif; // End of the header/template section wrapper.
                                         <div class="d-flex align-items-center p-2 border rounded">
                                             <i class="fas fa-file-alt fa-2x text-gray-500 mr-2"></i>
                                             <span id="file-preview-name" class="text-truncate"></span>
-                                            <button id="cancel-file-button" type="button" class="close ml-auto" aria-label="Close">
+                                            <button id="cancel-file-button" type="button" class="close ml-auto"
+                                                aria-label="Close">
                                                 <span aria-hidden="true">&times;</span>
                                             </button>
                                         </div>
                                     </div>
                                     <form id="message-form">
-                                        <input type="file" id="file-input" style="display: none;" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt">
+                                        <input type="file" id="file-input" style="display: none;"
+                                            accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt">
                                         <div class="input-group">
                                             <div class="input-group-prepend">
-                                                <button class="btn btn-light" id="attach-file-button" type="button" disabled>
+                                                <button class="btn btn-light" id="attach-file-button" type="button"
+                                                    disabled>
                                                     <i class="fas fa-paper-clip"></i>
                                                 </button>
                                             </div>
-                                            <input type="text" id="message-text" class="form-control" placeholder="Type a message..." disabled>
+                                            <input type="text" id="message-text" class="form-control"
+                                                placeholder="Type a message..." disabled>
                                             <div class="input-group-append">
-                                                <button class="btn btn-primary" id="send-button" type="submit" disabled><i class="fas fa-paper-plane"></i> Send</button>
+                                                <button class="btn btn-primary" id="send-button" type="submit"
+                                                    disabled><i class="fas fa-paper-plane"></i> Send</button>
                                             </div>
                                         </div>
                                     </form>
@@ -141,12 +162,16 @@ endif; // End of the header/template section wrapper.
                         </div>
                     </div>
                 </div>
-<?php
+                <?php
 // This part will also ONLY run on a normal page load.
 if (!is_ajax_request()):
 ?>
             </div>
-            <?php include_once '../../includes/footer.php'; ?>
+            <?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?>
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php"; ?>
@@ -154,14 +179,15 @@ if (!is_ajax_request()):
     <script src="/BMC-SMS/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="/BMC-SMS/assets/js/sb-admin-2.min.js"></script>
     <script>
-        window.currentUserId = '<?php echo $current_user_id; ?>';
-        window.currentUserRole = '<?php echo $current_user_role; ?>';
-        window.isStudentPanel = <?php echo ($current_user_role === 'student') ? 'true' : 'false'; ?>;
-        window.base_url = '/BMC-SMS/';
-        window.teacherStandards = <?php echo json_encode($standards); ?>;
+    window.currentUserId = '<?php echo $current_user_id; ?>';
+    window.currentUserRole = '<?php echo $current_user_role; ?>';
+    window.isStudentPanel = <?php echo ($current_user_role === 'student') ? 'true' : 'false'; ?>;
+    window.base_url = '/BMC-SMS/';
+    window.teacherStandards = <?php echo json_encode($standards); ?>;
     </script>
     <script src="/BMC-SMS/assets/js/message.js?v=1.1"></script>
 </body>
+
 </html>
 <?php
 endif;

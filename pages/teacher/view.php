@@ -3,6 +3,8 @@ include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 include_once '../../includes/ajax_helpers.php';
 
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 // Check if this is an AJAX request
 if (is_ajax_request()) {
     // Start output buffering to capture the HTML
@@ -120,11 +122,17 @@ if (!empty($photo_path)) {
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
-        <div id="content-wrapper" class="d-flex flex-column">
+<?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?>        <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
-                <div class="container-fluid">
+<?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
+}
+?>                <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Teacher's Details</h1>
                         <div>
@@ -349,8 +357,11 @@ if (!empty($photo_path)) {
                     </div>
                 </div>
             </div>
-            <?php include '../../includes/footer.php'; ?>
-        </div>
+<?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?>        </div>
     </div>
     <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
     <?php include_once "../../includes/logout_modal.php" ?>

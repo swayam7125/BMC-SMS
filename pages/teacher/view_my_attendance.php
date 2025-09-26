@@ -3,6 +3,8 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/connect.php';
 include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/encryption.php';
 include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/ajax_helpers.php';
 
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 // Check if this is an AJAX request
 if (is_ajax_request()) {
     // Start output buffering to capture the HTML
@@ -33,8 +35,6 @@ try {
     // Log the error or show a friendly message
     die("Error fetching attendance records: " . $e->getMessage());
 }
-
-if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -50,11 +50,15 @@ if (!is_ajax_request()) {
 </head>
 <body id="page-top">
     <div id="wrapper">
-        <?php include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/sidebar.php'; ?>
-        <div id="content-wrapper" class="d-flex flex-column">
-            <div id="content">
-                <?php include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/header.php'; ?>
 <?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?>        <div id="content-wrapper" class="d-flex flex-column">
+            <div id="content">
+<?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
 }
 ?>
                 <div class="container-fluid">
@@ -95,12 +99,12 @@ if (!is_ajax_request()) {
                         </div>
                     </div>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
             </div>
-            <?php include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/footer.php'; ?>
-        </div>
+<?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?>        </div>
     </div>
     <?php include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/logout_modal.php'; ?>
     <script src="/BMC-SMS/assets/vendor/jquery/jquery.min.js"></script>
@@ -128,6 +132,3 @@ if (is_ajax_request()) {
 }
 ?>
 </html>
-<?php
-}
-?>

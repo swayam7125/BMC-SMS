@@ -3,6 +3,8 @@ include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php';
 
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 $role = null;
 $user_id = null;
 
@@ -39,10 +41,7 @@ function getStatusBadge($status) {
         default:
             return 'badge-warning';
     }
-}
-
-if (!is_ajax_request()) {
-?>
+}?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -57,11 +56,15 @@ if (!is_ajax_request()) {
 </head>
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
-        <div id="content-wrapper" class="d-flex flex-column">
-            <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
 <?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?>        <div id="content-wrapper" class="d-flex flex-column">
+            <div id="content">
+<?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
 }
 ?>
                 <div class="container-fluid">
@@ -104,12 +107,12 @@ if (!is_ajax_request()) {
                         </div>
                     </div>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
             </div>
-            <?php include_once '../../includes/footer.php'; ?>
-        </div>
+<?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?>        </div>
     </div>
     <?php include_once "../../includes/logout_modal.php" ?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
@@ -118,6 +121,3 @@ if (!is_ajax_request()) {
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
 </html>
-<?php
-}
-?>

@@ -3,6 +3,8 @@ include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 include_once "../../includes/ajax_helpers.php";
 
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 $role = null;
 $student_id = null;
 $student_std = null;
@@ -50,8 +52,6 @@ try {
 
 $current_year = date('Y');
 $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
-
-if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -64,7 +64,7 @@ if (!is_ajax_request()) {
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800,900" rel="stylesheet">
-<link rel="stylesheet" href="../../assets/css/view_my_marks.css">
+    <link rel="stylesheet" href="../../assets/css/view_my_marks.css">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
@@ -73,11 +73,15 @@ if (!is_ajax_request()) {
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
-        <div id="content-wrapper" class="d-flex flex-column">
+        <?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?> <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
-<?php
+                <?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
 }
 ?>
                 <div class="container-fluid">
@@ -104,7 +108,8 @@ if (!is_ajax_request()) {
                                     </div>
                                     <div class="form-group col-md-5">
                                         <label for="academic_year">Academic Year *</label>
-                                        <input type="text" class="form-control" id="academic_year" value="<?php echo htmlspecialchars($academic_year_suggestion); ?>" required>
+                                        <input type="text" class="form-control" id="academic_year"
+                                            value="<?php echo htmlspecialchars($academic_year_suggestion); ?>" required>
                                     </div>
                                     <div class="form-group col-md-2 d-flex align-items-end">
                                         <button type="submit" id="viewReportBtn" class="btn btn-info btn-block">
@@ -143,11 +148,12 @@ if (!is_ajax_request()) {
                         </div>
                     </div>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
             </div>
-            <?php include '../../includes/footer.php'; ?>
+            <?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?>
         </div>
     </div>
 
@@ -161,6 +167,3 @@ if (!is_ajax_request()) {
 </body>
 
 </html>
-<?php
-}
-?>

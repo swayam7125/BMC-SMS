@@ -23,6 +23,8 @@ if (isset($_POST['download_pdf'])) {
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 // Authorization check
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 $userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
@@ -174,6 +176,7 @@ try {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($report_title); ?></title>
@@ -186,22 +189,33 @@ try {
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link href="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
+        <?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
+                <?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
+}
+?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800"><?php echo htmlspecialchars($report_title); ?></h1>
-                        <button id="download-full-report-btn" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+                        <button id="download-full-report-btn"
+                            class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
                             <i class="fas fa-download fa-sm text-white-50"></i> Generate Report
                         </button>
                     </div>
 
-                    <?php if ($errorMessage): ?><div class="alert alert-danger"><?php echo $errorMessage; ?></div><?php endif; ?>
-                    
+                    <?php if ($errorMessage): ?><div class="alert alert-danger"><?php echo $errorMessage; ?></div>
+                    <?php endif; ?>
+
                     <div class="card shadow mb-4">
                         <div class="card-body">
                             <form method="GET" class="form-inline align-items-center">
@@ -211,16 +225,18 @@ try {
                                     <select name="school_id" id="school_id" class="form-control">
                                         <option value="">-- All Schools --</option>
                                         <?php foreach($schools as $school): ?>
-                                            <option value="<?php echo $school['id']; ?>" <?php if ($school['id'] == $school_id) echo 'selected'; ?>>
-                                                <?php echo htmlspecialchars($school['school_name']); ?>
-                                            </option>
+                                        <option value="<?php echo $school['id']; ?>"
+                                            <?php if ($school['id'] == $school_id) echo 'selected'; ?>>
+                                            <?php echo htmlspecialchars($school['school_name']); ?>
+                                        </option>
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
                                 <?php endif; ?>
                                 <div class="form-group mr-3 mb-2">
                                     <label for="report_month" class="mr-2"><strong>Month:</strong></label>
-                                    <input type="month" id="report_month" name="report_month" value="<?php echo $selected_month; ?>" class="form-control">
+                                    <input type="month" id="report_month" name="report_month"
+                                        value="<?php echo $selected_month; ?>" class="form-control">
                                 </div>
                                 <button type="submit" class="btn btn-primary mb-2">Apply</button>
                             </form>
@@ -230,25 +246,157 @@ try {
                     <div id="report-content">
                         <div class="row">
                             <div class="col-xl-4 col-md-6 mb-4">
-                                <div class="card border-left-primary shadow h-100 py-2"><div class="card-body"><div class="row no-gutters align-items-center"><div class="col mr-2"><div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Salary Disbursed</div><div class="h5 mb-0 font-weight-bold text-gray-800">₹<?php echo number_format($total_salary_disbursed, 2); ?></div></div><div class="col-auto"><i class="fas fa-rupee-sign fa-2x text-gray-300"></i></div></div></div></div>
+                                <div class="card border-left-primary shadow h-100 py-2">
+                                    <div class="card-body">
+                                        <div class="row no-gutters align-items-center">
+                                            <div class="col mr-2">
+                                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                                    Total Salary Disbursed</div>
+                                                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                                    ₹<?php echo number_format($total_salary_disbursed, 2); ?></div>
+                                            </div>
+                                            <div class="col-auto"><i class="fas fa-rupee-sign fa-2x text-gray-300"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             <div class="col-xl-4 col-md-6 mb-4">
-                                <div class="card border-left-success shadow h-100 py-2"><div class="card-body"><div class="row no-gutters align-items-center"><div class="col mr-2"><div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Incentives</div><div class="h5 mb-0 font-weight-bold text-gray-800">₹<?php echo number_format($total_incentives, 2); ?></div></div><div class="col-auto"><i class="fas fa-gift fa-2x text-gray-300"></i></div></div></div></div>
+                                <div class="card border-left-success shadow h-100 py-2">
+                                    <div class="card-body">
+                                        <div class="row no-gutters align-items-center">
+                                            <div class="col mr-2">
+                                                <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                                    Total Incentives</div>
+                                                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                                    ₹<?php echo number_format($total_incentives, 2); ?></div>
+                                            </div>
+                                            <div class="col-auto"><i class="fas fa-gift fa-2x text-gray-300"></i></div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             <div class="col-xl-4 col-md-6 mb-4">
-                                <div class="card border-left-danger shadow h-100 py-2"><div class="card-body"><div class="row no-gutters align-items-center"><div class="col mr-2"><div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Total Deductions</div><div class="h5 mb-0 font-weight-bold text-gray-800">₹<?php echo number_format($total_deductions, 2); ?></div></div><div class="col-auto"><i class="fas fa-file-invoice-dollar fa-2x text-gray-300"></i></div></div></div></div>
+                                <div class="card border-left-danger shadow h-100 py-2">
+                                    <div class="card-body">
+                                        <div class="row no-gutters align-items-center">
+                                            <div class="col mr-2">
+                                                <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                                    Total Deductions</div>
+                                                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                                    ₹<?php echo number_format($total_deductions, 2); ?></div>
+                                            </div>
+                                            <div class="col-auto"><i
+                                                    class="fas fa-file-invoice-dollar fa-2x text-gray-300"></i></div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="card shadow mb-4"><div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Salary Distribution by Role</h6></div><div class="card-body"><div class="chart-pie pt-4" style="height: 300px;"><canvas id="salaryDistributionChart"></canvas></div></div></div>
-                        
-                        <div class="row"><div class="col-lg-6"><div class="card shadow mb-4"><div class="card-header py-3"><h6 class="m-0 font-weight-bold text-success">Incentives Breakdown</h6></div><div class="card-body"><div class="table-responsive" id="incentivesTable"><table class="table table-bordered"><thead><tr><th>Incentive Name</th><th>Total Amount</th></tr></thead><tbody><?php foreach($incentive_details as $item): if($item['type'] == 'Addition'): ?><tr><td><?php echo htmlspecialchars($item['incentive_name']); ?></td><td>₹<?php echo number_format($item['total_amount'], 2); ?></td></tr><?php endif; endforeach; ?></tbody></table></div></div></div></div><div class="col-lg-6"><div class="card shadow mb-4"><div class="card-header py-3"><h6 class="m-0 font-weight-bold text-danger">Deductions Breakdown</h6></div><div class="card-body"><div class="table-responsive" id="deductionsTable"><table class="table table-bordered"><thead><tr><th>Deduction Name</th><th>Total Amount</th></tr></thead><tbody><?php foreach($incentive_details as $item): if($item['type'] == 'Subtraction'): ?><tr><td><?php echo htmlspecialchars($item['incentive_name']); ?></td><td>₹<?php echo number_format($item['total_amount'], 2); ?></td></tr><?php endif; endforeach; ?></tbody></table></div></div></div></div></div>
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Salary Distribution by Role</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-pie pt-4" style="height: 300px;"><canvas
+                                        id="salaryDistributionChart"></canvas></div>
+                            </div>
+                        </div>
 
-                        <div class="card shadow mb-4"><div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Detailed Payroll for <?php echo date("F Y", strtotime($selected_month)); ?></h6></div><div class="card-body"><div class="table-responsive"><table class="table table-bordered" id="detailedPayrollTable"><thead><tr><th>Staff Name</th><th>Role</th><th>Base Salary</th><th>Incentives</th><th>Deductions</th><th>Net Salary Paid</th></tr></thead><tbody><?php foreach($detailed_payroll_data as $row): ?><tr><td><?php echo htmlspecialchars($row['name']); ?></td><td><?php echo htmlspecialchars($row['role']); ?></td><td>₹<?php echo number_format($row['base_salary'], 2); ?></td><td>₹<?php echo number_format($row['total_incentives'], 2); ?></td><td>₹<?php echo number_format($row['deduction_amount'], 2); ?></td><td>₹<?php echo number_format($row['net_salary_paid'], 2); ?></td></tr><?php endforeach; ?></tbody></table></div></div></div>
+                        <div class="row">
+                            <div class="col-lg-6">
+                                <div class="card shadow mb-4">
+                                    <div class="card-header py-3">
+                                        <h6 class="m-0 font-weight-bold text-success">Incentives Breakdown</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive" id="incentivesTable">
+                                            <table class="table table-bordered">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Incentive Name</th>
+                                                        <th>Total Amount</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <?php foreach($incentive_details as $item): if($item['type'] == 'Addition'): ?>
+                                                    <tr>
+                                                        <td><?php echo htmlspecialchars($item['incentive_name']); ?>
+                                                        </td>
+                                                        <td>₹<?php echo number_format($item['total_amount'], 2); ?></td>
+                                                    </tr><?php endif; endforeach; ?></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-6">
+                                <div class="card shadow mb-4">
+                                    <div class="card-header py-3">
+                                        <h6 class="m-0 font-weight-bold text-danger">Deductions Breakdown</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive" id="deductionsTable">
+                                            <table class="table table-bordered">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Deduction Name</th>
+                                                        <th>Total Amount</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <?php foreach($incentive_details as $item): if($item['type'] == 'Subtraction'): ?>
+                                                    <tr>
+                                                        <td><?php echo htmlspecialchars($item['incentive_name']); ?>
+                                                        </td>
+                                                        <td>₹<?php echo number_format($item['total_amount'], 2); ?></td>
+                                                    </tr><?php endif; endforeach; ?></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Detailed Payroll for
+                                    <?php echo date("F Y", strtotime($selected_month)); ?></h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered" id="detailedPayrollTable">
+                                        <thead>
+                                            <tr>
+                                                <th>Staff Name</th>
+                                                <th>Role</th>
+                                                <th>Base Salary</th>
+                                                <th>Incentives</th>
+                                                <th>Deductions</th>
+                                                <th>Net Salary Paid</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody><?php foreach($detailed_payroll_data as $row): ?><tr>
+                                                <td><?php echo htmlspecialchars($row['name']); ?></td>
+                                                <td><?php echo htmlspecialchars($row['role']); ?></td>
+                                                <td>₹<?php echo number_format($row['base_salary'], 2); ?></td>
+                                                <td>₹<?php echo number_format($row['total_incentives'], 2); ?></td>
+                                                <td>₹<?php echo number_format($row['deduction_amount'], 2); ?></td>
+                                                <td>₹<?php echo number_format($row['net_salary_paid'], 2); ?></td>
+                                            </tr><?php endforeach; ?></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-            <?php include_once '../../includes/footer.php'; ?>
+            <?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?>
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php"; ?>
@@ -300,18 +448,25 @@ try {
     // ⭐ Updated PDF Download Logic to handle dynamic filenames
     function generateAndSubmitPdf(htmlContent, filename) {
         const form = document.createElement('form');
-        form.method = 'POST'; form.action = '';
-        
+        form.method = 'POST';
+        form.action = '';
+
         const hiddenInputHtml = document.createElement('input');
-        hiddenInputHtml.type = 'hidden'; hiddenInputHtml.name = 'pdf_html'; hiddenInputHtml.value = htmlContent;
+        hiddenInputHtml.type = 'hidden';
+        hiddenInputHtml.name = 'pdf_html';
+        hiddenInputHtml.value = htmlContent;
         form.appendChild(hiddenInputHtml);
-        
+
         const hiddenInputFilename = document.createElement('input');
-        hiddenInputFilename.type = 'hidden'; hiddenInputFilename.name = 'pdf_filename'; hiddenInputFilename.value = filename;
+        hiddenInputFilename.type = 'hidden';
+        hiddenInputFilename.name = 'pdf_filename';
+        hiddenInputFilename.value = filename;
         form.appendChild(hiddenInputFilename);
 
         const hiddenInputFlag = document.createElement('input');
-        hiddenInputFlag.type = 'hidden'; hiddenInputFlag.name = 'download_pdf'; hiddenInputFlag.value = '1';
+        hiddenInputFlag.type = 'hidden';
+        hiddenInputFlag.name = 'download_pdf';
+        hiddenInputFlag.value = '1';
         form.appendChild(hiddenInputFlag);
 
         document.body.appendChild(form);
@@ -322,7 +477,7 @@ try {
 
     document.getElementById('download-full-report-btn').addEventListener('click', function() {
         const chartImage = salaryChart.toBase64Image();
-        
+
         // Clone the report content to avoid modifying the live page
         const reportContent = document.getElementById('report-content').cloneNode(true);
         const canvas = reportContent.querySelector('canvas');
@@ -342,9 +497,10 @@ try {
                 <div class="header"><h1><?php echo htmlspecialchars($school_name); ?></h1><h2>Payroll Summary for <?php echo date("F Y", strtotime($selected_month)); ?></h2></div>
                 ${reportContent.innerHTML}
             </body></html>`;
-        
+
         generateAndSubmitPdf(pdfHtml, mainPdfFilename);
     });
     </script>
 </body>
+
 </html>

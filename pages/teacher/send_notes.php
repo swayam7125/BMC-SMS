@@ -4,6 +4,8 @@ include_once "../../includes/connect.php";
 include_once "../../includes/ajax_helpers.php";
 // include_once "../../includes/email_functions.php"; // Uncomment if email is set up
 
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 // Check if this is an AJAX request
 if (is_ajax_request()) {
     // Start output buffering to capture the HTML
@@ -112,8 +114,6 @@ try {
 }
 
 $pageTitle = 'Send Notes';
-
-if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -131,17 +131,21 @@ if (!is_ajax_request()) {
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
-        <div id="content-wrapper" class="d-flex flex-column">
+        <?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?> <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include '../../includes/header.php'; ?>
-<?php
+                <?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
 }
 ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Send a Note</h1>
                     <?php if (isset($_GET['success'])): ?>
-                        <div class="alert alert-success">Note sent successfully!</div>
+                    <div class="alert alert-success">Note sent successfully!</div>
                     <?php endif; ?>
                     <div class="row">
                         <div class="col-lg-7">
@@ -153,20 +157,28 @@ if (!is_ajax_request()) {
                                     <form method="POST" action="send_notes.php" enctype="multipart/form-data">
                                         <div class="form-group">
                                             <label for="target_standard">Send to Standard</label>
-                                            <select class="form-control" id="target_standard" name="target_standard" required>
+                                            <select class="form-control" id="target_standard" name="target_standard"
+                                                required>
                                                 <option value="">-- Select a Standard --</option>
                                                 <?php foreach ($availableStandards as $standard): ?>
-                                                    <option value="<?php echo htmlspecialchars(trim($standard)); ?>">Standard <?php echo htmlspecialchars(trim($standard)); ?></option>
+                                                <option value="<?php echo htmlspecialchars(trim($standard)); ?>">
+                                                    Standard <?php echo htmlspecialchars(trim($standard)); ?></option>
                                                 <?php endforeach; ?>
                                                 <?php if (empty($availableStandards)): ?>
-                                                    <option disabled>No standards available.</option>
+                                                <option disabled>No standards available.</option>
                                                 <?php endif; ?>
                                             </select>
                                         </div>
-                                        <div class="form-group"><label for="title">Title</label><input type="text" class="form-control" id="title" name="title" required></div>
-                                        <div class="form-group"><label for="content">Content</label><textarea class="form-control" id="content" name="content" rows="4" required></textarea></div>
-                                        <div class="form-group"><label for="note_file">Attach File (Optional)</label><input type="file" class="form-control-file" id="note_file" name="note_file"></div>
-                                        <button type="submit" name="send_note" class="btn btn-primary">Send Note</button>
+                                        <div class="form-group"><label for="title">Title</label><input type="text"
+                                                class="form-control" id="title" name="title" required></div>
+                                        <div class="form-group"><label for="content">Content</label><textarea
+                                                class="form-control" id="content" name="content" rows="4"
+                                                required></textarea></div>
+                                        <div class="form-group"><label for="note_file">Attach File
+                                                (Optional)</label><input type="file" class="form-control-file"
+                                                id="note_file" name="note_file"></div>
+                                        <button type="submit" name="send_note" class="btn btn-primary">Send
+                                            Note</button>
                                     </form>
                                 </div>
                             </div>
@@ -188,17 +200,18 @@ if (!is_ajax_request()) {
                                             </thead>
                                             <tbody>
                                                 <?php if (!empty($notesHistory)): foreach ($notesHistory as $note): ?>
-                                                        <tr>
-                                                            <td><?php echo htmlspecialchars($note['title']); ?></td>
-                                                            <td><?php echo htmlspecialchars($note['target_standard']); ?></td>
-                                                            <td><?php echo date('d-m-Y H:i', strtotime($note['created_at'])); ?></td>
+                                                <tr>
+                                                    <td><?php echo htmlspecialchars($note['title']); ?></td>
+                                                    <td><?php echo htmlspecialchars($note['target_standard']); ?></td>
+                                                    <td><?php echo date('d-m-Y H:i', strtotime($note['created_at'])); ?>
+                                                    </td>
 
-                                                        </tr>
-                                                    <?php endforeach;
+                                                </tr>
+                                                <?php endforeach;
                                                 else: ?>
-                                                    <tr>
-                                                        <td colspan="3" class="text-center">No notes sent yet.</td>
-                                                    </tr>
+                                                <tr>
+                                                    <td colspan="3" class="text-center">No notes sent yet.</td>
+                                                </tr>
                                                 <?php endif; ?>
                                             </tbody>
                                         </table>
@@ -208,11 +221,12 @@ if (!is_ajax_request()) {
                         </div>
                     </div>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
             </div>
-            <?php include '../../includes/footer.php'; ?>
+            <?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?>
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php" ?>
@@ -227,17 +241,15 @@ if (is_ajax_request()) {
     $content = ob_get_clean();
     
     // Extract just the main content area for the AJAX response
-    if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
-        echo '<div class="container-fluid">' . $matches[1] . '</div>';
+    if (preg_match('/<div class="container-fluid".*?>(.*?)<\ /div>/s', $content, $matches)) {
+    echo '<div class="container-fluid">' . $matches[1] . '</div>';
     } else {
-        // Fallback if the main container isn't found
-        echo $content;
+    // Fallback if the main container isn't found
+    echo $content;
     }
     // Stop the script for AJAX requests
     exit;
-}
-?>
+    }
+    ?>
+
 </html>
-<?php
-}
-?>

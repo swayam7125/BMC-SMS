@@ -2,6 +2,8 @@
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 $role = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
@@ -105,7 +107,8 @@ if (!empty($photo_path) && file_exists($full_filesystem_path) && is_file($full_f
     <title>View Student - <?php echo htmlspecialchars($student['student_name']); ?></title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-    <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i"
+    <link
+        href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i"
         rel="stylesheet">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
@@ -118,21 +121,28 @@ if (!empty($photo_path) && file_exists($full_filesystem_path) && is_file($full_f
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
-        <div id="content-wrapper" class="d-flex flex-column">
+        <?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?> <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
-                <div class="container-fluid">
+                <?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
+}
+?> <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Student's Details</h1>
                         <div>
-                            <a href="student_list.php?std=<?php echo urlencode($selectedStd); ?>" class="btn btn-secondary btn-sm mr-2">
+                            <a href="student_list.php?std=<?php echo urlencode($selectedStd); ?>"
+                                class="btn btn-secondary btn-sm mr-2">
                                 <i class="fas fa-arrow-left"></i> Back to List
                             </a>
                             <?php if ($role === 'principal' || $role === 'hr'): ?>
-                                <a href="edit.php?id=<?php echo $student['id']; ?>" class="btn btn-primary btn-sm">
-                                    <i class="fas fa-edit"></i> Edit Student
-                                </a>
+                            <a href="edit.php?id=<?php echo $student['id']; ?>" class="btn btn-primary btn-sm">
+                                <i class="fas fa-edit"></i> Edit Student
+                            </a>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -153,8 +163,10 @@ if (!empty($photo_path) && file_exists($full_filesystem_path) && is_file($full_f
                                             onerror="this.onerror=null; this.src='<?php echo htmlspecialchars($default_photo); ?>';">
                                     </div>
                                     <div class="text-center">
-                                        <h4 class="font-weight-bold text-gray-800 mt-2"><?php echo htmlspecialchars($student['student_name']); ?></h4>
-                                        <p class="text-muted">Roll No : <?php echo htmlspecialchars($student['rollno']); ?></p>
+                                        <h4 class="font-weight-bold text-gray-800 mt-2">
+                                            <?php echo htmlspecialchars($student['student_name']); ?></h4>
+                                        <p class="text-muted">Roll No :
+                                            <?php echo htmlspecialchars($student['rollno']); ?></p>
                                     </div>
                                 </div>
                             </div>
@@ -195,11 +207,11 @@ if (!empty($photo_path) && file_exists($full_filesystem_path) && is_file($full_f
                                         <div class="col-sm-4 font-weight-bold">Email:</div>
                                         <div class="col-sm-8">
                                             <?php if ($student['email']): ?>
-                                                <a href="mailto:<?php echo htmlspecialchars($student['email']); ?>">
-                                                    <?php echo htmlspecialchars($student['email']); ?>
-                                                </a>
+                                            <a href="mailto:<?php echo htmlspecialchars($student['email']); ?>">
+                                                <?php echo htmlspecialchars($student['email']); ?>
+                                            </a>
                                             <?php else: ?>
-                                                N/A
+                                            N/A
                                             <?php endif; ?>
                                         </div>
                                     </div>
@@ -325,12 +337,12 @@ if (!empty($photo_path) && file_exists($full_filesystem_path) && is_file($full_f
                                                 <div class="col-sm-4 font-weight-bold">Father's Phone:</div>
                                                 <div class="col-sm-8">
                                                     <?php if ($student['father_phone']): ?>
-                                                        <a
-                                                            href="tel:<?php echo htmlspecialchars($student['father_phone']); ?>">
-                                                            <?php echo htmlspecialchars($student['father_phone']); ?>
-                                                        </a>
+                                                    <a
+                                                        href="tel:<?php echo htmlspecialchars($student['father_phone']); ?>">
+                                                        <?php echo htmlspecialchars($student['father_phone']); ?>
+                                                    </a>
                                                     <?php else: ?>
-                                                        N/A
+                                                    N/A
                                                     <?php endif; ?>
                                                 </div>
                                             </div>
@@ -347,12 +359,12 @@ if (!empty($photo_path) && file_exists($full_filesystem_path) && is_file($full_f
                                                 <div class="col-sm-4 font-weight-bold">Mother's Phone:</div>
                                                 <div class="col-sm-8">
                                                     <?php if ($student['mother_phone']): ?>
-                                                        <a
-                                                            href="tel:<?php echo htmlspecialchars($student['mother_phone']); ?>">
-                                                            <?php echo htmlspecialchars($student['mother_phone']); ?>
-                                                        </a>
+                                                    <a
+                                                        href="tel:<?php echo htmlspecialchars($student['mother_phone']); ?>">
+                                                        <?php echo htmlspecialchars($student['mother_phone']); ?>
+                                                    </a>
                                                     <?php else: ?>
-                                                        N/A
+                                                    N/A
                                                     <?php endif; ?>
                                                 </div>
                                             </div>
@@ -365,58 +377,73 @@ if (!empty($photo_path) && file_exists($full_filesystem_path) && is_file($full_f
                         <div class="col-lg-12 mb-4">
                             <div class="card shadow">
                                 <div class="card-header py-3">
-                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-bus"></i> Transport Information</h6>
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-bus"></i> Transport
+                                        Information</h6>
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-md-4">
                                             <div class="row">
                                                 <div class="col-sm-5 font-weight-bold">Mode of Transport:</div>
-                                                <div class="col-sm-7"><?php echo htmlspecialchars($student['transport_mode'] ?? 'N/A'); ?></div>
+                                                <div class="col-sm-7">
+                                                    <?php echo htmlspecialchars($student['transport_mode'] ?? 'N/A'); ?>
+                                                </div>
                                             </div>
                                         </div>
                                         <?php if (isset($student['transport_mode']) && $student['transport_mode'] === 'School Transport'): ?>
-                                            <div class="col-md-8">
-                                                <div class="row">
-                                                    <div class="col-lg-4">
-                                                        <div class="row">
-                                                            <div class="col-sm-5 font-weight-bold">Route:</div>
-                                                            <div class="col-sm-7"><?php echo htmlspecialchars($student['route_name'] ?? 'N/A'); ?></div>
+                                        <div class="col-md-8">
+                                            <div class="row">
+                                                <div class="col-lg-4">
+                                                    <div class="row">
+                                                        <div class="col-sm-5 font-weight-bold">Route:</div>
+                                                        <div class="col-sm-7">
+                                                            <?php echo htmlspecialchars($student['route_name'] ?? 'N/A'); ?>
                                                         </div>
                                                     </div>
-                                                    <div class="col-lg-4">
-                                                        <div class="row">
-                                                            <div class="col-sm-5 font-weight-bold">Stop:</div>
-                                                            <div class="col-sm-7"><?php echo htmlspecialchars($student['stop_name'] ?? 'N/A'); ?></div>
+                                                </div>
+                                                <div class="col-lg-4">
+                                                    <div class="row">
+                                                        <div class="col-sm-5 font-weight-bold">Stop:</div>
+                                                        <div class="col-sm-7">
+                                                            <?php echo htmlspecialchars($student['stop_name'] ?? 'N/A'); ?>
                                                         </div>
                                                     </div>
-                                                    <div class="col-lg-4">
-                                                        <div class="row">
-                                                            <div class="col-sm-5 font-weight-bold">Vehicle:</div>
-                                                            <div class="col-sm-7"><?php echo htmlspecialchars($student['school_vehicle_number'] ?? 'N/A'); ?></div>
+                                                </div>
+                                                <div class="col-lg-4">
+                                                    <div class="row">
+                                                        <div class="col-sm-5 font-weight-bold">Vehicle:</div>
+                                                        <div class="col-sm-7">
+                                                            <?php echo htmlspecialchars($student['school_vehicle_number'] ?? 'N/A'); ?>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
+                                        </div>
                                         <?php elseif (isset($student['transport_mode']) && $student['transport_mode'] === 'Self Transport'): ?>
-                                            <div class="col-md-8">
-                                                <div class="row">
-                                                    <div class="col-sm-4 font-weight-bold">Self Transport Mode:</div>
-                                                    <div class="col-sm-8"><?php echo htmlspecialchars($student['self_transport_mode'] ?? 'N/A'); ?></div>
+                                        <div class="col-md-8">
+                                            <div class="row">
+                                                <div class="col-sm-4 font-weight-bold">Self Transport Mode:</div>
+                                                <div class="col-sm-8">
+                                                    <?php echo htmlspecialchars($student['self_transport_mode'] ?? 'N/A'); ?>
                                                 </div>
-                                                <?php if (isset($student['self_transport_mode']) && ($student['self_transport_mode'] === 'Bike' || $student['self_transport_mode'] === 'Car')): ?>
-                                                    <hr>
-                                                    <div class="row">
-                                                        <div class="col-sm-4 font-weight-bold">Vehicle Number:</div>
-                                                        <div class="col-sm-8"><?php echo htmlspecialchars($student['vehicle_number'] ?? 'N/A'); ?></div>
-                                                    </div>
-                                                    <hr>
-                                                    <div class="row">
-                                                        <div class="col-sm-4 font-weight-bold">License Number:</div>
-                                                        <div class="col-sm-8"><?php echo htmlspecialchars($student['license_number'] ?? 'N/A'); ?></div>
-                                                    </div>
-                                                <?php endif; ?>
                                             </div>
+                                            <?php if (isset($student['self_transport_mode']) && ($student['self_transport_mode'] === 'Bike' || $student['self_transport_mode'] === 'Car')): ?>
+                                            <hr>
+                                            <div class="row">
+                                                <div class="col-sm-4 font-weight-bold">Vehicle Number:</div>
+                                                <div class="col-sm-8">
+                                                    <?php echo htmlspecialchars($student['vehicle_number'] ?? 'N/A'); ?>
+                                                </div>
+                                            </div>
+                                            <hr>
+                                            <div class="row">
+                                                <div class="col-sm-4 font-weight-bold">License Number:</div>
+                                                <div class="col-sm-8">
+                                                    <?php echo htmlspecialchars($student['license_number'] ?? 'N/A'); ?>
+                                                </div>
+                                            </div>
+                                            <?php endif; ?>
+                                        </div>
                                         <?php endif; ?>
                                     </div>
                                 </div>
@@ -427,8 +454,10 @@ if (!empty($photo_path) && file_exists($full_filesystem_path) && is_file($full_f
                 </div>
             </div>
             <?php
-            include '../../includes/footer.php';
-            ?>
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?>
         </div>
     </div>
     <a class="scroll-to-top rounded" href="#page-top">

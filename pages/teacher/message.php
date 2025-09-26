@@ -5,6 +5,8 @@ include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 include_once '../../includes/ajax_helpers.php';
 
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 $current_user_id = null;
 $current_user_role = null;
 
@@ -64,11 +66,17 @@ if (!is_ajax_request()):
 </head>
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
-        <div id="content-wrapper" class="d-flex flex-column">
-            <div id="content">
-                <?php include '../../includes/header.php'; ?>
 <?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?>        <div id="content-wrapper" class="d-flex flex-column">
+            <div id="content">
+<?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
+}
+?><?php
 endif; // End of the header/template section wrapper.
 
 // This is the main content. It will run for BOTH normal loads and AJAX requests.
@@ -151,8 +159,11 @@ endif; // End of the header/template section wrapper.
 if (!is_ajax_request()):
 ?>
             </div>
-            <?php include_once '../../includes/footer.php'; ?>
-        </div>
+<?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?>        </div>
     </div>
     <?php include_once "../../includes/logout_modal.php"; ?>
     <script src="/BMC-SMS/assets/vendor/jquery/jquery.min.js"></script>

@@ -3,6 +3,8 @@ include_once "../../../includes/connect.php";
 include_once "../../../encryption.php";
 include_once "../../../includes/ajax_helpers.php";
 
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 // Check if this is an AJAX request
 if (is_ajax_request()) {
     // Start output buffering to capture the HTML
@@ -41,11 +43,10 @@ try {
 
 $current_year = date('Y');
 $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
-
-if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>View Marks Report - School Management System</title>
@@ -58,17 +59,23 @@ if (!is_ajax_request()) {
 
 <body id="page-top" data-class-std="<?php echo htmlspecialchars($class_teacher_std); ?>">
     <div id="wrapper">
-        <?php include '../../../includes/sidebar.php'; ?>
-        <div id="content-wrapper" class="d-flex flex-column">
+        <?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?> <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../../includes/header.php'; ?>
-<?php
+                <?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
 }
 ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                        <h1 class="h3 mb-0 text-gray-800">View Marks Report for Class: <?php echo htmlspecialchars($class_teacher_std); ?></h1>
-                        <a href="marks_entry.php" class="btn btn-primary btn-sm"><i class="fas fa-edit fa-sm"></i> Go to Marks Entry</a>
+                        <h1 class="h3 mb-0 text-gray-800">View Marks Report for Class:
+                            <?php echo htmlspecialchars($class_teacher_std); ?></h1>
+                        <a href="marks_entry.php" class="btn btn-primary btn-sm"><i class="fas fa-edit fa-sm"></i> Go to
+                            Marks Entry</a>
                     </div>
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
@@ -76,13 +83,21 @@ if (!is_ajax_request()) {
                         </div>
                         <div class="card-body">
                             <div class="form-row">
-                                <div class="form-group col-md-5"><label for="exam_type">Exam Type *</label><select class="form-control" id="exam_type">
+                                <div class="form-group col-md-5"><label for="exam_type">Exam Type *</label><select
+                                        class="form-control" id="exam_type">
                                         <option value="">-- Select Exam --</option>
                                         <option value="term_1">Term 1</option>
-                                        <option value="term_2">Term 2</option><?php $final_exam_disabled = (in_array($class_teacher_std, ['10', '12'])) ? 'disabled' : ''; ?><option value="final_exam" <?php echo $final_exam_disabled; ?>>Final Exam <?php if ($final_exam_disabled) echo '(Not Applicable)'; ?></option>
+                                        <option value="term_2">Term 2</option>
+                                        <?php $final_exam_disabled = (in_array($class_teacher_std, ['10', '12'])) ? 'disabled' : ''; ?>
+                                        <option value="final_exam" <?php echo $final_exam_disabled; ?>>Final Exam
+                                            <?php if ($final_exam_disabled) echo '(Not Applicable)'; ?></option>
                                     </select></div>
-                                <div class="form-group col-md-5"><label for="academic_year">Academic Year *</label><input type="text" class="form-control" id="academic_year" value="<?php echo $academic_year_suggestion; ?>"></div>
-                                <div class="form-group col-md-2 d-flex align-items-end"><button type="button" id="viewReportBtn" class="btn btn-info btn-block"><i class="fas fa-eye mr-1"></i> View Report</button></div>
+                                <div class="form-group col-md-5"><label for="academic_year">Academic Year
+                                        *</label><input type="text" class="form-control" id="academic_year"
+                                        value="<?php echo $academic_year_suggestion; ?>"></div>
+                                <div class="form-group col-md-2 d-flex align-items-end"><button type="button"
+                                        id="viewReportBtn" class="btn btn-info btn-block"><i
+                                            class="fas fa-eye mr-1"></i> View Report</button></div>
                             </div>
                             <hr>
                             <div class="table-responsive" id="marks-report-container" style="display:none;">
@@ -94,11 +109,12 @@ if (!is_ajax_request()) {
                         </div>
                     </div>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
             </div>
-            <?php include '../../../includes/footer.php'; ?>
+            <?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?>
         </div>
     </div>
     <?php include_once "../../../includes/logout_modal.php" ?>
@@ -114,17 +130,15 @@ if (is_ajax_request()) {
     $content = ob_get_clean();
     
     // Extract just the main content area for the AJAX response
-    if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
-        echo '<div class="container-fluid">' . $matches[1] . '</div>';
+    if (preg_match('/<div class="container-fluid".*?>(.*?)<\ /div>/s', $content, $matches)) {
+    echo '<div class="container-fluid">' . $matches[1] . '</div>';
     } else {
-        // Fallback if the main container isn't found
-        echo $content;
+    // Fallback if the main container isn't found
+    echo $content;
     }
     // Stop the script for AJAX requests
     exit;
-}
-?>
+    }
+    ?>
+
 </html>
-<?php
-}
-?>

@@ -3,6 +3,8 @@ include_once "../../encryption.php";
 include_once "../../includes/connect.php";
 include_once "../../includes/ajax_helpers.php";
 
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 // Check if this is an AJAX request
 if (is_ajax_request()) {
     // Start output buffering to capture the HTML
@@ -101,38 +103,55 @@ $pageTitle = 'Send Timetable';
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
-        <div id="content-wrapper" class="d-flex flex-column">
+        <?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?> <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include '../../includes/header.php'; ?>
-                <div class="container-fluid">
+                <?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
+}
+?> <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Send Timetable</h1>
                     <?php if (!empty($error)): ?>
-                        <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
+                    <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
                     <?php endif; ?>
                     <?php if (isset($_GET['success'])): ?>
-                        <div class="alert alert-success">Timetable uploaded successfully!</div>
+                    <div class="alert alert-success">Timetable uploaded successfully!</div>
                     <?php endif; ?>
 
                     <?php if (!$isClassTeacher): ?>
-                        <div class="alert alert-danger">You are not assigned as a class teacher. You do not have permission to upload a timetable.</div>
+                    <div class="alert alert-danger">You are not assigned as a class teacher. You do not have permission
+                        to upload a timetable.</div>
                     <?php else: ?>
-                        <div class="card shadow mb-4">
-                            <div class="card-header py-3">
-                                <h6 class="m-0 font-weight-bold text-primary">Upload Timetable for Your Class</h6>
-                            </div>
-                            <div class="card-body">
-                                <form method="POST" action="send_timetable.php" enctype="multipart/form-data">
-                                    <div class="form-group"><label for="target_standard">Standard</label><input type="text" class="form-control" id="target_standard" name="target_standard" value="Standard <?php echo htmlspecialchars($classTeacherStd); ?>" readonly></div>
-                                    <div class="form-group"><label for="timetable_file">Upload Timetable File (PDF, PNG, JPG)</label><input type="file" class="form-control-file" id="timetable_file" name="timetable_file" accept=".pdf,.png,.jpg,.jpeg" required></div>
-                                    <button type="submit" name="send_timetable" class="btn btn-primary">Upload Timetable</button>
-                                </form>
-                            </div>
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">Upload Timetable for Your Class</h6>
                         </div>
+                        <div class="card-body">
+                            <form method="POST" action="send_timetable.php" enctype="multipart/form-data">
+                                <div class="form-group"><label for="target_standard">Standard</label><input type="text"
+                                        class="form-control" id="target_standard" name="target_standard"
+                                        value="Standard <?php echo htmlspecialchars($classTeacherStd); ?>" readonly>
+                                </div>
+                                <div class="form-group"><label for="timetable_file">Upload Timetable File (PDF, PNG,
+                                        JPG)</label><input type="file" class="form-control-file" id="timetable_file"
+                                        name="timetable_file" accept=".pdf,.png,.jpg,.jpeg" required></div>
+                                <button type="submit" name="send_timetable" class="btn btn-primary">Upload
+                                    Timetable</button>
+                            </form>
+                        </div>
+                    </div>
                     <?php endif; ?>
                 </div>
             </div>
-            <?php include '../../includes/footer.php'; ?>
+            <?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?>
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php" ?>
@@ -147,14 +166,15 @@ if (is_ajax_request()) {
     $content = ob_get_clean();
     
     // Extract just the main content area for the AJAX response
-    if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
-        echo '<div class="container-fluid">' . $matches[1] . '</div>';
+    if (preg_match('/<div class="container-fluid".*?>(.*?)<\ /div>/s', $content, $matches)) {
+    echo '<div class="container-fluid">' . $matches[1] . '</div>';
     } else {
-        // Fallback if the main container isn't found
-        echo $content;
+    // Fallback if the main container isn't found
+    echo $content;
     }
     // Stop the script for AJAX requests
     exit;
-}
-?>
+    }
+    ?>
+
 </html>

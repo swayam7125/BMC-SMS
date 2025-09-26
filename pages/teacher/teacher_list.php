@@ -3,6 +3,8 @@ include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 include_once "../../includes/ajax_helpers.php";
 
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 // Check if this is an AJAX request
 if (is_ajax_request()) {
     // Start output buffering to capture the HTML
@@ -129,24 +131,38 @@ if (!is_ajax_request())
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include_once '../../includes/sidebar.php'; ?>
-        <div id="content-wrapper" class="d-flex flex-column">
+        <?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?> <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
-                <div class="container-fluid">
+                <?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
+}
+?> <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">Teacher Management</h1>
                     <p class="mb-4">List of all teachers in your school.</p>
                     <?php if (isset($_GET['success'])): ?>
-                        <div class="alert alert-success alert-dismissible fade show" role="alert"><?php echo htmlspecialchars($_GET['success']); ?><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <?php echo htmlspecialchars($_GET['success']); ?><button type="button" class="close"
+                            data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    </div>
                     <?php endif; ?>
                     <?php if (isset($_GET['error'])): ?>
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert"><?php echo htmlspecialchars($_GET['error']); ?><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <?php echo htmlspecialchars($_GET['error']); ?><button type="button" class="close"
+                            data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    </div>
                     <?php endif; ?>
                     <div class="card shadow mb-4">
                         <div class="card-header py-3 d-flex justify-content-between align-items-center">
                             <h6 class="m-0 font-weight-bold text-primary">Teacher List</h6>
                             <?php if ($role === 'principal' || $role === 'hr'): ?>
-                                <a href="/BMC-SMS/includes/forms/teacher_enrollment.php" class="btn btn-primary btn-icon-split btn-sm"><span class="icon text-white-50"><i class="fas fa-plus"></i></span><span class="text">Add New Teacher</span></a>
+                            <a href="/BMC-SMS/includes/forms/teacher_enrollment.php"
+                                class="btn btn-primary btn-icon-split btn-sm"><span class="icon text-white-50"><i
+                                        class="fas fa-plus"></i></span><span class="text">Add New Teacher</span></a>
                             <?php endif; ?>
                         </div>
                         <div class="card-body">
@@ -167,44 +183,59 @@ if (!is_ajax_request())
                                         <?php if (!empty($teachers)): foreach ($teachers as $row):
                                             $teacher_std_for_url = htmlspecialchars(trim(str_replace(['{', '}'], '', $row['std'])));
                                         ?>
-                                                <tr>
-                                                    <td><?php echo htmlspecialchars($row['id']); ?></td>
-                                                    <td><a href="view.php?id=<?php echo $row['id']; ?>&std=<?php echo $teacher_std_for_url; ?>&from_list_filter=<?php echo urlencode($selected_standard); ?>"><?php echo htmlspecialchars($row['teacher_name'] ?? 'N/A'); ?></a></td>
-                                                    <td><?php echo htmlspecialchars($row['email'] ?? 'N/A'); ?></td>
-                                                    <td><?php echo htmlspecialchars(trim(str_replace(['{', '}'], '', $row['std'])) ?? 'N/A'); ?></td>
-                                                    <td><?php echo htmlspecialchars($row['school_name'] ?? 'N/A'); ?></td>
-                                                    <td>
-                                                        <?php if ($row['account_status'] === 'active'): ?>
-                                                            <span class="badge badge-success">Active</span>
-                                                        <?php else: ?>
-                                                            <span class="badge badge-danger">Suspended</span>
-                                                        <?php endif; ?>
-                                                    </td>
-                                                    <td>
-                                                        <a href="view.php?id=<?php echo $row['id']; ?>&std=<?php echo $teacher_std_for_url; ?>&from_list_filter=<?php echo urlencode($selected_standard); ?>" class="btn btn-info btn-sm" title="View"><i class="fas fa-eye"></i></a>
-                                                        <a href="edit.php?id=<?php echo $row['id']; ?>" class="btn btn-primary btn-sm" title="Edit"><i class="fas fa-edit"></i></a>
-                                                        <?php if ($role === 'principal' || $role === 'hr'):
+                                        <tr>
+                                            <td><?php echo htmlspecialchars($row['id']); ?></td>
+                                            <td><a
+                                                    href="view.php?id=<?php echo $row['id']; ?>&std=<?php echo $teacher_std_for_url; ?>&from_list_filter=<?php echo urlencode($selected_standard); ?>"><?php echo htmlspecialchars($row['teacher_name'] ?? 'N/A'); ?></a>
+                                            </td>
+                                            <td><?php echo htmlspecialchars($row['email'] ?? 'N/A'); ?></td>
+                                            <td><?php echo htmlspecialchars(trim(str_replace(['{', '}'], '', $row['std'])) ?? 'N/A'); ?>
+                                            </td>
+                                            <td><?php echo htmlspecialchars($row['school_name'] ?? 'N/A'); ?></td>
+                                            <td>
+                                                <?php if ($row['account_status'] === 'active'): ?>
+                                                <span class="badge badge-success">Active</span>
+                                                <?php else: ?>
+                                                <span class="badge badge-danger">Suspended</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
+                                                <a href="view.php?id=<?php echo $row['id']; ?>&std=<?php echo $teacher_std_for_url; ?>&from_list_filter=<?php echo urlencode($selected_standard); ?>"
+                                                    class="btn btn-info btn-sm" title="View"><i
+                                                        class="fas fa-eye"></i></a>
+                                                <a href="edit.php?id=<?php echo $row['id']; ?>"
+                                                    class="btn btn-primary btn-sm" title="Edit"><i
+                                                        class="fas fa-edit"></i></a>
+                                                <?php if ($role === 'principal' || $role === 'hr'):
                                                             $return_url = urlencode('/BMC-SMS/pages/teacher/teacher_list.php');
                                                             if ($row['account_status'] === 'active'):
                                                                 $suspendUrl = "../../includes/actions/update_user_status.php?id={$row['id']}&status=suspended&return={$return_url}";
                                                         ?>
-                                                                <a href="#" onclick="confirmAction('<?php echo $suspendUrl; ?>', 'suspend this teacher')" class="btn btn-warning btn-sm" title="Suspend"><i class="fas fa-ban"></i></a>
-                                                            <?php else:
+                                                <a href="#"
+                                                    onclick="confirmAction('<?php echo $suspendUrl; ?>', 'suspend this teacher')"
+                                                    class="btn btn-warning btn-sm" title="Suspend"><i
+                                                        class="fas fa-ban"></i></a>
+                                                <?php else:
                                                                 $reactivateUrl = "../../includes/actions/update_user_status.php?id={$row['id']}&status=active&return={$return_url}";
                                                             ?>
-                                                                <a href="#" onclick="confirmAction('<?php echo $reactivateUrl; ?>', 'reactivate this teacher')" class="btn btn-success btn-sm" title="Reactivate"><i class="fas fa-check-circle"></i></a>
-                                                        <?php endif;
+                                                <a href="#"
+                                                    onclick="confirmAction('<?php echo $reactivateUrl; ?>', 'reactivate this teacher')"
+                                                    class="btn btn-success btn-sm" title="Reactivate"><i
+                                                        class="fas fa-check-circle"></i></a>
+                                                <?php endif;
                                                         endif; ?>
-                                                        <?php if ($role === 'principal'): ?>
-                                                            <button class="btn btn-danger btn-sm" onclick="confirmDelete(<?php echo $row['id']; ?>)" title="Delete"><i class="fas fa-trash"></i></button>
-                                                        <?php endif; ?>
-                                                    </td>
-                                                </tr>
-                                            <?php endforeach;
+                                                <?php if ($role === 'principal'): ?>
+                                                <button class="btn btn-danger btn-sm"
+                                                    onclick="confirmDelete(<?php echo $row['id']; ?>)" title="Delete"><i
+                                                        class="fas fa-trash"></i></button>
+                                                <?php endif; ?>
+                                            </td>
+                                        </tr>
+                                        <?php endforeach;
                                         else: ?>
-                                            <tr>
-                                                <td colspan="7" class="text-center">No teachers found</td>
-                                            </tr>
+                                        <tr>
+                                            <td colspan="7" class="text-center">No teachers found</td>
+                                        </tr>
                                         <?php endif; ?>
                                     </tbody>
                                 </table>
@@ -212,11 +243,12 @@ if (!is_ajax_request())
                         </div>
                     </div>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
             </div>
-            <?php include_once '../../includes/footer.php'; ?>
+            <?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?>
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php" ?>
@@ -224,10 +256,13 @@ if (!is_ajax_request()) {
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Confirm Delete</h5><button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                    <h5 class="modal-title">Confirm Delete</h5><button class="close" type="button" data-dismiss="modal"
+                        aria-label="Close"><span aria-hidden="true">×</span></button>
                 </div>
                 <div class="modal-body">Are you sure you want to delete this record? This action cannot be undone.</div>
-                <div class="modal-footer"><button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button><a class="btn btn-danger" id="confirmDeleteBtn" href="#">Delete</a></div>
+                <div class="modal-footer"><button class="btn btn-secondary" type="button"
+                        data-dismiss="modal">Cancel</button><a class="btn btn-danger" id="confirmDeleteBtn"
+                        href="#">Delete</a></div>
             </div>
         </div>
     </div>
@@ -235,10 +270,13 @@ if (!is_ajax_request()) {
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Confirm Action</h5><button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                    <h5 class="modal-title">Confirm Action</h5><button class="close" type="button" data-dismiss="modal"
+                        aria-label="Close"><span aria-hidden="true">×</span></button>
                 </div>
                 <div class="modal-body" id="actionModalBody">Are you sure you want to proceed?</div>
-                <div class="modal-footer"><button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button><a class="btn btn-primary" id="confirmActionBtn" href="#">Confirm</a></div>
+                <div class="modal-footer"><button class="btn btn-secondary" type="button"
+                        data-dismiss="modal">Cancel</button><a class="btn btn-primary" id="confirmActionBtn"
+                        href="#">Confirm</a></div>
             </div>
         </div>
     </div>
@@ -267,7 +305,7 @@ if (!is_ajax_request()) {
         $('#confirmDeleteBtn').attr('href', deleteUrl);
         $('#deleteModal').modal('show');
     }
-</script>
+    </script>
 </body>
 <?php
 // Add this block at the very end of the file
@@ -276,17 +314,15 @@ if (is_ajax_request()) {
     $content = ob_get_clean();
     
     // Extract just the main content area for the AJAX response
-    if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
-        echo '<div class="container-fluid">' . $matches[1] . '</div>';
+    if (preg_match('/<div class="container-fluid".*?>(.*?)<\ /div>/s', $content, $matches)) {
+    echo '<div class="container-fluid">' . $matches[1] . '</div>';
     } else {
-        // Fallback if the main container isn't found
-        echo $content;
+    // Fallback if the main container isn't found
+    echo $content;
     }
     // Stop the script for AJAX requests
     exit;
-}
-?>
+    }
+    ?>
+
 </html>
-<?php
-}
-?>
