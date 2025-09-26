@@ -2,16 +2,36 @@
 $pageTitle = 'Welcome';
 require_once '../includes/connect.php';
 
+// Define the ID of the school to feature for statistics
+$school_id_to_feature = 4;
+
+// --- CRITICAL CHANGE: Set INITIAL/FALLBACK values to match your image's minimal counts ---
+$student_count = '7+'; 
+$teacher_count = '9+'; 
+$classroom_count = '50+';
+$pass_percentage = '98%';
+
 try {
-  $student_count = $conn->query('SELECT COUNT(*) FROM student')->fetchColumn();
-  $teacher_count = $conn->query('SELECT COUNT(*) FROM teacher')->fetchColumn();
-  $classroom_count = 50;
-  $pass_percentage = 98;
+  // Fetch count statistics dynamically for the specified school ID (4)
+  $student_count_raw = $conn->query("SELECT COUNT(*) FROM student WHERE school_id = {$school_id_to_feature}")->fetchColumn();
+  $teacher_count_raw = $conn->query("SELECT COUNT(*) FROM teacher WHERE school_id = {$school_id_to_feature}")->fetchColumn();
+  
+  // These variables are placeholders or come from another table, but we use the displayed defaults for safety:
+  $classroom_count_raw = 50; 
+  $pass_percentage_raw = 98;
+
+  // Format the numbers for display, using the fetched data
+  if ($student_count_raw > 0) {
+      $student_count = number_format($student_count_raw) . '+';
+  }
+  if ($teacher_count_raw > 0) {
+      $teacher_count = $teacher_count_raw . '+';
+  }
+  $classroom_count = $classroom_count_raw . '+';
+  $pass_percentage = $pass_percentage_raw . '%';
+
 } catch (PDOException $e) {
-  $student_count = '1200+';
-  $teacher_count = '75+';
-  $classroom_count = '50+';
-  $pass_percentage = '98%';
+  // If connection fails, the initial fallback values ('7+', '9+', '50+', '98%') are automatically used.
   error_log("Homepage DB Error: " . $e->getMessage());
 }
 ?>
@@ -87,7 +107,7 @@ try {
             <div class="card color-cards">
               <div class="card-body p-0">
                 <div class="bg-primary text-center card-contents">
-                  <h2 class="text-white font-weight-bold"><?php echo htmlspecialchars($student_count); ?>+</h2>
+                  <h2 class="text-white font-weight-bold"><?php echo htmlspecialchars($student_count); ?></h2>
                   <h5 class="text-white">Students Enrolled</h5>
                 </div>
               </div>
@@ -97,7 +117,7 @@ try {
             <div class="card color-cards">
               <div class="card-body p-0">
                 <div class="bg-warning text-center card-contents">
-                  <h2 class="text-white font-weight-bold"><?php echo htmlspecialchars($teacher_count); ?>+</h2>
+                  <h2 class="text-white font-weight-bold"><?php echo htmlspecialchars($teacher_count); ?></h2>
                   <h5 class="text-white">Qualified Teachers</h5>
                 </div>
               </div>
@@ -107,7 +127,7 @@ try {
             <div class="card color-cards">
               <div class="card-body p-0">
                 <div class="bg-violet text-center card-contents">
-                  <h2 class="text-white font-weight-bold"><?php echo htmlspecialchars($classroom_count); ?>+</h2>
+                  <h2 class="text-white font-weight-bold"><?php echo htmlspecialchars($classroom_count); ?></h2>
                   <h5 class="text-white">Classrooms</h5>
                 </div>
               </div>
@@ -117,7 +137,7 @@ try {
             <div class="card color-cards">
               <div class="card-body p-0">
                 <div class="bg-success text-center card-contents">
-                  <h2 class="text-white font-weight-bold"><?php echo htmlspecialchars($pass_percentage); ?>%</h2>
+                  <h2 class="text-white font-weight-bold"><?php echo htmlspecialchars($pass_percentage); ?></h2>
                   <h5 class="text-white">Pass Percentage</h5>
                 </div>
               </div>

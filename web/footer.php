@@ -1,19 +1,18 @@
 <?php
-try {
-    // Fetch footer details dynamically from the database
-    $stmt_footer = $conn->query("SELECT address, phone, email FROM school_info WHERE id = 1");
-    $footer_info = $stmt_footer->fetch(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    // Fallback info in case of a database error
-    $footer_info = ['address' => '123 Education Lane<br>Knowledge City, 456789', 'phone' => '+91 123 456 7890', 'email' => 'info@bmcschool.com'];
-}
+// $school_info is already available from the required header.php
+// We use the fetched info directly from the array created in header.php.
+
+$footer_info = [
+    'address' => $school_info['address'] ?? '123 Education Lane<br>Knowledge City, 456789',
+    'phone' => $school_info['phone'] ?? '+91 123 456 7890',
+    'email' => $school_info['email'] ?? 'info@example.com'
+];
 ?>
 <div class="content-wrapper">
     <div class="container">
         <section class="contact-details" id="contact-details-section">
             <div class="row text-center text-md-left">
                 <div class="col-12 col-md-6 col-lg-3 grid-margin">
-                    <img src="<?php echo htmlspecialchars($school_info['logo_path']); ?>" alt="<?php echo htmlspecialchars($school_info['school_name']); ?> Logo" class="pb-2">
                     <div class="pt-2">
                         <p class="text-muted m-0"><?php echo htmlspecialchars($footer_info['email']); ?></p>
                         <p class="text-muted m-0"><?php echo htmlspecialchars($footer_info['phone']); ?></p>

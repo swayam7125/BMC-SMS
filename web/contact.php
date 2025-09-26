@@ -1,9 +1,12 @@
 <?php
-require_once '../includes/connect.php'; // Adjust path if needed
-$message = '';
+// We do NOT require_once 'connect.php' here because header.php handles it.
 
 // Handle Form Submission
+$message = '';
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
+  // Ensure connection is available if submitted directly
+  @include_once '../includes/connect.php'; 
+
   $name = trim($_POST['contactName']);
   $email = trim($_POST['contactEmail']);
   $content = trim($_POST['contactMessage']);
@@ -11,9 +14,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   // Simple validation
   if (empty($name) || !filter_var($email, FILTER_VALIDATE_EMAIL) || empty($content)) {
     $message = '<div class="alert alert-danger">Please fill out all fields correctly.</div>';
+  } else if (!isset($conn)) {
+      $message = '<div class="alert alert-danger">Cannot submit form: Database connection error.</div>';
   } else {
     try {
-      // Insert message into the database
+      // Insert message into the database (using existing table structure)
       $stmt = $conn->prepare("INSERT INTO contact_messages (sender_name, sender_email, message) VALUES (?, ?, ?)");
       $stmt->execute([$name, $email, $content]);
       $message = '<div class="alert alert-success">Thank you for your message! We will get back to you soon.</div>';
@@ -24,20 +29,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   }
 }
 
-// Fetch dynamic contact details for the main content area
-try {
-  $stmt_contact = $conn->query("SELECT address, phone, email FROM school_info WHERE id = 1");
-  $contact_info = $stmt_contact->fetch(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-  // Fallback info in case of a database error
-  $contact_info = ['address' => '123 Education Lane, Knowledge City, 456789', 'phone' => '+91 123 456 7890', 'email' => 'info@bmcschool.com'];
-}
+// Fetch dynamic school details by including header.php. 
+// This file will establish the connection and populate $school_info.
+$pageTitle = 'Contact Us';
+include 'header.php'; 
+
+// --- DYNAMIC DATA IS NOW AVAILABLE IN $school_info ---
+// We define $contact_info based on $school_info to keep the HTML section clean.
+// This relies on $school_info having keys: address, phone, email, etc.
+$contact_info = [
+  'address' => $school_info['address'] ?? '123 Education Lane, Knowledge City, 456789 (Fallback)', 
+  'phone' => $school_info['phone'] ?? '+91 123 456 7890 (Fallback)', 
+  'email' => $school_info['email'] ?? 'info@bmcschool.com (Fallback)'
+];
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
-  <title>Contact Us | BMC School</title>
+  <title><?php echo htmlspecialchars($pageTitle); ?> | <?php echo htmlspecialchars($school_info['school_name']); ?></title>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="vendors/mdi/css/materialdesignicons.min.css">
@@ -45,9 +56,6 @@ try {
 </head>
 
 <body>
-
-  <?php include 'header.php'; ?>
-
   <main>
     <div class="content-wrapper">
       <div class="container">

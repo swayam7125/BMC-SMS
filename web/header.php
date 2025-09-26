@@ -1,16 +1,61 @@
 <?php
-// This file can be expanded to include your Supabase connection logic
-// For now, we'll fetch school info using your existing connect.php
-require_once '../includes/connect.php';
+// --- 1. Safely Include Database Connection ---
+@include_once '../includes/connect.php';
 
-try {
-    // Fetch school name and logo from the database
-    $stmt = $conn->query("SELECT school_name, logo_path FROM school_info WHERE id = 1");
-    $school_info = $stmt->fetch(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    // Fallback values if the database is unavailable
-    $school_info = ['school_name' => 'BMC School', 'logo_path' => 'images/Group2.svg'];
+// Define the ID of the school to feature
+$school_id_to_feature = 4;
+
+// --- 2. Initialize $school_info with a complete set of robust fallback values ---
+$school_info = [
+    'school_name' => 'Sanskar Bharti Vidyalay', // Default name
+    'logo_path' => 'images/Group2.svg', // Ensure this path is correct for your default logo
+    'email' => 'sbv@example.com',
+    'phone' => '+91 8526548525',
+    'address' => 'Crossroad, Beside D-Mart, Katargam, Surat-395001'
+];
+
+// Check if the connection object ($conn) exists after including connect.php
+if (isset($conn)) {
+    try {
+        // --- 3. Attempt to fetch specific school details from the 'school' table (ID 4) ---
+        $stmt = $conn->prepare("SELECT school_name, school_logo AS logo_path, email, phone, address FROM school WHERE id = :school_id");
+        $stmt->bindParam(':school_id', $school_id_to_feature, PDO::PARAM_INT);
+        $stmt->execute();
+        $fetched_info = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($fetched_info) {
+            // Overwrite defaults with fetched data
+            $school_info = array_merge($school_info, $fetched_info);
+
+            // Correct the logo_path mapping if necessary (from school_logo)
+            // Also add a base path if school_logo from DB is relative and needs it
+            if (isset($fetched_info['logo_path']) && !empty($fetched_info['logo_path'])) {
+                // Assuming logo paths like '/BMC-SMS/uploads/school_logos/school_4_...'
+                // You might need to adjust this base path based on your server configuration
+                $base_upload_path = '/BMC-SMS/'; // Adjust if your root path is different
+                if (strpos($fetched_info['logo_path'], $base_upload_path) === 0) {
+                     $school_info['logo_path'] = $fetched_info['logo_path'];
+                } else {
+                    // Prepend a default path if the DB path is just a filename or relative
+                    $school_info['logo_path'] = $base_upload_path . $fetched_info['logo_path'];
+                }
+            }
+        }
+        
+    } catch (PDOException $e) {
+        // Log the error but continue using fallback data
+        error_log("Database Query Error in header.php: " . $e->getMessage());
+    }
+} else {
+    // Log if the connection object was never initialized
+    error_log("Database connection file could not be included or \$conn was not initialized.");
 }
+
+// Final check for logo_path to ensure it's not empty and has a sensible default
+if (empty($school_info['logo_path'])) {
+    $school_info['logo_path'] = 'images/Group2.svg'; // Fallback image if DB path is empty
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -66,6 +111,24 @@ try {
 
         .navbar-brand span {
             vertical-align: middle;
+        }
+
+        /* --- NEW CSS FOR LOGO SIZING --- */
+        .navbar-brand img {
+            max-height: 40px; /* Adjust this value as needed */
+            width: auto; /* Maintain aspect ratio */
+            vertical-align: middle;
+        }
+        /* Optional: If the parent wrapper itself is too big, constrain it */
+        .navbar-brand-wrapper {
+            max-height: 60px; /* Example, adjust to give space around logo */
+            overflow: hidden; /* Hide anything that overflows */
+            display: flex;
+            align-items: center; /* Vertically align items */
+        }
+        /* Ensure the entire navbar doesn't get too tall */
+        .navbar {
+            min-height: 60px; /* Adjust to ensure navbar has consistent height */
         }
     </style>
 </head>

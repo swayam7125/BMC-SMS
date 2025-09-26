@@ -1,11 +1,16 @@
 <?php
-require_once '../../includes/connect.php';
+// pages/hr/get_admission_details.php
 
-if (!isset($_GET['id']) || !filter_var($_GET['id'], FILTER_VALIDATE_INT)) {
-    echo '<p class="text-danger">Invalid ID.</p>';
+include_once '../../includes/connect.php';
+include_once '../../encryption.php';
+
+if (!isset($_GET['id']) || !isset($conn)) {
+    http_response_code(400);
+    echo "Missing application ID or database connection.";
     exit;
 }
-$application_id = (int)$_GET['id'];
+
+$application_id = filter_var($_GET['id'], FILTER_SANITIZE_NUMBER_INT);
 
 try {
     $stmt = $conn->prepare("SELECT * FROM admission_applications WHERE id = ?");
@@ -13,89 +18,94 @@ try {
     $app = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$app) {
-        echo '<p class="text-danger">Application not found.</p>';
+        echo '<p class="text-center text-danger">Application not found.</p>';
         exit;
     }
-} catch (PDOException $e) {
-    echo '<p class="text-danger">Database error.</p>';
-    exit;
-}
 
-// --- Display the details and the action form ---
-?>
-<h5>Applicant: <?php echo htmlspecialchars($app['first_name'] . ' ' . $app['last_name']); ?></h5>
-<p><strong>Admission ID:</strong> <?php echo htmlspecialchars($app['admission_id']); ?></p>
-<hr>
+    // Outputting HTML for the modal body
+    ?>
+    <span data-current-status="<?php echo htmlspecialchars($app['status']); ?>" style="display:none;"></span>
+    <span data-current-roll="<?php echo htmlspecialchars($app['roll_no'] ?? ''); ?>" style="display:none;"></span>
+    <span data-current-class="<?php echo htmlspecialchars($app['class'] ?? ''); ?>" style="display:none;"></span>
+    <span data-current-comment="<?php echo htmlspecialchars($app['remarks'] ?? ''); ?>" style="display:none;"></span>
+    <span data-student-name="<?php echo htmlspecialchars($app['first_name'] . ' ' . $app['last_name']); ?>" style="display:none;"></span>
+    <span data-meeting-date="<?php echo htmlspecialchars($app['meeting_date'] ?? ''); ?>" style="display:none;"></span>
+    <span data-meeting-time="<?php echo htmlspecialchars($app['meeting_time'] ?? ''); ?>" style="display:none;"></span>
 
-<h6>Student Details</h6>
-<ul>
-    <li><strong>Full Name:</strong> <?php echo htmlspecialchars($app['first_name'] . ' ' . $app['middle_name'] . ' ' . $app['last_name']); ?></li>
-    <li><strong>Date of Birth:</strong> <?php echo date('F j, Y', strtotime($app['student_dob'])); ?></li>
-</ul>
 
-<h6>Academic History</h6>
-<ul>
-    <li><strong>Previous School:</strong> <?php echo htmlspecialchars($app['previous_school'] ?? 'N/A'); ?></li>
-    <li><strong>Previous Grade:</strong> <?php echo htmlspecialchars($app['previous_grade'] ?? 'N/A'); ?></li>
-    <li><strong>Year:</strong> <?php echo htmlspecialchars($app['previous_year'] ?? 'N/A'); ?></li>
-</ul>
-
-<h6>Parent/Guardian Details</h6>
-<ul>
-    <li><strong>Name:</strong> <?php echo htmlspecialchars($app['parent_name']); ?></li>
-    <li><strong>Email:</strong> <?php echo htmlspecialchars($app['parent_email']); ?></li>
-    <li><strong>Phone:</strong> <?php echo htmlspecialchars($app['parent_phone']); ?></li>
-</ul>
-
-<h6>Uploaded Documents</h6>
-<ul>
-    <li><strong>Marksheet:</strong>
-        <?php if ($app['marksheet_path']): ?>
-            <a href="../../web/<?php echo htmlspecialchars($app['marksheet_path']); ?>" target="_blank">View/Download</a>
-        <?php else: echo 'Not provided';
-        endif; ?>
-    </li>
-    <li><strong>Aadhaar Card:</strong>
-        <?php if ($app['aadhaar_path']): ?>
-            <a href="../../web/<?php echo htmlspecialchars($app['aadhaar_path']); ?>" target="_blank">View/Download</a>
-        <?php else: echo 'Not provided';
-        endif; ?>
-    </li>
-</ul>
-<hr>
-
-<h5 class="mt-4">Take Action</h5>
-<form action="handle_admission_action.php" method="POST">
-    <input type="hidden" name="application_id" value="<?php echo $app['id']; ?>">
-    <div class="form-group">
-        <label for="status_action">Change Status</label>
-        <select name="status_action" id="status_action" class="form-control">
-            <option value="">-- Select Action --</option>
-            <option value="In Review">Mark as "In Review"</option>
-            <option value="Accepted">Accept Application</option>
-            <option value="Rejected">Reject Application</option>
-        </select>
-    </div>
-
-    <div id="acceptFields" style="display:none;">
-        <div class="form-group">
-            <label for="interview_datetime">Schedule Face-to-Face Session (Date and Time)</label>
-            <input type="datetime-local" name="interview_datetime" class="form-control">
-        </div>
-        <div class="form-group">
-            <label for="required_documents">List of Documents to Submit (one per line)</label>
-            <textarea name="required_documents" class="form-control" rows="4"></textarea>
+    <div class="row">
+        <div class="col-md-6 mb-3"><strong>Admission ID:</strong> <?php echo htmlspecialchars($app['admission_id']); ?></div>
+        <div class="col-md-6 mb-3"><strong>Status:</strong> 
+            <span class="badge badge-<?php 
+                switch ($app['status']) {
+                    case 'Accepted': echo 'success'; break;
+                    case 'Rejected': echo 'danger'; break;
+                    default: echo 'warning';
+                }
+            ?>"><?php echo htmlspecialchars($app['status']); ?></span>
         </div>
     </div>
-
-    <div id="rejectFields" style="display:none;">
-        <div class="form-group">
-            <label for="rejection_reason">Reason for Rejection</label>
-            <textarea name="rejection_reason" class="form-control" rows="3"></textarea>
-        </div>
+    <div class="row">
+        <div class="col-md-6 mb-3"><strong>Student Name:</strong> <?php echo htmlspecialchars($app['first_name'] . ' ' . $app['middle_name'] . ' ' . $app['last_name']); ?></div>
+        <div class="col-md-6 mb-3"><strong>Applied For Grade:</strong> <?php echo htmlspecialchars($app['grade_applying_for'] ?? 'N/A'); ?></div> 
     </div>
-
+    <div class="row">
+        <div class="col-md-6 mb-3"><strong>Phone:</strong> <?php echo htmlspecialchars($app['phone']); ?></div>
+        <div class="col-md-6 mb-3"><strong>Email:</strong> <?php echo htmlspecialchars($app['email']); ?></div>
+    </div>
+    
+    <?php if ($app['status'] === 'Accepted'): ?>
     <hr>
-    <button type="submit" class="btn btn-primary">Update Status</button>
-    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-</form>
+    <h6 class="mt-3 text-success">Enrollment Details</h6>
+    <div class="row">
+        <div class="col-md-6 mb-3"><strong>Assigned Roll No:</strong> <?php echo htmlspecialchars($app['roll_no'] ?? 'N/A'); ?></div>
+        <div class="col-md-6 mb-3"><strong>Assigned Class:</strong> <?php echo htmlspecialchars($app['class'] ?? 'N/A'); ?></div>
+    </div>
+    
+        <?php if ($app['meeting_date']): ?>
+        <h6 class="mt-3 text-info">Scheduled Orientation/Sign-up Meeting</h6>
+        <div class="row">
+            <div class="col-md-6 mb-3"><strong>Date:</strong> <?php echo htmlspecialchars($app['meeting_date']); ?></div>
+            <div class="col-md-6 mb-3"><strong>Time:</strong> <?php echo htmlspecialchars(date('h:i A', strtotime($app['meeting_time']))); ?></div>
+        </div>
+        <?php else: ?>
+        <div class="alert alert-warning mt-3">Enrollment details complete, but no meeting was scheduled by HR.</div>
+        <?php endif; ?>
+        
+    <?php endif; ?>
+
+    <h6 class="mt-3">Previous School Details</h6>
+    <div class="row">
+        <div class="col-md-6 mb-3"><strong>School:</strong> <?php echo htmlspecialchars($app['previous_school'] ?? 'N/A'); ?></div>
+        <div class="col-md-6 mb-3"><strong>Grade/Year:</strong> <?php echo htmlspecialchars($app['previous_grade'] ?? 'N/A') . ' (' . htmlspecialchars($app['previous_year'] ?? 'N/A') . ')'; ?></div>
+    </div>
+
+    <h6 class="mt-3">Attached Documents</h6>
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <strong>Marksheet:</strong> 
+            <?php if (!empty($app['marksheet_path'])): ?>
+                <a href="../../<?php echo htmlspecialchars($app['marksheet_path']); ?>" target="_blank" class="btn btn-sm btn-outline-primary ml-2"><i class="fas fa-file-pdf"></i> View</a>
+            <?php else: ?>
+                N/A
+            <?php endif; ?>
+        </div>
+        <div class="col-md-6 mb-3">
+            <strong>Aadhaar:</strong> 
+            <?php if (!empty($app['aadhaar_path'])): ?>
+                <a href="../../<?php echo htmlspecialchars($app['aadhaar_path']); ?>" target="_blank" class="btn btn-sm btn-outline-primary ml-2"><i class="fas fa-file-pdf"></i> View</a>
+            <?php else: ?>
+                N/A
+            <?php endif; ?>
+        </div>
+    </div>
+    
+    <h6 class="mt-3">Previous Remarks</h6>
+    <p><?php echo !empty($app['remarks']) ? nl2br(htmlspecialchars($app['remarks'])) : 'No remarks yet.'; ?></p>
+    <?php
+    
+} catch (PDOException $e) {
+    http_response_code(500);
+    echo '<p class="text-center text-danger">Error fetching details: ' . $e->getMessage() . '</p>';
+}
+?>

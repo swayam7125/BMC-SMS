@@ -47,6 +47,7 @@ $unread_teacher_salary = 0; // For teacher salary history
 $unread_principal_salary = 0; // For principal salary history
 $unread_hr_salary = 0; // For hr salary history
 $unread_hr_leave_status = 0; // For HR leave status
+$unread_admissions = 0; 
 $is_class_teacher = false; // Initialize teacher-specific flag
 
 // Fetch counts based on the user's role if a valid user ID and connection exist
@@ -1147,6 +1148,20 @@ if (isset($conn) && $user_id) {
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/user/profile.php">
                     <div><i class="fas fa-fw fa-id-card"></i>
                         <span>My Profile</span>
+                    </div>
+                </a>
+            </li>
+            <li class="nav-item <?php echo ($current_page == 'manage_admissions.php') ? 'active' : ''; ?>">
+                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/hr/manage_admissions.php"
+                    data-notification-type="new_admission_request">
+                    <div>
+                        <i class="fas fa-user-plus"></i>
+                        <span>Manage Admissions</span>
+                        <?php if ($unread_admissions > 0): ?>
+                            <span class="badge badge-danger badge-counter">
+                                <?php echo ($unread_admissions > 9) ? '9+' : $unread_admissions; ?>
+                            </span>
+                        <?php endif; ?>
                     </div>
                 </a>
             </li>
