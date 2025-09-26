@@ -593,8 +593,6 @@ if (!$is_past_date) {
 </body>
 </html>
 <?php
-} // End of if (!is_ajax_request())
-
 // AJAX response handling
 if (is_ajax_request()) {
     // Get the captured HTML
