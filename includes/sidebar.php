@@ -933,6 +933,13 @@ if (isset($conn) && $user_id) {
                     </div>
                 </a>
             </li>
+            <li class="nav-item <?php echo ($current_page == 'view_fees.php') ? 'active' : ''; ?>">
+                <a class="nav-link" href="/BMC-SMS/pages/student/view_fees.php">
+                    <div><i class="fas fa-file-invoice-dollar"></i>
+                        <span>My Fees</span>
+                    </div>
+                </a>
+            </li>
             <li class="nav-item <?php echo ($current_page == 'view_my_marks.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/student/view_my_marks.php"
                     data-notification-type="marks_uploaded">
@@ -1271,6 +1278,13 @@ if (isset($conn) && $user_id) {
                     </div>
                 </a>
             </li>
+            <li class="nav-item <?php echo ($current_page == 'manage_fees.php') ? 'active' : ''; ?>">
+                <a class="nav-link" href="/BMC-SMS/pages/hr/manage_fees.php">
+                    <div><i class="fas fa-money-bill-wave"></i>
+                        <span>Manage Fees</span>
+                    </div>
+                </a>
+            </li>
             <li class="nav-item <?php echo ($current_page == 'view_my_attendance.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/hr/view_my_attendance.php">
                     <div><i class="fas fa-fw fa-user-check"></i>
@@ -1316,22 +1330,6 @@ if (isset($conn) && $user_id) {
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="/BMC-SMS/assets/js/sidebar.js"></script>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Find the active menu item within the sidebar.
-        const activeMenuItem = document.querySelector('#accordionSidebar .active');
-
-        // Check if an active menu item exists on the page
-        if (activeMenuItem) {
-            // Scroll the sidebar so the active item is vertically centered in the visible area.
-            activeMenuItem.scrollIntoView({
-                behavior: 'auto', // Use 'smooth' for a scrolling animation, or 'auto' for instant.
-                block: 'center' // This vertically aligns the item to the center.
-            });
-        }
-    });
-</script>
 
 <script>
 // Enhanced sidebar functionality for AJAX

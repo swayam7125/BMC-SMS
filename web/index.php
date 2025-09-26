@@ -7,7 +7,7 @@ $school_id_to_feature = 4;
 
 // --- CRITICAL CHANGE: Set INITIAL/FALLBACK values ---
 $student_count = '7+'; 
-$teacher_count = '9+'; 
+$teacher_count = '5+'; 
 $classroom_count = '50+';
 $pass_percentage = '98%'; // Initial fallback value
 
@@ -24,17 +24,13 @@ try {
 
   // Format the numbers for display, using the fetched data
   if ($student_count_raw > 0) {
-      $student_count = number_format($student_count_raw) . '+';
+      $student_count = number_format($student_count_raw);
   }
   if ($teacher_count_raw > 0) {
-      $teacher_count = $teacher_count_raw . '+';
+      $teacher_count = $teacher_count_raw;
   }
   $classroom_count = $classroom_count_raw . '+';
-  
-  // Use the fetched passing percentage if available, otherwise keep the fallback
-  if ($pass_percentage_raw !== false && $pass_percentage_raw !== null) {
-      $pass_percentage = htmlspecialchars(number_format($pass_percentage_raw, 2)) . '%';
-  }
+  $pass_percentage = $pass_percentage_raw . '%';
 
 } catch (PDOException $e) {
   // If connection fails, the initial fallback values are automatically used.
