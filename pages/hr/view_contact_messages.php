@@ -1,9 +1,9 @@
 <?php
-// pages/hr/view_contact_messages.php
-
 // Adjust the paths to your existing project structure
 include_once '../../includes/connect.php'; 
 include_once '../../encryption.php';
+
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
 // Define BASE_WEB_PATH
 if (!defined('BASE_WEB_PATH')) {
@@ -87,9 +87,12 @@ try {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>View Contact Messages - BMC-SMS</title>
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <style>
         .unread-row {
             font-weight: bold;
@@ -100,10 +103,18 @@ try {
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
+        <?php 
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php'; 
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include '../../includes/header.php'; ?> 
+                <?php 
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php'; 
+                }
+                ?> 
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Contact Messages Inbox</h1>
 
@@ -204,7 +215,7 @@ try {
         </div>
     </div>
 
- <?php include_once "../../includes/logout_modal.php" ?>
+    <?php include_once "../../includes/logout_modal.php" ?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>

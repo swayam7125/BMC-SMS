@@ -1,9 +1,9 @@
 <?php
-// pages/hr/request_school_update.php
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
-include_once "../../includes/ajax_helpers.php";
 include_once "../../includes/log_system.php";
+
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
 // Define the base web path for your project
 if (!defined('BASE_WEB_PATH')) {
@@ -174,12 +174,12 @@ function get_school_value($school_array, $key, $default = '') {
 <head>
     <meta charset="utf-8">
     <title>Request School Update - School Management System</title>
-    <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <style>
         .select2-container .select2-selection--multiple { min-height: 38px; border-color: #d1d3e2 !important; }
         .select2-container--default .select2-selection--multiple .select2-selection__choice { background-color: #4e73df; border-color: #4e73df; color: white; }
@@ -187,10 +187,18 @@ function get_school_value($school_array, $key, $default = '') {
 </head>
 <body id="page-top">
 <div id="wrapper">
-    <?php include '../../includes/sidebar.php'; ?>
+    <?php 
+    if (!$is_ajax_request) { 
+        include '../../includes/sidebar.php'; 
+    }
+    ?>
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            <?php include_once '../../includes/header.php'; ?>
+            <?php 
+            if (!$is_ajax_request) { 
+                include_once '../../includes/header.php'; 
+            }
+            ?>
             <div class="container-fluid">
                 <div class="d-sm-flex align-items-center justify-content-between mb-4">
                     <h1 class="h3 mb-0 text-gray-800">Request School Profile Update</h1>
@@ -330,7 +338,11 @@ function get_school_value($school_array, $key, $default = '') {
 
             </div>
         </div>
-        <?php include '../../includes/footer.php'; ?>
+        <?php
+        if (!$is_ajax_request) { 
+            include '../../includes/footer.php'; 
+        }
+        ?>
     </div>
 </div>
 
