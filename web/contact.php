@@ -18,11 +18,60 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       $message = '<div class="alert alert-danger">Cannot submit form: Database connection error.</div>';
   } else {
     try {
-      // Insert message into the database (using existing table structure)
+      $conn->beginTransaction();
+
+      // 1. Insert message into the database
       $stmt = $conn->prepare("INSERT INTO contact_messages (sender_name, sender_email, message) VALUES (?, ?, ?)");
       $stmt->execute([$name, $email, $content]);
+      
+      $last_id = $conn->lastInsertId('contact_messages_id_seq');
+      
+      // 2. Fetch the school ID and HR user IDs to send notification
+      // Assuming you have a way to determine the school (e.g., from a session/cookie or config, 
+      // but for simplicity, we'll assume a generic notification for all HR users if context isn't enough)
+      
+      // For a real-world scenario, you should get the school_id relevant to this contact page.
+      // Since the header.php is included *after* the POST handling, we'll assume school_info[school_id] is available 
+      // if it was set earlier, or we fall back to a simple query later. For now, let's notify ALL HR for the sake of functionality.
+      
+      $notification_message = "New Contact Message Received (ID: {$last_id}) from " . htmlspecialchars($name);
+      $notification_link = '/BMC-SMS/pages/hr/view_contact_messages.php'; // Assuming this is the HR messages page
+
+      // Fetch all HR user IDs from the 'hr' table (HR users should manage contact messages)
+      $hr_users_stmt = $conn->query("SELECT id, school_id FROM hr");
+      $hr_users = $hr_users_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+      $notifications_to_insert = [];
+      foreach ($hr_users as $hr) {
+          $notifications_to_insert[] = [
+              'user_id' => $hr['id'],
+              'message' => $notification_message,
+              'link' => $notification_link,
+              'type' => 'new_contact_message'
+          ];
+      }
+      
+      // Bulk insert notifications
+      if (!empty($notifications_to_insert)) {
+        $insert_notif_sql = "INSERT INTO notifications (user_id, message, link, type) VALUES ";
+        $insert_notif_values = [];
+        $insert_notif_placeholders = [];
+        foreach ($notifications_to_insert as $notif) {
+            $insert_notif_placeholders[] = "(?, ?, ?, ?)";
+            $insert_notif_values[] = $notif['user_id'];
+            $insert_notif_values[] = $notif['message'];
+            $insert_notif_values[] = $notif['link'];
+            $insert_notif_values[] = $notif['type'];
+        }
+        $insert_notif_sql .= implode(', ', $insert_notif_placeholders);
+        $stmt_notif = $conn->prepare($insert_notif_sql);
+        $stmt_notif->execute($insert_notif_values);
+      }
+
+      $conn->commit();
       $message = '<div class="alert alert-success">Thank you for your message! We will get back to you soon.</div>';
     } catch (PDOException $e) {
+      $conn->rollBack();
       $message = '<div class="alert alert-danger">Sorry, there was an error sending your message.</div>';
       error_log("Contact form error: " . $e->getMessage());
     }

@@ -7,7 +7,7 @@ error_reporting(E_ALL);
 // Includes and session start
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
-include_once "../../includes/log_system.php"; // ADDED: Log system dependency
+include_once "../../includes/log_system.php";
 
 if (!defined('BASE_URL')) {
     define('BASE_URL', '/BMC-SMS/');
