@@ -1,14 +1,11 @@
 <?php
 include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/connect.php';
 include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/encryption.php';
-include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/ajax_helpers.php'; 
+include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/ajax_helpers.php';
 
-// Check if this is an AJAX request
-if (is_ajax_request()) {
-    // Start output buffering to capture the HTML
-    ob_start();
-}
-
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
 
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 $principal_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
@@ -75,7 +72,6 @@ try {
 
 $page_title = "HR Attendance History";
 
-if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -91,10 +87,18 @@ if (!is_ajax_request()) {
 </head>
 <body id="page-top">
     <div id="wrapper">
-        <?php include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/sidebar.php'; ?>
+       <?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?> 
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/header.php'; ?>
+                <?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
+}
+?> 
                 <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">HR Attendance History</h1>
                     
@@ -177,7 +181,11 @@ if (!is_ajax_request()) {
                     </div>
                 </div>
             </div>
-            <?php include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/footer.php'; ?>
+            <?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?> 
         </div>
     </div>
     <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
@@ -212,6 +220,3 @@ if (is_ajax_request()) {
 }
 ?>
 </html>
-<?php
-}
-?>

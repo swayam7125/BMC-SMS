@@ -3,19 +3,23 @@
 |--------------------------------------------------------------------------
 | BACKEND LOGIC (CONTROLLER)
 |--------------------------------------------------------------------------
-|
-| This section handles all server-side operations:
-| 1. Includes necessary files for database connection and security.
-| 2. Authenticates and authorizes the user (ensures they are a principal).
-| 3. Processes the form submission for saving the timetable.
-| 4. Fetches all required data from the database (standards, teachers, subjects, etc.).
-|
+| This section handles all server-side operations.
 */
 
 // Core Includes
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php';
+
+// Check if database connection is successful
+if (!isset($conn) || !$conn) {
+    error_log("Database connection failed in manage_timetable.php");
+    die("Database connection failed");
+}
+
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
 
 // --- Authorization ---
 $role = decrypt_id($_COOKIE['encrypted_user_role'] ?? '');
@@ -29,7 +33,6 @@ if ($role !== 'principal') {
 // --- Initialization ---
 $school_id = null;
 $teachers = [];
-$subjects = [];
 $standards = [];
 $timetable_data = [];
 $errorMessage = '';
@@ -38,275 +41,291 @@ $days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturd
 
 try {
     // --- Data Fetching ---
+    // Get Principal's School ID
     $stmt_school = $conn->prepare('SELECT "school_id" FROM "principal" WHERE "id" = ?');
     $stmt_school->execute([$userId]);
     $school_id = $stmt_school->fetchColumn();
 
     if ($school_id) {
-        // Prepare the SQL statement
-        $standards_stmt = $conn->prepare("
-        SELECT \"std\"
-        FROM \"student\"
-        WHERE \"school_id\" = ?
-        GROUP BY \"std\"
-        ORDER BY
-            CASE
-                WHEN \"std\" ~ '^\\d+$' THEN CAST(\"std\" AS INTEGER)
-                ELSE 0
-            END,
-        \"std\"
-    ");
+        // Fetch all teachers for the school
+        $stmt_teachers = $conn->prepare('SELECT id, teacher_name FROM teacher WHERE school_id = ? ORDER BY teacher_name');
+        $stmt_teachers->execute([$school_id]);
+        $teachers = $stmt_teachers->fetchAll(PDO::FETCH_ASSOC);
 
-        // Execute and fetch the results
-        $standards_stmt->execute([$school_id]);
-        $standards = $standards_stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Fetch all standards
+        $stmt_standards = $conn->query("SELECT DISTINCT standard FROM standard_subjects ORDER BY standard");
+        $standards = $stmt_standards->fetchAll(PDO::FETCH_COLUMN);
     }
-
-    $selected_std = $_GET['standard'] ?? null;
-    $total_periods = isset($_GET['periods']) ? (int)$_GET['periods'] : 8;
 
     // --- Form Submission Handling ---
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_timetable'])) {
-        $timetable_entries = $_POST['timetable'];
-        $standard_to_save = $_POST['standard'];
-
-        $conn->beginTransaction();
-
-        $delete_stmt = $conn->prepare('DELETE FROM "school_timetable" WHERE "school_id" = ? AND "standard" = ?');
-        $delete_stmt->execute([$school_id, $standard_to_save]);
-
-        $insert_stmt = $conn->prepare('INSERT INTO "school_timetable" (school_id, standard, day_of_week, period_number, subject_name, teacher_id, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+        $standard = filter_input(INPUT_POST, 'standard', FILTER_SANITIZE_STRING);
         
-        foreach ($timetable_entries as $day => $periods) {
-            foreach ($periods as $period_num => $details) {
-                if (!empty($details['subject']) && !empty($details['teacher'])) {
-                    $start_time = !empty($details['start_time']) ? $details['start_time'] : null;
-                    $end_time = !empty($details['end_time']) ? $details['end_time'] : null;
-                    $insert_stmt->execute([$school_id, $standard_to_save, $day, $period_num, $details['subject'], $details['teacher'], $start_time, $end_time]);
+        // Validate and sanitize timetable data
+        $timetable = array_map(function($periods) {
+            return array_map(function($details) {
+                return array(
+                    'teacher' => filter_var($details['teacher'] ?? null, FILTER_SANITIZE_NUMBER_INT),
+                    'subject' => filter_var($details['subject'] ?? null, FILTER_SANITIZE_NUMBER_INT)
+                );
+            }, $periods);
+        }, $_POST['timetable'] ?? []);
+
+        if (!empty($standard) && !empty($timetable)) {
+            $conn->beginTransaction();
+
+            // Clear existing timetable for this standard
+            $stmt_delete = $conn->prepare("DELETE FROM timetable WHERE standard = ? AND school_id = ?");
+            $stmt_delete->execute([$standard, $school_id]);
+
+            // Insert new timetable entries
+            $stmt_insert = $conn->prepare(
+                "INSERT INTO timetable (school_id, standard, day_of_week, period_id, teacher_id, subject_id) VALUES (?, ?, ?, ?, ?, ?)"
+            );
+
+            foreach ($timetable as $day => $periods) {
+                foreach ($periods as $period_id => $details) {
+                    $teacher_id = !empty($details['teacher']) ? $details['teacher'] : null;
+                    $subject_id = !empty($details['subject']) ? $details['subject'] : null;
+
+                    if ($teacher_id && $subject_id) {
+                        $stmt_insert->execute([$school_id, $standard, $day, $period_id, $teacher_id, $subject_id]);
+                    }
                 }
             }
+
+            $conn->commit();
+            $successMessage = "Timetable for Standard {$standard} has been saved successfully!";
+        } else {
+            $errorMessage = "Please select a standard and fill in the timetable details.";
         }
-        $conn->commit();
-        $successMessage = "Timetable for Standard $standard_to_save has been saved!";
-        $selected_std = $standard_to_save; // Ensure the selected standard persists after saving
     }
 
-    // --- Data Fetching for Display ---
-    if ($selected_std) {
-        // Fetch teachers who teach the selected standard
-        $teachers_stmt = $conn->prepare('SELECT "id", "teacher_name", "subject" FROM "teacher" WHERE "school_id" = ? AND ? = ANY("std") ORDER BY "teacher_name"');
-        $teachers_stmt->execute([$school_id, $selected_std]);
-        $teachers = $teachers_stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        // Fetch subjects assigned to the selected standard
-        $subjects_stmt = $conn->prepare('SELECT s."subject_name" FROM "standard_subjects" ss JOIN "subjects" s ON ss."subject_id" = s."subject_id" WHERE ss."standard" = ? ORDER BY s."subject_name" ASC');
-        $subjects_stmt->execute([$selected_std]);
-        $subjects = $subjects_stmt->fetchAll(PDO::FETCH_ASSOC);
+    // --- Timetable Data Retrieval (if a standard is selected) ---
+    $selected_standard = $_GET['standard'] ?? ($_POST['standard'] ?? null);
+    if ($selected_standard && $school_id) {
+        $stmt_timetable = $conn->prepare(
+            "SELECT day_of_week, period_id, teacher_id, subject_id FROM timetable WHERE standard = ? AND school_id = ?"
+        );
+        $stmt_timetable->execute([$selected_standard, $school_id]);
+        $results = $stmt_timetable->fetchAll(PDO::FETCH_ASSOC);
 
-        // Fetch existing timetable data to pre-fill the form
-        $existing_stmt = $conn->prepare('SELECT * FROM "school_timetable" WHERE "school_id" = ? AND "standard" = ?');
-        $existing_stmt->execute([$school_id, $selected_std]);
-        $result = $existing_stmt->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($result as $row) {
-            $timetable_data[$row['day_of_week']][$row['period_number']] = $row;
+        // Organize data for easy access in the view
+        foreach ($results as $row) {
+            $timetable_data[$row['day_of_week']][$row['period_id']] = [
+                'teacher_id' => $row['teacher_id'],
+                'subject_id' => $row['subject_id']
+            ];
         }
     }
 } catch (PDOException $e) {
+    $errorType = $e->getCode();
+    error_log("Database Error in manage_timetable.php: " . $e->getMessage() . " [Code: " . $errorType . "]");
+    
+    switch($errorType) {
+        case '23000': // Duplicate entry
+            $errorMessage = "This timetable entry already exists for the selected standard.";
+            break;
+        case '23001': // Foreign key violation
+            $errorMessage = "Invalid teacher or subject selected. Please check your selections.";
+            break;
+        case '42S02': // Table not found
+            $errorMessage = "Database configuration error. Please contact system administrator.";
+            break;
+        default:
+            $errorMessage = "A database error occurred. Please try again later. [Error Code: " . $errorType . "]";
+    }
+    
     if (isset($conn) && $conn->inTransaction()) {
         $conn->rollBack();
     }
-    $errorMessage = "Database Error: " . $e->getMessage();
 }
 
-// The PHP logic ends here. The HTML part will now render the page.
-?>
-
-<?php
 /*
 |--------------------------------------------------------------------------
-| RESPONSIVE FRONTEND (VIEW)
+| FRONTEND VIEW (HTML)
 |--------------------------------------------------------------------------
-|
-| This section contains the complete HTML structure for the page.
-| - It uses Bootstrap's grid system for a responsive layout.
-| - The main timetable table is wrapped in `.table-responsive` to prevent layout breaking.
-|
+| This section contains the HTML structure and presentation logic.
 */
-if (!is_ajax_request()): // Prevents HTML from being sent on AJAX calls
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>Manage Timetable - School Management System</title>
-
-    <!-- Professional Font & Icons -->
-    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800,900" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Timetable</title>
+    <link href="/BMC-SMS/assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-
-    <!-- Core CSS -->
-    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../../assets/css/sidebar.css">
-    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
+
+        <?php
+            if (!$is_ajax_request) {
+                include '../../includes/sidebar.php';
+            }
+        ?>
+
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include '../../includes/header.php'; ?>
 
-                <div class="container-fluid">
-                    <h1 class="h3 mb-4 text-gray-800">Manage School Timetable</h1>
+                <?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
+}
+?>
 
-                    <!-- Display Success or Error Messages -->
-                    <?php if (!empty($successMessage)): ?>
+                <div id="main-content">
+
+                    <div class="container-fluid">
+                        <h1 class="h3 mb-4 text-gray-800">Manage Timetable</h1>
+
+                        <?php if ($successMessage): ?>
                         <div class="alert alert-success"><?php echo htmlspecialchars($successMessage); ?></div>
-                    <?php endif; ?>
-                    <?php if (!empty($errorMessage)): ?>
+                        <?php endif; ?>
+                        <?php if ($errorMessage): ?>
                         <div class="alert alert-danger"><?php echo htmlspecialchars($errorMessage); ?></div>
-                    <?php endif; ?>
+                        <?php endif; ?>
 
-                    <!-- Selection Controls Card -->
-                    <div class="card shadow mb-4">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">Select Options</h6>
-                        </div>
-                        <div class="card-body">
-                            <form method="GET">
-                                <!-- Responsive Row for Form Controls -->
-                                <div class="form-row align-items-end">
-                                    <div class="col-md-4 col-sm-12 mb-2">
-                                        <label for="standard">Standard:</label>
-                                        <select name="standard" id="standard" class="form-control">
+                        <div class="card shadow mb-4">
+                            <div class="card-header">
+                                <h6 class="m-0 font-weight-bold text-primary">Select Standard to Manage Timetable</h6>
+                            </div>
+                            <div class="card-body">
+                                <form action="" method="GET" class="form-inline">
+                                    <div class="form-group mr-2">
+                                        <label for="standardSelect" class="mr-2">Standard:</label>
+                                        <select name="standard" id="standardSelect" class="form-control"
+                                            onchange="this.form.submit()">
                                             <option value="">-- Select a Standard --</option>
-                                            <?php foreach ($standards as $standard): ?>
-                                                <option value="<?php echo htmlspecialchars($standard['std']); ?>" <?php if ($selected_std == $standard['std']) echo 'selected'; ?>>
-                                                    Standard <?php echo htmlspecialchars($standard['std']); ?>
-                                                </option>
+                                            <?php foreach ($standards as $standard_option): ?>
+                                            <option value="<?php echo htmlspecialchars($standard_option); ?>"
+                                                <?php echo ($selected_standard == $standard_option) ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($standard_option); ?>
+                                            </option>
                                             <?php endforeach; ?>
                                         </select>
                                     </div>
-                                    <div class="col-md-4 col-sm-12 mb-2">
-                                        <label for="periods">Periods per Day:</label>
-                                        <input type="number" name="periods" id="periods" class="form-control" value="<?php echo htmlspecialchars($total_periods); ?>" min="1" max="12">
-                                    </div>
-                                    <div class="col-md-4 col-sm-12 mb-2">
-                                        <button type="submit" class="btn btn-primary btn-block">Generate Timetable</button>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-
-                    <!-- Timetable Grid Card (only shown if a standard is selected) -->
-                    <?php if ($selected_std): ?>
-                        <div class="card shadow mb-4">
-                            <div class="card-header py-3">
-                                <h6 class="m-0 font-weight-bold text-primary">Timetable for Standard <?php echo htmlspecialchars($selected_std); ?></h6>
-                            </div>
-                            <div class="card-body">
-                                <form method="POST">
-                                    <input type="hidden" name="standard" value="<?php echo htmlspecialchars($selected_std); ?>">
-                                    <!-- This div makes the table scroll horizontally on small screens -->
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered text-center" style="min-width: 800px;">
-                                            <thead class="thead-light">
-                                                <tr>
-                                                    <th>Period</th>
-                                                    <?php foreach ($days_of_week as $day) echo "<th>$day</th>"; ?>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php for ($p = 1; $p <= $total_periods; $p++): ?>
-                                                    <tr>
-                                                        <td class="align-middle"><strong>Period <?php echo $p; ?></strong></td>
-                                                        <?php foreach ($days_of_week as $day): 
-                                                            $entry = $timetable_data[$day][$p] ?? null;
-                                                        ?>
-                                                            <td>
-                                                                <div class="form-group mb-2">
-                                                                    <select name="timetable[<?php echo $day; ?>][<?php echo $p; ?>][teacher]" class="form-control form-control-sm teacher-select" data-day="<?php echo $day; ?>" data-period-id="<?php echo $p; ?>">
-                                                                        <option value="">- Teacher -</option>
-                                                                        <?php foreach ($teachers as $teacher): ?>
-                                                                            <option value="<?php echo htmlspecialchars($teacher['id']); ?>" <?php if ($entry && $entry['teacher_id'] == $teacher['id']) echo 'selected'; ?>>
-                                                                                <?php echo htmlspecialchars($teacher['teacher_name']); ?>
-                                                                            </option>
-                                                                        <?php endforeach; ?>
-                                                                    </select>
-                                                                </div>
-                                                                <div class="form-group mb-2">
-                                                                    <select name="timetable[<?php echo $day; ?>][<?php echo $p; ?>][subject]" class="form-control form-control-sm subject-select" id="subject-<?php echo $day; ?>-<?php echo $p; ?>" data-selected-subject="<?php echo htmlspecialchars($entry['subject_name'] ?? ''); ?>">
-                                                                        <option value="">- Subject -</option>
-                                                                        <?php // Subjects are loaded dynamically via JavaScript ?>
-                                                                    </select>
-                                                                </div>
-                                                                <div class="input-group input-group-sm">
-                                                                    <input type="time" name="timetable[<?php echo $day; ?>][<?php echo $p; ?>][start_time]" class="form-control" value="<?php echo htmlspecialchars($entry['start_time'] ?? ''); ?>">
-                                                                    <input type="time" name="timetable[<?php echo $day; ?>][<?php echo $p; ?>][end_time]" class="form-control" value="<?php echo htmlspecialchars($entry['end_time'] ?? ''); ?>">
-                                                                </div>
-                                                            </td>
-                                                        <?php endforeach; ?>
-                                                    </tr>
-                                                <?php endfor; ?>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <button type="submit" name="save_timetable" class="btn btn-success mt-3"><i class="fas fa-save mr-2"></i>Save Timetable</button>
                                 </form>
                             </div>
                         </div>
-                    <?php endif; ?>
+
+                        <?php if ($selected_standard): ?>
+                        <div class="card shadow mb-4">
+                            <div class="card-header">
+                                <h6 class="m-0 font-weight-bold text-primary">Timetable for Standard:
+                                    <?php echo htmlspecialchars($selected_standard); ?></h6>
+                            </div>
+                            <div class="card-body">
+                                <form action="" method="POST">
+                                    <input type="hidden" name="standard"
+                                        value="<?php echo htmlspecialchars($selected_standard); ?>">
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered text-center">
+                                            <thead>
+                                                <tr>
+                                                    <th>Day</th>
+                                                    <?php for ($i = 1; $i <= 8; $i++): ?>
+                                                    <th>Period <?php echo $i; ?></th>
+                                                    <?php endfor; ?>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php foreach ($days_of_week as $day): ?>
+                                                <tr>
+                                                    <td class="align-middle"><strong><?php echo $day; ?></strong></td>
+                                                    <?php for ($period = 1; $period <= 8; $period++):
+                                                                $current_teacher_id = $timetable_data[$day][$period]['teacher_id'] ?? '';
+                                                                $current_subject_id = $timetable_data[$day][$period]['subject_id'] ?? '';
+                                                            ?>
+                                                    <td>
+                                                        <div class="form-group mb-1">
+                                                            <select
+                                                                name="timetable[<?php echo $day; ?>][<?php echo $period; ?>][teacher]"
+                                                                class="form-control teacher-select"
+                                                                data-day="<?php echo $day; ?>"
+                                                                data-period-id="<?php echo $period; ?>">
+                                                                <option value="">- Teacher -</option>
+                                                                <?php foreach ($teachers as $teacher): ?>
+                                                                <option value="<?php echo $teacher['id']; ?>"
+                                                                    <?php echo ($current_teacher_id == $teacher['id']) ? 'selected' : ''; ?>>
+                                                                    <?php echo htmlspecialchars($teacher['teacher_name']); ?>
+                                                                </option>
+                                                                <?php endforeach; ?>
+                                                            </select>
+                                                        </div>
+                                                        <div class="form-group mb-0">
+                                                            <select
+                                                                name="timetable[<?php echo $day; ?>][<?php echo $period; ?>][subject]"
+                                                                id="subject-<?php echo $day; ?>-<?php echo $period; ?>"
+                                                                class="form-control subject-select"
+                                                                data-selected-subject="<?php echo $current_subject_id; ?>">
+                                                                <option value="">- Subject -</option>
+                                                            </select>
+                                                        </div>
+                                                    </td>
+                                                    <?php endfor; ?>
+                                                </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <button type="submit" name="save_timetable" class="btn btn-success mt-3">
+                                        <i class="fas fa-save mr-2"></i>Save Timetable
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+    <?php
+                    // If it's a normal page load (NOT AJAX), then we close all the layout tags and include scripts.
+                    if (!$is_ajax_request):
+                        include '../../includes/footer.php';
+                    endif;
+                    ?>
                 </div>
             </div>
-            <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
+    <script src="/BMC-SMS/assets/vendor/jquery/jquery.min.js"></script>
+    <script src="/BMC-SMS/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 
-    <?php include_once "../../includes/logout_modal.php"?>
-
-    <!-- Core Scripts -->
-    <script src="../../assets/vendor/jquery/jquery.min.js"></script>
-    <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="../../assets/js/sb-admin-2.min.js"></script>
-
-    <?php
-    /*
-    |--------------------------------------------------------------------------
-    | JAVASCRIPT LOGIC
-    |--------------------------------------------------------------------------
-    |
-    | This section contains all the client-side JavaScript for the page.
-    | - It is placed at the end of the body for faster page loading.
-    | - It handles the dynamic loading of subjects based on the selected teacher.
-    |
-    */
-    ?>
     <script>
     $(document).ready(function() {
-        // Function to load subjects for a specific teacher via AJAX
-        function loadSubjects(teacherId, subjectDropdown, selectedSubject = '') {
-            if (teacherId) {
+        const standard = "<?php echo htmlspecialchars($selected_standard ?? '', ENT_QUOTES); ?>";
+
+        function loadSubjects(teacherId, subjectDropdown, selectedSubjectId = null) {
+            subjectDropdown.empty().append('<option value="">Loading...</option>');
+
+            // Validate inputs
+            if (!teacherId || !standard) {
+                subjectDropdown.empty().append('<option value="">- Select Teacher First -</option>');
+                return;
+            }
+
+            if (teacherId && standard) {
                 $.ajax({
-                    url: 'ajax_handler_timetable.php',
+                    url: '../academics/ajax_handler_timetable.php',
                     type: 'POST',
-                    dataType: 'json',
                     data: {
-                        action: 'get_teacher_subjects',
-                        teacher_id: teacherId
+                        action: 'get_subjects_for_teacher_and_standard',
+                        teacher_id: teacherId,
+                        standard: standard
                     },
+                    dataType: 'json',
                     success: function(response) {
                         subjectDropdown.empty().append('<option value="">- Subject -</option>');
                         if (response.success && response.subjects.length > 0) {
                             $.each(response.subjects, function(index, subject) {
-                                const isSelected = (subject === selectedSubject);
-                                subjectDropdown.append($('<option>', {
-                                    value: subject,
-                                    text: subject,
-                                    selected: isSelected
-                                }));
+                                const isSelected = (subject.subject_id ==
+                                    selectedSubjectId) ? 'selected' : '';
+                                subjectDropdown.append(
+                                    `<option value="${subject.subject_id}" ${isSelected}>${subject.subject_name}</option>`
+                                    );
                             });
                         }
                     },
@@ -327,7 +346,7 @@ if (!is_ajax_request()): // Prevents HTML from being sent on AJAX calls
                 const period = $(this).data('period-id');
                 const subjectDropdown = $('#subject-' + day + '-' + period);
                 const selectedSubject = subjectDropdown.data('selected-subject');
-                
+
                 loadSubjects(teacherId, subjectDropdown, selectedSubject);
             }
         });
@@ -344,7 +363,5 @@ if (!is_ajax_request()): // Prevents HTML from being sent on AJAX calls
     });
     </script>
 </body>
+
 </html>
-<?php
-endif; // End ajax check
-$conn = null;

@@ -4,6 +4,10 @@ include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php'; // For is_ajax_request()
 
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
+
 // --- Authorization ---
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 $user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
@@ -48,7 +52,6 @@ try {
     $error_message = "Database Error: " . $e->getMessage();
 }
 
-if (!is_ajax_request()) {
 ?>
     <!DOCTYPE html>
     <html lang="en">
@@ -69,10 +72,18 @@ if (!is_ajax_request()) {
 
     <body id="page-top">
         <div id="wrapper">
-            <?php include '../../includes/sidebar.php'; ?>
+            <?php
+            if (!$is_ajax_request) {
+                include '../../includes/sidebar.php';
+            }
+            ?>
             <div id="content-wrapper" class="d-flex flex-column">
                 <div id="content">
-                    <?php include_once '../../includes/header.php'; ?>
+                    <?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?> 
                     <div class="container-fluid">
                         <h1 class="h3 mb-4 text-gray-800">Issue & Return Books</h1>
 
@@ -184,7 +195,11 @@ if (!is_ajax_request()) {
 
                     </div>
                 </div>
-                <?php include_once '../../includes/footer.php'; ?>
+                <?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?> 
             </div>
         </div>
 
@@ -249,6 +264,5 @@ if (!is_ajax_request()) {
 
     </html>
 <?php
-}
 $conn = null;
 ?>

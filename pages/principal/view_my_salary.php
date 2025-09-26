@@ -3,17 +3,27 @@ include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php';
 
-// Check if this is an AJAX request
-if (is_ajax_request()) {
-    // Start output buffering to capture the HTML
-    ob_start();
-}
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
 
 date_default_timezone_set('Asia/Kolkata');
 
 // This function is also needed
-function formatIndianCurrency($number) {
-    $number = (string)round($number, 2); $parts = explode('.', $number); $integer_part = $parts[0]; $decimal_part = isset($parts[1]) ? '.' . str_pad($parts[1], 2, '0', STR_PAD_RIGHT) : ''; $len = strlen($integer_part); if ($len <= 3) { return '₹' . $integer_part . $decimal_part; } $last_three = substr($integer_part, -3); $rest_units = substr($integer_part, 0, -3); $rest_formatted = strrev(implode(',', str_split(strrev($rest_units), 2))); return '₹' . $rest_formatted . ',' . $last_three . $decimal_part;
+function formatIndianCurrency($number)
+{
+    $number = (string)round($number, 2);
+    $parts = explode('.', $number);
+    $integer_part = $parts[0];
+    $decimal_part = isset($parts[1]) ? '.' . str_pad($parts[1], 2, '0', STR_PAD_RIGHT) : '';
+    $len = strlen($integer_part);
+    if ($len <= 3) {
+        return '₹' . $integer_part . $decimal_part;
+    }
+    $last_three = substr($integer_part, -3);
+    $rest_units = substr($integer_part, 0, -3);
+    $rest_formatted = strrev(implode(',', str_split(strrev($rest_units), 2)));
+    return '₹' . $rest_formatted . ',' . $last_three . $decimal_part;
 }
 
 // Authorization check for principal
@@ -37,15 +47,14 @@ try {
     );
     $stmt->execute([$userId]);
     $salary_records = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
 } catch (Exception $e) {
     $errorMessage = "An error occurred: " . $e->getMessage();
 }
 
-if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>My Salary History</title>
@@ -56,15 +65,21 @@ if (!is_ajax_request()) {
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
-<?php
-}
-?>
+                <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
+                ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">My Salary History</h1>
 
@@ -119,17 +134,17 @@ if (!is_ajax_request()) {
                                                 <td colspan="4" class="text-center">No salary records found.</td>
                                             </tr>
                                         <?php else: ?>
-                                            <?php foreach($salary_records as $record): ?>
-                                            <tr>
-                                                <td><?php echo date('F Y', mktime(0, 0, 0, $record['salary_month'], 1, $record['salary_year'])); ?></td>
-                                                <td><?php echo formatIndianCurrency($record['net_salary_paid']); ?></td>
-                                                <td><?php echo date('d M, Y', strtotime($record['payment_date'])); ?></td>
-                                                <td>
-                                                    <a href="../hr/generate_slip.php?id=<?php echo encrypt_id($record['id']); ?>&type=principal" target="_blank" class="btn btn-sm btn-info">
-                                                        <i class="fas fa-eye"></i> View Slip
-                                                    </a>
-                                                </td>
-                                            </tr>
+                                            <?php foreach ($salary_records as $record): ?>
+                                                <tr>
+                                                    <td><?php echo date('F Y', mktime(0, 0, 0, $record['salary_month'], 1, $record['salary_year'])); ?></td>
+                                                    <td><?php echo formatIndianCurrency($record['net_salary_paid']); ?></td>
+                                                    <td><?php echo date('d M, Y', strtotime($record['payment_date'])); ?></td>
+                                                    <td>
+                                                        <a href="../hr/generate_slip.php?id=<?php echo encrypt_id($record['id']); ?>&type=principal" target="_blank" class="btn btn-sm btn-info">
+                                                            <i class="fas fa-eye"></i> View Slip
+                                                        </a>
+                                                    </td>
+                                                </tr>
                                             <?php endforeach; ?>
                                         <?php endif; ?>
                                     </tbody>
@@ -138,38 +153,37 @@ if (!is_ajax_request()) {
                         </div>
                     </div>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
             </div>
-            <?php include_once '../../includes/footer.php'; ?>
+            <?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?> 
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php" ?>
-    
+
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
 </body>
 <?php
-// Add this block at the very end of the file
-if (is_ajax_request()) {
-    // Get the captured HTML
-    $content = ob_get_clean();
-    
-    // Extract just the main content area for the AJAX response
-    if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
-        echo '<div class="container-fluid">' . $matches[1] . '</div>';
-    } else {
-        // Fallback if the main container isn't found
-        echo $content;
-    }
-    // Stop the script for AJAX requests
-    exit;
-}
+                    // Add this block at the very end of the file
+                    if (is_ajax_request()) {
+                        // Get the captured HTML
+                        $content = ob_get_clean();
+
+                        // Extract just the main content area for the AJAX response
+                        if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
+                            echo '<div class="container-fluid">' . $matches[1] . '</div>';
+                        } else {
+                            // Fallback if the main container isn't found
+                            echo $content;
+                        }
+                        // Stop the script for AJAX requests
+                        exit;
+                    }
 ?>
+
 </html>
-<?php
-}
-?>

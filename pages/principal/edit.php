@@ -4,6 +4,10 @@ include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 include_once "../../includes/log_system.php"; // ADDED: Log system dependency
 
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
+
 if (!defined('BASE_URL')) {
     define('BASE_URL', '/BMC-SMS/');
 }
@@ -62,7 +66,7 @@ try {
         $stmt_principal_school = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
         $stmt_principal_school->execute([$principal_id]);
         $principal_school_id = $stmt_principal_school->fetchColumn();
-        
+
         if ($hr_school_id !== $principal_school_id) {
             header("Location: principal_list.php?error=Unauthorized access");
             exit;
@@ -120,15 +124,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $self_transport_mode = ($transport_mode === 'Self Transport' && !empty($_POST['self_transport_mode'])) ? $_POST['self_transport_mode'] : null;
     $vehicle_number = null;
     $license_number = null;
-    
+
     if ($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') {
         $vehicle_number = trim($_POST['vehicle_number'] ?? '');
         $license_number = trim($_POST['license_number'] ?? '');
     }
-    
+
     $image_path_for_db = $original_image_path;
-        $new_image_was_uploaded = false; // Flag to check if a new image was uploaded
-    
+    $new_image_was_uploaded = false; // Flag to check if a new image was uploaded
+
     // --- Handle Photo Upload ---
     if (isset($_FILES['principal_image']) && $_FILES['principal_image']['error'] === UPLOAD_ERR_OK) {
         $file = $_FILES['principal_image'];
@@ -142,7 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $destination = $full_target_dir . $new_filename;
 
             if (move_uploaded_file($file['tmp_name'], $destination)) {
-                    // If the file moves successfully, update the path and set our flag
+                // If the file moves successfully, update the path and set our flag
                 $image_path_for_db = BASE_URL . $target_dir_relative . $new_filename;
                 $new_image_was_uploaded = true;
                 if (!empty($original_image_path) && file_exists(rtrim($_SERVER['DOCUMENT_ROOT'], '/') . $original_image_path)) {
@@ -160,7 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($principal_name)) $errors[] = "Principal name is required.";
     if (empty($new_email) || !filter_var($new_email, FILTER_VALIDATE_EMAIL)) $errors[] = "A valid email is required.";
     if (empty($new_batch)) $errors[] = "Batch selection is required.";
-    
+
     // NEW: Validation for transport details
     if ($transport_mode === 'Self Transport' && empty($self_transport_mode)) $errors[] = "Please specify the mode of self-transport.";
     if (($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') && empty($vehicle_number)) $errors[] = "Vehicle number is required.";
@@ -193,9 +197,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                       WHERE id=?";
             $stmt_principal_update = $conn->prepare($update_principal_query);
             $stmt_principal_update->execute([
-                $image_path_for_db, $principal_name, $new_email, $phone, $dob, $gender, $blood_group, $address,
-                $qualification, $salary, $school_id, $new_batch,
-                $transport_mode, $self_transport_mode, $vehicle_number, $license_number, $stop_id,
+                $image_path_for_db,
+                $principal_name,
+                $new_email,
+                $phone,
+                $dob,
+                $gender,
+                $blood_group,
+                $address,
+                $qualification,
+                $salary,
+                $school_id,
+                $new_batch,
+                $transport_mode,
+                $self_transport_mode,
+                $vehicle_number,
+                $license_number,
+                $stop_id,
                 $principal_id
             ]);
 
@@ -222,11 +240,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $conn->commit();
-            
+
             // ⭐ LOGGING: Log the principal profile update
             $log_message = "UPDATE: Principal profile for '{$principal_name}' (ID: {$principal_id}) was successfully updated by {$role}.";
             log_interaction($role, $current_user_id, $log_message, $acting_user_name);
-            
+
             if ($new_image_was_uploaded && $principal_id == decrypt_id($_COOKIE['encrypted_user_id'])) {
                 $encrypted_image_path = encrypt_id($image_path_for_db);
                 setcookie('encrypted_profile_image', $encrypted_image_path, time() + 86400, "/");
@@ -251,7 +269,6 @@ try {
     $stmt_routes = $conn->prepare('SELECT r.route_name, s.id as stop_id, s.stop_name FROM routes r JOIN stops s ON r.id = s.route_id WHERE r.school_id = ? ORDER BY r.route_name, s.stop_name');
     $stmt_routes->execute([$school_to_check]);
     $transport_stops = $stmt_routes->fetchAll(PDO::FETCH_ASSOC);
-
 } catch (PDOException $e) {
     die("Could not fetch schools list or transport stops: " . $e->getMessage());
 }
@@ -275,10 +292,18 @@ $current_image_web_path = getWebAccessibleImagePath($principal['principal_image'
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
+                <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
+                ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Edit Principal</h1>
@@ -454,7 +479,11 @@ $current_image_web_path = getWebAccessibleImagePath($principal['principal_image'
                     </div>
                 </div>
             </div>
-            <?php include '../../includes/footer.php'; ?>
+            <?php
+            if (!$is_ajax_request) {
+                include '../../includes/footer.php';
+            }
+            ?>
         </div>
     </div>
 
@@ -467,6 +496,7 @@ $current_image_web_path = getWebAccessibleImagePath($principal['principal_image'
             document.querySelectorAll('.timing-row .custom-control-input').forEach(function(checkbox) {
                 const row = checkbox.closest('.timing-row');
                 const timeInputs = row.querySelectorAll('.time-input, .ampm-select');
+
                 function toggle() {
                     timeInputs.forEach(input => input.disabled = checkbox.checked);
                 }
@@ -481,15 +511,15 @@ $current_image_web_path = getWebAccessibleImagePath($principal['principal_image'
             const selfTransportDiv = document.getElementById('self-transport-div');
             const vehicleDetailsDiv = document.getElementById('vehicle-details-div');
             const schoolSelect = document.getElementById('school_id');
-            
+
             function fetchTransportStops(schoolId, selectedStopId) {
                 if (!schoolId) {
                     $('#stop_id').html('<option value="">-- No Transport --</option>');
                     return;
                 }
-                
+
                 $('#stop_id').html('<option value="">-- Loading stops --</option>');
-                
+
                 fetch('../teacher/get_transport_stops.php?school_id=' + schoolId)
                     .then(response => response.json())
                     .then(data => {
@@ -526,7 +556,7 @@ $current_image_web_path = getWebAccessibleImagePath($principal['principal_image'
                     selfTransportSelect.value = '';
                     document.getElementById('vehicle_number').value = '';
                     document.getElementById('license_number').value = '';
-                    
+
                     const schoolId = schoolSelect.value;
                     const selectedStopId = <?php echo json_encode($principal['stop_id'] ?? null); ?>;
                     if (schoolId) {
@@ -536,7 +566,7 @@ $current_image_web_path = getWebAccessibleImagePath($principal['principal_image'
                     selfTransportDiv.style.display = 'block';
                     schoolTransportDiv.style.display = 'none';
                     document.getElementById('stop_id').value = '';
-                    toggleSelfTransportFields(); 
+                    toggleSelfTransportFields();
                 } else {
                     selfTransportDiv.style.display = 'none';
                     schoolTransportDiv.style.display = 'none';
@@ -553,7 +583,7 @@ $current_image_web_path = getWebAccessibleImagePath($principal['principal_image'
             // Add event listeners for dynamic changes
             transportModeSelect.addEventListener('change', toggleTransportFields);
             selfTransportSelect.addEventListener('change', toggleSelfTransportFields);
-            
+
             // Re-fetch stops if school changes
             if (schoolSelect) {
                 schoolSelect.addEventListener('change', function() {

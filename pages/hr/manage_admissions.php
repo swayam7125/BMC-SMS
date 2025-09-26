@@ -2,8 +2,12 @@
 // pages/hr/manage_admissions.php
 
 // Adjust the paths to your existing project structure
-include_once '../../includes/connect.php'; 
+include_once '../../includes/connect.php';
 include_once '../../encryption.php';
+
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
 
 // --- Authorization Check (ensure only HR can access) ---
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
@@ -19,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['application_id'])) {
     $application_id = filter_var($_POST['application_id'], FILTER_SANITIZE_NUMBER_INT);
     $status_action = filter_var($_POST['status_action'], FILTER_SANITIZE_FULL_SPECIAL_CHARS);
     $comment = trim($_POST['comment'] ?? '');
-    
+
     // Fields for Acceptance (Mandatory)
     $student_roll_no = filter_var($_POST['student_roll_no'] ?? null, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
     $student_class = filter_var($_POST['student_class'] ?? null, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
@@ -27,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['application_id'])) {
     // Fields for Meeting (Mandatory when Accepted)
     $meeting_date = filter_var($_POST['meeting_date'] ?? null, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
     $meeting_time = filter_var($_POST['meeting_time'] ?? null, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
-    
+
     // Input validation: Check for mandatory fields only if Accepted is chosen
     if (!in_array($status_action, ['Accepted', 'Rejected', 'Pending'])) {
         $message = '<div class="alert alert-danger">Invalid status action.</div>';
@@ -43,14 +47,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['application_id'])) {
                            meeting_date = :meeting_date, meeting_time = :meeting_time
                            WHERE id = :id";
             $stmt = $conn->prepare($update_sql);
-            
+
             $success = $stmt->execute([
                 ':status' => $status_action,
                 ':remarks' => $comment,
                 ':roll_no' => ($status_action === 'Accepted' ? $student_roll_no : null),
                 ':class' => ($status_action === 'Accepted' ? $student_class : null),
-                ':meeting_date' => ($status_action === 'Accepted' ? $meeting_date : null), 
-                ':meeting_time' => ($status_action === 'Accepted' ? $meeting_time : null), 
+                ':meeting_date' => ($status_action === 'Accepted' ? $meeting_date : null),
+                ':meeting_time' => ($status_action === 'Accepted' ? $meeting_time : null),
                 ':id' => $application_id
             ]);
 
@@ -58,20 +62,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['application_id'])) {
                 $hr_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
                 if ($hr_user_id) {
                     $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = true WHERE user_id = ? AND type = 'new_admission_request'");
-                    $stmt_mark_read->execute([$hr_user_id]); 
+                    $stmt_mark_read->execute([$hr_user_id]);
                 }
-                
+
                 $message = '<div class="alert alert-success">Application ID ' . $application_id . ' status updated to ' . htmlspecialchars($status_action) . '.</div>';
             }
-            
-            $conn->commit();
 
+            $conn->commit();
         } catch (PDOException $e) {
             $conn->rollBack();
             $message = '<div class="alert alert-danger">Database Error: ' . $e->getMessage() . '</div>';
             error_log("Admission status update error: " . $e->getMessage());
         }
-        
+
         $redirect_msg = urlencode(strip_tags($message));
         header("Location: manage_admissions.php?message={$redirect_msg}");
         exit;
@@ -84,7 +87,7 @@ try {
     $stmt = $conn->query("SELECT id, admission_id, first_name, last_name, phone, status, created_at FROM admission_applications ORDER BY created_at DESC");
     $applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    die("Database Error: Could not fetch applications. Ensure 'admission_applications' table exists. Error: " . $e->getMessage()); 
+    die("Database Error: Could not fetch applications. Ensure 'admission_applications' table exists. Error: " . $e->getMessage());
 }
 ?>
 <!DOCTYPE html>
@@ -101,19 +104,27 @@ try {
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include '../../includes/header.php'; ?> 
+                <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
+                ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Manage Admission Applications</h1>
 
-                    <?php 
+                    <?php
                     if (isset($_GET['message'])) {
                         $display_msg = htmlspecialchars(urldecode($_GET['message']));
                         echo "<div class='alert alert-info alert-dismissible fade show'>{$display_msg}<button type='button' class='close' data-dismiss='alert'>&times;</button></div>";
                     }
-                    echo $message; 
+                    echo $message;
                     ?>
 
                     <div class="card shadow mb-4">
@@ -148,7 +159,7 @@ try {
                                                                                     case 'Rejected':
                                                                                         echo 'danger';
                                                                                         break;
-                                                                                    case 'Submitted': 
+                                                                                    case 'Submitted':
                                                                                     case 'Pending':
                                                                                         echo 'warning';
                                                                                         break;
@@ -159,8 +170,8 @@ try {
                                                 </td>
                                                 <td><?php echo date('Y-m-d', strtotime($app['created_at'])); ?></td>
                                                 <td>
-                                                    <button class="btn btn-info btn-sm view-details" 
-                                                        data-id="<?php echo $app['id']; ?>" 
+                                                    <button class="btn btn-info btn-sm view-details"
+                                                        data-id="<?php echo $app['id']; ?>"
                                                         data-toggle="modal" data-target="#detailsModal">
                                                         <i class="fas fa-edit"></i> Review
                                                     </button>
@@ -174,9 +185,14 @@ try {
                     </div>
                 </div>
             </div>
+            <?php
+            if (!$is_ajax_request) {
+                include '../../includes/footer.php';
+            }
+            ?>
         </div>
     </div>
-    
+
     <div class="modal fade" id="detailsModal" tabindex="-1" role="dialog" aria-labelledby="detailsModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
@@ -189,13 +205,13 @@ try {
                 <form method="POST" action="manage_admissions.php">
                     <div class="modal-body">
                         <input type="hidden" name="application_id" id="modalApplicationId">
-                        
+
                         <div id="fullApplicationDetails">
                             <p class="text-center">Loading application details...</p>
                         </div>
-                        
+
                         <hr class="my-4">
-                        
+
                         <h5 class="mb-3 text-primary">Update Status</h5>
                         <div class="form-group">
                             <label for="status_action">Action</label>
@@ -206,7 +222,7 @@ try {
                                 <option value="Rejected">Reject Application</option>
                             </select>
                         </div>
-                        
+
                         <div id="acceptFields" style="display:none;">
                             <hr>
                             <h6 class="text-success">Acceptance Details</h6>
@@ -239,12 +255,12 @@ try {
                             <h6 class="text-danger">Rejection Details</h6>
                             <div class="alert alert-warning">The application will be marked as Rejected.</div>
                         </div>
-                        
+
                         <div class="form-group mt-3">
                             <label for="comment">Comment/Remarks (Optional)</label>
                             <textarea class="form-control" id="comment" name="comment" rows="3"></textarea>
                         </div>
-                        
+
                     </div>
                     <div class="modal-footer">
                         <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
@@ -266,35 +282,37 @@ try {
 
             $('.view-details').on('click', function() {
                 var applicationId = $(this).data('id');
-                
+
                 $('#modalApplicationId').val(applicationId);
-                $('#fullApplicationDetails').html('<p class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading details...</p>'); 
-                
+                $('#fullApplicationDetails').html('<p class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading details...</p>');
+
                 // Reset status fields
                 $('#status_action').val('');
                 $('#acceptFields').hide();
                 $('#rejectFields').hide();
-                
+
                 // Fetch full application details via AJAX
                 $.ajax({
-                    url: 'get_admission_details.php', 
+                    url: 'get_admission_details.php',
                     type: 'GET',
-                    data: { id: applicationId },
+                    data: {
+                        id: applicationId
+                    },
                     success: function(response) {
                         $('#fullApplicationDetails').html(response);
-                        
+
                         var currentStatus = $('#fullApplicationDetails').find('span[data-current-status]').data('current-status');
                         $('#status_action').val(currentStatus);
                         $('#modalAppName').text($('#fullApplicationDetails').find('span[data-student-name]').data('student-name'));
-                        
+
                         // Set comment and meeting details if available
                         var currentComment = $('#fullApplicationDetails').find('span[data-current-comment]').data('current-comment');
                         var meetingDate = $('#fullApplicationDetails').find('span[data-meeting-date]').data('meeting-date');
                         var meetingTime = $('#fullApplicationDetails').find('span[data-meeting-time]').data('meeting-time');
 
                         $('#comment').val(currentComment);
-                        $('#meeting_date').val(meetingDate); 
-                        $('#meeting_time').val(meetingTime); 
+                        $('#meeting_date').val(meetingDate);
+                        $('#meeting_time').val(meetingTime);
 
                         $('#status_action').trigger('change');
                     },
@@ -307,26 +325,26 @@ try {
             // Logic to show/hide fields in the modal form based on the selected action
             $(document).on('change', '#status_action', function() {
                 var action = $(this).val();
-                
+
                 // Reset required states for all Acceptance fields
                 $('#student_roll_no, #student_class, #meeting_date, #meeting_time').prop('required', false);
                 $('#acceptFields, #rejectFields').hide();
-                
+
                 if (action === 'Accepted') {
                     $('#acceptFields').show();
-                    
+
                     // ⭐ ALL 4 FIELDS ARE NOW SET TO REQUIRED:
-                    $('#student_roll_no, #student_class, #meeting_date, #meeting_time').prop('required', true); 
-                    
+                    $('#student_roll_no, #student_class, #meeting_date, #meeting_time').prop('required', true);
+
                     // Pre-fill roll/class if already accepted
                     var roll = $('#fullApplicationDetails').find('span[data-current-roll]').data('current-roll');
                     var class_name = $('#fullApplicationDetails').find('span[data-current-class]').data('current-class');
                     $('#student_roll_no').val(roll);
                     $('#student_class').val(class_name);
-                    
+
                 } else if (action === 'Rejected') {
                     $('#rejectFields').show();
-                    
+
                 } else {
                     // Default/Pending
                 }

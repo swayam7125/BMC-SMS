@@ -3,11 +3,10 @@ include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 include_once "../../includes/ajax_helpers.php";
 
-// Check if this is an AJAX request
-if (is_ajax_request()) {
-    // Start output buffering to capture the HTML
-    ob_start();
-}
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
+
 
 if (!isset($_COOKIE['encrypted_user_role']) || decrypt_id($_COOKIE['encrypted_user_role']) !== 'principal') {
     header("Location: ../../login.php");
@@ -18,7 +17,6 @@ if (!defined('BASE_URL')) {
     define('BASE_URL', '/BMC-SMS/');
 }
 
-if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -35,13 +33,18 @@ if (!is_ajax_request()) {
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
-<?php
-}
-?>
+                <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
+                ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Generate Leaving Certificate</h1>
 
@@ -66,11 +69,12 @@ if (!is_ajax_request()) {
                         </div>
                     </div>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
             </div>
-            <?php include_once '../../includes/footer.php'; ?>
+            <?php
+            if (!$is_ajax_request) {
+                include '../../includes/footer.php';
+            }
+            ?>
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php" ?>
@@ -81,14 +85,14 @@ if (!is_ajax_request()) {
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const leavingDateInput = document.getElementById('leaving_date');
-            
+
             // Get today's date in YYYY-MM-DD format
             const today = new Date();
             const year = today.getFullYear();
             const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-based
             const day = String(today.getDate()).padStart(2, '0');
             const formattedDate = `${year}-${month}-${day}`;
-            
+
             // Set the min attribute of the date input
             leavingDateInput.setAttribute('min', formattedDate);
         });
@@ -99,7 +103,7 @@ if (!is_ajax_request()) {
 if (is_ajax_request()) {
     // Get the captured HTML
     $content = ob_get_clean();
-    
+
     // Extract just the main content area for the AJAX response
     if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
         echo '<div class="container-fluid">' . $matches[1] . '</div>';
@@ -111,7 +115,5 @@ if (is_ajax_request()) {
     exit;
 }
 ?>
+
 </html>
-<?php
-}
-?>

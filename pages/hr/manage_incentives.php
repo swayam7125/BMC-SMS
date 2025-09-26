@@ -8,6 +8,10 @@
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
+
 // Authorization check for HR user
 session_start();
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
@@ -413,10 +417,18 @@ $staff_incentives_json = json_encode($staff_incentives_map);
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
+                <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
+                ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Manage Incentives</h1>
 
@@ -495,20 +507,20 @@ $staff_incentives_json = json_encode($staff_incentives_map);
                                                         <div class="input-group-icon"><input type="month" name="period" id="period_single" class="form-control" value="<?php echo date('Y-m'); ?>" required><span class="input-icon"><i class="fas fa-calendar-alt"></i></span></div>
                                                     </div>
                                                     <div class="form-group searchable-dropdown col-lg-6" id="singleIncentiveDropdown">
-                                                    <label for="singleIncentiveDisplay">Incentive Type(s)</label>
-                                                    <div class="input-group-icon">
-                                                        <input type="text" id="singleIncentiveDisplay" class="form-control" placeholder="Search & select incentives...">
-                                                        <span class="input-icon"><i class="fas fa-search"></i></span>
+                                                        <label for="singleIncentiveDisplay">Incentive Type(s)</label>
+                                                        <div class="input-group-icon">
+                                                            <input type="text" id="singleIncentiveDisplay" class="form-control" placeholder="Search & select incentives...">
+                                                            <span class="input-icon"><i class="fas fa-search"></i></span>
+                                                        </div>
+                                                        <div id="singleIncentiveOptions" class="dropdown-menu p-2 w-100">
+                                                            <?php foreach ($incentive_list as $inc): ?>
+                                                                <div class="form-check">
+                                                                    <input class="form-check-input" type="checkbox" name="incentive_id[]" value="<?php echo $inc['id']; ?>" id="single_inc_<?php echo $inc['id']; ?>">
+                                                                    <label class="form-check-label" for="single_inc_<?php echo $inc['id']; ?>"><?php echo htmlspecialchars($inc['incentive_name']); ?></label>
+                                                                </div>
+                                                            <?php endforeach; ?>
+                                                        </div>
                                                     </div>
-                                                    <div id="singleIncentiveOptions" class="dropdown-menu p-2 w-100">
-                                                        <?php foreach ($incentive_list as $inc): ?>
-                                                            <div class="form-check">
-                                                                <input class="form-check-input" type="checkbox" name="incentive_id[]" value="<?php echo $inc['id']; ?>" id="single_inc_<?php echo $inc['id']; ?>">
-                                                                <label class="form-check-label" for="single_inc_<?php echo $inc['id']; ?>"><?php echo htmlspecialchars($inc['incentive_name']); ?></label>
-                                                            </div>
-                                                        <?php endforeach; ?>
-                                                    </div>
-                                                </div>
                                                     <div class="form-group searchable-dropdown col-lg-12" id="singleStaffDropdown">
                                                         <label for="singleStaffDisplay">Select Staff Member(s)</label>
                                                         <div class="input-group-icon">
@@ -612,7 +624,11 @@ $staff_incentives_json = json_encode($staff_incentives_map);
                     </div>
                 </div>
             </div>
-            <?php include_once '../../includes/footer.php'; ?>
+            <?php
+            if (!$is_ajax_request) {
+                include '../../includes/footer.php';
+            }
+            ?>
         </div>
     </div>
 

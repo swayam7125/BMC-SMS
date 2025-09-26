@@ -4,6 +4,10 @@ include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php';
 // include_once '../../includes/email_functions.php'; // Uncomment if email is set up
 
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
+
 $message = '';
 $hr_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
 $hr_name = 'N/A';
@@ -72,30 +76,34 @@ try {
     error_log("HR Leave Management Error: " . $e->getMessage());
 }
 
-if (!is_ajax_request()) {
 ?>
-<!DOCTYPE html>
-<html lang="en">
+    <!DOCTYPE html>
+    <html lang="en">
 
-<head>
-    <meta charset="UTF-8">
-    <title>HR Leave Management</title>
-    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-    <link rel="stylesheet" href="../../assets/css/sidebar.css">
-    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700" rel="stylesheet">
-</head>
+    <head>
+        <meta charset="UTF-8">
+        <title>HR Leave Management</title>
+        <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+        <link rel="stylesheet" href="../../assets/css/sidebar.css">
+        <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+        <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700" rel="stylesheet">
+    </head>
 
-<body id="page-top">
-    <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
-        <div id="content-wrapper" class="d-flex flex-column">
-            <div id="content">
-                <?php include '../../includes/header.php'; ?>
-<?php
-}
-?>
+    <body id="page-top">
+        <div id="wrapper">
+            <?php
+            if (!$is_ajax_request) {
+                include '../../includes/sidebar.php';
+            }
+            ?>
+            <div id="content-wrapper" class="d-flex flex-column">
+                <div id="content">
+                    <?php
+                    if (!$is_ajax_request) {
+                        include '../../includes/header.php';
+                    }
+                    ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">HR Leave Management</h1>
                     <?php echo $message; ?>
@@ -191,47 +199,44 @@ if (!is_ajax_request()) {
                         </div>
                     </div>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
+                <?php
+                    if (!$is_ajax_request) {
+                        include '../../includes/footer.php';
+                    }
+                ?>
             </div>
-            <?php include '../../includes/footer.php'; ?>
         </div>
-    </div>
-    <?php include_once "../../includes/logout_modal.php" ?>
-    <script src="../../assets/vendor/jquery/jquery.min.js"></script>
-    <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="../../assets/js/sb-admin-2.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const fromDateInput = document.getElementById('from_date');
-            const toDateInput = document.getElementById('to_date');
-            const leaveTypeContainer = document.getElementById('leave_type_container');
+        <?php include_once "../../includes/logout_modal.php" ?>
+        <script src="../../assets/vendor/jquery/jquery.min.js"></script>
+        <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+        <script src="../../assets/js/sb-admin-2.min.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const fromDateInput = document.getElementById('from_date');
+                const toDateInput = document.getElementById('to_date');
+                const leaveTypeContainer = document.getElementById('leave_type_container');
 
-            const today = new Date().toISOString().split('T')[0];
-            fromDateInput.setAttribute('min', today);
+                const today = new Date().toISOString().split('T')[0];
+                fromDateInput.setAttribute('min', today);
 
-            function toggleLeaveTypeVisibility() {
-                if (fromDateInput.value && fromDateInput.value === toDateInput.value) {
-                    leaveTypeContainer.style.display = 'block';
-                } else {
-                    leaveTypeContainer.style.display = 'none';
+                function toggleLeaveTypeVisibility() {
+                    if (fromDateInput.value && fromDateInput.value === toDateInput.value) {
+                        leaveTypeContainer.style.display = 'block';
+                    } else {
+                        leaveTypeContainer.style.display = 'none';
+                    }
                 }
-            }
-            fromDateInput.addEventListener('change', function() {
-                toDateInput.min = fromDateInput.value;
-                if (new Date(toDateInput.value) < new Date(fromDateInput.value)) {
-                    toDateInput.value = fromDateInput.value;
-                }
+                fromDateInput.addEventListener('change', function() {
+                    toDateInput.min = fromDateInput.value;
+                    if (new Date(toDateInput.value) < new Date(fromDateInput.value)) {
+                        toDateInput.value = fromDateInput.value;
+                    }
+                    toggleLeaveTypeVisibility();
+                });
+                toDateInput.addEventListener('change', toggleLeaveTypeVisibility);
                 toggleLeaveTypeVisibility();
             });
-            toDateInput.addEventListener('change', toggleLeaveTypeVisibility);
-            toggleLeaveTypeVisibility();
-        });
-    </script>
-</body>
+        </script>
+    </body>
 
-</html>
-<?php
-}
-?>
+    </html>

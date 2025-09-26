@@ -3,6 +3,10 @@ include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 include_once "../../includes/ajax_helpers.php";
 
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
+
 $role = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
@@ -26,10 +30,10 @@ try {
     die("Database Error: " . $e->getMessage());
 }
 
-if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Deleted Librarian Records - School Management System</title>
@@ -42,15 +46,21 @@ if (!is_ajax_request()) {
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link href="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
-        <?php include_once '../../includes/sidebar.php'; ?>
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
-<?php
-}
-?>
+                <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
+                ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">Deleted Librarian Records</h1>
                     <p class="mb-4">A complete log of all librarians that have been deleted from the system.</p>
@@ -90,7 +100,9 @@ if (!is_ajax_request()) {
                                                 </tr>
                                             <?php endforeach; ?>
                                         <?php else: ?>
-                                            <tr><td colspan="9" class="text-center">No deleted librarians found</td></tr>
+                                            <tr>
+                                                <td colspan="9" class="text-center">No deleted librarians found</td>
+                                            </tr>
                                         <?php endif; ?>
                                     </tbody>
                                 </table>
@@ -98,15 +110,16 @@ if (!is_ajax_request()) {
                         </div>
                     </div>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
             </div>
-            <?php include '../../includes/footer.php'; ?>
+            <?php
+            if (!$is_ajax_request) {
+                include '../../includes/footer.php';
+            }
+            ?>
         </div>
     </div>
     <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
-    <?php include_once "../../includes/logout_modal.php"?>
+    <?php include_once "../../includes/logout_modal.php" ?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
@@ -115,12 +128,16 @@ if (!is_ajax_request()) {
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
     <script>
         $(document).ready(function() {
-            $('#pastLibrarianTable').DataTable({ "order": [[ 8, "desc" ]] });
+            $('#pastLibrarianTable').DataTable({
+                "order": [
+                    [8, "desc"]
+                ]
+            });
         });
     </script>
 </body>
+
 </html>
 <?php
-}
-$conn = null; 
+$conn = null;
 ?>

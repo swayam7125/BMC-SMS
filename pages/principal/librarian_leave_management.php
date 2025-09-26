@@ -3,12 +3,9 @@ include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php';
 
-// Check if this is an AJAX request
-if (is_ajax_request()) {
-    // Start output buffering to capture the HTML
-    ob_start();
-}
-
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
 
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : '';
 $current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
@@ -46,13 +43,11 @@ try {
     $stmt_history = $conn->prepare($query_history);
     $stmt_history->execute();
     $leave_history = $stmt_history->fetchAll(PDO::FETCH_ASSOC);
-
 } catch (PDOException $e) {
     error_log("Principal Librarian Leave Requests Error: " . $e->getMessage());
     die("A database error occurred.");
 }
 
-if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -72,13 +67,18 @@ if (!is_ajax_request()) {
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include '../../includes/header.php'; ?>
-<?php
-}
-?>
+                <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
+                ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Librarian Leave Management</h1>
 
@@ -102,19 +102,19 @@ if (!is_ajax_request()) {
                                     </thead>
                                     <tbody>
                                         <?php if (!empty($leave_requests)): foreach ($leave_requests as $row): ?>
-                                            <tr>
-                                                <td><?php echo htmlspecialchars($row['librarian_name']); ?></td>
-                                                <td><?php echo htmlspecialchars($row['from_date']); ?></td>
-                                                <td><?php echo htmlspecialchars($row['to_date']); ?></td>
-                                                <td><?php echo htmlspecialchars($row['leave_type']); ?></td>
-                                                <td><?php echo htmlspecialchars($row['reason']); ?></td>
-                                                <td><?php echo htmlspecialchars(date('d-m-Y H:i', strtotime($row['applied_on']))); ?></td>
-                                                <td>
-                                                    <a href="update_librarian_leave_status.php?id=<?php echo $row['id']; ?>&action=approve" class="btn btn-success btn-sm">Approve</a>
-                                                    <button type="button" class="btn btn-danger btn-sm reject-btn" data-toggle="modal" data-target="#rejectionModal" data-id="<?php echo $row['id']; ?>">Reject</button>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach;
+                                                <tr>
+                                                    <td><?php echo htmlspecialchars($row['librarian_name']); ?></td>
+                                                    <td><?php echo htmlspecialchars($row['from_date']); ?></td>
+                                                    <td><?php echo htmlspecialchars($row['to_date']); ?></td>
+                                                    <td><?php echo htmlspecialchars($row['leave_type']); ?></td>
+                                                    <td><?php echo htmlspecialchars($row['reason']); ?></td>
+                                                    <td><?php echo htmlspecialchars(date('d-m-Y H:i', strtotime($row['applied_on']))); ?></td>
+                                                    <td>
+                                                        <a href="update_librarian_leave_status.php?id=<?php echo $row['id']; ?>&action=approve" class="btn btn-success btn-sm">Approve</a>
+                                                        <button type="button" class="btn btn-danger btn-sm reject-btn" data-toggle="modal" data-target="#rejectionModal" data-id="<?php echo $row['id']; ?>">Reject</button>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach;
                                         else: ?>
                                             <tr>
                                                 <td colspan="7" class="text-center">No pending leave requests.</td>
@@ -145,20 +145,20 @@ if (!is_ajax_request()) {
                                     </thead>
                                     <tbody>
                                         <?php if (!empty($leave_history)): foreach ($leave_history as $row): ?>
-                                            <tr>
-                                                <td><?php echo htmlspecialchars($row['librarian_name']); ?></td>
-                                                <td><?php echo htmlspecialchars($row['from_date']); ?></td>
-                                                <td><?php echo htmlspecialchars($row['to_date']); ?></td>
-                                                <td><?php echo htmlspecialchars($row['leave_type']); ?></td>
-                                                <td><?php echo htmlspecialchars($row['reason']); ?></td>
-                                                <td>
-                                                    <span class="badge badge-<?php echo ($row['status'] == 'Approved') ? 'success' : 'danger'; ?> p-2"><?php echo htmlspecialchars($row['status']); ?></span>
-                                                    <?php if ($row['status'] == 'Rejected' && !empty($row['rejection_reason'])): ?>
-                                                        <br><small class="text-muted mt-1"><strong>Reason:</strong> <?php echo htmlspecialchars($row['rejection_reason']); ?></small>
-                                                    <?php endif; ?>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach;
+                                                <tr>
+                                                    <td><?php echo htmlspecialchars($row['librarian_name']); ?></td>
+                                                    <td><?php echo htmlspecialchars($row['from_date']); ?></td>
+                                                    <td><?php echo htmlspecialchars($row['to_date']); ?></td>
+                                                    <td><?php echo htmlspecialchars($row['leave_type']); ?></td>
+                                                    <td><?php echo htmlspecialchars($row['reason']); ?></td>
+                                                    <td>
+                                                        <span class="badge badge-<?php echo ($row['status'] == 'Approved') ? 'success' : 'danger'; ?> p-2"><?php echo htmlspecialchars($row['status']); ?></span>
+                                                        <?php if ($row['status'] == 'Rejected' && !empty($row['rejection_reason'])): ?>
+                                                            <br><small class="text-muted mt-1"><strong>Reason:</strong> <?php echo htmlspecialchars($row['rejection_reason']); ?></small>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach;
                                         else: ?>
                                             <tr>
                                                 <td colspan="6" class="text-center">No processed leave applications found.</td>
@@ -170,11 +170,12 @@ if (!is_ajax_request()) {
                         </div>
                     </div>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
             </div>
-            <?php include '../../includes/footer.php'; ?>
+            <?php
+            if (!$is_ajax_request) {
+                include '../../includes/footer.php';
+            }
+            ?>
         </div>
     </div>
     <div class="modal fade" id="rejectionModal" tabindex="-1" role="dialog" aria-labelledby="rejectionModalLabel" aria-hidden="true">
@@ -213,7 +214,7 @@ if (!is_ajax_request()) {
 if (is_ajax_request()) {
     // Get the captured HTML
     $content = ob_get_clean();
-    
+
     // Extract just the main content area for the AJAX response
     if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
         echo '<div class="container-fluid">' . $matches[1] . '</div>';
@@ -225,7 +226,5 @@ if (is_ajax_request()) {
     exit;
 }
 ?>
+
 </html>
-<?php
-}
-?>

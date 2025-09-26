@@ -4,6 +4,10 @@ include_once __DIR__ . "/../../includes/connect.php";
 include_once __DIR__ . "/../../encryption.php";
 include_once __DIR__ . "/../../includes/ajax_helpers.php";
 
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
+
 // --- Authorization ---
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 $userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
@@ -34,7 +38,6 @@ try {
     die("A database error occurred.");
 }
 
-if (!is_ajax_request()) {
 ?>
     <!DOCTYPE html>
     <html lang="en">
@@ -55,10 +58,18 @@ if (!is_ajax_request()) {
 
     <body id="page-top">
         <div id="wrapper">
-            <?php include '../../includes/sidebar.php'; ?>
+           <?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?> 
             <div id="content-wrapper" class="d-flex flex-column">
                 <div id="content">
-                    <?php include '../../includes/header.php'; ?>
+                    <?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
+}
+?> 
                     <div class="container-fluid">
                         <h1 class="h3 mb-4 text-gray-800">Notices from Principal</h1>
                         <div class="card shadow mb-4">
@@ -94,7 +105,11 @@ if (!is_ajax_request()) {
                         </div>
                     </div>
                 </div>
-                <?php include '../../includes/footer.php'; ?>
+               <?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?> 
             </div>
         </div>
         <?php include_once "../../includes/logout_modal.php" ?>
@@ -120,5 +135,5 @@ if (!is_ajax_request()) {
 
     </html>
 <?php
-}
 $conn = null;
+?>

@@ -2,6 +2,10 @@
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
+
 // Authorization check for hr user
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 $userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
@@ -26,8 +30,20 @@ if (!$school_id) {
 }
 
 // Helper function to format currency
-function formatIndianCurrency($number) {
-    $number = (string)round($number, 2); $parts = explode('.', $number); $integer_part = $parts[0]; $decimal_part = isset($parts[1]) ? '.' . str_pad($parts[1], 2, '0', STR_PAD_RIGHT) : ''; $len = strlen($integer_part); if ($len <= 3) { return '₹' . $integer_part . $decimal_part; } $last_three = substr($integer_part, -3); $rest_units = substr($integer_part, 0, -3); $rest_formatted = strrev(implode(',', str_split(strrev($rest_units), 2))); return '₹' . $rest_formatted . ',' . $last_three . $decimal_part;
+function formatIndianCurrency($number)
+{
+    $number = (string)round($number, 2);
+    $parts = explode('.', $number);
+    $integer_part = $parts[0];
+    $decimal_part = isset($parts[1]) ? '.' . str_pad($parts[1], 2, '0', STR_PAD_RIGHT) : '';
+    $len = strlen($integer_part);
+    if ($len <= 3) {
+        return '₹' . $integer_part . $decimal_part;
+    }
+    $last_three = substr($integer_part, -3);
+    $rest_units = substr($integer_part, 0, -3);
+    $rest_formatted = strrev(implode(',', str_split(strrev($rest_units), 2)));
+    return '₹' . $rest_formatted . ',' . $last_three . $decimal_part;
 }
 
 // --- FILTERING LOGIC ---
@@ -103,22 +119,32 @@ try {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Salary Payment History</title>
-<link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
+                <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
+                ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Salary Payment History</h1>
                     <?php if (isset($errorMessage)): ?>
@@ -155,7 +181,8 @@ try {
                                         <option value="all" <?php if ($filter_role == 'all') echo 'selected'; ?>>All Roles</option>
                                         <option value="teacher" <?php if ($filter_role == 'teacher') echo 'selected'; ?>>Teacher</option>
                                         <option value="librarian" <?php if ($filter_role == 'librarian') echo 'selected'; ?>>Librarian</option>
-                                        <option value="hr" <?php if ($filter_role == 'hr') echo 'selected'; ?>>HR</option> </select>
+                                        <option value="hr" <?php if ($filter_role == 'hr') echo 'selected'; ?>>HR</option>
+                                    </select>
                                 </div>
                                 <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Filter</button>
                             </form>
@@ -195,7 +222,11 @@ try {
                     </div>
                 </div>
             </div>
-            <?php include_once '../../includes/footer.php'; ?>
+            <?php
+            if (!$is_ajax_request) {
+                include '../../includes/footer.php';
+            }
+            ?>
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php"; ?>
@@ -208,9 +239,12 @@ try {
     <script>
         $(document).ready(function() {
             $('#dataTable').DataTable({
-                "order": [[ 4, "desc" ]] // Sort by payment date descending by default
+                "order": [
+                    [4, "desc"]
+                ] // Sort by payment date descending by default
             });
         });
     </script>
 </body>
+
 </html>

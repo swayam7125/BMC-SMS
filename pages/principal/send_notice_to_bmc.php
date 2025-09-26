@@ -6,12 +6,9 @@ include_once "../../encryption.php";
 include_once "../../includes/connect.php";
 include_once "../../includes/ajax_helpers.php";
 
-// Check if this is an AJAX request
-if (is_ajax_request()) {
-    // Start output buffering to capture the HTML
-    ob_start();
-}
-
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
 
 $role = null;
 $userId = null;
@@ -87,7 +84,6 @@ try {
 
 $pageTitle = 'Send Notice to BMC';
 
-if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -107,13 +103,19 @@ if (!is_ajax_request()) {
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include '../../includes/header.php'; ?>
-<?php
-}
-?>
+                <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
+                ?>
+
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Send Notice to BMC</h1>
                     <?php if (isset($_GET['success'])): ?>
@@ -133,11 +135,12 @@ if (!is_ajax_request()) {
                         </div>
                     </div>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
             </div>
-            <?php include '../../includes/footer.php'; ?>
+            <?php
+            if (!$is_ajax_request) {
+                include '../../includes/footer.php';
+            }
+            ?>
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php" ?>
@@ -150,7 +153,7 @@ if (!is_ajax_request()) {
 if (is_ajax_request()) {
     // Get the captured HTML
     $content = ob_get_clean();
-    
+
     // Extract just the main content area for the AJAX response
     if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
         echo '<div class="container-fluid">' . $matches[1] . '</div>';
@@ -162,7 +165,5 @@ if (is_ajax_request()) {
     exit;
 }
 ?>
+
 </html>
-<?php
-}
-?>

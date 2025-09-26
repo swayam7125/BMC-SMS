@@ -2,6 +2,10 @@
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
+
 $role = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
@@ -14,7 +18,7 @@ if (!$role) {
 
 $hr_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 // Read the filter value that was sent from the list page
-$from_list_filter = isset($_GET['from_list_filter']) ? $_GET['from_list_filter'] : ''; 
+$from_list_filter = isset($_GET['from_list_filter']) ? $_GET['from_list_filter'] : '';
 
 if ($hr_id <= 0) {
     header("Location: hr_list.php?error=Invalid HR user ID");
@@ -85,10 +89,18 @@ if (!empty($photo_path)) {
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
+                <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
+                ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">HR's Details</h1>
@@ -300,7 +312,11 @@ if (!empty($photo_path)) {
                     </div>
                 </div>
             </div>
-            <?php include '../../includes/footer.php'; ?>
+            <?php
+            if (!$is_ajax_request) {
+                include '../../includes/footer.php';
+            }
+            ?>
         </div>
     </div>
     <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>

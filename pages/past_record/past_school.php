@@ -2,6 +2,10 @@
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
+
 $role = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
@@ -23,6 +27,7 @@ try {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Deleted School Records - School Management System</title>
@@ -35,12 +40,21 @@ try {
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link href="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
-        <?php include_once '../../includes/sidebar.php'; ?>
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
+                <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
+                ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">Deleted School Records</h1>
                     <p class="mb-4">A log of all schools that have been deleted from the system.</p>
@@ -74,7 +88,9 @@ try {
                                                 </tr>
                                             <?php endforeach; ?>
                                         <?php else: ?>
-                                            <tr><td colspan="6" class="text-center">No deleted schools found</td></tr>
+                                            <tr>
+                                                <td colspan="6" class="text-center">No deleted schools found</td>
+                                            </tr>
                                         <?php endif; ?>
                                     </tbody>
                                 </table>
@@ -83,11 +99,15 @@ try {
                     </div>
                 </div>
             </div>
-            <?php include '../../includes/footer.php'; ?>
+            <?php
+            if (!$is_ajax_request) {
+                include '../../includes/footer.php';
+            }
+            ?>
         </div>
     </div>
     <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
-    <?php include_once "../../includes/logout_modal.php"?>
+    <?php include_once "../../includes/logout_modal.php" ?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
@@ -96,9 +116,14 @@ try {
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
     <script>
         $(document).ready(function() {
-            $('#pastSchoolTable').DataTable({ "order": [[ 5, "desc" ]] });
+            $('#pastSchoolTable').DataTable({
+                "order": [
+                    [5, "desc"]
+                ]
+            });
         });
     </script>
 </body>
+
 </html>
 <?php $conn = null; ?>

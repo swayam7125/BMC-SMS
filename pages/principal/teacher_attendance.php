@@ -3,11 +3,9 @@ include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php';
 
-// Check if this is an AJAX request
-if (is_ajax_request()) {
-    // Start output buffering to capture the HTML
-    ob_start();
-}
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
 
 // Set a consistent timezone for all date operations
 date_default_timezone_set('Asia/Kolkata');
@@ -165,10 +163,10 @@ try {
     error_log("Teacher Attendance Error: " . $e->getMessage());
 }
 
-if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Update Teacher Attendance - School Management System</title>
@@ -182,11 +180,16 @@ if (!is_ajax_request()) {
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
                 <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
                 }
                 ?>
                 <div class="container-fluid">
@@ -210,7 +213,7 @@ if (!is_ajax_request()) {
                             </div>
                         </div>
                     <?php elseif (!empty($all_missing_dates)): ?>
-                         <div class="alert alert-warning">
+                        <div class="alert alert-warning">
                             <h4 class="alert-heading">Action Required</h4>
                             <p>You cannot mark attendance for <strong><?php echo htmlspecialchars($attendance_date_display); ?></strong> because teacher attendance for the following past date(s) is incomplete:</p>
                             <ul>
@@ -223,94 +226,96 @@ if (!is_ajax_request()) {
                             <a href="teacher_attendence.php?attendance_date=<?php echo htmlspecialchars($all_missing_dates[0]); ?>" class="btn btn-primary mt-3">Go to First Pending Attendance Sheet</a>
                         </div>
                     <?php else: ?>
-                    <div class="card shadow mb-4">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">
-                                Attendance for Teachers on <?php echo htmlspecialchars($attendance_date_display); ?>
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <p class="text-info">
-                                <?php echo $edit_teacher_id ? 'Editing a single teacher\'s attendance.' : 'Bulk Edit Mode: All teachers are editable.'; ?>
-                            </p>
-                            <form method="POST" action="">
-                                <div class="d-flex align-items-center justify-content-between mb-4">
-                                    <div class="form-inline">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">
+                                    Attendance for Teachers on <?php echo htmlspecialchars($attendance_date_display); ?>
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-info">
+                                    <?php echo $edit_teacher_id ? 'Editing a single teacher\'s attendance.' : 'Bulk Edit Mode: All teachers are editable.'; ?>
+                                </p>
+                                <form method="POST" action="">
+                                    <div class="d-flex align-items-center justify-content-between mb-4">
+                                        <div class="form-inline">
+                                            <div class="form-group">
+                                                <label for="attendance_date" class="mr-2">Date:</label>
+                                                <input type="date" id="attendance_date" name="attendance_date" class="form-control" value="<?php echo htmlspecialchars($attendance_date_display); ?>" min="<?php echo $earliest_joining_date_school ? $earliest_joining_date_school->format('Y-m-d') : ''; ?>" max="<?php echo $current_date; ?>">
+                                            </div>
+                                        </div>
                                         <div class="form-group">
-                                            <label for="attendance_date" class="mr-2">Date:</label>
-                                            <input type="date" id="attendance_date" name="attendance_date" class="form-control" value="<?php echo htmlspecialchars($attendance_date_display); ?>" min="<?php echo $earliest_joining_date_school ? $earliest_joining_date_school->format('Y-m-d') : ''; ?>" max="<?php echo $current_date; ?>">
+                                            <input type="text" id="customSearchBox" class="form-control" placeholder="Search teachers...">
                                         </div>
                                     </div>
-                                    <div class="form-group">
-                                        <input type="text" id="customSearchBox" class="form-control" placeholder="Search teachers...">
-                                    </div>
-                                </div>
-                                <div class="table-responsive">
-                                    <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                                        <thead>
-                                            <tr>
-                                                <th>Teacher Name</th>
-                                                <th>Batch</th>
-                                                <th>Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php foreach ($teachers_with_details as $teacher):
-                                                $is_pre_joining = $teacher['date_of_joining'] && $attendance_date_display < $teacher['date_of_joining'];
-                                                $is_disabled = ($edit_teacher_id && $teacher['id'] != $edit_teacher_id) || $is_pre_joining;
-                                            ?>
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                            <thead>
                                                 <tr>
-                                                    <td>
-                                                        <span class="<?php echo $is_disabled ? 'disabled-text' : ''; ?>"><?php echo htmlspecialchars($teacher['teacher_name']); ?></span>
-                                                    </td>
-                                                    <td>
-                                                        <span class="<?php echo $is_disabled ? 'disabled-text' : ''; ?>"><?php echo htmlspecialchars($teacher['batch']); ?></span>
-                                                    </td>
-                                                    <td>
-                                                        <?php if ($is_pre_joining): ?>
-                                                            <span class='badge badge-secondary p-2'>Joined on <?php echo date('d M, Y', strtotime($teacher['date_of_joining'])); ?></span>
-                                                            <input type="hidden" name="attendance[<?php echo $teacher['id']; ?>]" value="Not Applicable">
-                                                        <?php else:
-                                                            $current_status = $teacher['status'];
-                                                        ?>
-                                                            <div class="<?php echo $is_disabled ? 'disabled-row-content' : ''; ?>">
-                                                                <div class="form-check form-check-inline">
-                                                                    <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Present" <?php if ($current_status == 'Present') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
-                                                                    <label class="form-check-label">Present</label>
-                                                                </div>
-                                                                <div class="form-check form-check-inline">
-                                                                    <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Absent" <?php if ($current_status == 'Absent') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
-                                                                    <label class="form-check-label">Absent</label>
-                                                                </div>
-                                                                <div class="form-check form-check-inline">
-                                                                    <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Half Day" <?php if ($current_status == 'Half Day') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
-                                                                    <label class="form-check-label">Half Day</label>
-                                                                </div>
-                                                                <div class="form-check form-check-inline">
-                                                                    <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Leave" <?php if ($current_status == 'Leave') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
-                                                                    <label class="form-check-label">Leave</label>
-                                                                </div>
-                                                            </div>
-                                                        <?php endif; ?>
-                                                    </td>
+                                                    <th>Teacher Name</th>
+                                                    <th>Batch</th>
+                                                    <th>Status</th>
                                                 </tr>
-                                            <?php endforeach; ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <?php if (!empty($teachers_with_details)): ?>
-                                    <button type="submit" class="btn btn-success mt-3"><i class="fas fa-save"></i> Save Attendance</button>
-                                <?php endif; ?>
-                            </form>
+                                            </thead>
+                                            <tbody>
+                                                <?php foreach ($teachers_with_details as $teacher):
+                                                    $is_pre_joining = $teacher['date_of_joining'] && $attendance_date_display < $teacher['date_of_joining'];
+                                                    $is_disabled = ($edit_teacher_id && $teacher['id'] != $edit_teacher_id) || $is_pre_joining;
+                                                ?>
+                                                    <tr>
+                                                        <td>
+                                                            <span class="<?php echo $is_disabled ? 'disabled-text' : ''; ?>"><?php echo htmlspecialchars($teacher['teacher_name']); ?></span>
+                                                        </td>
+                                                        <td>
+                                                            <span class="<?php echo $is_disabled ? 'disabled-text' : ''; ?>"><?php echo htmlspecialchars($teacher['batch']); ?></span>
+                                                        </td>
+                                                        <td>
+                                                            <?php if ($is_pre_joining): ?>
+                                                                <span class='badge badge-secondary p-2'>Joined on <?php echo date('d M, Y', strtotime($teacher['date_of_joining'])); ?></span>
+                                                                <input type="hidden" name="attendance[<?php echo $teacher['id']; ?>]" value="Not Applicable">
+                                                            <?php else:
+                                                                $current_status = $teacher['status'];
+                                                            ?>
+                                                                <div class="<?php echo $is_disabled ? 'disabled-row-content' : ''; ?>">
+                                                                    <div class="form-check form-check-inline">
+                                                                        <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Present" <?php if ($current_status == 'Present') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
+                                                                        <label class="form-check-label">Present</label>
+                                                                    </div>
+                                                                    <div class="form-check form-check-inline">
+                                                                        <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Absent" <?php if ($current_status == 'Absent') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
+                                                                        <label class="form-check-label">Absent</label>
+                                                                    </div>
+                                                                    <div class="form-check form-check-inline">
+                                                                        <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Half Day" <?php if ($current_status == 'Half Day') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
+                                                                        <label class="form-check-label">Half Day</label>
+                                                                    </div>
+                                                                    <div class="form-check form-check-inline">
+                                                                        <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Leave" <?php if ($current_status == 'Leave') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
+                                                                        <label class="form-check-label">Leave</label>
+                                                                    </div>
+                                                                </div>
+                                                            <?php endif; ?>
+                                                        </td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <?php if (!empty($teachers_with_details)): ?>
+                                        <button type="submit" class="btn btn-success mt-3"><i class="fas fa-save"></i> Save Attendance</button>
+                                    <?php endif; ?>
+                                </form>
+                            </div>
                         </div>
-                    </div>
                     <?php endif; ?>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
+
             </div>
-            <?php include_once '../../includes/footer.php'; ?>
+            <?php
+            if (!$is_ajax_request) {
+                include '../../includes/header.php';
+            }
+            ?>
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php" ?>
@@ -318,6 +323,7 @@ if (!is_ajax_request()) {
         .disabled-text {
             color: #6c757d;
         }
+
         .disabled-row-content {
             opacity: 0.6;
             pointer-events: none;
@@ -359,7 +365,7 @@ if (!is_ajax_request()) {
 if (is_ajax_request()) {
     // Get the captured HTML
     $content = ob_get_clean();
-    
+
     // Extract just the main content area for the AJAX response
     if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
         echo '<div class="container-fluid">' . $matches[1] . '</div>';
@@ -371,7 +377,5 @@ if (is_ajax_request()) {
     exit;
 }
 ?>
+
 </html>
-<?php
-}
-?>

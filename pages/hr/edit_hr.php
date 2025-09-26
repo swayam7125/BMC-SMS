@@ -3,6 +3,10 @@ include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 include_once "../../includes/log_system.php"; // ADDED: Log system dependency
 
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
+
 // Check if user is logged in
 $role = null;
 $current_user_id = null;
@@ -62,7 +66,6 @@ try {
     while ($row = $stmt_timings_fetch->fetch(PDO::FETCH_ASSOC)) {
         $timings[$row['day_of_week']] = $row;
     }
-    
 } catch (PDOException $e) {
     die("Database error while fetching data: " . $e->getMessage());
 }
@@ -84,26 +87,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $experience = trim($_POST['experience'] ?? '');
     $batch = $_POST['batch'] ?? '';
     $posted_timings = $_POST['timings'] ?? [];
-    
+
     // NEW: Retrieve transport fields from the form
     $transport_mode = $_POST['transport_mode'] ?? 'Self Transport';
     $stop_id = ($transport_mode === 'School Transport' && !empty($_POST['stop_id'])) ? (int)$_POST['stop_id'] : null;
     $self_transport_mode = ($transport_mode === 'Self Transport' && !empty($_POST['self_transport_mode'])) ? $_POST['self_transport_mode'] : null;
     $vehicle_number = null;
     $license_number = null;
-    
+
     if ($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') {
         $vehicle_number = trim($_POST['vehicle_number'] ?? '');
         $license_number = trim($_POST['license_number'] ?? '');
     }
-    
+
     $image_path_for_db = $original_image_path;
 
     // --- Validation ---
     if (empty($hr_name)) $errors[] = "HR name is required.";
     if (empty($new_email) || !filter_var($new_email, FILTER_VALIDATE_EMAIL)) $errors[] = "A valid email is required.";
     if (empty($batch)) $errors[] = "Batch selection is required.";
-    
+
     // NEW: Validation for transport details
     if ($transport_mode === 'Self Transport' && empty($self_transport_mode)) $errors[] = "Please specify the mode of self-transport.";
     if (($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') && empty($vehicle_number)) $errors[] = "Vehicle number is required.";
@@ -196,11 +199,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $conn->commit();
-            
+
             // ⭐ LOGGING: Log the HR user profile update
             $log_message = "UPDATE: HR user profile for '{$hr_name}' (ID: {$hr_id}) was successfully updated by {$role}.";
             log_interaction($role, $current_user_id, $log_message, $acting_user_name);
-            
+
             header("Location: hr_list.php?success=HR user updated successfully");
             exit;
         } catch (PDOException $e) {
@@ -233,7 +236,6 @@ try {
     $stmt_routes = $conn->prepare('SELECT r.route_name, s.id as stop_id, s.stop_name FROM routes r JOIN stops s ON r.id = s.route_id WHERE r.school_id = ? ORDER BY r.route_name, s.stop_name');
     $stmt_routes->execute([$school_to_check]);
     $transport_stops = $stmt_routes->fetchAll(PDO::FETCH_ASSOC);
-
 } catch (PDOException $e) {
     die("Could not fetch schools list or transport stops: " . $e->getMessage());
 }
@@ -254,10 +256,18 @@ try {
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
+                <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
+                ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Edit HR User</h1>
@@ -327,7 +337,7 @@ try {
                                     <div class="col-md-6 form-group"><label for="experience">Years of Experience</label><input type="number" class="form-control" id="experience" name="experience" min="0" value="<?php echo htmlspecialchars($hr_user['experience'] ?? '0'); ?>"></div>
                                     <div class="col-md-6 form-group"><label for="salary">Salary</label><input type="number" class="form-control" id="salary" name="salary" value="<?php echo htmlspecialchars($hr_user['salary'] ?? '0.00'); ?>" step="0.01" min="0"></div>
                                 </div>
-                                
+
                                 <hr>
                                 <h6 class="font-weight-bold text-primary">Transportation Details</h6>
                                 <div class="row mt-3">
@@ -372,7 +382,7 @@ try {
                                         <input type="text" class="form-control" id="license_number" name="license_number" value="<?php echo htmlspecialchars($hr_user['license_number'] ?? ''); ?>">
                                     </div>
                                 </div>
-                                
+
                                 <hr>
                                 <h6 class="font-weight-bold text-primary mb-3">Weekly Timings</h6>
                                 <div id="timings-schedule">
@@ -420,7 +430,11 @@ try {
                     </div>
                 </div>
             </div>
-            <?php include '../../includes/footer.php'; ?>
+            <?php
+            if (!$is_ajax_request) {
+                include '../../includes/footer.php';
+            }
+            ?>
         </div>
     </div>
 
@@ -489,7 +503,7 @@ try {
                     schoolTransportDiv.style.display = 'none';
                     // Clear values when hiding
                     document.getElementById('stop_id').value = '';
-                    toggleSelfTransportFields(); 
+                    toggleSelfTransportFields();
                 } else {
                     // Default state, hide all
                     selfTransportDiv.style.display = 'none';

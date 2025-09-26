@@ -2,11 +2,9 @@
 require_once __DIR__ . "/includes/ajax_helpers.php";
 require_once __DIR__ . "/includes/connect.php";
 require_once __DIR__ . "/encryption.php";
-require_once __DIR__ . '/includes/ajax_helpers.php'; 
 
-// This is the new check to see if the page is being requested by the AJAX script
+// This check determines if the request is from your AJAX script
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
-
 // All of your original PHP logic for fetching data remains here, unchanged.
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
@@ -396,7 +394,9 @@ if ($userId && isset($conn)) {
 }
 
 ?>
-<?php if (!$is_ajax_request): // If it's a normal page load, show the full HTML shell ?>
+<?php
+// If it's a normal page load (NOT AJAX), then we render the entire HTML shell.
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -435,14 +435,20 @@ if ($userId && isset($conn)) {
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include './includes/sidebar.php'; ?>
+        <?php
+        if (!$is_ajax_request) {
+            include './includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include './includes/header.php'; ?>
+                <?php
+                if (!$is_ajax_request) {
+                    include './includes/header.php';
+                }
+                ?>
                 <div id="main-content">
                     <div class="container-fluid">
-<?php endif; ?>
-
                         <div class="d-sm-flex align-items-center justify-content-between mb-4">
                             <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
                         </div>
@@ -852,62 +858,67 @@ if ($userId && isset($conn)) {
                                 </div>
                             </div>
                         </div>
-                        <?php if (!$is_ajax_request): // If it's a normal page load, close the HTML shell ?>
                     </div>
+
+                    <?php
+                    // If it's a normal page load (NOT AJAX), then we close all the layout tags and include scripts.
+                    if (!$is_ajax_request):
+                        include './includes/footer.php';
+                    ?>
                 </div>
-                <?php include './includes/footer.php'; ?>
             </div>
         </div>
-        <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
-        <?php include_once "./includes/logout_modal.php" ?>
-        <script src="/BMC-SMS/assets/vendor/jquery/jquery.min.js"></script>
-        <script src="/BMC-SMS/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-        <script src="/BMC-SMS/assets/vendor/jquery-easing/jquery.easing.min.js"></script>
-        <script src="/BMC-SMS/assets/js/sb-admin-2.min.js"></script>
-        <script src="/BMC-SMS/assets/vendor/chart.js/Chart.min.js"></script>
-        <script src="/BMC-SMS/assets/js/dynamic_chart.js"></script>
-        <script src="/BMC-SMS/assets/js/notification.js"></script>
-        <script src="/BMC-SMS/assets/js/sidebar.js"></script>
+    </div> <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
+    <?php include_once "./includes/logout_modal.php" ?>
+    <script src="/BMC-SMS/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/BMC-SMS/assets/vendor/jquery-easing/jquery.easing.min.js"></script>
+    <script src="/BMC-SMS/assets/js/sb-admin-2.min.js"></script>
+    <script src="/BMC-SMS/assets/vendor/chart.js/Chart.min.js"></script>
+    <script src="/BMC-SMS/assets/js/dynamic_chart.js"></script>
+    <script src="/BMC-SMS/assets/js/notification.js"></script>
+    <script src="/BMC-SMS/assets/js/sidebar.js"></script>
+    <script src="/BMC-SMS/assets/vendor/jquery/jquery.min.js"></script>
 
-        <script>
-            // New script block to handle notification clicks on the dashboard
-            document.addEventListener('DOMContentLoaded', function() {
-                const base_path = '/BMC-SMS/';
-                const notification_api_endpoint = base_path + 'includes/header.php'; // The API is now inside header.php
+    <script>
+        // New script block to handle notification clicks on the dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            const base_path = '/BMC-SMS/';
+            const notification_api_endpoint = base_path + 'includes/header.php'; // The API is now inside header.php
 
-                // Use event delegation to handle clicks on links that are dynamically added
-                document.getElementById('dashboard-notifications-list').addEventListener('click', function(event) {
-                    // Find the clicked link
-                    const link = event.target.closest('a.list-group-item');
-                    if (!link) {
-                        return; // Click was not on a notification link
-                    }
+            // Use event delegation to handle clicks on links that are dynamically added
+            document.getElementById('dashboard-notifications-list').addEventListener('click', function(event) {
+                // Find the clicked link
+                const link = event.target.closest('a.list-group-item');
+                if (!link) {
+                    return; // Click was not on a notification link
+                }
 
-                    const isUnread = link.classList.contains('unread');
-                    const notifId = link.getAttribute('data-notif-id');
+                const isUnread = link.classList.contains('unread');
+                const notifId = link.getAttribute('data-notif-id');
 
-                    if (isUnread && notifId) {
-                        event.preventDefault(); // Stop the default navigation
-                        const targetUrl = link.getAttribute('href');
+                if (isUnread && notifId) {
+                    event.preventDefault(); // Stop the default navigation
+                    const targetUrl = link.getAttribute('href');
 
-                        let formData = new FormData();
-                        formData.append('action', 'mark_single_read');
-                        formData.append('notif_id', notifId);
+                    let formData = new FormData();
+                    formData.append('action', 'mark_single_read');
+                    formData.append('notif_id', notifId);
 
-                        fetch(notification_api_endpoint, {
-                                method: 'POST',
-                                body: formData
-                            })
-                            .catch(error => console.error('Error marking dashboard notification as read:', error))
-                            .finally(() => {
-                                // Navigate after the API call is complete to ensure the state is updated
-                                window.location.href = targetUrl;
-                            });
-                    }
-                });
+                    fetch(notification_api_endpoint, {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .catch(error => console.error('Error marking dashboard notification as read:', error))
+                        .finally(() => {
+                            // Navigate after the API call is complete to ensure the state is updated
+                            window.location.href = targetUrl;
+                        });
+                }
             });
-        </script>
+        });
+    </script>
+</body>
 
-    </div> </body>
 </html>
-<?php endif; // End the check for normal page load ?>
+<?php endif; // End the check for the non-AJAX footer 
+?>

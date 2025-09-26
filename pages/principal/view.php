@@ -3,13 +3,11 @@ include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
 // Add this line at the very beginning
-require_once __DIR__ . '/../../includes/ajax_helpers.php'; 
+require_once __DIR__ . '/../../includes/ajax_helpers.php';
 
-// Check if this is an AJAX request
-if (is_ajax_request()) {
-    // Start output buffering to capture the HTML
-    ob_start();
-}
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
 
 if (!defined('BASE_URL')) {
     define('BASE_URL', '/BMC-SMS/');
@@ -120,10 +118,18 @@ $edit_url = 'edit.php?id=' . $principal['id'];
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
+                <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
+                ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Principal Details</h1>
@@ -209,12 +215,12 @@ $edit_url = 'edit.php?id=' . $principal['id'];
                                     <div class="row">
                                         <div class="col-sm-4 info-label">Date of Joining:</div>
                                         <div class="col-sm-8 info-value">
-                                            <?php 
-                                                if (!empty($principal['date_of_joining'])) {
-                                                    echo htmlspecialchars(date("d M Y", strtotime($principal['date_of_joining'])));
-                                                } else {
-                                                    echo 'N/A';
-                                                }
+                                            <?php
+                                            if (!empty($principal['date_of_joining'])) {
+                                                echo htmlspecialchars(date("d M Y", strtotime($principal['date_of_joining'])));
+                                            } else {
+                                                echo 'N/A';
+                                            }
                                             ?>
                                         </div>
                                     </div>
@@ -342,7 +348,11 @@ $edit_url = 'edit.php?id=' . $principal['id'];
                     </div>
                 </div>
             </div>
-            <?php include '../../includes/footer.php'; ?>
+            <?php
+            if (!$is_ajax_request) {
+                include '../../includes/footer.php';
+            }
+            ?>
         </div>
     </div>
     <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
@@ -357,7 +367,7 @@ $edit_url = 'edit.php?id=' . $principal['id'];
 if (is_ajax_request()) {
     // Get the captured HTML
     $content = ob_get_clean();
-    
+
     // Extract just the main content area for the AJAX response
     if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
         echo '<div class="container-fluid">' . $matches[1] . '</div>';
@@ -369,4 +379,5 @@ if (is_ajax_request()) {
     exit;
 }
 ?>
+
 </html>

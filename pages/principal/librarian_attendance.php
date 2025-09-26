@@ -3,11 +3,9 @@ include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php';
 
-// Check if this is an AJAX request
-if (is_ajax_request()) {
-    // Start output buffering to capture the HTML
-    ob_start();
-}
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
 
 date_default_timezone_set('Asia/Kolkata');
 
@@ -51,7 +49,7 @@ try {
         $errorMessage = "You cannot mark attendance for a future date. The date has been reset to today.";
     }
 
-    if(empty($errorMessage)){
+    if (empty($errorMessage)) {
         $holiday_stmt = $conn->prepare("SELECT description FROM holidays WHERE holiday_date = ? AND school_id = ?");
         $holiday_stmt->execute([$attendance_date_display, $school_id]);
         $holiday = $holiday_stmt->fetch(PDO::FETCH_ASSOC);
@@ -64,7 +62,7 @@ try {
     // --- Mandatory Past Attendance Check ---
     if (empty($errorMessage) && !$is_holiday) {
         $target_date = new DateTime($attendance_date_display);
-        
+
         $first_joining_stmt = $conn->prepare("SELECT MIN(date_of_joining) FROM librarian WHERE school_id = ? AND date_of_joining IS NOT NULL");
         $first_joining_stmt->execute([$school_id]);
         $first_joining_date = $first_joining_stmt->fetchColumn();
@@ -75,7 +73,7 @@ try {
         if ($start_date < $target_date) {
             $interval = new DateInterval('P1D');
             $period = new DatePeriod($start_date, $interval, $target_date);
-            
+
             $att_count_stmt = $conn->prepare("SELECT COUNT(librarian_id) FROM librarian_attendance WHERE school_id = ? AND attendance_date = ?");
             $holiday_check_stmt = $conn->prepare("SELECT COUNT(*) FROM holidays WHERE school_id = ? AND holiday_date = ?");
             $lib_expected_stmt = $conn->prepare("SELECT COUNT(id) FROM librarian WHERE school_id = ? AND (date_of_joining IS NULL OR date_of_joining <= ?)");
@@ -83,12 +81,12 @@ try {
             foreach ($period as $date) {
                 if (date('N', $date->getTimestamp()) < 7) {
                     $date_to_check = $date->format('Y-m-d');
-                    
+
                     $holiday_check_stmt->execute([$school_id, $date_to_check]);
                     if ($holiday_check_stmt->fetchColumn() > 0) {
-                        continue; 
+                        continue;
                     }
-                    
+
                     $lib_expected_stmt->execute([$school_id, $date_to_check]);
                     $expected_librarians = $lib_expected_stmt->fetchColumn();
 
@@ -98,7 +96,7 @@ try {
 
                     $att_count_stmt->execute([$school_id, $date_to_check]);
                     $recorded_librarians = $att_count_stmt->fetchColumn();
-                    
+
                     if ($recorded_librarians < $expected_librarians) {
                         $all_missing_dates[] = $date_to_check;
                     }
@@ -106,7 +104,7 @@ try {
             }
         }
     }
-    
+
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($all_missing_dates) && $school_id && !$is_holiday) {
         $attendance_date = $_POST['attendance_date'];
         if ($attendance_date > $current_date) $attendance_date = $current_date;
@@ -126,7 +124,7 @@ try {
                 }
                 $success_message = "Bulk attendance for " . htmlspecialchars($attendance_date) . " saved!";
             }
-            
+
             $conn->commit();
             header("Location: view_librarian_attendance.php?date=" . urlencode($attendance_date) . "&success=" . urlencode($success_message));
             exit();
@@ -135,7 +133,7 @@ try {
             $errorMessage = "Failed to update attendance: " . $e->getMessage();
         }
     }
-    
+
     $librarians_with_details = [];
     $earliest_joining_date_school = null;
 
@@ -160,20 +158,18 @@ try {
                 $librarian['status'] = $attendance_records_raw[$librarian['id']] ?? 'Present';
                 $librarians_with_details[] = $librarian;
             }
-
         } catch (PDOException $e) {
             $errorMessage = "Failed to load attendance data: " . $e->getMessage();
         }
     }
-
 } catch (Exception $e) {
     $errorMessage = "An error occurred: " . $e->getMessage();
 }
 
-if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Update Librarian Attendance - School Management System</title>
@@ -184,13 +180,19 @@ if (!is_ajax_request()) {
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
                 <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
                 }
                 ?>
                 <div class="container-fluid">
@@ -203,7 +205,7 @@ if (!is_ajax_request()) {
                         <div class="alert alert-danger"><?php echo htmlspecialchars($errorMessage); ?></div>
                     <?php elseif ($is_holiday): ?>
                         <div class="card shadow mb-4">
-                             <div class="card-header py-3">
+                            <div class="card-header py-3">
                                 <h6 class="m-0 font-weight-bold text-primary">Attendance for <?php echo htmlspecialchars($attendance_date_display); ?></h6>
                             </div>
                             <div class="card-body">
@@ -249,10 +251,15 @@ if (!is_ajax_request()) {
                                             <input type="text" id="customSearchBox" class="form-control" placeholder="Search librarians...">
                                         </div>
                                     </div>
-                                    
+
                                     <div class="table-responsive">
                                         <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                                            <thead><tr><th>Librarian Name</th><th>Status</th></tr></thead>
+                                            <thead>
+                                                <tr>
+                                                    <th>Librarian Name</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
                                             <tbody>
                                                 <?php foreach ($librarians_with_details as $librarian):
                                                     $is_pre_joining = $librarian['date_of_joining'] && $attendance_date_display < $librarian['date_of_joining'];
@@ -296,14 +303,15 @@ if (!is_ajax_request()) {
                         </div>
                     <?php endif; ?>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
             </div>
-            <?php include_once '../../includes/footer.php'; ?>
+            <?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?> 
         </div>
     </div>
-    <?php include_once "../../includes/logout_modal.php"?>
+    <?php include_once "../../includes/logout_modal.php" ?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
@@ -317,7 +325,7 @@ if (!is_ajax_request()) {
                 "info": false,
                 "dom": '<"table-responsive"t>'
             });
-            $('#customSearchBox').on('keyup', function(){
+            $('#customSearchBox').on('keyup', function() {
                 table.search(this.value).draw();
             });
 
@@ -334,23 +342,21 @@ if (!is_ajax_request()) {
     </script>
 </body>
 <?php
-// Add this block at the very end of the file
-if (is_ajax_request()) {
-    // Get the captured HTML
-    $content = ob_get_clean();
-    
-    // Extract just the main content area for the AJAX response
-    if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
-        echo '<div class="container-fluid">' . $matches[1] . '</div>';
-    } else {
-        // Fallback if the main container isn't found
-        echo $content;
-    }
-    // Stop the script for AJAX requests
-    exit;
-}
+                    // Add this block at the very end of the file
+                    if (is_ajax_request()) {
+                        // Get the captured HTML
+                        $content = ob_get_clean();
+
+                        // Extract just the main content area for the AJAX response
+                        if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
+                            echo '<div class="container-fluid">' . $matches[1] . '</div>';
+                        } else {
+                            // Fallback if the main container isn't found
+                            echo $content;
+                        }
+                        // Stop the script for AJAX requests
+                        exit;
+                    }
 ?>
+
 </html>
-<?php
-}
-?>
