@@ -1,4 +1,10 @@
 <?php
+// Add debugging for development
+if (isset($_GET['debug']) && $_GET['debug'] == '1') {
+    error_reporting(E_ALL);
+    ini_set('display_errors', 1);
+}
+
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php';
@@ -22,6 +28,7 @@ $is_holiday = false;
 $holiday_description = '';
 $edit_teacher_id = isset($_GET['edit_teacher_id']) ? $_GET['edit_teacher_id'] : null;
 $earliest_joining_date_school = null;
+$allow_past_attendance = true; // Flag to allow filling past attendance
 
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
@@ -51,6 +58,9 @@ try {
         $errorMessage = "You cannot mark attendance for a future date. The date has been reset to today.";
     }
 
+    // Check if we're trying to fill a past date (not today)
+    $is_past_date = $attendance_date_display < $current_date;
+    
     if (empty($errorMessage)) {
         $holiday_stmt = $conn->prepare("SELECT description FROM holidays WHERE holiday_date = ? AND school_id = ?");
         $holiday_stmt->execute([$attendance_date_display, $principalDetails['school_id']]);
@@ -61,54 +71,74 @@ try {
         }
     }
 
-    // --- Mandatory Past Attendance Check ---
+    // --- Enhanced Past Attendance Check Logic ---
     if (empty($errorMessage) && !$is_holiday) {
         $target_date = new DateTime($attendance_date_display);
+        $current_datetime = new DateTime($current_date);
 
-        // Corrected query to prevent future dates from breaking the min attribute
+        // Get the earliest joining date
         $first_joining_stmt = $conn->prepare("SELECT MIN(date_of_joining) FROM teacher WHERE school_id = ? AND date_of_joining IS NOT NULL AND date_of_joining <= ?");
         $first_joining_stmt->execute([$principalDetails['school_id'], $current_date]);
         $first_joining_date = $first_joining_stmt->fetchColumn();
 
+        // Start checking from the beginning of the current month OR the earliest joining date, whichever is later
         $start_of_month = new DateTime($target_date->format('Y-m-01'));
-        $start_date = ($first_joining_date && new DateTime($first_joining_date) > $start_of_month) ? new DateTime($first_joining_date) : $start_of_month;
+        
+        if ($first_joining_date) {
+            $first_joining_datetime = new DateTime($first_joining_date);
+            $start_date = ($first_joining_datetime > $start_of_month) ? $first_joining_datetime : $start_of_month;
+        } else {
+            $start_date = $start_of_month;
+        }
 
-        if ($start_date < $target_date) {
-            $interval = new DateInterval('P1D');
-            $period = new DatePeriod($start_date, $interval, $target_date);
+        // If filling today's attendance, check for ALL missing past dates
+if (!$is_past_date) {
+    // Check for missing dates from start_date to yesterday
+    $yesterday = new DateTime($current_date);
+    $yesterday->sub(new DateInterval('P1D'));
 
-            $att_count_stmt = $conn->prepare("SELECT COUNT(teacher_id) FROM teacher_attendance WHERE school_id = ? AND attendance_date = ?");
-            $holiday_check_stmt = $conn->prepare("SELECT COUNT(*) FROM holidays WHERE school_id = ? AND holiday_date = ?");
-            $teacher_expected_stmt = $conn->prepare("SELECT COUNT(id) FROM teacher WHERE school_id = ? AND (date_of_joining IS NULL OR date_of_joining <= ?)");
+    if ($start_date <= $yesterday) {
+        $interval = new DateInterval('P1D');
+        $period = new DatePeriod($start_date, $interval, $current_datetime);
 
-            foreach ($period as $date) {
-                if (date('N', $date->getTimestamp()) < 7) {
-                    $date_to_check = $date->format('Y-m-d');
+        $att_count_stmt = $conn->prepare("SELECT COUNT(teacher_id) FROM teacher_attendance WHERE school_id = ? AND attendance_date = ?");
+        $holiday_check_stmt = $conn->prepare("SELECT COUNT(*) FROM holidays WHERE school_id = ? AND holiday_date = ?");
+        $teacher_expected_stmt = $conn->prepare("SELECT COUNT(id) FROM teacher WHERE school_id = ? AND (date_of_joining IS NULL OR date_of_joining <= ?)");
 
-                    $holiday_check_stmt->execute([$principalDetails['school_id'], $date_to_check]);
-                    if ($holiday_check_stmt->fetchColumn() > 0) {
-                        continue;
-                    }
+        foreach ($period as $date) {
+            // Skip Sundays (day 7)
+            if (date('N', $date->getTimestamp()) < 7) {
+                $date_to_check = $date->format('Y-m-d');
 
-                    $teacher_expected_stmt->execute([$principalDetails['school_id'], $date_to_check]);
-                    $expected_teachers = $teacher_expected_stmt->fetchColumn();
+                $holiday_check_stmt->execute([$principalDetails['school_id'], $date_to_check]);
+                if ($holiday_check_stmt->fetchColumn() > 0) {
+                    continue;
+                }
 
-                    if ($expected_teachers == 0) {
-                        continue;
-                    }
+                $teacher_expected_stmt->execute([$principalDetails['school_id'], $date_to_check]);
+                $expected_teachers = $teacher_expected_stmt->fetchColumn();
 
-                    $att_count_stmt->execute([$principalDetails['school_id'], $date_to_check]);
-                    $recorded_teachers = $att_count_stmt->fetchColumn();
+                if ($expected_teachers == 0) {
+                    continue;
+                }
 
-                    if ($recorded_teachers < $expected_teachers) {
-                        $all_missing_dates[] = $date_to_check;
-                    }
+                $att_count_stmt->execute([$principalDetails['school_id'], $date_to_check]);
+                $recorded_teachers = $att_count_stmt->fetchColumn();
+
+                if ($recorded_teachers < $expected_teachers) {
+                    $all_missing_dates[] = $date_to_check;
                 }
             }
         }
     }
+}  else {
+            // If filling a past date, allow it (this enables filling missing attendance)
+            $allow_past_attendance = true;
+        }
+    }
 
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($all_missing_dates) && !$is_holiday) {
+    // POST processing - allow if no missing dates OR if filling past attendance
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$is_holiday && (empty($all_missing_dates) || $allow_past_attendance)) {
         $conn->beginTransaction();
 
         $upsert_sql = "INSERT INTO teacher_attendance (teacher_id, school_id, attendance_date, status, marked_by_user_id)
@@ -129,11 +159,49 @@ try {
         }
 
         $conn->commit();
-        header("Location: view_teacher_attendence.php?date=" . urlencode($attendance_date_display) . "&success=" . urlencode($success_message));
-        exit();
+        
+        // Check if it's an AJAX request
+        if (is_ajax_request()) {
+            echo json_encode(['success' => true, 'message' => $success_message]);
+            exit();
+        } else {
+            // After saving past attendance, redirect back to today if there are no more missing dates
+            if ($is_past_date) {
+                // Check if there are still missing dates after this save
+                $recheck_stmt = $conn->prepare("SELECT COUNT(teacher_id) FROM teacher_attendance WHERE school_id = ? AND attendance_date = ?");
+                $recheck_stmt->execute([$principalDetails['school_id'], $attendance_date]);
+                $saved_count = $recheck_stmt->fetchColumn();
+                
+                $teacher_count_stmt = $conn->prepare("SELECT COUNT(id) FROM teacher WHERE school_id = ? AND (date_of_joining IS NULL OR date_of_joining <= ?)");
+                $teacher_count_stmt->execute([$principalDetails['school_id'], $attendance_date]);
+                $expected_count = $teacher_count_stmt->fetchColumn();
+                
+                if ($saved_count >= $expected_count) {
+                    // This date is now complete, check if we should redirect to next missing date or today
+                    $next_missing_date = null;
+                    foreach ($all_missing_dates as $missing_date) {
+                        if ($missing_date > $attendance_date) {
+                            $next_missing_date = $missing_date;
+                            break;
+                        }
+                    }
+                    
+                    if ($next_missing_date) {
+                        header("Location: teacher_attendance.php?attendance_date=" . urlencode($next_missing_date) . "&success=" . urlencode($success_message));
+                    } else {
+                        header("Location: teacher_attendance.php?success=" . urlencode($success_message . " You can now fill today's attendance."));
+                    }
+                    exit();
+                }
+            }
+            
+            header("Location: view_teacher_attendence.php?date=" . urlencode($attendance_date_display) . "&success=" . urlencode($success_message));
+            exit();
+        }
     }
 
-    if (empty($errorMessage) && empty($all_missing_dates) && !$is_holiday) {
+    // Load teachers data if no errors and (no missing dates OR filling past attendance)
+    if (empty($errorMessage) && !$is_holiday && (empty($all_missing_dates) || $allow_past_attendance)) {
         $school_id_param = $principalDetails['school_id'];
         $attendance_date_param = $attendance_date_display;
 
@@ -162,7 +230,18 @@ try {
 } catch (Exception $e) {
     if (isset($conn) && $conn->inTransaction()) $conn->rollBack();
     $errorMessage = "Failed to update attendance: " . $e->getMessage();
-    error_log("Teacher Attendance Error: " . $e->getMessage());
+    error_log("Teacher Attendance Error: " . $e->getMessage() . " on line " . $e->getLine() . " in file " . $e->getFile());
+    
+    // If debug mode is on, show detailed error
+    if (isset($_GET['debug']) && $_GET['debug'] == '1') {
+        echo "<pre>Error Details:\n";
+        echo "Message: " . $e->getMessage() . "\n";
+        echo "File: " . $e->getFile() . "\n";
+        echo "Line: " . $e->getLine() . "\n";
+        echo "Trace:\n" . $e->getTraceAsString();
+        echo "</pre>";
+        exit();
+    }
 }
 
 if (!is_ajax_request()) {
@@ -186,9 +265,7 @@ if (!is_ajax_request()) {
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php include_once '../../includes/header.php'; ?>
-                <?php
-                }
-                ?>
+                
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Update Teacher Attendance</h1>
@@ -197,7 +274,30 @@ if (!is_ajax_request()) {
 
                     <?php if (!empty($errorMessage)): ?>
                         <div class="alert alert-danger"><?php echo htmlspecialchars($errorMessage); ?></div>
-                    <?php elseif ($is_holiday): ?>
+                    <?php endif; ?>
+                    
+                    <?php if (isset($_GET['success'])): ?>
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($_GET['success']); ?>
+                        </div>
+                    <?php endif; ?>
+                    
+                    <?php if (isset($_GET['debug']) && $_GET['debug'] == '1'): ?>
+                        <div class="alert alert-info">
+                            <h5>Debug Information:</h5>
+                            <p><strong>Current Date:</strong> <?php echo $current_date; ?></p>
+                            <p><strong>Attendance Date:</strong> <?php echo $attendance_date_display; ?></p>
+                            <p><strong>Is Past Date:</strong> <?php echo $is_past_date ? 'Yes' : 'No'; ?></p>
+                            <p><strong>Is Holiday:</strong> <?php echo $is_holiday ? 'Yes' : 'No'; ?></p>
+                            <p><strong>Allow Past Attendance:</strong> <?php echo $allow_past_attendance ? 'Yes' : 'No'; ?></p>
+                            <p><strong>Missing Dates Count:</strong> <?php echo count($all_missing_dates); ?></p>
+                            <?php if (!empty($all_missing_dates)): ?>
+                                <p><strong>Missing Dates:</strong> <?php echo implode(', ', $all_missing_dates); ?></p>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if ($is_holiday): ?>
                         <div class="card shadow mb-4">
                             <div class="card-header py-3">
                                 <h6 class="m-0 font-weight-bold text-primary">Attendance for <?php echo htmlspecialchars($attendance_date_display); ?></h6>
@@ -207,51 +307,143 @@ if (!is_ajax_request()) {
                                     <h4 class="alert-heading"><i class="fas fa-calendar-check"></i> Public Holiday</h4>
                                     <p>You cannot mark attendance for this day because it is a public holiday: <strong><?php echo htmlspecialchars($holiday_description); ?></strong>.</p>
                                 </div>
+                                <div class="mt-3">
+                                    <a href="teacher_attendance.php" class="btn btn-primary">
+                                        <i class="fas fa-arrow-left"></i> Go to Today's Attendance
+                                    </a>
+                                </div>
                             </div>
                         </div>
-                    <?php elseif (!empty($all_missing_dates)): ?>
-                         <div class="alert alert-warning">
-                            <h4 class="alert-heading">Action Required</h4>
-                            <p>You cannot mark attendance for <strong><?php echo htmlspecialchars($attendance_date_display); ?></strong> because teacher attendance for the following past date(s) is incomplete:</p>
-                            <ul>
-                                <?php foreach ($all_missing_dates as $missing_date): ?>
-                                    <li><strong><?php echo htmlspecialchars($missing_date); ?></strong></li>
-                                <?php endforeach; ?>
-                            </ul>
-                            <hr>
-                            <p class="mb-0">Please start by filling the attendance for <strong><?php echo htmlspecialchars($all_missing_dates[0]); ?></strong>.</p>
-                            <a href="teacher_attendence.php?attendance_date=<?php echo htmlspecialchars($all_missing_dates[0]); ?>" class="btn btn-primary mt-3">Go to First Pending Attendance Sheet</a>
+                        <?php elseif (!empty($all_missing_dates) && !$is_past_date): ?>                         <div class="card shadow mb-4">
+                            <div class="card-header py-3 bg-warning">
+                                <h6 class="m-0 font-weight-bold text-white">
+                                    <i class="fas fa-exclamation-triangle"></i> Action Required - Missing Past Attendance
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-warning mb-4">
+                                    <h4 class="alert-heading"><i class="fas fa-calendar-times"></i> Complete Past Attendance First</h4>
+                                    <p class="mb-3">You cannot mark attendance for <strong><?php echo htmlspecialchars($attendance_date_display); ?></strong> because teacher attendance for the following past date(s) is incomplete:</p>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <ul class="list-unstyled">
+                                                <?php 
+                                                $half = ceil(count($all_missing_dates) / 2);
+                                                for ($i = 0; $i < $half; $i++): 
+                                                ?>
+                                                    <li class="mb-2">
+                                                        <span class="badge badge-danger mr-2"><?php echo ($i + 1); ?></span>
+                                                        <strong><?php echo date('d M Y (D)', strtotime($all_missing_dates[$i])); ?></strong>
+                                                    </li>
+                                                <?php endfor; ?>
+                                            </ul>
+                                        </div>
+                                        <?php if (count($all_missing_dates) > 1): ?>
+                                        <div class="col-md-6">
+                                            <ul class="list-unstyled">
+                                                <?php for ($i = $half; $i < count($all_missing_dates); $i++): ?>
+                                                    <li class="mb-2">
+                                                        <span class="badge badge-danger mr-2"><?php echo ($i + 1); ?></span>
+                                                        <strong><?php echo date('d M Y (D)', strtotime($all_missing_dates[$i])); ?></strong>
+                                                    </li>
+                                                <?php endfor; ?>
+                                            </ul>
+                                        </div>
+                                        <?php endif; ?>
+                                    </div>
+                                    <hr>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <p class="mb-0">
+                                            <i class="fas fa-info-circle text-info"></i> 
+                                            <strong>Next Step:</strong> Please start by filling attendance for <strong><?php echo date('d M Y', strtotime($all_missing_dates[0])); ?></strong>
+                                        </p>
+                                        <div>
+                                            <span class="badge badge-secondary">
+                                                <?php echo count($all_missing_dates); ?> date(s) pending
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="d-flex justify-content-between">
+                                    <a href="teacher_attendance.php?attendance_date=<?php echo htmlspecialchars($all_missing_dates[0]); ?>" 
+                                       class="btn btn-danger btn-lg">
+                                        <i class="fas fa-calendar-plus"></i> Fill Attendance for <?php echo date('d M Y', strtotime($all_missing_dates[0])); ?>
+                                    </a>
+                                    
+                                    <?php if (count($all_missing_dates) > 1): ?>
+                                    <div class="dropdown">
+                                        <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-toggle="dropdown">
+                                            <i class="fas fa-list"></i> Or Choose Another Date
+                                        </button>
+                                        <div class="dropdown-menu">
+                                            <?php foreach ($all_missing_dates as $missing_date): ?>
+                                                <a class="dropdown-item" href="teacher_attendance.php?attendance_date=<?php echo htmlspecialchars($missing_date); ?>">
+                                                    <?php echo date('d M Y (D)', strtotime($missing_date)); ?>
+                                                </a>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
                         </div>
                     <?php else: ?>
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
                             <h6 class="m-0 font-weight-bold text-primary">
-                                Attendance for Teachers on <?php echo htmlspecialchars($attendance_date_display); ?>
+                                <i class="fas fa-calendar-check"></i> Attendance for Teachers on <?php echo htmlspecialchars($attendance_date_display); ?>
+                                <?php if ($is_past_date): ?>
+                                    <span class="badge badge-warning ml-2">Past Date</span>
+                                <?php endif; ?>
                             </h6>
                         </div>
                         <div class="card-body">
-                            <p class="text-info">
+                            <?php if ($is_past_date): ?>
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle"></i> 
+                                    You are filling attendance for a past date: <strong><?php echo date('d M Y (D)', strtotime($attendance_date_display)); ?></strong>
+                                </div>
+                            <?php endif; ?>
+                            
+                            <p class="text-info mb-3">
                                 <?php echo $edit_teacher_id ? 'Editing a single teacher\'s attendance.' : 'Bulk Edit Mode: All teachers are editable.'; ?>
                             </p>
+                            
                             <form method="POST" action="">
                                 <div class="d-flex align-items-center justify-content-between mb-4">
                                     <div class="form-inline">
                                         <div class="form-group">
-                                            <label for="attendance_date" class="mr-2">Date:</label>
-                                            <input type="date" id="attendance_date" name="attendance_date" class="form-control" value="<?php echo htmlspecialchars($attendance_date_display); ?>" min="<?php echo $earliest_joining_date_school ? $earliest_joining_date_school->format('Y-m-d') : ''; ?>" max="<?php echo $current_date; ?>">
+                                            <label for="attendance_date" class="mr-2"><i class="fas fa-calendar"></i> Date:</label>
+                                            <input type="date" id="attendance_date" name="attendance_date" class="form-control" value="<?php echo htmlspecialchars($attendance_date_display); ?>">
+                                            <?php 
+                                            // Set minimum date as the earliest joining date or beginning of current month, whichever is later
+                                            $min_date = '';
+                                            if ($earliest_joining_date_school) {
+                                                $current_month_start = new DateTime(date('Y-m-01'));
+                                                $min_date = ($earliest_joining_date_school > $current_month_start) ? 
+                                                           $earliest_joining_date_school->format('Y-m-d') : 
+                                                           $current_month_start->format('Y-m-d');
+                                            } else {
+                                                $min_date = date('Y-m-01'); // Start of current month if no teachers found
+                                            }
+                                            echo 'min="' . $min_date . '"';
+                                            ?> 
+                                            max="<?php echo $current_date; ?>">
                                         </div>
                                     </div>
                                     <div class="form-group">
                                         <input type="text" id="customSearchBox" class="form-control" placeholder="Search teachers...">
                                     </div>
                                 </div>
+                                
                                 <div class="table-responsive">
                                     <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                                        <thead>
+                                        <thead class="thead-light">
                                             <tr>
-                                                <th>Teacher Name</th>
-                                                <th>Batch</th>
-                                                <th>Status</th>
+                                                <th><i class="fas fa-user"></i> Teacher Name</th>
+                                                <th><i class="fas fa-clock"></i> Batch</th>
+                                                <th><i class="fas fa-check-square"></i> Status</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -268,7 +460,9 @@ if (!is_ajax_request()) {
                                                     </td>
                                                     <td>
                                                         <?php if ($is_pre_joining): ?>
-                                                            <span class='badge badge-secondary p-2'>Joined on <?php echo date('d M, Y', strtotime($teacher['date_of_joining'])); ?></span>
+                                                            <span class='badge badge-secondary p-2'>
+                                                                <i class="fas fa-user-plus"></i> Joined on <?php echo date('d M, Y', strtotime($teacher['date_of_joining'])); ?>
+                                                            </span>
                                                             <input type="hidden" name="attendance[<?php echo $teacher['id']; ?>]" value="Not Applicable">
                                                         <?php else:
                                                             $current_status = $teacher['status'];
@@ -276,19 +470,27 @@ if (!is_ajax_request()) {
                                                             <div class="<?php echo $is_disabled ? 'disabled-row-content' : ''; ?>">
                                                                 <div class="form-check form-check-inline">
                                                                     <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Present" <?php if ($current_status == 'Present') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
-                                                                    <label class="form-check-label">Present</label>
+                                                                    <label class="form-check-label text-success">
+                                                                        <i class="fas fa-check-circle"></i> Present
+                                                                    </label>
                                                                 </div>
                                                                 <div class="form-check form-check-inline">
                                                                     <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Absent" <?php if ($current_status == 'Absent') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
-                                                                    <label class="form-check-label">Absent</label>
+                                                                    <label class="form-check-label text-danger">
+                                                                        <i class="fas fa-times-circle"></i> Absent
+                                                                    </label>
                                                                 </div>
                                                                 <div class="form-check form-check-inline">
                                                                     <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Half Day" <?php if ($current_status == 'Half Day') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
-                                                                    <label class="form-check-label">Half Day</label>
+                                                                    <label class="form-check-label text-warning">
+                                                                        <i class="fas fa-clock"></i> Half Day
+                                                                    </label>
                                                                 </div>
                                                                 <div class="form-check form-check-inline">
                                                                     <input class="form-check-input" type="radio" name="attendance[<?php echo $teacher['id']; ?>]" value="Leave" <?php if ($current_status == 'Leave') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
-                                                                    <label class="form-check-label">Leave</label>
+                                                                    <label class="form-check-label text-info">
+                                                                        <i class="fas fa-calendar-alt"></i> Leave
+                                                                    </label>
                                                                 </div>
                                                             </div>
                                                         <?php endif; ?>
@@ -298,17 +500,25 @@ if (!is_ajax_request()) {
                                         </tbody>
                                     </table>
                                 </div>
+                                
                                 <?php if (!empty($teachers_with_details)): ?>
-                                    <button type="submit" class="btn btn-success mt-3"><i class="fas fa-save"></i> Save Attendance</button>
+                                    <div class="d-flex justify-content-between align-items-center mt-4">
+                                        <button type="submit" class="btn btn-success btn-lg">
+                                            <i class="fas fa-save"></i> Save Attendance for <?php echo date('d M Y', strtotime($attendance_date_display)); ?>
+                                        </button>
+                                        
+                                        <?php if ($is_past_date): ?>
+                                            <a href="teacher_attendance.php" class="btn btn-outline-primary">
+                                                <i class="fas fa-arrow-right"></i> Go to Today's Attendance
+                                            </a>
+                                        <?php endif; ?>
+                                    </div>
                                 <?php endif; ?>
                             </form>
                         </div>
                     </div>
                     <?php endif; ?>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
             </div>
             <?php include_once '../../includes/footer.php'; ?>
         </div>
@@ -323,12 +533,18 @@ if (!is_ajax_request()) {
             pointer-events: none;
             user-select: none;
         }
+        .thead-light th {
+            background-color: #f8f9fc;
+            border-color: #e3e6f0;
+        }
+        .badge {
+            font-size: 0.875rem;
+        }
     </style>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
-    <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
     <script>
         $(document).ready(function() {
@@ -344,18 +560,32 @@ if (!is_ajax_request()) {
 
             $('#attendance_date').on('change', function() {
                 var selectedDate = $(this).val();
-                var redirectUrl = 'teacher_attendence.php?attendance_date=' + selectedDate;
+                var redirectUrl = 'teacher_attendance.php?attendance_date=' + selectedDate;
                 var editId = '<?php echo $edit_teacher_id; ?>';
                 if (editId) {
                     redirectUrl += '&edit_teacher_id=' + editId;
                 }
+                
+                // Show loading indicator
+                $('body').append('<div class="loading-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; display: flex; justify-content: center; align-items: center; color: white;"><div><i class="fas fa-spinner fa-spin fa-2x"></i><br>Loading...</div></div>');
+                
                 window.location.href = redirectUrl;
             });
+
+            // Auto-refresh success message
+            <?php if (isset($_GET['success'])): ?>
+            setTimeout(function() {
+                $('.alert-success').fadeOut('slow');
+            }, 5000);
+            <?php endif; ?>
         });
     </script>
 </body>
+</html>
 <?php
-// Add this block at the very end of the file
+} // End of if (!is_ajax_request())
+
+// AJAX response handling
 if (is_ajax_request()) {
     // Get the captured HTML
     $content = ob_get_clean();
@@ -367,11 +597,5 @@ if (is_ajax_request()) {
         // Fallback if the main container isn't found
         echo $content;
     }
-    // Stop the script for AJAX requests
-    exit;
-}
-?>
-</html>
-<?php
 }
 ?>
