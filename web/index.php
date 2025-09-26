@@ -7,7 +7,7 @@ $school_id_to_feature = 4;
 
 // --- CRITICAL CHANGE: Set INITIAL/FALLBACK values to match your image's minimal counts ---
 $student_count = '7+'; 
-$teacher_count = '9+'; 
+$teacher_count = '5+'; 
 $classroom_count = '50+';
 $pass_percentage = '98%';
 
@@ -22,12 +22,12 @@ try {
 
   // Format the numbers for display, using the fetched data
   if ($student_count_raw > 0) {
-      $student_count = number_format($student_count_raw) . '+';
+      $student_count = number_format($student_count_raw);
   }
   if ($teacher_count_raw > 0) {
-      $teacher_count = $teacher_count_raw . '+';
+      $teacher_count = $teacher_count_raw;
   }
-  $classroom_count = $classroom_count_raw . '+';
+  $classroom_count = $classroom_count_raw;
   $pass_percentage = $pass_percentage_raw . '%';
 
 } catch (PDOException $e) {
