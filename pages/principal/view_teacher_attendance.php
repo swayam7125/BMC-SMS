@@ -1,13 +1,11 @@
 <?php
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
-require_once __DIR__ . '/../../includes/ajax_helpers.php'; 
+require_once __DIR__ . '/../../includes/ajax_helpers.php';
 
-// Check if this is an AJAX request
-if (is_ajax_request()) {
-    // Start output buffering to capture the HTML
-    ob_start();
-}
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
 
 $role = null;
 $userId = null;
@@ -78,10 +76,10 @@ try {
     error_log("View Teacher Attendance (Principal) Error: " . $e->getMessage());
 }
 
-if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>View Teacher Attendance - School Management System</title>
@@ -92,23 +90,29 @@ if (!is_ajax_request()) {
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
                 <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
                 }
                 ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">Teacher Attendance History</h1>
 
                     <?php if (isset($_GET['success'])): ?>
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                        <?php echo htmlspecialchars($_GET['success']); ?>
-                        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                    </div>
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <?php echo htmlspecialchars($_GET['success']); ?>
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        </div>
                     <?php endif; ?>
 
                     <?php if (!empty($errorMessage)): ?>
@@ -150,26 +154,26 @@ if (!is_ajax_request()) {
                                                         <td><?php if ($record['class_teacher']): ?>Yes (Std: <?php echo htmlspecialchars($record['class_teacher_std']); ?>)<?php else: ?>No<?php endif; ?></td>
                                                         <td>
                                                             <?php
-                                                                $is_pre_joining = $record['date_of_joining'] && $attendance_date_display < $record['date_of_joining'];
-                                                                $is_editable = true;
-                                                                
-                                                                if ($is_pre_joining) {
-                                                                    $status = 'Joined on ' . date('d M, Y', strtotime($record['date_of_joining']));
-                                                                    $badge_class = 'badge-secondary';
-                                                                    $is_editable = false;
-                                                                } elseif ($is_holiday_for_date) {
-                                                                    $status = 'Holiday';
-                                                                    $badge_class = 'badge-primary';
-                                                                    $is_editable = false;
-                                                                } else {
-                                                                    $status = $record['status'] ?? 'Not Marked';
-                                                                    $badge_class = 'badge-secondary';
-                                                                    if ($status == 'Present') $badge_class = 'badge-success';
-                                                                    if ($status == 'Absent') $badge_class = 'badge-danger';
-                                                                    if ($status == 'Leave') $badge_class = 'badge-warning';
-                                                                    if ($status == 'Half Day') $badge_class = 'badge-info';
-                                                                }
-                                                                echo "<span class='badge {$badge_class} p-2'>" . htmlspecialchars($status) . "</span>";
+                                                            $is_pre_joining = $record['date_of_joining'] && $attendance_date_display < $record['date_of_joining'];
+                                                            $is_editable = true;
+
+                                                            if ($is_pre_joining) {
+                                                                $status = 'Joined on ' . date('d M, Y', strtotime($record['date_of_joining']));
+                                                                $badge_class = 'badge-secondary';
+                                                                $is_editable = false;
+                                                            } elseif ($is_holiday_for_date) {
+                                                                $status = 'Holiday';
+                                                                $badge_class = 'badge-primary';
+                                                                $is_editable = false;
+                                                            } else {
+                                                                $status = $record['status'] ?? 'Not Marked';
+                                                                $badge_class = 'badge-secondary';
+                                                                if ($status == 'Present') $badge_class = 'badge-success';
+                                                                if ($status == 'Absent') $badge_class = 'badge-danger';
+                                                                if ($status == 'Leave') $badge_class = 'badge-warning';
+                                                                if ($status == 'Half Day') $badge_class = 'badge-info';
+                                                            }
+                                                            echo "<span class='badge {$badge_class} p-2'>" . htmlspecialchars($status) . "</span>";
                                                             ?>
                                                         </td>
                                                         <td>
@@ -191,11 +195,13 @@ if (!is_ajax_request()) {
                         </div>
                     <?php endif; ?>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
+                
             </div>
-            <?php include_once '../../includes/footer.php'; ?>
+            <?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?> 
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php" ?>
@@ -214,23 +220,21 @@ if (!is_ajax_request()) {
     </script>
 </body>
 <?php
-// Add this block at the very end of the file
-if (is_ajax_request()) {
-    // Get the captured HTML
-    $content = ob_get_clean();
-    
-    // Extract just the main content area for the AJAX response
-    if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
-        echo '<div class="container-fluid">' . $matches[1] . '</div>';
-    } else {
-        // Fallback if the main container isn't found
-        echo $content;
-    }
-    // Stop the script for AJAX requests
-    exit;
-}
+                    // Add this block at the very end of the file
+                    if (is_ajax_request()) {
+                        // Get the captured HTML
+                        $content = ob_get_clean();
+
+                        // Extract just the main content area for the AJAX response
+                        if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
+                            echo '<div class="container-fluid">' . $matches[1] . '</div>';
+                        } else {
+                            // Fallback if the main container isn't found
+                            echo $content;
+                        }
+                        // Stop the script for AJAX requests
+                        exit;
+                    }
 ?>
+
 </html>
-<?php
-}
-?>

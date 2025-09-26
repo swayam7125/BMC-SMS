@@ -12,6 +12,10 @@ include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php'; // Include for fetch_transport_stops
 include_once '../../includes/log_system.php'; // ADDED: Log system dependency
 
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
+
 $role = null;
 $current_user_id = null; // Renamed for consistency with log function signature
 $school_id = null;
@@ -120,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $image_path_for_db = $original_image_path;
     $new_image_was_uploaded = false;
-    
+
     // --- Handle Photo Upload ---
     if (isset($_FILES['librarian_image']) && $_FILES['librarian_image']['error'] === UPLOAD_ERR_OK) {
         $file = $_FILES['librarian_image'];
@@ -149,7 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($transport_mode === 'Self Transport' && empty($self_transport_mode)) $errors[] = "Please specify the mode of self-transport.";
     if (($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') && empty($vehicle_number)) $errors[] = "Vehicle number is required.";
     if (($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') && empty($license_number)) $errors[] = "License number is required.";
-    
+
 
     if (empty($errors)) {
         try {
@@ -209,11 +213,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt_timing_upsert->execute([$librarian_id, $day, $opens_at, $closes_at, $is_closed_db]);
             }
             $conn->commit();
-            
+
             // ⭐ LOGGING: Log the librarian profile update
             $log_message = "UPDATE: Librarian profile for '{$librarian_name}' (ID: {$librarian_id}) was successfully updated by {$role}.";
             log_interaction($role, $current_user_id, $log_message, $acting_user_name);
-            
+
             header("Location: librarian_list.php?success=Librarian updated successfully");
             exit;
         } catch (PDOException $e) {
@@ -245,7 +249,6 @@ try {
     $stmt_routes = $conn->prepare('SELECT r.route_name, s.id as stop_id, s.stop_name FROM routes r JOIN stops s ON r.id = s.route_id WHERE r.school_id = ? ORDER BY r.route_name, s.stop_name');
     $stmt_routes->execute([$school_to_check]);
     $transport_stops = $stmt_routes->fetchAll(PDO::FETCH_ASSOC);
-
 } catch (PDOException $e) {
     die("Could not fetch schools list or transport stops: " . $e->getMessage());
 }
@@ -279,12 +282,18 @@ $form_action_url = 'edit.php?id=' . $librarian_id;
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
-
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
-
+                <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
+                ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Edit Librarian</h1>
@@ -413,7 +422,11 @@ $form_action_url = 'edit.php?id=' . $librarian_id;
                     </div>
                 </div>
             </div>
-            <?php include '../../includes/footer.php'; ?>
+            <?php
+            if (!$is_ajax_request) {
+                include '../../includes/footer.php';
+            }
+            ?>
         </div>
     </div>
 
@@ -446,9 +459,9 @@ $form_action_url = 'edit.php?id=' . $librarian_id;
                     $('#stop_id').html('<option value="">-- No school assigned --</option>');
                     return;
                 }
-                
+
                 $('#stop_id').html('<option value="">-- Loading stops --</option>');
-                
+
                 fetch('../teacher/get_transport_stops.php?school_id=' + schoolId)
                     .then(response => response.json())
                     .then(data => {

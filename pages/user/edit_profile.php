@@ -7,7 +7,7 @@ error_reporting(E_ALL);
 // Includes and session start
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
-include_once "../../includes/log_system.php"; // ADDED: Log system dependency
+include_once "../../includes/log_system.php";
 
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 

@@ -4,6 +4,10 @@ include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php';
 
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
+
 $message = '';
 $librarian_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
 $librarian_name = 'N/A';
@@ -54,8 +58,6 @@ try {
     if (isset($conn) && $conn->inTransaction()) $conn->rollBack();
     $message = '<div class="alert alert-danger">An error occurred: ' . htmlspecialchars($e->getMessage()) . '</div>';
 }
-
-if (!is_ajax_request()) {
 ?>
     <!DOCTYPE html>
     <html lang="en">
@@ -76,10 +78,18 @@ if (!is_ajax_request()) {
 
     <body id="page-top">
         <div id="wrapper">
-            <?php include '../../includes/sidebar.php'; ?>
+            <?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?> 
             <div id="content-wrapper" class="d-flex flex-column">
                 <div id="content">
-                    <?php include '../../includes/header.php'; ?>
+                    <?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
+}
+?> 
                     <div class="container-fluid">
                         <h1 class="h3 mb-4 text-gray-800">My Leave Management</h1>
                         <?php echo $message; ?>
@@ -150,7 +160,11 @@ if (!is_ajax_request()) {
                         </div>
                     </div>
                 </div>
-                <?php include '../../includes/footer.php'; ?>
+                <?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?> 
             </div>
         </div>
         <?php include_once "../../includes/logout_modal.php" ?>
@@ -195,6 +209,3 @@ if (!is_ajax_request()) {
     </body>
 
     </html>
-<?php
-}
-?>

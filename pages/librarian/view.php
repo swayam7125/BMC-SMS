@@ -8,6 +8,10 @@
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
+
 $role = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
@@ -48,7 +52,7 @@ try {
         $stmt_user_school->execute([$current_user_id]);
         $user_school_id = $stmt_user_school->fetchColumn();
     }
-    
+
     if ($target_school_id != $user_school_id) {
         $redirect_url = ($role === 'hr') ? '../hr/librarian_list.php' : 'librarian_list.php';
         header("Location: " . $redirect_url . "?error=Unauthorized access to this profile.");
@@ -126,10 +130,18 @@ try {
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
+                <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
+                ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Librarian's Profile</h1>
@@ -304,7 +316,11 @@ try {
                     </div>
                 </div>
             </div>
-            <?php include '../../includes/footer.php'; ?>
+            <?php
+            if (!$is_ajax_request) {
+                include '../../includes/footer.php';
+            }
+            ?>
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php" ?>

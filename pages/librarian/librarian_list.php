@@ -4,6 +4,10 @@ include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 include_once "../../includes/ajax_helpers.php";
 
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
+
 $role = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
@@ -46,10 +50,10 @@ try {
     die("Database Error: " . $e->getMessage());
 }
 
-if (!is_ajax_request()) 
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Librarian Management - School Management System</title>
@@ -60,25 +64,34 @@ if (!is_ajax_request())
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
-        <?php include_once '../../includes/sidebar.php'; ?>
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
+                <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
+                ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">Librarian Management</h1>
                     <p class="mb-4">List of all librarians in your school.</p>
-                    
+
                     <?php if (isset($_GET['success'])): ?>
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                        <?php echo htmlspecialchars($_GET['success']); ?><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                    </div>
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <?php echo htmlspecialchars($_GET['success']); ?><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        </div>
                     <?php endif; ?>
                     <?php if (isset($_GET['error'])): ?>
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        <?php echo htmlspecialchars($_GET['error']); ?><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                    </div>
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <?php echo htmlspecialchars($_GET['error']); ?><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        </div>
                     <?php endif; ?>
 
                     <div class="card shadow mb-4">
@@ -107,40 +120,42 @@ if (!is_ajax_request())
                                     <tbody>
                                         <?php if (!empty($librarians)): ?>
                                             <?php foreach ($librarians as $row): ?>
-                                            <tr>
-                                                <td><?php echo htmlspecialchars($row['id']); ?></td>
-                                                <td><a href="view.php?id=<?php echo $row['id']; ?>"><?php echo htmlspecialchars($row['librarian_name'] ?? 'N/A'); ?></a></td>
-                                                <td><?php echo htmlspecialchars($row['email'] ?? 'N/A'); ?></td>
-                                                <td><?php echo htmlspecialchars($row['phone'] ?? 'N/A'); ?></td>
-                                                <td>
-                                                    <?php if ($row['account_status'] === 'active'): ?>
-                                                    <span class="badge badge-success">Active</span>
-                                                    <?php else: ?>
-                                                    <span class="badge badge-danger">Suspended</span>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td>
-                                                    <a href="view.php?id=<?php echo $row['id']; ?>" class="btn btn-info btn-sm" title="View"><i class="fas fa-eye"></i></a>
-                                                    <a href="edit.php?id=<?php echo $row['id']; ?>" class="btn btn-primary btn-sm" title="Edit"><i class="fas fa-edit"></i></a>
-                                                    <?php
+                                                <tr>
+                                                    <td><?php echo htmlspecialchars($row['id']); ?></td>
+                                                    <td><a href="view.php?id=<?php echo $row['id']; ?>"><?php echo htmlspecialchars($row['librarian_name'] ?? 'N/A'); ?></a></td>
+                                                    <td><?php echo htmlspecialchars($row['email'] ?? 'N/A'); ?></td>
+                                                    <td><?php echo htmlspecialchars($row['phone'] ?? 'N/A'); ?></td>
+                                                    <td>
+                                                        <?php if ($row['account_status'] === 'active'): ?>
+                                                            <span class="badge badge-success">Active</span>
+                                                        <?php else: ?>
+                                                            <span class="badge badge-danger">Suspended</span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                    <td>
+                                                        <a href="view.php?id=<?php echo $row['id']; ?>" class="btn btn-info btn-sm" title="View"><i class="fas fa-eye"></i></a>
+                                                        <a href="edit.php?id=<?php echo $row['id']; ?>" class="btn btn-primary btn-sm" title="Edit"><i class="fas fa-edit"></i></a>
+                                                        <?php
                                                         $return_url = urlencode('/BMC-SMS/pages/librarian/librarian_list.php');
                                                         if ($row['account_status'] === 'active'):
                                                             $suspendUrl = "../../includes/actions/update_user_status.php?id={$row['id']}&status=suspended&return={$return_url}";
-                                                    ?>
-                                                    <a href="#" onclick="confirmAction('<?php echo $suspendUrl; ?>', 'suspend this librarian')" class="btn btn-warning btn-sm" title="Suspend"><i class="fas fa-ban"></i></a>
-                                                    <?php else: 
-                                                        $reactivateUrl = "../../includes/actions/update_user_status.php?id={$row['id']}&status=active&return={$return_url}";
-                                                    ?>
-                                                    <a href="#" onclick="confirmAction('<?php echo $reactivateUrl; ?>', 'reactivate this librarian')" class="btn btn-success btn-sm" title="Reactivate"><i class="fas fa-check-circle"></i></a>
-                                                    <?php endif; ?>
-                                                    <?php if ($role === 'principal'): ?>
-                                                        <button class="btn btn-danger btn-sm" onclick="confirmDelete(<?php echo $row['id']; ?>)" title="Delete"><i class="fas fa-trash"></i></button>
-                                                    <?php endif; ?>
-                                                </td>
-                                            </tr>
+                                                        ?>
+                                                            <a href="#" onclick="confirmAction('<?php echo $suspendUrl; ?>', 'suspend this librarian')" class="btn btn-warning btn-sm" title="Suspend"><i class="fas fa-ban"></i></a>
+                                                        <?php else:
+                                                            $reactivateUrl = "../../includes/actions/update_user_status.php?id={$row['id']}&status=active&return={$return_url}";
+                                                        ?>
+                                                            <a href="#" onclick="confirmAction('<?php echo $reactivateUrl; ?>', 'reactivate this librarian')" class="btn btn-success btn-sm" title="Reactivate"><i class="fas fa-check-circle"></i></a>
+                                                        <?php endif; ?>
+                                                        <?php if ($role === 'principal'): ?>
+                                                            <button class="btn btn-danger btn-sm" onclick="confirmDelete(<?php echo $row['id']; ?>)" title="Delete"><i class="fas fa-trash"></i></button>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                </tr>
                                             <?php endforeach;
                                         else: ?>
-                                            <tr><td colspan="6" class="text-center">No librarians found</td></tr>
+                                            <tr>
+                                                <td colspan="6" class="text-center">No librarians found</td>
+                                            </tr>
                                         <?php endif; ?>
                                     </tbody>
                                 </table>
@@ -148,7 +163,11 @@ if (!is_ajax_request())
                         </div>
                     </div>
                 </div>
-                <?php include_once '../../includes/footer.php'; ?>
+                <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/footer.php';
+                }
+                ?>
             </div>
         </div>
 
@@ -212,9 +231,9 @@ if (!is_ajax_request())
                 $('#deleteModal').modal('show');
             }
         </script>
-    </body>
+</body>
 
-    </html>
+</html>
 <?php
 $conn = null;
 ?>

@@ -6,6 +6,10 @@ include_once "../../includes/email_functions.php"; // Email functions
 include_once "../../includes/ajax_helpers.php";
 include_once "../../includes/log_system.php"; // ADDED: Log system dependency
 
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
+
 // Initialize variables
 $role = null;
 $userId = null;
@@ -128,13 +132,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
         }
 
         $conn->commit();
-        
+
         // ⭐ LOGGING: Log the notice creation action
         $recipient_count = count($teacher_ids_to_notify) + count($standards_to_notify);
         $recipients = $send_to_group === 'both' ? 'All Teachers & Students' : ($send_to_group === 'teacher' ? 'Teachers' : 'Students/Standards');
         $log_message = "NOTICE SENT: Notice titled '{$title}' sent to {$recipient_count} recipients/groups ({$recipients}).";
         log_interaction($role, $userId, $log_message, $acting_user_name);
-        
     } catch (Exception $e) {
         if ($conn->inTransaction()) {
             $conn->rollBack();
@@ -188,10 +191,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
 
 $pageTitle = 'Send School Notice';
 
-if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
@@ -214,13 +217,18 @@ if (!is_ajax_request()) {
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include '../../includes/header.php'; ?>
-<?php
-}
-?>
+                <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
+                ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Send a Notice</h1>
                     <?php if (isset($_GET['success'])): ?>
@@ -281,11 +289,12 @@ if (!is_ajax_request()) {
                         </div>
                     </div>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
             </div>
-            <?php include '../../includes/footer.php'; ?>
+            <?php
+            if (!$is_ajax_request) {
+                include '../../includes/footer.php';
+            }
+            ?>
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php" ?>
@@ -299,7 +308,7 @@ if (!is_ajax_request()) {
             $('.multi-select').select2({
                 width: '100%'
             });
-            
+
             $('#send_to_group').on('change', function() {
                 var selected = $(this).val();
                 $('#teacher_group').hide();
@@ -318,7 +327,7 @@ if (!is_ajax_request()) {
 if (is_ajax_request()) {
     // Get the captured HTML
     $content = ob_get_clean();
-    
+
     // Extract just the main content area for the AJAX response
     if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
         echo '<div class="container-fluid">' . $matches[1] . '</div>';
@@ -330,7 +339,5 @@ if (is_ajax_request()) {
     exit;
 }
 ?>
+
 </html>
-<?php
-}
-?>

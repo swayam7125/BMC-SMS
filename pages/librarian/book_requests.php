@@ -8,6 +8,10 @@ include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php';
 
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
+
 $role = null;
 $user_id = null;
 $school_id = null;
@@ -50,15 +54,6 @@ try {
 }
 
 $pageTitle = "Book Acquisition Requests";
-?>
-
-<?php
-/*
-|--------------------------------------------------------------------------
-| RESPONSIVE & PROFESSIONAL FRONTEND (VIEW)
-|--------------------------------------------------------------------------
-*/
-if (!is_ajax_request()):
 ?>
     <!DOCTYPE html>
     <html lang="en">
@@ -107,10 +102,18 @@ if (!is_ajax_request()):
 
     <body id="page-top">
         <div id="wrapper">
-            <?php include_once '../../includes/sidebar.php'; ?>
+            <?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?> 
             <div id="content-wrapper" class="d-flex flex-column">
                 <div id="content">
-                    <?php include_once '../../includes/header.php'; ?>
+                    <?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
+}
+?> 
                     <div class="container-fluid">
                         <h1 class="h3 mb-4 text-gray-800">Book Acquisition Requests</h1>
 
@@ -190,7 +193,11 @@ if (!is_ajax_request()):
                         </div>
                     </div>
                 </div>
-                <?php include_once '../../includes/footer.php'; ?>
+                <?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?> 
             </div>
         </div>
         <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
@@ -203,6 +210,5 @@ if (!is_ajax_request()):
 
     </html>
 <?php
-endif; // End ajax check
 $conn = null;
 ?>

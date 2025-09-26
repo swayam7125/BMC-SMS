@@ -3,12 +3,9 @@ include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php';
 
-// Check if this is an AJAX request
-if (is_ajax_request()) {
-    // Start output buffering to capture the HTML
-    ob_start();
-}
-
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
 
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 $userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
@@ -29,12 +26,11 @@ try {
         die("Error: Could not retrieve principal details.");
     }
     $school_id = $principalDetails['school_id'];
-    
+
     // Fetch the earliest joining date for a librarian in this school
     $joining_stmt = $conn->prepare("SELECT MIN(date_of_joining) FROM librarian WHERE school_id = ? AND date_of_joining IS NOT NULL");
     $joining_stmt->execute([$school_id]);
     $earliest_joining_date = $joining_stmt->fetchColumn();
-
 } catch (PDOException $e) {
     error_log("Database Error (Principal Fetch): " . $e->getMessage());
     die("A critical database error occurred while fetching user details.");
@@ -78,15 +74,14 @@ try {
     $stmt = $conn->prepare($sql);
     $stmt->execute([$filter_date, $school_id]);
     $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
 } catch (PDOException $e) {
     error_log("Database Error (Attendance Fetch): " . $e->getMessage());
 }
 
-if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>View Librarian Attendance - School Management System</title>
@@ -97,23 +92,29 @@ if (!is_ajax_request()) {
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
-                <?php 
+                <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
                 }
                 ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">Librarian Attendance History</h1>
 
                     <?php if (isset($_GET['success'])): ?>
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                        <?php echo htmlspecialchars($_GET['success']); ?>
-                        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                    </div>
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <?php echo htmlspecialchars($_GET['success']); ?>
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        </div>
                     <?php endif; ?>
 
                     <div class="card shadow mb-4">
@@ -146,10 +147,10 @@ if (!is_ajax_request()) {
                                     <tbody>
                                         <?php if (!empty($records)): ?>
                                             <?php foreach ($records as $record): ?>
-                                            <tr>
-                                                <td><?php echo htmlspecialchars($record['librarian_name']); ?></td>
-                                                <td>
-                                                    <?php
+                                                <tr>
+                                                    <td><?php echo htmlspecialchars($record['librarian_name']); ?></td>
+                                                    <td>
+                                                        <?php
                                                         $status = $record['status'] ?? 'Not Marked';
                                                         $badge_class = 'badge-secondary';
                                                         $is_editable = true;
@@ -169,14 +170,14 @@ if (!is_ajax_request()) {
                                                             if ($status == 'Half Day') $badge_class = 'badge-info';
                                                         }
                                                         echo "<span class='badge {$badge_class} p-2'>" . htmlspecialchars($status) . "</span>";
-                                                    ?>
-                                                </td>
-                                                <td>
-                                                    <a href="librarian_attendance.php?attendance_date=<?php echo htmlspecialchars($filter_date); ?>&edit_librarian_id=<?php echo $record['librarian_id']; ?>" class="btn btn-sm btn-warning <?php echo $is_editable ? '' : 'disabled'; ?>">
-                                                        <i class="fas fa-edit"></i> Edit
-                                                    </a>
-                                                </td>
-                                            </tr>
+                                                        ?>
+                                                    </td>
+                                                    <td>
+                                                        <a href="librarian_attendance.php?attendance_date=<?php echo htmlspecialchars($filter_date); ?>&edit_librarian_id=<?php echo $record['librarian_id']; ?>" class="btn btn-sm btn-warning <?php echo $is_editable ? '' : 'disabled'; ?>">
+                                                            <i class="fas fa-edit"></i> Edit
+                                                        </a>
+                                                    </td>
+                                                </tr>
                                             <?php endforeach; ?>
                                         <?php else: ?>
                                             <tr>
@@ -189,14 +190,15 @@ if (!is_ajax_request()) {
                         </div>
                     </div>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
             </div>
-            <?php include_once '../../includes/footer.php'; ?>
+           <?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?> 
         </div>
     </div>
-    <?php include_once "../../includes/logout_modal.php"?>
+    <?php include_once "../../includes/logout_modal.php" ?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
@@ -204,31 +206,29 @@ if (!is_ajax_request()) {
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
     <script>
-    $(document).ready(function() {
-        $('#dataTable').DataTable({
-            "order": [] // Disable initial sorting
+        $(document).ready(function() {
+            $('#dataTable').DataTable({
+                "order": [] // Disable initial sorting
+            });
         });
-    });
     </script>
 </body>
 <?php
-// Add this block at the very end of the file
-if (is_ajax_request()) {
-    // Get the captured HTML
-    $content = ob_get_clean();
-    
-    // Extract just the main content area for the AJAX response
-    if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
-        echo '<div class="container-fluid">' . $matches[1] . '</div>';
-    } else {
-        // Fallback if the main container isn't found
-        echo $content;
-    }
-    // Stop the script for AJAX requests
-    exit;
-}
+                    // Add this block at the very end of the file
+                    if (is_ajax_request()) {
+                        // Get the captured HTML
+                        $content = ob_get_clean();
+
+                        // Extract just the main content area for the AJAX response
+                        if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
+                            echo '<div class="container-fluid">' . $matches[1] . '</div>';
+                        } else {
+                            // Fallback if the main container isn't found
+                            echo $content;
+                        }
+                        // Stop the script for AJAX requests
+                        exit;
+                    }
 ?>
+
 </html>
-<?php
-}
-?>

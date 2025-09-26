@@ -4,6 +4,10 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/connect.php';
 include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/encryption.php';
 include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/ajax_helpers.php';
 
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
+
 // Decrypt the user role from the cookie.
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 // Decrypt the user ID from the cookie.
@@ -16,7 +20,7 @@ if ($role !== 'hr' || !$userId) {
 }
 
 // Initialize an array to store attendance records.
-$records = []; 
+$records = [];
 try {
     // Prepare a query to fetch all attendance records for the specified hr user.
     $query = "SELECT attendance_date, status FROM hr_attendance WHERE hr_id = ? ORDER BY attendance_date DESC";
@@ -26,7 +30,6 @@ try {
     $stmt->execute([$userId]);
     // Fetch all attendance records.
     $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
 } catch (PDOException $e) {
     // Log any database errors and display a generic error message.
     error_log("Error fetching HR attendance records: " . $e->getMessage());
@@ -36,8 +39,6 @@ try {
 // Set the page title.
 $page_title = "My Attendance Report";
 
-// If the request is not an AJAX request, include the HTML header.
-if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -56,27 +57,32 @@ if (!is_ajax_request()) {
 <body id="page-top">
     <!-- Page Wrapper -->
     <div id="wrapper">
-        <?php include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/sidebar.php'; ?>
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <!-- Content Wrapper -->
         <div id="content-wrapper" class="d-flex flex-column">
             <!-- Main Content -->
             <div id="content">
-                <?php include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/header.php'; ?>
-<?php
-}
-?>
+                <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
+                ?>
                 <!-- Begin Page Content -->
                 <div class="container-fluid">
                     <!-- Page Heading -->
                     <h1 class="h3 mb-2 text-gray-800"><?php echo htmlspecialchars($page_title); ?></h1>
-                    
+
                     <!-- Attendance Records Card -->
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
                             <h6 class="m-0 font-weight-bold text-primary">My Records</h6>
                         </div>
                         <div class="card-body">
-                             <div class="table-responsive">
+                            <div class="table-responsive">
                                 <table class="table table-bordered" id="dataTable">
                                     <thead>
                                         <tr>
@@ -86,21 +92,23 @@ if (!is_ajax_request()) {
                                     </thead>
                                     <tbody>
                                         <?php if (empty($records)): ?>
-                                            <tr><td colspan="2" class="text-center">No attendance records found.</td></tr>
+                                            <tr>
+                                                <td colspan="2" class="text-center">No attendance records found.</td>
+                                            </tr>
                                         <?php else: ?>
                                             <?php foreach ($records as $record): ?>
-                                            <tr>
-                                                <td><?php echo date('d M, Y', strtotime($record['attendance_date'])); ?></td>
-                                                <td>
-                                                    <?php 
+                                                <tr>
+                                                    <td><?php echo date('d M, Y', strtotime($record['attendance_date'])); ?></td>
+                                                    <td>
+                                                        <?php
                                                         // Display a colored badge based on the attendance status.
                                                         if ($record['status'] == 'Present') echo '<span class="badge badge-success">Present</span>';
                                                         elseif ($record['status'] == 'Absent') echo '<span class="badge badge-danger">Absent</span>';
                                                         elseif ($record['status'] == 'Leave') echo '<span class="badge badge-warning">Leave</span>';
                                                         elseif ($record['status'] == 'Half Day') echo '<span class="badge badge-info">Half Day</span>';
-                                                    ?>
-                                                </td>
-                                            </tr>
+                                                        ?>
+                                                    </td>
+                                                </tr>
                                             <?php endforeach; ?>
                                         <?php endif; ?>
                                     </tbody>
@@ -109,14 +117,12 @@ if (!is_ajax_request()) {
                         </div>
                     </div>
                 </div>
-                <!-- /.container-fluid -->
-<?php
-// If the request is not an AJAX request, include the HTML footer and scripts.
-if (!is_ajax_request()) {
-?>
             </div>
-            <!-- End of Main Content -->
-            <?php include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/footer.php'; ?>
+            <?php
+            if (!$is_ajax_request) {
+                include '../../includes/sidebar.php';
+            }
+            ?>
         </div>
         <!-- End of Content Wrapper -->
     </div>
@@ -141,13 +147,12 @@ if (!is_ajax_request()) {
     <!-- Page level custom scripts -->
     <script>
         // Initialize the DataTable with no default ordering.
-        $(document).ready(function() { 
-            $('#dataTable').DataTable({"order": []}); 
+        $(document).ready(function() {
+            $('#dataTable').DataTable({
+                "order": []
+            });
         });
     </script>
 </body>
 
 </html>
-<?php
-}
-?>

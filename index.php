@@ -113,6 +113,7 @@ $page_map = [
     'view_exam_timetable' => __DIR__ . '/pages/student/view_exam_timetable.php',
     'browse_books' => __DIR__ . '/pages/student/browse_books.php',
     'request_new_book' => __DIR__ . '/pages/user/request_new_book.php',
+    'view_fees' => __DIR__ . '/pages/student/view_fees.php',
 
     // Librarian
     'view_my_attendance' => __DIR__ . '/pages/librarian/view_my_attendance.php',
@@ -130,6 +131,7 @@ $page_map = [
     'process_teacher_salary' => __DIR__ . '/pages/hr/process_teacher_salary.php',
     'process_librarian_salary' => __DIR__ . '/pages/hr/process_librarian_salary.php',
     'process_principal_salary' => __DIR__ . '/pages/hr/process_principal_salary.php',
+    'manage_fees' => __DIR__ . '/pages/hr/manage_fees.php',
 ];
 
 // Check if the requested page identifier exists in our map.

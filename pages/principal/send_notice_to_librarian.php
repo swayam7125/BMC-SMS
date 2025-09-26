@@ -7,11 +7,9 @@ include_once __DIR__ . "/../../encryption.php";
 include_once __DIR__ . "/../../includes/connect.php";
 include_once __DIR__ . "/../../includes/ajax_helpers.php";
 
-// Check if this is an AJAX request
-if (is_ajax_request()) {
-    // Start output buffering to capture the HTML
-    ob_start();
-}
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
 
 $role = null;
 $userId = null;
@@ -52,7 +50,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice_to_librari
     if (!$schoolId) {
         die("Could not determine your school. Action aborted.");
     }
-    
+
     $title = $_POST['title'];
     $content = $_POST['content'];
 
@@ -81,7 +79,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice_to_librari
         // 1. Insert notice into the dedicated table
         $stmt_content = $conn->prepare("INSERT INTO principal_to_librarian_notices (principal_id, school_id, title, content, file_path, original_filename) VALUES (?, ?, ?, ?, ?, ?)");
         $stmt_content->execute([$userId, $schoolId, $title, $content, $filePathForDB, $originalFilename]);
-        
+
         // 2. Find all Librarian user IDs for the specific school
         $stmt_librarian_users = $conn->prepare("SELECT id FROM librarian WHERE school_id = ?");
         $stmt_librarian_users->execute([$schoolId]);
@@ -92,17 +90,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice_to_librari
             $notification_message = "New Notice from Principal " . htmlspecialchars($principalName);
             $notification_link = "pages/librarian/view_principal_notices.php";
             $notification_type = "principal_to_librarian_notice";
-            
+
             $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");
             foreach ($librarian_user_ids as $librarian_id) {
                 $stmt_notify->execute([$librarian_id, $notification_message, $notification_link, $notification_type]);
             }
         }
-        
+
         $conn->commit();
         header("Location: send_notice_to_librarian.php?success=1");
         exit();
-
     } catch (Exception $e) {
         $conn->rollBack();
         error_log("Failed to send librarian notice: " . $e->getMessage());
@@ -112,10 +109,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice_to_librari
 
 $pageTitle = 'Send Notice to Librarian';
 
-if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
@@ -128,15 +125,21 @@ if (!is_ajax_request()) {
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link href="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include '../../includes/header.php'; ?>
-<?php
-}
-?>
+                <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
+                ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Send Notice to Librarian</h1>
                     <?php if (isset($_GET['success'])): ?>
@@ -167,14 +170,16 @@ if (!is_ajax_request()) {
                         </div>
                     </div>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
+
             </div>
-            <?php include '../../includes/footer.php'; ?>
+            <?php
+            if (!$is_ajax_request) {
+                include '../../includes/footer.php';
+            }
+            ?>
         </div>
     </div>
-    <?php include_once "../../includes/logout_modal.php"?>
+    <?php include_once "../../includes/logout_modal.php" ?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
@@ -184,7 +189,7 @@ if (!is_ajax_request()) {
 if (is_ajax_request()) {
     // Get the captured HTML
     $content = ob_get_clean();
-    
+
     // Extract just the main content area for the AJAX response
     if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
         echo '<div class="container-fluid">' . $matches[1] . '</div>';
@@ -196,7 +201,5 @@ if (is_ajax_request()) {
     exit;
 }
 ?>
+
 </html>
-<?php
-}
-?>

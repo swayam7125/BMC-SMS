@@ -3,11 +3,9 @@ include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php';
 
-// Check if this is an AJAX request
-if (is_ajax_request()) {
-    // Start output buffering to capture the HTML
-    ob_start();
-}
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
 
 date_default_timezone_set('Asia/Kolkata');
 
@@ -42,7 +40,7 @@ try {
     if (!$school_id) {
         throw new Exception("Access Denied: You are not assigned to a school.");
     }
-    
+
     $current_date = date('Y-m-d');
     $attendance_date_display = isset($_GET['attendance_date']) ? $_GET['attendance_date'] : $current_date;
 
@@ -51,7 +49,7 @@ try {
         $errorMessage = "You cannot mark attendance for a future date. The date has been reset to today.";
     }
 
-    if(empty($errorMessage)){
+    if (empty($errorMessage)) {
         $holiday_stmt = $conn->prepare("SELECT description FROM holidays WHERE holiday_date = ? AND school_id = ?");
         $holiday_stmt->execute([$attendance_date_display, $school_id]);
         $holiday = $holiday_stmt->fetch(PDO::FETCH_ASSOC);
@@ -64,7 +62,7 @@ try {
     // --- Mandatory Past Attendance Check ---
     if (empty($errorMessage) && !$is_holiday) {
         $target_date = new DateTime($attendance_date_display);
-        
+
         $payroll_joining_stmt = $conn->prepare("SELECT MIN(date_of_joining) FROM hr WHERE school_id = ? AND date_of_joining IS NOT NULL");
         $payroll_joining_stmt->execute([$school_id]);
         $first_joining_date = $payroll_joining_stmt->fetchColumn();
@@ -75,7 +73,7 @@ try {
         if ($start_date < $target_date) {
             $interval = new DateInterval('P1D');
             $period = new DatePeriod($start_date, $interval, $target_date);
-            
+
             $att_count_stmt = $conn->prepare("SELECT COUNT(hr_id) FROM hr_attendance WHERE school_id = ? AND attendance_date = ?");
             $holiday_check_stmt = $conn->prepare("SELECT COUNT(*) FROM holidays WHERE school_id = ? AND holiday_date = ?");
             $payroll_expected_stmt = $conn->prepare("SELECT COUNT(id) FROM hr WHERE school_id = ? AND (date_of_joining IS NULL OR date_of_joining <= ?)");
@@ -83,12 +81,12 @@ try {
             foreach ($period as $date) {
                 if (date('N', $date->getTimestamp()) < 7) {
                     $date_to_check = $date->format('Y-m-d');
-                    
+
                     $holiday_check_stmt->execute([$school_id, $date_to_check]);
                     if ($holiday_check_stmt->fetchColumn() > 0) {
-                        continue; 
+                        continue;
                     }
-                    
+
                     $payroll_expected_stmt->execute([$school_id, $date_to_check]);
                     $expected_payroll = $payroll_expected_stmt->fetchColumn();
 
@@ -98,7 +96,7 @@ try {
 
                     $att_count_stmt->execute([$school_id, $date_to_check]);
                     $recorded_payroll = $att_count_stmt->fetchColumn();
-                    
+
                     if ($recorded_payroll < $expected_payroll) {
                         $all_missing_dates[] = $date_to_check;
                     }
@@ -123,7 +121,7 @@ try {
             if (isset($_POST['attendance'])) {
                 foreach ($_POST['attendance'] as $payroll_id => $details) {
                     $status = $details['status'];
-                    
+
                     // *** FIX: This condition prevents the "Not Applicable" value from being sent to the database ***
                     if ($status !== 'Not Applicable') {
                         $stmt_upsert->execute([$payroll_id, $school_id, $attendance_date, $status, $userId]);
@@ -131,7 +129,7 @@ try {
                 }
                 $success_message = "Attendance for " . htmlspecialchars($attendance_date) . " saved!";
             }
-            
+
             $conn->commit();
             header("Location: view_hr_attendance.php?date=" . urlencode($attendance_date) . "&success=" . urlencode($success_message));
             exit();
@@ -141,10 +139,10 @@ try {
             $errorMessage = "Failed to update attendance: " . $e->getMessage();
         }
     }
-    
+
     $payroll_staff_with_details = [];
     $earliest_joining_date_school = null;
-    
+
     if (empty($errorMessage) && empty($all_missing_dates) && $school_id && !$is_holiday) {
         try {
             // Updated query to get hr staff with joining date.
@@ -166,17 +164,14 @@ try {
                     $found_first = true;
                 }
             }
-            
         } catch (PDOException $e) {
             $errorMessage = "Failed to load attendance data: " . $e->getMessage();
         }
     }
-
 } catch (Exception $e) {
     $errorMessage = "An error occurred: " . $e->getMessage();
 }
 
-if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -194,12 +189,17 @@ if (!is_ajax_request()) {
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
-                <?php 
-                } 
+                <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
                 ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
@@ -211,7 +211,7 @@ if (!is_ajax_request()) {
                         <div class="alert alert-danger"><?php echo htmlspecialchars($errorMessage); ?></div>
                     <?php elseif ($is_holiday): ?>
                         <div class="card shadow mb-4">
-                             <div class="card-header py-3">
+                            <div class="card-header py-3">
                                 <h6 class="m-0 font-weight-bold text-primary">Attendance for <?php echo htmlspecialchars($attendance_date_display); ?></h6>
                             </div>
                             <div class="card-body">
@@ -259,12 +259,19 @@ if (!is_ajax_request()) {
                                     </div>
                                     <div class="table-responsive">
                                         <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                                            <thead><tr><th>HR Staff Name</th><th>Status</th></tr></thead>
+                                            <thead>
+                                                <tr>
+                                                    <th>HR Staff Name</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
                                             <tbody>
                                                 <?php if (empty($payroll_staff_with_details)): ?>
-                                                    <tr><td colspan="2" class="text-center">No HR staff found for this school.</td></tr>
+                                                    <tr>
+                                                        <td colspan="2" class="text-center">No HR staff found for this school.</td>
+                                                    </tr>
                                                 <?php else: ?>
-                                                    <?php foreach ($payroll_staff_with_details as $staff): 
+                                                    <?php foreach ($payroll_staff_with_details as $staff):
                                                         $is_pre_joining = !empty($staff['date_of_joining']) && $attendance_date_display < $staff['date_of_joining'];
                                                         $is_disabled = ($edit_payroll_id && $staff['id'] != $edit_payroll_id) || $is_pre_joining;
                                                     ?>
@@ -287,7 +294,7 @@ if (!is_ajax_request()) {
                                                                         <input class="form-check-input" type="radio" name="attendance[<?php echo $staff['id']; ?>][status]" value="Leave" <?php if ($staff['status'] == 'Leave') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
                                                                         <label class="form-check-label">Leave</label>
                                                                     </div>
-                                                                     <div class="form-check form-check-inline">
+                                                                    <div class="form-check form-check-inline">
                                                                         <input class="form-check-input" type="radio" name="attendance[<?php echo $staff['id']; ?>][status]" value="Half Day" <?php if ($staff['status'] == 'Half Day') echo 'checked'; ?> <?php echo $is_disabled ? 'disabled' : ''; ?>>
                                                                         <label class="form-check-label">Half Day</label>
                                                                     </div>
@@ -307,14 +314,15 @@ if (!is_ajax_request()) {
                         </div>
                     <?php endif; ?>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
             </div>
-            <?php include_once '../../includes/footer.php'; ?>
+            <?php
+            if (!$is_ajax_request) {
+                include '../../includes/footer.php';
+            }
+            ?>
         </div>
     </div>
-    <?php include_once "../../includes/logout_modal.php"?>
+    <?php include_once "../../includes/logout_modal.php" ?>
     <style>
         .blurred-row {
             filter: blur(1px);
@@ -335,7 +343,7 @@ if (!is_ajax_request()) {
                 "info": false,
                 "dom": '<"table-responsive"t>'
             });
-            $('#customSearchBox').on('keyup', function(){
+            $('#customSearchBox').on('keyup', function() {
                 table.search(this.value).draw();
             });
 
@@ -356,7 +364,7 @@ if (!is_ajax_request()) {
 if (is_ajax_request()) {
     // Get the captured HTML
     $content = ob_get_clean();
-    
+
     // Extract just the main content area for the AJAX response
     if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
         echo '<div class="container-fluid">' . $matches[1] . '</div>';
@@ -368,7 +376,5 @@ if (is_ajax_request()) {
     exit;
 }
 ?>
+
 </html>
-<?php
-}
-?>

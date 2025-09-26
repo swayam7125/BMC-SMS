@@ -1,16 +1,16 @@
 <?php
+include_once '../../includes/connect.php';
+include_once '../../encryption.php';
 // --- PDF GENERATION SETUP ---
 require_once '../../includes/dompdf/autoload.inc.php';
 include_once '../../includes/ajax_helpers.php';
 
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
+
 use Dompdf\Dompdf;
 use Dompdf\Options;
-
-// Check if this is an AJAX request
-if (is_ajax_request()) {
-    // Start output buffering to capture the HTML
-    ob_start();
-}
 
 // --- PDF GENERATION LOGIC ---
 if (isset($_POST['download_pdf'])) {
@@ -26,10 +26,6 @@ if (isset($_POST['download_pdf'])) {
     $dompdf->stream($filename, ["Attachment" => 1]);
     exit();
 }
-
-include_once '../../includes/connect.php';
-include_once '../../encryption.php';
-include_once '../../includes/ajax_helpers.php';
 
 date_default_timezone_set('Asia/Kolkata');
 
@@ -114,15 +110,14 @@ try {
     $stmt_holidays = $conn->prepare($query);
     $stmt_holidays->execute($params);
     $holidays = $stmt_holidays->fetchAll(PDO::FETCH_ASSOC);
-
 } catch (Exception $e) {
     $errorMessage = "An error occurred: " . $e->getMessage();
 }
 
-if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Holiday Management - School Management System</title>
@@ -132,15 +127,21 @@ if (!is_ajax_request()) {
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
-<?php
-}
-?>
+                <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
+                ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Holiday Management</h1>
 
@@ -198,9 +199,11 @@ if (!is_ajax_request()) {
                                             <th>Action</th>
                                         </tr>
                                     </thead>
-                                     <tbody>
+                                    <tbody>
                                         <?php if (empty($holidays)): ?>
-                                            <tr><td colspan="3" class="text-center">No holidays found for the selected year.</td></tr>
+                                            <tr>
+                                                <td colspan="3" class="text-center">No holidays found for the selected year.</td>
+                                            </tr>
                                         <?php else: ?>
                                             <?php
                                             $last_year = null;
@@ -230,50 +233,52 @@ if (!is_ajax_request()) {
                     </div>
 
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
+                
             </div>
-            <?php include_once '../../includes/footer.php'; ?>
+            <?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
+}
+?> 
         </div>
     </div>
 
-    <?php include_once "../../includes/logout_modal.php"?>
+    <?php include_once "../../includes/logout_modal.php" ?>
 
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script>
-    document.getElementById('download-list-btn').addEventListener('click', function() {
-        const table = document.getElementById('holiday-table-for-pdf');
-        
-        // Clone the table element so we can modify it without affecting the original page layout
-        const tableClone = table.cloneNode(true);
-        
-        // Remove the 'Action' column headers
-        const headerRow = tableClone.querySelector('thead tr');
-        if (headerRow) {
-            const actionHeader = headerRow.querySelector('th:last-child');
-            if (actionHeader && actionHeader.textContent.trim() === 'Action') {
-                actionHeader.remove();
-            }
-        }
-        
-        // Remove the 'Action' column data cells
-        const bodyRows = tableClone.querySelectorAll('tbody tr');
-        bodyRows.forEach(row => {
-            const actionCell = row.querySelector('td:last-child');
-            // Ensure we don't accidentally remove a column from a year header row
-            if (actionCell && actionCell.parentElement.querySelectorAll('td').length > 2) {
-                actionCell.remove();
-            }
-        });
+        document.getElementById('download-list-btn').addEventListener('click', function() {
+            const table = document.getElementById('holiday-table-for-pdf');
 
-        const year = document.getElementById('year').value;
-        const schoolName = "<?php echo htmlspecialchars($school_name); ?>";
+            // Clone the table element so we can modify it without affecting the original page layout
+            const tableClone = table.cloneNode(true);
 
-        const pdfHtml = `
+            // Remove the 'Action' column headers
+            const headerRow = tableClone.querySelector('thead tr');
+            if (headerRow) {
+                const actionHeader = headerRow.querySelector('th:last-child');
+                if (actionHeader && actionHeader.textContent.trim() === 'Action') {
+                    actionHeader.remove();
+                }
+            }
+
+            // Remove the 'Action' column data cells
+            const bodyRows = tableClone.querySelectorAll('tbody tr');
+            bodyRows.forEach(row => {
+                const actionCell = row.querySelector('td:last-child');
+                // Ensure we don't accidentally remove a column from a year header row
+                if (actionCell && actionCell.parentElement.querySelectorAll('td').length > 2) {
+                    actionCell.remove();
+                }
+            });
+
+            const year = document.getElementById('year').value;
+            const schoolName = "<?php echo htmlspecialchars($school_name); ?>";
+
+            const pdfHtml = `
             <!DOCTYPE html>
             <html>
             <head>
@@ -302,31 +307,29 @@ if (!is_ajax_request()) {
             </html>
         `;
 
-        const filename_part = year === 'all' ? 'AllYears' : year;
-        document.getElementById('pdf_html').value = pdfHtml;
-        document.getElementById('pdf_filename').value = 'Holiday_List_' + filename_part + '.pdf';
-        document.getElementById('download-form').submit();
-    });
+            const filename_part = year === 'all' ? 'AllYears' : year;
+            document.getElementById('pdf_html').value = pdfHtml;
+            document.getElementById('pdf_filename').value = 'Holiday_List_' + filename_part + '.pdf';
+            document.getElementById('download-form').submit();
+        });
     </script>
 </body>
 <?php
-// Add this block at the very end of the file
-if (is_ajax_request()) {
-    // Get the captured HTML
-    $content = ob_get_clean();
-    
-    // Extract just the main content area for the AJAX response
-    if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
-        echo '<div class="container-fluid">' . $matches[1] . '</div>';
-    } else {
-        // Fallback if the main container isn't found
-        echo $content;
-    }
-    // Stop the script for AJAX requests
-    exit;
-}
+                    // Add this block at the very end of the file
+                    if (is_ajax_request()) {
+                        // Get the captured HTML
+                        $content = ob_get_clean();
+
+                        // Extract just the main content area for the AJAX response
+                        if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
+                            echo '<div class="container-fluid">' . $matches[1] . '</div>';
+                        } else {
+                            // Fallback if the main container isn't found
+                            echo $content;
+                        }
+                        // Stop the script for AJAX requests
+                        exit;
+                    }
 ?>
+
 </html>
-<?php
-}
-?>

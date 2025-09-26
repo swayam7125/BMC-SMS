@@ -3,10 +3,9 @@ include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 include_once "../../includes/ajax_helpers.php";
 
-if (is_ajax_request()) {
-    // For AJAX requests, only return the content without full HTML
-    ob_start();
-}
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
 
 $role = null;
 $principals = [];
@@ -36,7 +35,7 @@ try {
         $stmt_school = $conn->prepare("SELECT school_id FROM hr WHERE id = ?");
         $stmt_school->execute([$current_user_id]);
         $user_school_id = $stmt_school->fetchColumn();
-        
+
         if (!$user_school_id) {
             die("Error: Could not determine the school for the HR user.");
         }
@@ -72,10 +71,18 @@ try {
 
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
+                <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
+                ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">Principal Management</h1>
                     <p class="mb-4">List of all principals in the system.</p>
@@ -122,19 +129,19 @@ try {
                                                     <td>
                                                         <a href="view.php?id=<?php echo $row['id']; ?>" class="btn btn-info btn-sm" title="View"><i class="fas fa-eye"></i></a>
                                                         <a href="edit.php?id=<?php echo $row['id']; ?>" class="btn btn-primary btn-sm" title="Edit"><i class="fas fa-edit"></i></a>
-                                                        <?php 
-                                                            $return_url = urlencode(($role === 'hr') ? '/BMC-SMS/pages/hr/principal_list.php' : '/BMC-SMS/pages/principal/principal_list.php');
-                                                            if ($row['account_status'] === 'active'):
-                                                                $suspendUrl = "../../includes/actions/update_user_status.php?id={$row['id']}&status=suspended&return={$return_url}";
+                                                        <?php
+                                                        $return_url = urlencode(($role === 'hr') ? '/BMC-SMS/pages/hr/principal_list.php' : '/BMC-SMS/pages/principal/principal_list.php');
+                                                        if ($row['account_status'] === 'active'):
+                                                            $suspendUrl = "../../includes/actions/update_user_status.php?id={$row['id']}&status=suspended&return={$return_url}";
                                                         ?>
-                                                                <a href="#" onclick="confirmAction('<?php echo $suspendUrl; ?>', 'suspend this principal')" class="btn btn-warning btn-sm" title="Suspend"><i class="fas fa-ban"></i></a>
-                                                            <?php else:
-                                                                $reactivateUrl = "../../includes/actions/update_user_status.php?id={$row['id']}&status=active&return={$return_url}";
-                                                            ?>
-                                                                <a href="#" onclick="confirmAction('<?php echo $reactivateUrl; ?>', 'reactivate this principal')" class="btn btn-success btn-sm" title="Reactivate"><i class="fas fa-check-circle"></i></a>
+                                                            <a href="#" onclick="confirmAction('<?php echo $suspendUrl; ?>', 'suspend this principal')" class="btn btn-warning btn-sm" title="Suspend"><i class="fas fa-ban"></i></a>
+                                                        <?php else:
+                                                            $reactivateUrl = "../../includes/actions/update_user_status.php?id={$row['id']}&status=active&return={$return_url}";
+                                                        ?>
+                                                            <a href="#" onclick="confirmAction('<?php echo $reactivateUrl; ?>', 'reactivate this principal')" class="btn btn-success btn-sm" title="Reactivate"><i class="fas fa-check-circle"></i></a>
                                                         <?php endif; ?>
                                                         <?php if ($role === 'superadmin'): ?>
-                                                        <button class="btn btn-danger btn-sm" onclick="confirmDelete(<?php echo $row['id']; ?>)" title="Delete"><i class="fas fa-trash"></i></button>
+                                                            <button class="btn btn-danger btn-sm" onclick="confirmDelete(<?php echo $row['id']; ?>)" title="Delete"><i class="fas fa-trash"></i></button>
                                                         <?php endif; ?>
                                                     </td>
                                                 </tr>
@@ -151,7 +158,11 @@ try {
                     </div>
                 </div>
             </div>
-            <?php include '../../includes/footer.php'; ?>
+            <?php
+            if (!$is_ajax_request) {
+                include '../../includes/footer.php';
+            }
+            ?>
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php" ?>
@@ -205,10 +216,10 @@ try {
             // Add data-action attributes to action buttons
             $('.btn-warning[title="Suspend"]').attr('data-action', 'suspend')
                 .attr('data-confirm', 'Are you sure you want to suspend this principal?');
-            
+
             $('.btn-success[title="Reactivate"]').attr('data-action', 'reactivate')
                 .attr('data-confirm', 'Are you sure you want to reactivate this principal?');
-            
+
             $('.btn-danger[title="Delete"]').attr('data-action', 'delete')
                 .attr('data-confirm', 'Are you sure you want to delete this principal? This action cannot be undone.');
 
@@ -219,9 +230,13 @@ try {
                     serverSide: false, // Set to true if you want server-side processing
                     responsive: true,
                     pageLength: 25,
-                    order: [[0, 'asc']],
-                    columnDefs: [
-                        { targets: [-1], orderable: false } // Disable sorting on Actions column
+                    order: [
+                        [0, 'asc']
+                    ],
+                    columnDefs: [{
+                            targets: [-1],
+                            orderable: false
+                        } // Disable sorting on Actions column
                     ]
                 });
             }
@@ -236,7 +251,7 @@ try {
 <?php
 if (is_ajax_request()) {
     $content = ob_get_clean();
-    
+
     // Extract just the container-fluid content
     if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
         echo '<div class="container-fluid">' . $matches[1] . '</div>';
@@ -246,4 +261,5 @@ if (is_ajax_request()) {
     exit;
 }
 ?>
+
 </html>

@@ -9,12 +9,19 @@ include_once "../../includes/connect.php";
 include_once "../../includes/email_functions.php";
 include_once "../../includes/ajax_helpers.php";
 
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
+
+// --- Authorization & Initialization ---
 $role = null;
 $userId = null;
 $schoolId = null;
 $teacherName = 'Teacher';
 $availableStandards = [];
 $availableSubjects = [];
+$errors = [];
+$successMessage = '';
 
 if (isset($_COOKIE['encrypted_user_role'])) {
     $decrypted_role = decrypt_id($_COOKIE['encrypted_user_role']);
@@ -30,208 +37,194 @@ if (!$role || !$userId || $role !== 'teacher') {
 }
 
 try {
+    // Fetch teacher's details (school, name, standards, subjects)
     $stmt_teacher_info = $conn->prepare('SELECT "school_id", "teacher_name", "std", "subject" FROM "teacher" WHERE "id" = ?');
     $stmt_teacher_info->execute([$userId]);
     if ($row = $stmt_teacher_info->fetch(PDO::FETCH_ASSOC)) {
         $schoolId = $row['school_id'];
         $teacherName = $row['teacher_name'];
-
         if (!empty($row['std'])) {
-            $std_string_from_db = trim($row['std'], '{}');
-            if (!empty($std_string_from_db)) {
-                $availableStandards = explode(',', $std_string_from_db);
-            }
+            $availableStandards = explode(',', trim($row['std'], '{}'));
         }
-
         if (!empty($row['subject'])) {
-            $availableSubjects = explode(',', $row['subject']);
+            $availableSubjects = explode(',', trim($row['subject'], '{}'));
         }
     }
 
+    // --- Form Submission Handling ---
     if ($_SERVER["REQUEST_METHOD"] == "POST") {
-        $standard = $_POST['standard'];
-        $subject = $_POST['subject'];
-        $title = $_POST['title'];
-        $description = $_POST['description'];
-        $due_date = $_POST['due_date'];
-        $filePathForDB = null;
-        $originalFilename = null;
+        $title = filter_input(INPUT_POST, 'title', FILTER_SANITIZE_STRING);
+        $description = filter_input(INPUT_POST, 'description', FILTER_SANITIZE_STRING);
+        $std = filter_input(INPUT_POST, 'std', FILTER_SANITIZE_STRING);
+        $subject = filter_input(INPUT_POST, 'subject', FILTER_SANITIZE_STRING);
+        $due_date = filter_input(INPUT_POST, 'due_date', FILTER_SANITIZE_STRING);
+        $file_path = null;
 
+        // File Upload Handling
         if (isset($_FILES['assignment_file']) && $_FILES['assignment_file']['error'] == 0) {
-            $originalFilename = basename($_FILES["assignment_file"]["name"]);
-            $uploadDirServer = __DIR__ . '/uploads/';
-            $uploadDirWeb = '/BMC-SMS/pages/assignments/uploads/';
-            if (!is_dir($uploadDirServer)) {
-                mkdir($uploadDirServer, 0777, true);
+            $upload_dir = '../../uploads/assignments/';
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0777, true);
             }
-            $storageFilename = uniqid('assign_', true) . '_' . $originalFilename;
-            $serverFilePath = $uploadDirServer . $storageFilename;
-            if (move_uploaded_file($_FILES["assignment_file"]["tmp_name"], $serverFilePath)) {
-                $filePathForDB = $uploadDirWeb . $storageFilename;
+            $file_name = time() . '_' . basename($_FILES['assignment_file']['name']);
+            $file_path = 'uploads/assignments/' . $file_name;
+            if (!move_uploaded_file($_FILES['assignment_file']['tmp_name'], '../../' . $file_path)) {
+                $errors[] = "Sorry, there was an error uploading your file.";
+                $file_path = null;
             }
         }
 
-        $conn->beginTransaction();
+        if (empty($errors)) {
+            $stmt = $conn->prepare(
+                'INSERT INTO "assignments" ("school_id", "teacher_id", "title", "description", "std", "subject", "due_date", "file_path")
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+            );
+            $stmt->execute([$schoolId, $userId, $title, $description, $std, $subject, $due_date, $file_path]);
 
-        $insert_stmt = $conn->prepare('INSERT INTO "assignments" (teacher_id, school_id, standard, subject, title, description, due_date, file_path, original_filename) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
-        $insert_stmt->execute([$userId, $schoolId, $standard, $subject, $title, $description, $due_date, $filePathForDB, $originalFilename]);
+            // Create notifications for all students in the selected standard
+            $stmt_students = $conn->prepare('SELECT "id" FROM "student" WHERE "std" = ? AND "school_id" = ?');
+            $stmt_students->execute([$std, $schoolId]);
+            $students = $stmt_students->fetchAll(PDO::FETCH_ASSOC);
 
-        $stmt_students = $conn->prepare('SELECT "id", "email", "student_name" FROM "student" WHERE "school_id" = ? AND "std" = ?');
-        $stmt_students->execute([$schoolId, $standard]);
-        $students = $stmt_students->fetchAll(PDO::FETCH_ASSOC);
-
-        $notification_message = "New Assignment: " . substr($title, 0, 50) . "...";
-        $notification_link = "pages/assignments/view_assignments.php";
-        $notification_type = "new_assignment";
-        $stmt_notify = $conn->prepare('INSERT INTO "notifications" (user_id, message, link, type) VALUES (?, ?, ?, ?)');
-
-        $email_subject = "New Assignment Posted: " . htmlspecialchars($title);
-        $email_content_base = "<p>A new assignment has been posted by your teacher, " . htmlspecialchars($teacherName) . ".</p><ul><li><strong>Title:</strong> " . htmlspecialchars($title) . "</li><li><strong>Subject:</strong> " . htmlspecialchars($subject) . "</li><li><strong>Due Date:</strong> " . htmlspecialchars($due_date) . "</li></ul><p><strong>Description:</strong><br>" . nl2br(htmlspecialchars($description)) . "</p><p>Please log in to the portal to view the details and submit your work.</p>";
-
-        foreach ($students as $student) {
-            $stmt_notify->execute([$student['id'], $notification_message, $notification_link, $notification_type]);
-            $email_body = "<p>Dear " . htmlspecialchars($student['student_name']) . ",</p>" . $email_content_base;
-            send_email($student['email'], $email_subject, $email_body);
+            if ($students) {
+                $notification_message = "New assignment posted: " . $title;
+                $notification_link = "pages/assignments/view_assignments.php";
+                $notification_type = "new_assignment";
+                $stmt_notify = $conn->prepare(
+                    'INSERT INTO "notifications" ("user_id", "user_role", "message", "link", "type")
+                     VALUES (?, \'student\', ?, ?, ?)'
+                );
+                foreach ($students as $student) {
+                    $stmt_notify->execute([$student['id'], $notification_message, $notification_link, $notification_type]);
+                }
+            }
+            $successMessage = "Assignment has been successfully sent!";
         }
-
-        $conn->commit();
-        header("Location: assignment_history.php?success=1");
-        exit();
     }
 } catch (PDOException $e) {
-    if (isset($conn) && $conn->inTransaction()) {
-        $conn->rollBack();
-    }
-    die("Database error: " . $e->getMessage());
+    error_log("Database Error in send_assignment.php: " . $e->getMessage());
+    $errors[] = "A database error occurred. Please try again.";
 }
 
-$pageTitle = 'Send Assignment';
-?>
-
-<?php
 /*
 |--------------------------------------------------------------------------
-| RESPONSIVE FRONTEND (VIEW)
+| FRONTEND VIEW (HTML)
 |--------------------------------------------------------------------------
 */
-if (!is_ajax_request()):
 ?>
-    <!DOCTYPE html>
-    <html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-        <title><?php echo htmlspecialchars($pageTitle); ?></title>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Send New Assignment</title>
+    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+</head>
 
-        <!-- Core CSS -->
-        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
-        <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
-        <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-        <link rel="stylesheet" href="../../assets/css/sidebar.css">
-        <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-    </head>
-
-    <body id="page-top">
-        <div id="wrapper">
-            <?php include '../../includes/sidebar.php'; ?>
-            <div id="content-wrapper" class="d-flex flex-column">
-                <div id="content">
-                    <?php include '../../includes/header.php'; ?>
+<body id="page-top">
+    <div id="wrapper">
+        <?php if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        } ?>
+        <div id="content-wrapper" class="d-flex flex-column">
+            <div id="content">
+                <?php if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                } ?>
+                <div id="main-content">
 
                     <div class="container-fluid">
                         <h1 class="h3 mb-4 text-gray-800">Send New Assignment</h1>
-                        <div class="card shadow mb-4">
-                            <div class="card-header py-3">
-                                <h6 class="m-0 font-weight-bold text-primary">Assignment Details</h6>
+
+                        <?php if (!empty($successMessage)): ?>
+                            <div class="alert alert-success"><?php echo htmlspecialchars($successMessage); ?></div>
+                        <?php endif; ?>
+                        <?php if (!empty($errors)): ?>
+                            <div class="alert alert-danger">
+                                <?php foreach ($errors as $error): ?>
+                                    <p class="mb-0"><?php echo htmlspecialchars($error); ?></p>
+                                <?php endforeach; ?>
                             </div>
+                        <?php endif; ?>
+
+                        <div class="card shadow mb-4">
                             <div class="card-body">
-                                <form method="POST" enctype="multipart/form-data" action="send_assignment.php">
-                                    <!-- Responsive Row for Standard and Subject -->
-                                    <div class="form-row">
-                                        <div class="form-group col-md-6">
-                                            <label for="standard">For Standard</label>
-                                            <select class="form-control" id="standard" name="standard" required>
-                                                <option value="">-- Select Standard --</option>
-                                                <?php foreach ($availableStandards as $std): ?>
-                                                    <option value="<?php echo htmlspecialchars(trim($std)); ?>">Standard <?php echo htmlspecialchars(trim($std)); ?></option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                        </div>
-                                        <div class="form-group col-md-6">
-                                            <label for="subject">Subject</label>
-                                            <select class="form-control" id="subject" name="subject" required>
-                                                <option value="">-- Select Subject --</option>
-                                                <?php foreach ($availableSubjects as $sub): ?>
-                                                    <option value="<?php echo htmlspecialchars(trim($sub)); ?>"><?php echo htmlspecialchars(trim($sub)); ?></option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                        </div>
-                                    </div>
+                                <form action="" method="post" enctype="multipart/form-data">
                                     <div class="form-group">
                                         <label for="title">Assignment Title</label>
                                         <input type="text" class="form-control" id="title" name="title" required>
                                     </div>
                                     <div class="form-group">
-                                        <label for="description">Description / Instructions</label>
-                                        <textarea class="form-control" id="description" name="description" rows="4"></textarea>
+                                        <label for="description">Description</label>
+                                        <textarea class="form-control" id="description" name="description" rows="4" required></textarea>
                                     </div>
-                                    <!-- Responsive Row for Due Date and File Upload -->
                                     <div class="form-row">
-                                        <div class="form-group col-md-6">
+                                        <div class="form-group col-md-4">
+                                            <label for="std">Standard</label>
+                                            <select class="form-control" id="std" name="std" required>
+                                                <option value="">Select Standard...</option>
+                                                <?php foreach ($availableStandards as $standard): ?>
+                                                    <option value="<?php echo htmlspecialchars($standard); ?>"><?php echo htmlspecialchars($standard); ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </div>
+                                        <div class="form-group col-md-4">
+                                            <label for="subject">Subject</label>
+                                            <select class="form-control" id="subject" name="subject" required>
+                                                <option value="">Select Subject...</option>
+                                                <?php foreach ($availableSubjects as $subject): ?>
+                                                    <option value="<?php echo htmlspecialchars($subject); ?>"><?php echo htmlspecialchars($subject); ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </div>
+                                        <div class="form-group col-md-4">
                                             <label for="due_date">Due Date</label>
                                             <input type="date" class="form-control" id="due_date" name="due_date" required>
                                         </div>
-                                        <div class="form-group col-md-6">
-                                            <label for="assignment_file">Attach File (Optional)</label>
-                                            <div class="custom-file">
-                                                <input type="file" class="custom-file-input" id="assignment_file" name="assignment_file">
-                                                <label class="custom-file-label" for="assignment_file">Choose file...</label>
-                                            </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Attach File (Optional)</label>
+                                        <div class="custom-file">
+                                            <input type="file" class="custom-file-input" id="assignment_file" name="assignment_file">
+                                            <label class="custom-file-label" for="assignment_file">Choose file...</label>
                                         </div>
                                     </div>
-                                    <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane mr-2"></i>Send Assignment</button>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-paper-plane mr-2"></i>Send Assignment
+                                    </button>
                                 </form>
                             </div>
                         </div>
                     </div>
                 </div>
-                <?php include '../../includes/footer.php'; ?>
             </div>
+            <?php if (!$is_ajax_request) {
+                include '../../includes/footer.php';
+            } ?>
         </div>
-        <?php include_once "../../includes/logout_modal.php" ?>
+    </div>
+    <?php include_once "../../includes/logout_modal.php" ?>
+    <script src="../../assets/vendor/jquery/jquery.min.js"></script>
+    <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="../../assets/js/sb-admin-2.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const dueDateInput = document.getElementById('due_date');
+            const today = new Date().toISOString().split('T')[0];
+            dueDateInput.setAttribute('min', today);
 
-        <!-- Core Scripts -->
-        <script src="../../assets/vendor/jquery/jquery.min.js"></script>
-        <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-        <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
-        <script src="../../assets/js/sb-admin-2.min.js"></script>
-
-        <?php
-        /*
-    |--------------------------------------------------------------------------
-    | JAVASCRIPT LOGIC
-    |--------------------------------------------------------------------------
-    */
-        ?>
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                // Set the minimum date for the due date input to today
-                const dueDateInput = document.getElementById('due_date');
-                const today = new Date().toISOString().split('T')[0];
-                dueDateInput.setAttribute('min', today);
-
-                // Display the filename in the custom file input field
-                $('.custom-file-input').on('change', function() {
-                    var fileName = $(this).val().split('\\').pop();
-                    $(this).siblings('.custom-file-label').addClass("selected").html(fileName);
-                });
+            $('.custom-file-input').on('change', function() {
+                var fileName = $(this).val().split('\\').pop();
+                $(this).siblings('.custom-file-label').addClass("selected").html(fileName);
             });
-        </script>
-    </body>
+        });
+    </script>
+</body>
 
-    </html>
+</html>
 <?php
-endif; // End ajax check
 $conn = null;
 ?>

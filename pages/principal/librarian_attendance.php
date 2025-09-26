@@ -3,11 +3,9 @@ include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php';
 
-// Check if this is an AJAX request
-if (is_ajax_request()) {
-    // Start output buffering to capture the HTML
-    ob_start();
-}
+// This check is crucial for the AJAX navigation to work.
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// $is_ajax_request = is_ajax_request();
 
 date_default_timezone_set('Asia/Kolkata');
 
@@ -45,13 +43,14 @@ try {
 
     $current_date = date('Y-m-d');
     $attendance_date_display = isset($_GET['attendance_date']) ? $_GET['attendance_date'] : $current_date;
+    $is_past_date = $attendance_date_display < $current_date;
 
     if ($attendance_date_display > $current_date) {
         $attendance_date_display = $current_date;
         $errorMessage = "You cannot mark attendance for a future date. The date has been reset to today.";
     }
 
-    if(empty($errorMessage)){
+    if (empty($errorMessage)) {
         $holiday_stmt = $conn->prepare("SELECT description FROM holidays WHERE holiday_date = ? AND school_id = ?");
         $holiday_stmt->execute([$attendance_date_display, $school_id]);
         $holiday = $holiday_stmt->fetch(PDO::FETCH_ASSOC);
@@ -61,34 +60,34 @@ try {
         }
     }
 
-    // --- Mandatory Past Attendance Check ---
-    if (empty($errorMessage) && !$is_holiday) {
-        $target_date = new DateTime($attendance_date_display);
-        
+    // --- Mandatory Past Attendance Check (only for today's view) ---
+    if (empty($errorMessage) && !$is_holiday && !$is_past_date) {
+        $current_datetime = new DateTime(); // Check up to today
+
         $first_joining_stmt = $conn->prepare("SELECT MIN(date_of_joining) FROM librarian WHERE school_id = ? AND date_of_joining IS NOT NULL");
         $first_joining_stmt->execute([$school_id]);
         $first_joining_date = $first_joining_stmt->fetchColumn();
 
-        $start_of_month = new DateTime($target_date->format('Y-m-01'));
+        $start_of_month = new DateTime($current_datetime->format('Y-m-01'));
         $start_date = ($first_joining_date && new DateTime($first_joining_date) > $start_of_month) ? new DateTime($first_joining_date) : $start_of_month;
 
-        if ($start_date < $target_date) {
+        if ($start_date < $current_datetime) {
             $interval = new DateInterval('P1D');
-            $period = new DatePeriod($start_date, $interval, $target_date);
-            
+            $period = new DatePeriod($start_date, $interval, $current_datetime); // Check up to yesterday
+
             $att_count_stmt = $conn->prepare("SELECT COUNT(librarian_id) FROM librarian_attendance WHERE school_id = ? AND attendance_date = ?");
             $holiday_check_stmt = $conn->prepare("SELECT COUNT(*) FROM holidays WHERE school_id = ? AND holiday_date = ?");
             $lib_expected_stmt = $conn->prepare("SELECT COUNT(id) FROM librarian WHERE school_id = ? AND (date_of_joining IS NULL OR date_of_joining <= ?)");
 
             foreach ($period as $date) {
-                if (date('N', $date->getTimestamp()) < 7) {
+                if (date('N', $date->getTimestamp()) < 7) { // Skip Sundays
                     $date_to_check = $date->format('Y-m-d');
-                    
+
                     $holiday_check_stmt->execute([$school_id, $date_to_check]);
                     if ($holiday_check_stmt->fetchColumn() > 0) {
-                        continue; 
+                        continue;
                     }
-                    
+
                     $lib_expected_stmt->execute([$school_id, $date_to_check]);
                     $expected_librarians = $lib_expected_stmt->fetchColumn();
 
@@ -98,7 +97,7 @@ try {
 
                     $att_count_stmt->execute([$school_id, $date_to_check]);
                     $recorded_librarians = $att_count_stmt->fetchColumn();
-                    
+
                     if ($recorded_librarians < $expected_librarians) {
                         $all_missing_dates[] = $date_to_check;
                     }
@@ -106,8 +105,8 @@ try {
             }
         }
     }
-    
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($all_missing_dates) && $school_id && !$is_holiday) {
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($is_past_date || empty($all_missing_dates)) && $school_id && !$is_holiday) {
         $attendance_date = $_POST['attendance_date'];
         if ($attendance_date > $current_date) $attendance_date = $current_date;
 
@@ -126,8 +125,49 @@ try {
                 }
                 $success_message = "Bulk attendance for " . htmlspecialchars($attendance_date) . " saved!";
             }
-            
+
             $conn->commit();
+
+            // After saving a past date, find the next missing date or redirect to today
+            if ($attendance_date < $current_date) {
+                $next_missing_date = null;
+                $start_next_check = new DateTime($attendance_date);
+                $start_next_check->add(new DateInterval('P1D'));
+                $end_check = new DateTime($current_date);
+
+                if ($start_next_check < $end_check) {
+                    $period = new DatePeriod($start_next_check, new DateInterval('P1D'), $end_check);
+                    $att_count_stmt = $conn->prepare("SELECT COUNT(librarian_id) FROM librarian_attendance WHERE school_id = ? AND attendance_date = ?");
+                    $holiday_check_stmt = $conn->prepare("SELECT COUNT(*) FROM holidays WHERE school_id = ? AND holiday_date = ?");
+                    $lib_expected_stmt = $conn->prepare("SELECT COUNT(id) FROM librarian WHERE school_id = ? AND (date_of_joining IS NULL OR date_of_joining <= ?)");
+
+                    foreach ($period as $date) {
+                        if (date('N', $date->getTimestamp()) < 7) {
+                            $date_to_check = $date->format('Y-m-d');
+                            $holiday_check_stmt->execute([$school_id, $date_to_check]);
+                            if ($holiday_check_stmt->fetchColumn() > 0) continue;
+
+                            $lib_expected_stmt->execute([$school_id, $date_to_check]);
+                            if ($lib_expected_stmt->fetchColumn() == 0) continue;
+
+                            $att_count_stmt->execute([$school_id, $date_to_check]);
+                            if ($att_count_stmt->fetchColumn() < $lib_expected_stmt->fetchColumn()) {
+                                $next_missing_date = $date_to_check;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if ($next_missing_date) {
+                    header("Location: librarian_attendance.php?attendance_date=" . urlencode($next_missing_date) . "&success=" . urlencode($success_message));
+                } else {
+                    header("Location: librarian_attendance.php?success=" . urlencode($success_message . " All past attendance is complete. You can now fill today's attendance."));
+                }
+                exit();
+            }
+
+            // Default behavior for today's attendance
             header("Location: view_librarian_attendance.php?date=" . urlencode($attendance_date) . "&success=" . urlencode($success_message));
             exit();
         } catch (Exception $e) {
@@ -135,11 +175,11 @@ try {
             $errorMessage = "Failed to update attendance: " . $e->getMessage();
         }
     }
-    
+
     $librarians_with_details = [];
     $earliest_joining_date_school = null;
 
-    if (empty($errorMessage) && empty($all_missing_dates) && $school_id && !$is_holiday) {
+    if (empty($errorMessage) && !$is_holiday && ($is_past_date || empty($all_missing_dates))) {
         try {
             $sql = "SELECT id, librarian_name, date_of_joining FROM librarian WHERE school_id = ? ORDER BY librarian_name ASC";
             $lib_stmt = $conn->prepare($sql);
@@ -160,20 +200,18 @@ try {
                 $librarian['status'] = $attendance_records_raw[$librarian['id']] ?? 'Present';
                 $librarians_with_details[] = $librarian;
             }
-
         } catch (PDOException $e) {
             $errorMessage = "Failed to load attendance data: " . $e->getMessage();
         }
     }
-
 } catch (Exception $e) {
     $errorMessage = "An error occurred: " . $e->getMessage();
 }
 
-if (!is_ajax_request()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Update Librarian Attendance - School Management System</title>
@@ -184,13 +222,19 @@ if (!is_ajax_request()) {
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
-        <?php include '../../includes/sidebar.php'; ?>
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php include_once '../../includes/header.php'; ?>
                 <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
                 }
                 ?>
                 <div class="container-fluid">
@@ -201,9 +245,15 @@ if (!is_ajax_request()) {
 
                     <?php if (!empty($errorMessage)): ?>
                         <div class="alert alert-danger"><?php echo htmlspecialchars($errorMessage); ?></div>
-                    <?php elseif ($is_holiday): ?>
+                    <?php endif; ?>
+
+                    <?php if (isset($_GET['success'])): ?>
+                        <div class="alert alert-success"><?php echo htmlspecialchars($_GET['success']); ?></div>
+                    <?php endif; ?>
+
+                    <?php if ($is_holiday): ?>
                         <div class="card shadow mb-4">
-                             <div class="card-header py-3">
+                            <div class="card-header py-3">
                                 <h6 class="m-0 font-weight-bold text-primary">Attendance for <?php echo htmlspecialchars($attendance_date_display); ?></h6>
                             </div>
                             <div class="card-body">
@@ -213,7 +263,7 @@ if (!is_ajax_request()) {
                                 </div>
                             </div>
                         </div>
-                    <?php elseif (!empty($all_missing_dates)): ?>
+                    <?php elseif (!empty($all_missing_dates) && !$is_past_date): ?>
                         <div class="alert alert-warning">
                             <h4 class="alert-heading">Action Required</h4>
                             <p>You cannot mark attendance for <strong><?php echo htmlspecialchars($attendance_date_display); ?></strong> because librarian attendance for the following past date(s) is incomplete:</p>
@@ -230,10 +280,19 @@ if (!is_ajax_request()) {
                         <div class="card shadow mb-4">
                             <div class="card-header py-3">
                                 <h6 class="m-0 font-weight-bold text-primary">
-                                    Attendance for Librarians on <?php echo htmlspecialchars($attendance_date_display); ?>
+                                    <i class="fas fa-calendar-check"></i> Attendance for Librarians on <?php echo htmlspecialchars($attendance_date_display); ?>
+                                    <?php if ($is_past_date): ?>
+                                        <span class="badge badge-warning ml-2">Past Date</span>
+                                    <?php endif; ?>
                                 </h6>
                             </div>
                             <div class="card-body">
+                                <?php if ($is_past_date): ?>
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle"></i> 
+                                    You are filling attendance for a past date: <strong><?php echo date('d M Y (D)', strtotime($attendance_date_display)); ?></strong>
+                                </div>
+                                <?php endif; ?>
                                 <p class="text-info">
                                     <?php echo $edit_librarian_id ? 'Editing a single librarian\'s attendance.' : 'Bulk Edit Mode: All librarians are editable.'; ?>
                                 </p>
@@ -242,17 +301,22 @@ if (!is_ajax_request()) {
                                         <div class="form-inline">
                                             <div class="form-group">
                                                 <label for="attendance_date" class="mr-2">Date:</label>
-                                                <input type="date" id="attendance_date" name="attendance_date" class="form-control" value="<?php echo htmlspecialchars($attendance_date_display); ?>" min="<?php echo $earliest_joining_date_school->format('Y-m-d'); ?>" max="<?php echo $current_date; ?>">
+                                                <input type="date" id="attendance_date" name="attendance_date" class="form-control" value="<?php echo htmlspecialchars($attendance_date_display); ?>" max="<?php echo $current_date; ?>">
                                             </div>
                                         </div>
                                         <div class="form-group">
                                             <input type="text" id="customSearchBox" class="form-control" placeholder="Search librarians...">
                                         </div>
                                     </div>
-                                    
+
                                     <div class="table-responsive">
                                         <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                                            <thead><tr><th>Librarian Name</th><th>Status</th></tr></thead>
+                                            <thead>
+                                                <tr>
+                                                    <th>Librarian Name</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
                                             <tbody>
                                                 <?php foreach ($librarians_with_details as $librarian):
                                                     $is_pre_joining = $librarian['date_of_joining'] && $attendance_date_display < $librarian['date_of_joining'];
@@ -296,14 +360,15 @@ if (!is_ajax_request()) {
                         </div>
                     <?php endif; ?>
                 </div>
-<?php
-if (!is_ajax_request()) {
-?>
             </div>
-            <?php include_once '../../includes/footer.php'; ?>
+            <?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?> 
         </div>
     </div>
-    <?php include_once "../../includes/logout_modal.php"?>
+    <?php include_once "../../includes/logout_modal.php" ?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
@@ -317,7 +382,7 @@ if (!is_ajax_request()) {
                 "info": false,
                 "dom": '<"table-responsive"t>'
             });
-            $('#customSearchBox').on('keyup', function(){
+            $('#customSearchBox').on('keyup', function() {
                 table.search(this.value).draw();
             });
 
@@ -334,23 +399,21 @@ if (!is_ajax_request()) {
     </script>
 </body>
 <?php
-// Add this block at the very end of the file
-if (is_ajax_request()) {
-    // Get the captured HTML
-    $content = ob_get_clean();
-    
-    // Extract just the main content area for the AJAX response
-    if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
-        echo '<div class="container-fluid">' . $matches[1] . '</div>';
-    } else {
-        // Fallback if the main container isn't found
-        echo $content;
-    }
-    // Stop the script for AJAX requests
-    exit;
-}
+                    // Add this block at the very end of the file
+                    if (is_ajax_request()) {
+                        // Get the captured HTML
+                        $content = ob_get_clean();
+
+                        // Extract just the main content area for the AJAX response
+                        if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
+                            echo '<div class="container-fluid">' . $matches[1] . '</div>';
+                        } else {
+                            // Fallback if the main container isn't found
+                            echo $content;
+                        }
+                        // Stop the script for AJAX requests
+                        exit;
+                    }
 ?>
+
 </html>
-<?php
-}
-?>
