@@ -153,7 +153,7 @@ if (empty($school_info['logo_path'])) {
                         <li class="nav-item"><a class="nav-link" href="admission.php">Admissions</a></li>
                         <li class="nav-item"><a class="nav-link" href="blog.php">Blog</a></li>
                         <li class="nav-item"><a class="nav-link" href="contact.php">Contact</a></li>
-                        <li class="nav-item btn-contact-us pl-4 pl-lg-0"><a class="btn btn-info" href="/login.php">Login</a></li>
+                        <li class="nav-item btn-contact-us pl-4 pl-lg-0"><a class="btn btn-info" href="../login.php">Login</a></li>
                     </ul>
                 </div>
             </div>
