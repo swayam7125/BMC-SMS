@@ -2,6 +2,8 @@
 require_once __DIR__ . "/../../includes/connect.php";
 require_once __DIR__ . "/../../encryption.php";
 
+$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 if (!isset($_COOKIE['encrypted_user_id'])) {
     header("Location: ../../login.php");
     exit;
