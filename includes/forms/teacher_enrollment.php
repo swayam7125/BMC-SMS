@@ -2,11 +2,12 @@
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 include_once "../../includes/ajax_helpers.php";
-require_once "../../includes/log_system.php";
+include_once "../../includes/log_system.php";
 
 $role = null;
 $userId = null;
-$enrolling_user_name = null; // ADDED for logging context
+$enrolling_user_name = null;
+
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
@@ -14,76 +15,57 @@ if (isset($_COOKIE['encrypted_user_id'])) {
     $userId = decrypt_id($_COOKIE['encrypted_user_id']);
 }
 
-if (!$role) {
-    header("Location: ../../login.php");
-    exit;
-}
-
-$admin_school_id = null;
-$admin_school_name = null;
-if ($role === 'principal' && $userId) {
-    // --- CORRECTED: Fetching principal's name for logging context ---
-    $stmt = $conn->prepare('SELECT s."id", s."school_name", p."principal_name" AS enrolling_user_name FROM "principal" p JOIN "school" s ON p."school_id" = s."id" WHERE p."id" = ?');
-    $stmt->execute([$userId]);
-    $admin_data = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($admin_data) {
-        $admin_school_id = $admin_data['id'];
-        $admin_school_name = $admin_data['school_name'];
-        $enrolling_user_name = $admin_data['enrolling_user_name']; // Captured principal's name
+if ($userId) {
+    try {
+        $user_table = $role; 
+        $name_column = $role . '_name';
+        if($role === 'superadmin'){
+            $enrolling_user_name = 'Super Admin';
+        } else {
+             $stmt_user_info = $conn->prepare("SELECT {$name_column} FROM {$user_table} WHERE id = ?");
+             $stmt_user_info->execute([$userId]);
+             $user_info = $stmt_user_info->fetch(PDO::FETCH_ASSOC);
+             if ($user_info) {
+                 $enrolling_user_name = $user_info[$name_column];
+             }
+        }
+    } catch (PDOException $e) {
+        error_log("Failed to fetch enrolling user info for logging in teacher_enrollment.php: " . $e->getMessage());
+        $enrolling_user_name = 'Unknown';
     }
-} else {
-     // Fallback for Superadmin (who is the only other user enrolling a teacher if this is run)
-    $enrolling_user_name = isset($_COOKIE['encrypted_user_name']) ? decrypt_id($_COOKIE['encrypted_user_name']) : 'Unknown Admin';
-}
-
-$errors = [];
-$schools = [];
-$routes_stops = [];
-
-// Fetch schools and routes/stops based on role
-try {
-    if ($role === 'principal' && $admin_school_id) {
-        // Principal is restricted to their school's stops
-        $stmt_routes = $conn->prepare('SELECT r.route_name, s.id as stop_id, s.stop_name FROM routes r JOIN stops s ON r.id = s.route_id WHERE r.school_id = ? ORDER BY r.route_name, s.stop_name');
-        $stmt_routes->execute([$admin_school_id]);
-        $routes_stops = $stmt_routes->fetchAll(PDO::FETCH_ASSOC);
-    } else {
-        // Fetch all schools for superadmin
-        $stmt_schools = $conn->query('SELECT id, school_name FROM school ORDER BY school_name');
-        $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
-    }
-} catch (PDOException $e) {
-    $errors[] = "Database error: " . $e->getMessage();
 }
 
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $teacher_name = trim($_POST['teacher_name']);
-    $email = trim($_POST['email']);
-    $password = $_POST['password'];
-    $phone = trim($_POST['phone']);
-    $dob = $_POST['dob'];
-    $gender = $_POST['gender'];
-    $blood_group = $_POST['blood_group'];
-    $address = trim($_POST['address']);
-    $qualification = trim($_POST['qualification']);
-    $salary = trim($_POST['salary']);
-    $date_of_joining = $_POST['date_of_joining'] ?? null;
-    $school_id = ($role === 'principal') ? $admin_school_id : $_POST['school_id'];
-    $image_path_for_db = null;
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && is_ajax_request()) {
+    $errors = [];
+
+    // --- FORM DATA RETRIEVAL ---
+    $school_id = $_POST['school_id'] ?? null;
+    $teacher_name = trim($_POST['teacher_name'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $phone = trim($_POST['phone'] ?? '');
     
-    // Transport details
-    $transport_mode = $_POST['transport_mode'] ?? 'Self Transport';
-    $stop_id = ($transport_mode === 'School Transport' && !empty($_POST['stop_id'])) ? (int)$_POST['stop_id'] : null;
-    $self_transport_mode = ($transport_mode === 'Self Transport' && !empty($_POST['self_transport_mode'])) ? $_POST['self_transport_mode'] : null;
-    $vehicle_number = null;
-    $license_number = null;
-    if ($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') {
-        $vehicle_number = trim($_POST['vehicle_number'] ?? '');
-        $license_number = trim($_POST['license_number'] ?? '');
+    // --- VALIDATION ---
+    if (empty($school_id)) $errors[] = "A school must be selected.";
+    if (empty($teacher_name)) $errors[] = "Teacher's name is required.";
+    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "A valid email is required.";
+    if (empty($password)) $errors[] = "Password is required.";
+    
+    // --- CORRECTED BOOLEAN HANDLING ---
+    $is_class_teacher = isset($_POST['class_teacher']) ? 'true' : 'false';
+    $class_teacher_std = ($is_class_teacher === 'true') ? trim($_POST['class_teacher_std'] ?? '') : null;
+
+    if ($is_class_teacher === 'true' && empty($class_teacher_std)) {
+        $errors[] = "Please specify the standard for the class teacher.";
     }
 
-    // File Upload Logic
+    if (!empty($errors)) {
+        Response::send(['success' => false, 'message' => implode('<br>', $errors)]);
+        exit;
+    }
+
+    $image_path_for_db = null;
     if (isset($_FILES['teacher_image']) && $_FILES['teacher_image']['error'] === UPLOAD_ERR_OK) {
         $file = $_FILES['teacher_image'];
         $uploadDir = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/teacher/uploads/';
@@ -95,57 +77,98 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (move_uploaded_file($file['tmp_name'], $targetPath)) {
             $image_path_for_db = '/BMC-SMS/pages/teacher/uploads/' . $fileName;
         } else {
-            $errors[] = "Failed to upload image.";
+            Response::send(['success' => false, 'message' => 'Failed to move uploaded file.']);
+            exit;
         }
     }
 
-    // Validation
-    if (empty($teacher_name)) $errors[] = "Teacher name is required.";
-    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "A valid email is required.";
-    if (empty($password)) $errors[] = "Password is required.";
-    if (empty($school_id)) $errors[] = "School must be assigned.";
-    if ($transport_mode === 'Self Transport' && empty($self_transport_mode)) $errors[] = "Please specify the mode of self-transport.";
-    if (($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') && empty($vehicle_number)) $errors[] = "Vehicle number is required.";
-    if (($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') && empty($license_number)) $errors[] = "License number is required.";
+    try {
+        $conn->beginTransaction();
+        $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+        $user_role = 'teacher';
 
-    // --- DATABASE INSERTION ---
-    if (empty($errors)) {
-        try {
-            $conn->beginTransaction();
-            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-            $user_role = 'teacher';
+        $stmt_user = $conn->prepare('INSERT INTO "users" ("role", "email", "password") VALUES (?, ?, ?)');
+        $stmt_user->execute([$user_role, $email, $hashed_password]);
+        $new_user_id = $conn->lastInsertId();
+        
+        // --- Retrieve all form fields ---
+        $dob = !empty($_POST['dob']) ? $_POST['dob'] : null;
+        $gender = $_POST['gender'] ?? null;
+        $blood_group = $_POST['blood_group'] ?? null;
+        $address = trim($_POST['address'] ?? '');
+        $qualification = trim($_POST['qualification'] ?? '');
+        $subject = trim($_POST['subject'] ?? '');
+        $language_known = trim($_POST['language_known'] ?? '');
+        $salary = !empty($_POST['salary']) ? trim($_POST['salary']) : null;
+        $experience = !empty($_POST['experience']) ? trim($_POST['experience']) : null;
+        $batch = $_POST['batch'] ?? null;
+        $date_of_joining = !empty($_POST['date_of_joining']) ? $_POST['date_of_joining'] : null;
+        
+        $std_array = $_POST['std'] ?? [];
+        $sanitized_std = array_map('htmlspecialchars', $std_array);
+        $std_for_db = '{' . implode(',', $sanitized_std) . '}';
 
-            // 1. Insert into users table
-            $stmt_user = $conn->prepare('INSERT INTO "users" ("role", "email", "password") VALUES (?, ?, ?)');
-            $stmt_user->execute([$user_role, $email, $hashed_password]);
-            $new_user_id = $conn->lastInsertId();
+        $transport_mode = $_POST['transport_mode'] ?? 'Self';
+        $self_transport_mode = ($transport_mode === 'Self Transport') ? ($_POST['self_transport_mode'] ?? null) : null;
+        $vehicle_number = ($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') ? trim($_POST['vehicle_number']) : null;
+        $license_number = ($self_transport_mode === 'Bike' || $self_transport_mode === 'Car') ? trim($_POST['license_number']) : null;
+        $stop_id = ($transport_mode === 'School Transport' && !empty($_POST['stop_id'])) ? (int)$_POST['stop_id'] : null;
 
-            // 2. Insert into teacher table
-            $stmt_teacher = $conn->prepare('
-                INSERT INTO "teacher" (id, teacher_image, teacher_name, school_id, email, password, phone, dob, gender, blood_group, address, qualification, salary, date_of_joining, transport_mode, self_transport_mode, vehicle_number, license_number, stop_id) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ');
-            $stmt_teacher->execute([$new_user_id, $image_path_for_db, $teacher_name, $school_id, $email, $hashed_password, $phone, $dob, $gender, $blood_group, $address, $qualification, $salary, $date_of_joining, $transport_mode, $self_transport_mode, $vehicle_number, $license_number, $stop_id]);
+        $sql = 'INSERT INTO teacher (id, teacher_image, teacher_name, phone, school_id, dob, gender, blood_group, address, email, password, qualification, subject, language_known, salary, std, experience, batch, class_teacher, class_teacher_std, date_of_joining, transport_mode, self_transport_mode, vehicle_number, license_number, stop_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+        $stmt_teacher = $conn->prepare($sql);
+        
+        $stmt_teacher->execute([$new_user_id, $image_path_for_db, $teacher_name, $phone, $school_id, $dob, $gender, $blood_group, $address, $email, $hashed_password, $qualification, $subject, $language_known, $salary, $std_for_db, $experience, $batch, $is_class_teacher, $class_teacher_std, $date_of_joining, $transport_mode, $self_transport_mode, $vehicle_number, $license_number, $stop_id]);
 
-            $conn->commit();
-            
-            // ⭐ LOGGING: Log the successful teacher enrollment action
-            log_interaction($role, $userId, "ENROLLMENT SUCCESS: Enrolled new teacher: {$teacher_name} (ID: {$new_user_id})", $enrolling_user_name);
+        $conn->commit();
+        
+        log_interaction($role, $userId, "ENROLLMENT SUCCESS: Enrolled new Teacher: {$teacher_name} (ID: {$new_user_id})", $enrolling_user_name);
+        
+        Response::send([
+            'success' => true, 
+            'message' => 'Teacher enrolled successfully!',
+            'redirect' => '../../pages/teacher/teacher_list.php'
+        ]);
 
-            header("Location: ../../pages/teacher/teacher_list.php?success=Teacher enrolled successfully");
-            exit();
-        } catch (PDOException $e) {
-            $conn->rollBack();
-            if ($e->getCode() == 23505) {
-                $errors[] = "A user with this email already exists.";
+    } catch (PDOException $e) {
+        $conn->rollBack();
+        $message = "Database error: " . $e->getMessage();
+         if ($e->getCode() == 23505) { // Unique constraint violation
+            if (strpos($e->getMessage(), 'teacher_email_key') !== false || strpos($e->getMessage(), 'users_email_key') !== false) {
+                 $message = "A teacher with this email already exists.";
+            } else if (strpos($e->getMessage(), 'uq_class_teacher_std_batch') !== false) {
+                 $message = "A class teacher is already assigned to this Standard for the selected batch.";
             } else {
-                $errors[] = "Database error: " . $e->getMessage();
+                 $message = "A record with this information already exists. Please check email, phone, and license number.";
             }
         }
+        log_interaction($role, $userId, "ENROLLMENT FAILED: " . $message, $enrolling_user_name);
+        Response::send(['success' => false, 'message' => $message]);
+    }
+    exit;
+}
+
+if (!$role) {
+    header("Location: ../../login.php");
+    exit;
+}
+
+$admin_school_id = null;
+$admin_school_name = null;
+if ($role === 'principal' && $userId) {
+    $stmt = $conn->prepare('SELECT s."id", s."school_name" FROM "principal" p JOIN "school" s ON p."school_id" = s."id" WHERE p."id" = ?');
+    $stmt->execute([$userId]);
+    $admin_data = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($admin_data) {
+        $admin_school_id = $admin_data['id'];
+        $admin_school_name = $admin_data['school_name'];
     }
 }
 
-if (!is_ajax_request()) {
+$schools = [];
+if($role === 'superadmin'){
+    $stmt_schools = $conn->query('SELECT "id", "school_name" FROM "school" ORDER BY "school_name"');
+    $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -154,8 +177,9 @@ if (!is_ajax_request()) {
     <title>Enroll Teacher - School Management System</title>
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
 </head>
@@ -170,17 +194,15 @@ if (!is_ajax_request()) {
                         <h1 class="h3 mb-0 text-gray-800">Enroll New Teacher</h1>
                         <a href="../../pages/teacher/teacher_list.php" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to List</a>
                     </div>
-                    <?php if (!empty($errors)): ?>
-                        <div class="alert alert-danger">
-                            <ul class="mb-0"><?php foreach ($errors as $error): ?><li><?php echo htmlspecialchars($error); ?></li><?php endforeach; ?></ul>
-                        </div>
-                    <?php endif; ?>
+                    
+                    <div id="enrollment-alert-placeholder"></div>
+
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
                             <h6 class="m-0 font-weight-bold text-primary">Teacher Information</h6>
                         </div>
                         <div class="card-body">
-                            <form method="POST" action="your-handler.php" data-ajax="true" data-validate="true" enctype="multipart/form-data">
+                            <form id="teacherEnrollmentForm" method="POST" action="" enctype="multipart/form-data">
                                 <div class="row">
                                     <div class="col-md-3 text-center">
                                         <label>Photo Preview</label><br>
@@ -192,11 +214,11 @@ if (!is_ajax_request()) {
                                     </div>
                                     <div class="col-md-9">
                                         <div class="form-row">
-                                            <div class="form-group col-md-12"><label for="teacher_name">Teacher Name *</label><input type="text" class="form-control" id="teacher_name" name="teacher_name" value="<?php echo htmlspecialchars($_POST['teacher_name'] ?? ''); ?>" required></div>
+                                            <div class="form-group col-md-12"><label for="teacher_name">Teacher Name *</label><input type="text" class="form-control" id="teacher_name" name="teacher_name" required></div>
                                         </div>
                                         <div class="form-row">
-                                            <div class="form-group col-md-6"><label for="email">Email *</label><input type="email" class="form-control" id="email" name="email" value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>" required></div>
-                                            <div class="form-group col-md-6"><label for="password">Password *</label><input type="password" class="form-control" id="password" name="password" value="<?php echo htmlspecialchars($_POST['password'] ?? ''); ?>" required></div>
+                                            <div class="form-group col-md-6"><label for="email">Email *</label><input type="email" class="form-control" id="email" name="email" required></div>
+                                            <div class="form-group col-md-6"><label for="password">Password *</label><input type="password" class="form-control" id="password" name="password" required></div>
                                         </div>
                                     </div>
                                 </div>
@@ -208,101 +230,133 @@ if (!is_ajax_request()) {
                                         <label for="school_id">Assign to School *</label>
                                         <?php if ($role === 'principal'): ?>
                                             <input type="text" class="form-control" value="<?php echo htmlspecialchars($admin_school_name); ?>" disabled>
-                                            <input type="hidden" name="school_id" value="<?php echo htmlspecialchars($admin_school_id); ?>">
+                                            <input type="hidden" id="school_id" name="school_id" value="<?php echo $admin_school_id; ?>">
                                         <?php else: ?>
                                             <select class="form-control" id="school_id" name="school_id" required>
                                                 <option value="">-- Select School --</option>
-                                                <?php foreach ($schools as $school): ?>
-                                                    <option value="<?php echo htmlspecialchars($school['id']); ?>" <?php echo (($_POST['school_id'] ?? '') == $school['id']) ? 'selected' : ''; ?>><?php echo htmlspecialchars($school['school_name']); ?></option>
-                                                <?php endforeach; ?>
+                                                <?php foreach ($schools as $school) {
+                                                    echo "<option value='{$school['id']}'>" . htmlspecialchars($school['school_name']) . "</option>";
+                                                } ?>
                                             </select>
                                         <?php endif; ?>
                                     </div>
                                     <div class="form-group col-md-6">
-                                        <label for="date_of_joining">Date of Joining</label>
-                                        <input type="date" class="form-control" id="date_of_joining" name="date_of_joining" value="<?php echo htmlspecialchars($_POST['date_of_joining'] ?? ''); ?>">
+                                        <label for="batch">Batch *</label>
+                                        <select class="form-control" id="batch" name="batch" required>
+                                            <option value="">-- Select Batch --</option>
+                                            <option value="Morning">Morning</option>
+                                            <option value="Evening">Evening</option>
+                                        </select>
                                     </div>
                                 </div>
                                 <div class="form-row">
-                                    <div class="form-group col-md-6"><label for="qualification">Qualification</label><input type="text" class="form-control" id="qualification" name="qualification" value="<?php echo htmlspecialchars($_POST['qualification'] ?? ''); ?>"></div>
-                                    <div class="form-group col-md-6"><label for="salary">Salary</label><input type="number" class="form-control" id="salary" name="salary" step="0.01" min="0" value="<?php echo htmlspecialchars($_POST['salary'] ?? ''); ?>"></div>
+                                     <div class="form-group col-md-6">
+                                        <label for="std">Teaches Standard(s) *</label>
+                                        <select class="form-control" id="std" name="std[]" multiple="multiple" required>
+                                            <!-- Options will be loaded by JS based on school -->
+                                        </select>
+                                    </div>
+                                    <div class="form-group col-md-6">
+                                        <label for="subject">Subject</label>
+                                        <input type="text" class="form-control" id="subject" name="subject">
+                                    </div>
                                 </div>
-                                
+                                <div class="form-row">
+                                    <div class="form-group col-md-6">
+                                        <label for="qualification">Qualification</label>
+                                        <input type="text" class="form-control" id="qualification" name="qualification">
+                                    </div>
+                                    <div class="form-group col-md-6">
+                                        <label for="language_known">Languages Known</label>
+                                        <input type="text" class="form-control" id="language_known" name="language_known">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group col-md-4">
+                                        <label for="experience">Experience (yrs)</label>
+                                        <input type="number" class="form-control" id="experience" name="experience" min="0" max="50">
+                                    </div>
+                                    <div class="form-group col-md-4">
+                                        <label for="salary">Salary</label>
+                                        <input type="number" class="form-control" id="salary" name="salary" step="0.01" min="0">
+                                    </div>
+                                    <div class="form-group col-md-4">
+                                        <label for="date_of_joining">Date of Joining</label>
+                                        <input type="date" class="form-control" id="date_of_joining" name="date_of_joining">
+                                    </div>
+                                </div>
+                                <div class="form-row align-items-center">
+                                    <div class="form-group col-md-6">
+                                        <div class="custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="class_teacher" name="class_teacher">
+                                            <label class="custom-control-label" for="class_teacher">Is Class Teacher?</label>
+                                        </div>
+                                    </div>
+                                    <div class="form-group col-md-6" id="class-teacher-std-div" style="display: none;">
+                                        <label for="class_teacher_std">Class Teacher of Standard *</label>
+                                        <input type="text" class="form-control" id="class_teacher_std" name="class_teacher_std">
+                                    </div>
+                                </div>
+
                                 <hr>
                                 <h6 class="text-primary">Transport Details</h6>
                                  <div class="form-row mt-3">
                                      <div class="form-group col-md-6">
                                         <label for="transport_mode">Mode of Transport *</label>
                                         <select class="form-control" id="transport_mode" name="transport_mode" required>
-                                            <option value="Self Transport" <?php echo (isset($_POST['transport_mode']) && $_POST['transport_mode'] == 'Self Transport') ? 'selected' : ''; ?>>Self Transport (Own Vehicle/Walking)</option>
-                                            <option value="School Transport" <?php echo (isset($_POST['transport_mode']) && $_POST['transport_mode'] == 'School Transport') ? 'selected' : ''; ?>>School Transport (Bus/Van)</option>
+                                            <option value="Self Transport">Self Transport (Own Vehicle/Walking)</option>
+                                            <option value="School Transport">School Transport (Bus/Van)</option>
                                         </select>
                                      </div>
-                                     <div class="form-group col-md-6" id="self-transport-div" style="display: <?php echo (isset($_POST['transport_mode']) && $_POST['transport_mode'] == 'Self Transport') ? 'block' : 'none'; ?>;">
+                                     <div class="form-group col-md-6" id="self-transport-div">
                                         <label for="self_transport_mode">Self Transport Mode *</label>
                                         <select class="form-control" id="self_transport_mode" name="self_transport_mode">
                                             <option value="">-- Select Mode --</option>
-                                            <option value="Public Transport" <?php echo (isset($_POST['self_transport_mode']) && $_POST['self_transport_mode'] == 'Public Transport') ? 'selected' : ''; ?>>Public Transport</option>
-                                            <option value="Walking" <?php echo (isset($_POST['self_transport_mode']) && $_POST['self_transport_mode'] == 'Walking') ? 'selected' : ''; ?>>Walking</option>
-                                            <option value="Parents" <?php echo (isset($_POST['self_transport_mode']) && $_POST['self_transport_mode'] == 'Parents') ? 'selected' : ''; ?>>Parents</option>
-                                            <option value="Bike" <?php echo (isset($_POST['self_transport_mode']) && $_POST['self_transport_mode'] == 'Bike') ? 'selected' : ''; ?>>Bike</option>
-                                            <option value="Car" <?php echo (isset($_POST['self_transport_mode']) && $_POST['self_transport_mode'] == 'Car') ? 'selected' : ''; ?>>Car</option>
+                                            <option value="Public Transport">Public Transport</option>
+                                            <option value="Walking">Walking</option>
+                                            <option value="Parents">Parents</option>
+                                            <option value="Bike">Bike</option>
+                                            <option value="Car">Car</option>
                                         </select>
                                     </div>
-                                     <div class="form-group col-md-6" id="transport-stop-div" style="display: <?php echo (isset($_POST['transport_mode']) && $_POST['transport_mode'] == 'School Transport') ? 'block' : 'none'; ?>;">
+                                     <div class="form-group col-md-6" id="transport-stop-div" style="display: none;">
                                         <label for="stop_id">Assign Transport Stop (Optional)</label>
                                         <select class="form-control" id="stop_id" name="stop_id">
                                             <option value="">-- No Transport --</option>
-                                            <?php
-                                            $stops_to_display = ($role === 'principal' && !empty($admin_school_id)) ? $routes_stops : [];
-                                            $current_route = '';
-                                            foreach($stops_to_display as $row) {
-                                                if ($row['route_name'] !== $current_route) {
-                                                    if ($current_route !== '') echo '</optgroup>';
-                                                    $current_route = $row['route_name'];
-                                                    echo '<optgroup label="' . htmlspecialchars($current_route) . '">';
-                                                }
-                                                $selected = (isset($_POST['stop_id']) && $_POST['stop_id'] == $row['stop_id']) ? 'selected' : '';
-                                                echo "<option value='" . $row['stop_id'] . "' {$selected}>" . htmlspecialchars($row['stop_name']) . "</option>";
-                                            }
-                                            if ($current_route !== '') echo '</optgroup>';
-                                            ?>
                                         </select>
                                     </div>
                                 </div>
-                                <div class="form-row mt-3" id="vehicle-details-div" style="display: <?php echo (isset($_POST['self_transport_mode']) && ($_POST['self_transport_mode'] == 'Bike' || $_POST['self_transport_mode'] == 'Car')) ? 'flex' : 'none'; ?>;">
+                                <div class="form-row mt-3" id="vehicle-details-div" style="display: none;">
                                     <div class="form-group col-md-6">
                                         <label for="vehicle_number">Vehicle Number *</label>
-                                        <input type="text" class="form-control" id="vehicle_number" name="vehicle_number" value="<?php echo htmlspecialchars($_POST['vehicle_number'] ?? ''); ?>">
+                                        <input type="text" class="form-control" id="vehicle_number" name="vehicle_number">
                                     </div>
                                     <div class="form-group col-md-6">
                                         <label for="license_number">License Number *</label>
-                                        <input type="text" class="form-control" id="license_number" name="license_number" value="<?php echo htmlspecialchars($_POST['license_number'] ?? ''); ?>">
+                                        <input type="text" class="form-control" id="license_number" name="license_number">
                                     </div>
                                 </div>
                                 
                                 <hr>
                                 <h6 class="text-primary">Personal Information</h6>
                                 <div class="form-row mt-3">
-                                    <div class="form-group col-md-4"><label for="phone">Phone</label><input type="tel" class="form-control" id="phone" name="phone" maxlength="10" value="<?php echo htmlspecialchars($_POST['phone'] ?? ''); ?>"></div>
-                                    <div class="form-group col-md-4"><label for="dob">Date of Birth</label><input type="date" class="form-control" id="dob" name="dob" value="<?php echo htmlspecialchars($_POST['dob'] ?? ''); ?>"></div>
+                                    <div class="form-group col-md-4"><label for="phone">Phone *</label><input type="tel" class="form-control" id="phone" name="phone" maxlength="10" required></div>
+                                    <div class="form-group col-md-4"><label for="dob">Date of Birth</label><input type="date" class="form-control" id="dob" name="dob"></div>
                                     <div class="form-group col-md-4"><label for="gender">Gender *</label><select class="form-control" id="gender" name="gender" required>
                                             <option value="">-- Select Gender --</option>
-                                            <option value="Male" <?= (($_POST['gender'] ?? '') == 'Male') ? 'selected' : '' ?>>Male</option>
-                                            <option value="Female" <?= (($_POST['gender'] ?? '') == 'Female') ? 'selected' : '' ?>>Female</option>
-                                            <option value="Others" <?= (($_POST['gender'] ?? '') == 'Others') ? 'selected' : '' ?>>Others</option>
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                            <option value="Others">Others</option>
                                         </select></div>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group col-md-6"><label for="blood_group">Blood Group *</label><select class="form-control" id="blood_group" name="blood_group" required>
                                             <option value="">-- Select Blood Group --</option>
                                             <?php $bg_options = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-                                            foreach ($bg_options as $bg) {
-                                                $selected = (($_POST['blood_group'] ?? '') == $bg) ? 'selected' : '';
-                                                echo "<option value='{$bg}' {$selected}>" . $bg . "</option>";
-                                            } ?>
+                                            foreach ($bg_options as $bg) echo "<option value='{$bg}'>{$bg}</option>";
+                                            ?>
                                         </select></div>
-                                    <div class="form-group col-md-6"><label for="address">Address</label><textarea class="form-control" id="address" name="address" rows="1"><?php echo htmlspecialchars($_POST['address'] ?? ''); ?></textarea></div>
+                                    <div class="form-group col-md-6"><label for="address">Address</label><textarea class="form-control" id="address" name="address" rows="1"></textarea></div>
                                 </div>
                                 <div class="form-group mt-4">
                                     <button type="submit" class="btn btn-primary"><i class="fas fa-user-plus"></i> Enroll Teacher</button>
@@ -321,51 +375,140 @@ if (!is_ajax_request()) {
 
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script>
         $(document).ready(function() {
-            // Image Preview
+
+             $('#std').select2({
+                placeholder: "Select standards",
+                allowClear: true
+            });
+
+            $('#teacherEnrollmentForm').on('submit', function(e) {
+                e.preventDefault();
+                const form = $(this);
+                const submitButton = form.find('button[type="submit"]');
+                const originalButtonText = submitButton.html();
+                submitButton.html('<i class="fas fa-spinner fa-spin"></i> Processing...').prop('disabled', true);
+
+                const formData = new FormData(this);
+
+                $.ajax({
+                    url: form.attr('action'),
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    dataType: 'json',
+                    success: function(response) {
+                        let alertClass = response.success ? 'alert-success' : 'alert-danger';
+                        let alertMessage = `<div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                                                ${response.message}
+                                                <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                            </div>`;
+                        $('#enrollment-alert-placeholder').html(alertMessage);
+
+                        if (response.success) {
+                            form[0].reset();
+                            $('#imagePreview').attr('src', '../../assets/images/unisex.png');
+                            $('#std').val(null).trigger('change');
+                             $('#class_teacher').prop('checked', false).trigger('change');
+                            toggleTransportFields();
+                            if (response.redirect) {
+                                setTimeout(function() { window.location.href = response.redirect; }, 1500);
+                            }
+                        }
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        let errorMessage = 'An unexpected error occurred: ' + errorThrown;
+                        $('#enrollment-alert-placeholder').html(`<div class="alert alert-danger alert-dismissible fade show" role="alert">${errorMessage}<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>`);
+                    },
+                    complete: function() {
+                        submitButton.html(originalButtonText).prop('disabled', false);
+                        $('html, body').animate({ scrollTop: 0 }, 'slow');
+                    }
+                });
+            });
+
             $('#teacher_image').on('change', function(event) {
                 if (event.target.files && event.target.files[0]) {
                     const reader = new FileReader();
-                    reader.onload = function(e) {
-                        $('#imagePreview').attr('src', e.target.result);
-                    }
+                    reader.onload = (e) => $('#imagePreview').attr('src', e.target.result);
                     reader.readAsDataURL(event.target.files[0]);
                 }
             });
 
-            $('button[type="reset"]').on('click', function() {
-                $('#imagePreview').attr('src', '../../assets/images/unisex.png');
+            $('button[type="reset"]').on('click', () => {
+                 $('#imagePreview').attr('src', '../../assets/images/unisex.png');
+                 $('#std').val(null).trigger('change');
+                 $('#class_teacher').prop('checked', false).trigger('change');
             });
 
-            // Blur past dates for "Date of Joining"
-            const dateInput = document.getElementById('date_of_joining');
-            if (dateInput) {
-                const today = new Date();
-                const year = today.getFullYear();
-                const month = String(today.getMonth() + 1).padStart(2, '0');
-                const day = String(today.getDate()).padStart(2, '0');
-                const formattedDate = `${year}-${month}-${day}`;
-                dateInput.setAttribute('min', formattedDate);
-            }
+            $('#class_teacher').on('change', function() {
+                if ($(this).is(':checked')) {
+                    $('#class-teacher-std-div').show();
+                } else {
+                    $('#class-teacher-std-div').hide();
+                    $('#class_teacher_std').val('');
+                }
+            });
 
-            // Transport Logic
             const transportModeSelect = document.getElementById('transport_mode');
             const selfTransportSelect = document.getElementById('self_transport_mode');
             const schoolTransportDiv = document.getElementById('transport-stop-div');
             const selfTransportDiv = document.getElementById('self-transport-div');
             const vehicleDetailsDiv = document.getElementById('vehicle-details-div');
+            const schoolSelect = document.getElementById('school_id');
+            
+            function fetchSchoolData(schoolId) {
+                if (!schoolId) {
+                    $('#stop_id').html('<option value="">-- Select a school first --</option>');
+                    $('#std').html('').trigger('change');
+                    return;
+                }
+                 $.ajax({
+                    url: '../../includes/get_school_data.php', 
+                    type: 'GET',
+                    data: { school_id: schoolId },
+                    dataType: 'json',
+                    success: function(data) {
+                        // Populate Stops
+                        let stopOptions = '<option value="">-- No Transport --</option>';
+                        if (data.stops && data.stops.length > 0) {
+                            let currentRoute = '';
+                             data.stops.forEach(stop => {
+                                if(stop.route_name !== currentRoute) {
+                                    if(currentRoute !== '') stopOptions += '</optgroup>';
+                                    currentRoute = stop.route_name;
+                                    stopOptions += `<optgroup label="${currentRoute}">`;
+                                }
+                                stopOptions += `<option value="${stop.stop_id}">${stop.stop_name}</option>`;
+                            });
+                            if(currentRoute !== '') stopOptions += '</optgroup>';
+                        }
+                        $('#stop_id').html(stopOptions);
+
+                        // Populate Standards
+                        let stdOptions = '';
+                        if (data.standards && data.standards.length > 0) {
+                             data.standards.forEach(std => {
+                                stdOptions += `<option value="${std}">${std}</option>`;
+                            });
+                        }
+                        $('#std').html(stdOptions).trigger('change');
+
+                    },
+                    error: function() {
+                        $('#stop_id').html('<option value="">-- Error loading stops --</option>');
+                        $('#std').html('').trigger('change');
+                    }
+                });
+            }
 
             function toggleSelfTransportFields() {
                 const selectedMode = selfTransportSelect.value;
-                if (selectedMode === 'Bike' || selectedMode === 'Car') {
-                    vehicleDetailsDiv.style.display = 'flex';
-                } else {
-                    vehicleDetailsDiv.style.display = 'none';
-                    document.getElementById('vehicle_number').value = '';
-                    document.getElementById('license_number').value = '';
-                }
+                vehicleDetailsDiv.style.display = (selectedMode === 'Bike' || selectedMode === 'Car') ? 'flex' : 'none';
             }
 
             function toggleTransportFields() {
@@ -374,36 +517,26 @@ if (!is_ajax_request()) {
                     schoolTransportDiv.style.display = 'block';
                     selfTransportDiv.style.display = 'none';
                     vehicleDetailsDiv.style.display = 'none';
-                    document.getElementById('self_transport_mode').value = '';
-                    document.getElementById('vehicle_number').value = '';
-                    document.getElementById('license_number').value = '';
-                } else if (mainMode === 'Self Transport') {
+                    selfTransportSelect.value = '';
+                } else { // Self Transport
                     selfTransportDiv.style.display = 'block';
                     schoolTransportDiv.style.display = 'none';
                     document.getElementById('stop_id').value = '';
                     toggleSelfTransportFields(); 
-                } else {
-                    selfTransportDiv.style.display = 'none';
-                    schoolTransportDiv.style.display = 'none';
-                    vehicleDetailsDiv.style.display = 'none';
-                    document.getElementById('self_transport_mode').value = '';
-                    document.getElementById('stop_id').value = '';
-                    document.getElementById('vehicle_number').value = '';
-                    document.getElementById('license_number').value = '';
                 }
             }
-
-            // Initial check on page load to set the correct display state
-            toggleTransportFields();
-
-            // Add event listeners
+            
+            schoolSelect.addEventListener('change', () => fetchSchoolData($(schoolSelect).val()));
             transportModeSelect.addEventListener('change', toggleTransportFields);
             selfTransportSelect.addEventListener('change', toggleSelfTransportFields);
+           
+            // Initial call if a school is pre-selected (for principal)
+            if ($(schoolSelect).val()) {
+                fetchSchoolData($(schoolSelect).val());
+            }
+            toggleTransportFields();
         });
     </script>
 </body>
-
 </html>
-<?php
-}
-?>
+
