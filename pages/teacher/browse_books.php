@@ -63,6 +63,7 @@ try {
 } catch (PDOException $e) {
     error_log("DB Error in browse_books.php (teacher): " . $e->getMessage());
     die("An error occurred while fetching books. Please try again later.");
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -71,9 +72,7 @@ try {
     <meta charset="UTF-8">
     <title>Browse & Request Books</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
-    <link
-        href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
@@ -86,29 +85,22 @@ try {
 if (!$is_ajax_request) {
     include '../../includes/sidebar.php';
 }
-?> <div id="content-wrapper" class="d-flex flex-column">
+?>
+        <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php
 if (!$is_ajax_request) {
     include '../../includes/header.php';
-}
-?><?php
 }
 ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Browse & Request Books</h1>
 
                     <?php if (isset($_GET['success'])): ?>
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                        <?php echo htmlspecialchars($_GET['success']); ?><button type="button" class="close"
-                            data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                    </div>
+                        <div class="alert alert-success alert-dismissible fade show" role="alert"><?php echo htmlspecialchars($_GET['success']); ?><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
                     <?php endif; ?>
                     <?php if (isset($_GET['error'])): ?>
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        <?php echo htmlspecialchars($_GET['error']); ?><button type="button" class="close"
-                            data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                    </div>
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert"><?php echo htmlspecialchars($_GET['error']); ?><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
                     <?php endif; ?>
 
                     <div class="card shadow mb-4">
@@ -118,15 +110,11 @@ if (!$is_ajax_request) {
                         <div class="card-body">
                             <form method="GET" action="browse_books.php" class="mb-4">
                                 <div class="input-group">
-                                    <input type="text" name="search" class="form-control"
-                                        placeholder="Search by title, author, publisher..."
-                                        value="<?php echo htmlspecialchars($search_query); ?>">
+                                    <input type="text" name="search" class="form-control" placeholder="Search by title, author, publisher..." value="<?php echo htmlspecialchars($search_query); ?>">
                                     <div class="input-group-append">
-                                        <button class="btn btn-primary" type="submit" aria-label="Search"><i
-                                                class="fas fa-search fa-sm"></i></button>
+                                        <button class="btn btn-primary" type="submit" aria-label="Search"><i class="fas fa-search fa-sm"></i></button>
                                         <?php if (!empty($search_query)): ?>
-                                        <a href="browse_books.php" class="btn btn-secondary" title="Clear Search"
-                                            aria-label="Clear Search"><i class="fas fa-times fa-sm"></i></a>
+                                            <a href="browse_books.php" class="btn btn-secondary" title="Clear Search" aria-label="Clear Search"><i class="fas fa-times fa-sm"></i></a>
                                         <?php endif; ?>
                                     </div>
                                 </div>
@@ -143,24 +131,17 @@ if (!$is_ajax_request) {
                                     </thead>
                                     <tbody>
                                         <?php if (!empty($books)): foreach ($books as $book): ?>
-                                        <tr>
-                                            <td><?php echo htmlspecialchars($book['title']); ?></td>
-                                            <td><?php echo htmlspecialchars($book['author']); ?></td>
-                                            <td><?php echo htmlspecialchars($book['publisher']); ?></td>
-                                            <td><button type="button" class="btn btn-primary btn-sm request-btn"
-                                                    data-toggle="modal" data-target="#requestModal"
-                                                    data-book-id="<?php echo $book['book_id']; ?>"
-                                                    data-book-title="<?php echo htmlspecialchars($book['title']); ?>"><i
-                                                        class="fas fa-hand-holding-hand"></i> Request to Borrow</button>
-                                            </td>
-                                        </tr>
-                                        <?php endforeach;
+                                                <tr>
+                                                    <td><?php echo htmlspecialchars($book['title']); ?></td>
+                                                    <td><?php echo htmlspecialchars($book['author']); ?></td>
+                                                    <td><?php echo htmlspecialchars($book['publisher']); ?></td>
+                                                    <td><button type="button" class="btn btn-primary btn-sm request-btn" data-toggle="modal" data-target="#requestModal" data-book-id="<?php echo $book['book_id']; ?>" data-book-title="<?php echo htmlspecialchars($book['title']); ?>"><i class="fas fa-hand-holding-hand"></i> Request to Borrow</button></td>
+                                                </tr>
+                                            <?php endforeach;
                                         else: ?>
-                                        <tr>
-                                            <td colspan="4" class="text-center">
-                                                <?php echo !empty($search_query) ? 'No books found matching your search.' : 'No books are currently available.'; ?>
-                                            </td>
-                                        </tr>
+                                            <tr>
+                                                <td colspan="4" class="text-center"><?php echo !empty($search_query) ? 'No books found matching your search.' : 'No books are currently available.'; ?></td>
+                                            </tr>
                                         <?php endif; ?>
                                     </tbody>
                                 </table>
@@ -169,20 +150,17 @@ if (!$is_ajax_request) {
                     </div>
                 </div>
             </div>
-            <?php
+<?php
 if (!$is_ajax_request) {
     include '../../includes/footer.php';
 }
-?>
-        </div>
+?>        </div>
     </div>
-    <div class="modal fade" id="requestModal" tabindex="-1" role="dialog" aria-labelledby="requestModalLabel"
-        aria-hidden="true">
+    <div class="modal fade" id="requestModal" tabindex="-1" role="dialog" aria-labelledby="requestModalLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="requestModalLabel">Request to Borrow Book</h5><button class="close"
-                        type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                    <h5 class="modal-title" id="requestModalLabel">Request to Borrow Book</h5><button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
                 </div>
                 <form action="../../includes/actions/handle_borrow_request_user.php" method="POST">
                     <div class="modal-body">
@@ -190,15 +168,11 @@ if (!$is_ajax_request) {
                         <input type="hidden" name="book_id" id="modal_book_id">
                         <div class="form-group">
                             <label for="requested_due_date">Desired Return Date *</label>
-                            <input type="date" class="form-control" id="requested_due_date" name="requested_due_date"
-                                required>
-                            <small class="form-text text-muted">Please select your preferred return date. The librarian
-                                will confirm the final due date upon approval.</small>
+                            <input type="date" class="form-control" id="requested_due_date" name="requested_due_date" required>
+                            <small class="form-text text-muted">Please select your preferred return date. The librarian will confirm the final due date upon approval.</small>
                         </div>
                     </div>
-                    <div class="modal-footer"><button class="btn btn-secondary" type="button"
-                            data-dismiss="modal">Cancel</button><button class="btn btn-primary" type="submit">Submit
-                            Request</button></div>
+                    <div class="modal-footer"><button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button><button class="btn btn-primary" type="submit">Submit Request</button></div>
                 </form>
             </div>
         </div>
@@ -207,14 +181,14 @@ if (!$is_ajax_request) {
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script>
-    $(document).ready(function() {
-        var today = new Date().toISOString().split('T')[0];
-        $('#requested_due_date').attr('min', today);
-        $('.request-btn').on('click', function() {
-            $('#modal_book_id').val($(this).data('book-id'));
-            $('#modal_book_title').text($(this).data('book-title'));
+        $(document).ready(function() {
+            var today = new Date().toISOString().split('T')[0];
+            $('#requested_due_date').attr('min', today);
+            $('.request-btn').on('click', function() {
+                $('#modal_book_id').val($(this).data('book-id'));
+                $('#modal_book_title').text($(this).data('book-title'));
+            });
         });
-    });
     </script>
 </body>
 <?php
@@ -224,15 +198,14 @@ if (is_ajax_request()) {
     $content = ob_get_clean();
     
     // Extract just the main content area for the AJAX response
-    if (preg_match('/<div class="container-fluid".*?>(.*?)<\ /div>/s', $content, $matches)) {
-    echo '<div class="container-fluid">' . $matches[1] . '</div>';
+    if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
+        echo '<div class="container-fluid">' . $matches[1] . '</div>';
     } else {
-    // Fallback if the main container isn't found
-    echo $content;
+        // Fallback if the main container isn't found
+        echo $content;
     }
     // Stop the script for AJAX requests
     exit;
-    }
-    ?>
-
+}
+?>
 </html>
