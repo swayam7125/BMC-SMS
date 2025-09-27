@@ -180,44 +180,42 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
     }
 }
 
-if (!is_ajax_request()):
 ?>
-    <!DOCTYPE html>
-    <html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 
-    <head>
-        <meta charset="utf-8">
-        <title>User Profile - School Management System</title>
-        <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
-        <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-        <link rel="stylesheet" href="../../assets/css/sidebar.css">
-        <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-        <link rel="stylesheet" href="../../assets/css/profile.css">
-        <style>
-            .table-timings th {
-                width: 30%;
-            }
+<head>
+    <meta charset="utf-8">
+    <title>User Profile - School Management System</title>
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
+    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link rel="stylesheet" href="../../assets/css/profile.css">
+    <style>
+        .table-timings th {
+            width: 30%;
+        }
 
-            .table-timings td {
-                width: 70%;
-            }
-        </style>
-    </head>
+        .table-timings td {
+            width: 70%;
+        }
+    </style>
+</head>
 
-    <body id="page-top">
-        <div id="wrapper">
-            <?php
-            if (!$is_ajax_request) {
-                include '../../includes/sidebar.php';
-            } ?>
-            <div id="content-wrapper" class="d-flex flex-column">
-                <div id="content">
-                    <?php
-                    if (!$is_ajax_request) {
-                        include '../../includes/header.php';
-                    } ?>
-                <?php endif; ?>
+<body id="page-top">
+    <div id="wrapper">
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        } ?>
+        <div id="content-wrapper" class="d-flex flex-column">
+            <div id="content">
+                <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                } ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">User Profile</h1>
@@ -1022,16 +1020,9 @@ if (!is_ajax_request()):
                     <?php endif; ?>
                 </div>
                 <?php
-                // If it's NOT an AJAX request, print the full HTML footer.
-                if (!is_ajax_request()):
-                    include_once '../../includes/footer.php';
-                ?>
-
-                </div>
-                <?php
-                    if (!$is_ajax_request) {
-                        include '../../includes/footer.php';
-                    }
+                if (!$is_ajax_request) {
+                    include '../../includes/footer.php';
+                }
                 ?>
             </div>
         </div>
@@ -1071,24 +1062,23 @@ if (!is_ajax_request()):
                 });
             });
         </script>
-    </body>
-    <?php
-                    // Add this block at the very end of the file
-                    if (is_ajax_request()) {
-                        // Get the captured HTML
-                        $content = ob_get_clean();
+</body>
+<?php
+// Add this block at the very end of the file
+if (is_ajax_request()) {
+    // Get the captured HTML
+    $content = ob_get_clean();
 
-                        // Extract just the main content area for the AJAX response
-                        if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
-                            echo '<div class="container-fluid">' . $matches[1] . '</div>';
-                        } else {
-                            // Fallback if the main container isn't found
-                            echo $content;
-                        }
-                        // Stop the script for AJAX requests
-                        exit;
-                    }
-    ?>
+    // Extract just the main content area for the AJAX response
+    if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
+        echo '<div class="container-fluid">' . $matches[1] . '</div>';
+    } else {
+        // Fallback if the main container isn't found
+        echo $content;
+    }
+    // Stop the script for AJAX requests
+    exit;
+}
+?>
 
-    </html>
-<?php endif; ?>
+</html>
