@@ -198,8 +198,9 @@ try {
         <script src="../../assets/vendor/jquery/jquery.min.js"></script>
         <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
         <script src="../../assets/js/sb-admin-2.min.js"></script>
-        <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
-        <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+        <script src="/BMC-SMS/assets/vendor/datatables/jquery.dataTables.min.js"></script>
+        <script src="/BMC-SMS/assets/js/global-ajax-filters.js"></script>
+        <script src="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
         <script src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
         <script src="https://cdn.datatables.net/responsive/2.2.9/js/responsive.bootstrap4.min.js"></script>
 

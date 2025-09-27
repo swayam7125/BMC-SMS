@@ -78,197 +78,198 @@ foreach ($batches as $batch) {
 }
 $filter_html .= '</select></label>';
 ?>
-    <!DOCTYPE html>
-    <html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 
-    <head>
-        <meta charset="utf-8">
-        <title>HR User List - School Management System</title>
-        <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
-        <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-        <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-        <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
-        <link rel="stylesheet" href="../../assets/css/sidebar.css">
-        <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-    </head>
+<head>
+    <meta charset="utf-8">
+    <title>HR User List - School Management System</title>
+    <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+</head>
 
-    <body id="page-top">
-        <div id="wrapper">
-            <?php
-            if (!$is_ajax_request) {
-                include '../../includes/sidebar.php';
-            }
-            ?>
-            <div id="content-wrapper" class="d-flex flex-column">
-                <div id="content">
-                    <?php
-                    if (!$is_ajax_request) {
-                        include '../../includes/header.php';
-                    }
-                    ?>
-                    <div class="container-fluid">
-                        <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                            <h1 class="h3 mb-0 text-gray-800">HR User List</h1>
-                            <a href="../../includes/forms/hr_enrollment.php" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
-                                <i class="fas fa-user-plus fa-sm text-white-50"></i> Enroll New HR User
-                            </a>
-                        </div>
-
-                        <?php if (isset($_GET['success'])): ?>
-                            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                <?php echo htmlspecialchars($_GET['success']); ?>
-                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                    <span aria-hidden="true">&times;</span>
-                                </button>
-                            </div>
-                        <?php endif; ?>
-                        <?php if (isset($_GET['error'])): ?>
-                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                                <?php echo htmlspecialchars($_GET['error']); ?>
-                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                    <span aria-hidden="true">&times;</span>
-                                </button>
-                            </div>
-                        <?php endif; ?>
-
-                        <div class="card shadow mb-4">
-                            <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                                <h6 class="m-0 font-weight-bold text-primary">Manage HR Staff</h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                                        <thead>
-                                            <tr>
-                                                <th>ID</th>
-                                                <th>Name</th>
-                                                <th>Email</th>
-                                                <th>Phone</th>
-                                                <th>Batch</th>
-                                                <th>Status</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php if (empty($hr_users)): ?>
-                                                <tr>
-                                                    <td colspan="7" class="text-center">No HR users found.</td>
-                                                </tr>
-                                            <?php else: ?>
-                                                <?php foreach ($hr_users as $user): ?>
-                                                    <tr>
-                                                        <td><?php echo htmlspecialchars($user['id']); ?></td>
-                                                        <td><a href="view.php?id=<?php echo $user['id']; ?>"><?php echo htmlspecialchars($user['hr_name']); ?></a></td>
-                                                        <td><?php echo htmlspecialchars($user['email']); ?></td>
-                                                        <td><?php echo htmlspecialchars($user['phone']); ?></td>
-                                                        <td><?php echo htmlspecialchars($user['batch']); ?></td>
-                                                        <td>
-                                                            <?php if ($user['account_status'] === 'active'): ?>
-                                                                <span class="badge badge-success">Active</span>
-                                                            <?php else: ?>
-                                                                <span class="badge badge-danger">Suspended</span>
-                                                            <?php endif; ?>
-                                                        </td>
-                                                        <td>
-                                                            <a href="view.php?id=<?php echo $user['id']; ?>" class="btn btn-info btn-sm" title="View"><i class="fas fa-eye"></i></a>
-                                                            <a href="edit_hr.php?id=<?php echo $user['id']; ?>" class="btn btn-primary btn-sm" title="Edit">
-                                                                <i class="fas fa-edit"></i>
-                                                            </a>
-                                                            <?php
-                                                            $return_url = urlencode('/BMC-SMS/pages/hr/hr_list.php');
-                                                            if ($user['account_status'] === 'active'):
-                                                                $suspendUrl = "../../includes/actions/update_user_status.php?id={$user['id']}&status=suspended&return={$return_url}";
-                                                            ?>
-                                                                <a href="#" onclick="confirmAction('<?php echo $suspendUrl; ?>', 'suspend this HR')" class="btn btn-warning btn-sm" title="Suspend"><i class="fas fa-ban"></i></a>
-                                                            <?php else:
-                                                                $reactivateUrl = "../../includes/actions/update_user_status.php?id={$user['id']}&status=active&return={$return_url}";
-                                                            ?>
-                                                                <a href="#" onclick="confirmAction('<?php echo $reactivateUrl; ?>', 'reactivate this HR user')" class="btn btn-success btn-sm" title="Reactivate"><i class="fas fa-check-circle"></i></a>
-                                                            <?php endif; ?>
-                                                            <a href="#" class="btn btn-danger btn-sm delete-btn" data-id="<?php echo $user['id']; ?>" title="Delete">
-                                                                <i class="fas fa-trash"></i>
-                                                            </a>
-                                                        </td>
-                                                    </tr>
-                                                <?php endforeach; ?>
-                                            <?php endif; ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+<body id="page-top">
+    <div id="wrapper">
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
+        <div id="content-wrapper" class="d-flex flex-column">
+            <div id="content">
                 <?php
                 if (!$is_ajax_request) {
-                    include '../../includes/footer.php';
+                    include '../../includes/header.php';
                 }
                 ?>
-            </div>
-        </div>
-
-        <?php include_once "../../includes/logout_modal.php"; ?>
-
-        <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
-            <div class="modal-dialog" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="deleteModalLabel">Confirm Deletion</h5>
-                        <button class="close" type="button" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">×</span>
-                        </button>
+                <div class="container-fluid">
+                    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+                        <h1 class="h3 mb-0 text-gray-800">HR User List</h1>
+                        <a href="../../includes/forms/hr_enrollment.php" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+                            <i class="fas fa-user-plus fa-sm text-white-50"></i> Enroll New HR User
+                        </a>
                     </div>
-                    <div class="modal-body">Are you sure you want to delete this HR user? This action cannot be undone.</div>
-                    <div class="modal-footer">
-                        <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
-                        <a class="btn btn-danger" id="confirmDeleteBtn">Delete</a>
+
+                    <?php if (isset($_GET['success'])): ?>
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <?php echo htmlspecialchars($_GET['success']); ?>
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                    <?php endif; ?>
+                    <?php if (isset($_GET['error'])): ?>
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <?php echo htmlspecialchars($_GET['error']); ?>
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                    <?php endif; ?>
+
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                            <h6 class="m-0 font-weight-bold text-primary">Manage HR Staff</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Name</th>
+                                            <th>Email</th>
+                                            <th>Phone</th>
+                                            <th>Batch</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if (empty($hr_users)): ?>
+                                            <tr>
+                                                <td colspan="7" class="text-center">No HR users found.</td>
+                                            </tr>
+                                        <?php else: ?>
+                                            <?php foreach ($hr_users as $user): ?>
+                                                <tr>
+                                                    <td><?php echo htmlspecialchars($user['id']); ?></td>
+                                                    <td><a href="view.php?id=<?php echo $user['id']; ?>"><?php echo htmlspecialchars($user['hr_name']); ?></a></td>
+                                                    <td><?php echo htmlspecialchars($user['email']); ?></td>
+                                                    <td><?php echo htmlspecialchars($user['phone']); ?></td>
+                                                    <td><?php echo htmlspecialchars($user['batch']); ?></td>
+                                                    <td>
+                                                        <?php if ($user['account_status'] === 'active'): ?>
+                                                            <span class="badge badge-success">Active</span>
+                                                        <?php else: ?>
+                                                            <span class="badge badge-danger">Suspended</span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                    <td>
+                                                        <a href="view.php?id=<?php echo $user['id']; ?>" class="btn btn-info btn-sm" title="View"><i class="fas fa-eye"></i></a>
+                                                        <a href="edit_hr.php?id=<?php echo $user['id']; ?>" class="btn btn-primary btn-sm" title="Edit">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                        <?php
+                                                        $return_url = urlencode('/BMC-SMS/pages/hr/hr_list.php');
+                                                        if ($user['account_status'] === 'active'):
+                                                            $suspendUrl = "../../includes/actions/update_user_status.php?id={$user['id']}&status=suspended&return={$return_url}";
+                                                        ?>
+                                                            <a href="#" onclick="confirmAction('<?php echo $suspendUrl; ?>', 'suspend this HR')" class="btn btn-warning btn-sm" title="Suspend"><i class="fas fa-ban"></i></a>
+                                                        <?php else:
+                                                            $reactivateUrl = "../../includes/actions/update_user_status.php?id={$user['id']}&status=active&return={$return_url}";
+                                                        ?>
+                                                            <a href="#" onclick="confirmAction('<?php echo $reactivateUrl; ?>', 'reactivate this HR user')" class="btn btn-success btn-sm" title="Reactivate"><i class="fas fa-check-circle"></i></a>
+                                                        <?php endif; ?>
+                                                        <a href="#" class="btn btn-danger btn-sm delete-btn" data-id="<?php echo $user['id']; ?>" title="Delete">
+                                                            <i class="fas fa-trash"></i>
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-
-        <div class="modal fade" id="actionModal" tabindex="-1" role="dialog">
-            <div class="modal-dialog" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Confirm Action</h5><button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-                    </div>
-                    <div class="modal-body" id="actionModalBody">Are you sure you want to proceed?</div>
-                    <div class="modal-footer"><button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button><a class="btn btn-primary" id="confirmActionBtn" href="#">Confirm</a></div>
-                </div>
-            </div>
-        </div>
-
-        <script src="../../assets/vendor/jquery/jquery.min.js"></script>
-        <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-        <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
-        <script src="../../assets/js/sb-admin-2.min.js"></script>
-        <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
-        <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
-        <script>
-            $(document).ready(function() {
-                $('#dataTable').DataTable();
-
-                var filterHtml = '<?php echo addslashes($filter_html); ?>';
-                $('#dataTable_filter').prepend(filterHtml);
-
-                $('.delete-btn').on('click', function(e) {
-                    e.preventDefault();
-                    var userId = $(this).data('id');
-                    var deleteUrl = 'delete_hr.php?id=' + userId;
-
-                    $('#confirmDeleteBtn').attr('href', deleteUrl);
-                    $('#deleteModal').modal('show');
-                });
-            });
-
-            function confirmAction(url, actionText) {
-                $('#actionModalBody').text('Are you sure you want to ' + actionText + '?');
-                $('#confirmActionBtn').attr('href', url);
-                $('#actionModal').modal('show');
+            <?php
+            if (!$is_ajax_request) {
+                include '../../includes/footer.php';
             }
-        </script>
-    </body>
+            ?>
+        </div>
+    </div>
 
-    </html>
+    <?php include_once "../../includes/logout_modal.php"; ?>
+
+    <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteModalLabel">Confirm Deletion</h5>
+                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                </div>
+                <div class="modal-body">Are you sure you want to delete this HR user? This action cannot be undone.</div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
+                    <a class="btn btn-danger" id="confirmDeleteBtn">Delete</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="actionModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Action</h5><button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                </div>
+                <div class="modal-body" id="actionModalBody">Are you sure you want to proceed?</div>
+                <div class="modal-footer"><button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button><a class="btn btn-primary" id="confirmActionBtn" href="#">Confirm</a></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../assets/vendor/jquery/jquery.min.js"></script>
+    <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
+    <script src="../../assets/js/sb-admin-2.min.js"></script>
+    <script src="/BMC-SMS/assets/js/global-ajax-filters.js"></script>
+    <script src="/BMC-SMS/assets/vendor/datatables/jquery.dataTables.min.js"></script>
+    <script src="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#dataTable').DataTable();
+
+            var filterHtml = '<?php echo addslashes($filter_html); ?>';
+            $('#dataTable_filter').prepend(filterHtml);
+
+            $('.delete-btn').on('click', function(e) {
+                e.preventDefault();
+                var userId = $(this).data('id');
+                var deleteUrl = 'delete_hr.php?id=' + userId;
+
+                $('#confirmDeleteBtn').attr('href', deleteUrl);
+                $('#deleteModal').modal('show');
+            });
+        });
+
+        function confirmAction(url, actionText) {
+            $('#actionModalBody').text('Are you sure you want to ' + actionText + '?');
+            $('#confirmActionBtn').attr('href', url);
+            $('#actionModal').modal('show');
+        }
+    </script>
+</body>
+
+</html>

@@ -1,6 +1,7 @@
 <?php
 // --- PDF GENERATION SETUP ---
 require_once '../../includes/dompdf/autoload.inc.php';
+
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
@@ -149,9 +150,9 @@ try {
             'librarian' => ['name_col' => 'librarian_name', 'att_table' => 'librarian_attendance', 'id_col' => 'librarian_id'],
             'principal' => ['name_col' => 'principal_name', 'att_table' => 'principal_attendance', 'id_col' => 'principal_id'],
             // FIX: Corrected the column name from 'payroll_id' to 'hr_id' to match the database schema.
-            'hr' => ['name_col' => 'hr_name', 'att_table' => 'hr_attendance', 'id_col' => 'hr_id'] 
+            'hr' => ['name_col' => 'hr_name', 'att_table' => 'hr_attendance', 'id_col' => 'hr_id']
         ];
-        
+
         if (!isset($table_map[$current_role])) continue;
 
         $map = $table_map[$current_role];
@@ -193,7 +194,7 @@ try {
             } catch (PDOException $e) {
                 if (strpos($e->getMessage(), "relation \"{$map['att_table']}\" does not exist") !== false) {
                 } else {
-                    throw $e; 
+                    throw $e;
                 }
             }
         }
@@ -208,7 +209,6 @@ try {
         $staff_attendance_summary[$role_name]['absent'] += $record['absent'];
         $staff_attendance_summary[$role_name]['leave'] += $record['leave'];
     }
-
 } catch (Exception $e) {
     $errorMessage = "An error occurred: " . $e->getMessage();
 }
@@ -238,37 +238,37 @@ $total_leave = array_sum(array_column($individual_staff_attendance, 'leave'));
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link href="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
     <style>
-    .staff-list-container {
-        max-height: 250px;
-        /* Same as chart height */
-        overflow-y: auto;
-        position: relative;
-    }
+        .staff-list-container {
+            max-height: 250px;
+            /* Same as chart height */
+            overflow-y: auto;
+            position: relative;
+        }
 
-    .staff-list-container .table thead th {
-        position: sticky;
-        top: 0;
-        background-color: #f8f9fc;
-        /* A light background to match the theme */
-        z-index: 1;
-    }
+        .staff-list-container .table thead th {
+            position: sticky;
+            top: 0;
+            background-color: #f8f9fc;
+            /* A light background to match the theme */
+            z-index: 1;
+        }
     </style>
 </head>
 
 <body id="page-top">
     <div id="wrapper">
         <?php
-if (!$is_ajax_request) {
-    include '../../includes/sidebar.php';
-}
-?>
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php
-if (!$is_ajax_request) {
-    include '../../includes/header.php';
-}
-?>
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
+                ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800"><?php echo htmlspecialchars($report_title); ?></h1>
@@ -279,25 +279,25 @@ if (!$is_ajax_request) {
                     </div>
 
                     <?php if ($role === 'superadmin'): ?>
-                    <div class="card shadow mb-4">
-                        <div class="card-body">
-                            <form method="GET" action="" class="form-inline">
-                                <div class="form-group mr-3">
-                                    <label for="school_id" class="mr-2"><strong>Filter by School:</strong></label>
-                                    <select name="school_id" id="school_id" class="form-control"
-                                        onchange="this.form.submit()">
-                                        <option value="">-- All Schools --</option>
-                                        <?php foreach($schools as $school): ?>
-                                        <option value="<?php echo $school['id']; ?>"
-                                            <?php if ($school['id'] == $school_id) echo 'selected'; ?>>
-                                            <?php echo htmlspecialchars($school['school_name']); ?>
-                                        </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                            </form>
+                        <div class="card shadow mb-4">
+                            <div class="card-body">
+                                <form method="GET" action="" class="form-inline">
+                                    <div class="form-group mr-3">
+                                        <label for="school_id" class="mr-2"><strong>Filter by School:</strong></label>
+                                        <select name="school_id" id="school_id" class="form-control"
+                                            onchange="this.form.submit()">
+                                            <option value="">-- All Schools --</option>
+                                            <?php foreach ($schools as $school): ?>
+                                                <option value="<?php echo $school['id']; ?>"
+                                                    <?php if ($school['id'] == $school_id) echo 'selected'; ?>>
+                                                    <?php echo htmlspecialchars($school['school_name']); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
-                    </div>
                     <?php endif; ?>
 
                     <?php if ($errorMessage): ?><div class="alert alert-danger"><?php echo $errorMessage; ?></div>
@@ -372,11 +372,11 @@ if (!$is_ajax_request) {
                                         </thead>
                                         <tbody>
                                             <?php foreach ($low_attendance_students as $student): ?>
-                                            <tr>
-                                                <td><?php echo htmlspecialchars($student['student_name']); ?></td>
-                                                <td><?php echo htmlspecialchars($student['std']); ?></td>
-                                                <td><?php echo $student['attendance_percentage']; ?>%</td>
-                                            </tr>
+                                                <tr>
+                                                    <td><?php echo htmlspecialchars($student['student_name']); ?></td>
+                                                    <td><?php echo htmlspecialchars($student['std']); ?></td>
+                                                    <td><?php echo $student['attendance_percentage']; ?>%</td>
+                                                </tr>
                                             <?php endforeach; ?>
                                         </tbody>
                                     </table>
@@ -429,14 +429,14 @@ if (!$is_ajax_request) {
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    <?php foreach($individual_staff_attendance as $record): ?>
-                                                    <tr>
-                                                        <td><?php echo htmlspecialchars($record['name']); ?></td>
-                                                        <td><?php echo htmlspecialchars($record['role']); ?></td>
-                                                        <td><?php echo $record['present']; ?></td>
-                                                        <td><?php echo $record['absent']; ?></td>
-                                                        <td><?php echo $record['leave']; ?></td>
-                                                    </tr>
+                                                    <?php foreach ($individual_staff_attendance as $record): ?>
+                                                        <tr>
+                                                            <td><?php echo htmlspecialchars($record['name']); ?></td>
+                                                            <td><?php echo htmlspecialchars($record['role']); ?></td>
+                                                            <td><?php echo $record['present']; ?></td>
+                                                            <td><?php echo $record['absent']; ?></td>
+                                                            <td><?php echo $record['leave']; ?></td>
+                                                        </tr>
                                                     <?php endforeach; ?>
                                                 </tbody>
                                             </table>
@@ -454,93 +454,94 @@ if (!$is_ajax_request) {
                 </div>
             </div>
             <?php
-if (!$is_ajax_request) {
-    include '../../includes/footer.php';
-}
-?>
+            if (!$is_ajax_request) {
+                include '../../includes/footer.php';
+            }
+            ?>
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php"; ?>
 
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
+    <script src="/BMC-SMS/assets/js/global-ajax-filters.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-    // Staff Attendance Pie Chart
-    var ctxStaff = document.getElementById("staffAttendanceChart");
-    var staffChart = new Chart(ctxStaff, {
-        type: 'pie',
-        data: {
-            labels: ['Present', 'Absent', 'On Leave'],
-            datasets: [{
-                data: [<?php echo $total_present; ?>, <?php echo $total_absent; ?>,
-                    <?php echo $total_leave; ?>
-                ],
-                backgroundColor: ['#1cc88a', '#e74a3b', '#f6c23e'],
-                hoverBackgroundColor: ['#17a673', '#c73e31', '#d4a12c'],
-                hoverBorderColor: "rgba(234, 236, 244, 1)",
-            }],
-        },
-        options: {
-            maintainAspectRatio: false,
-            tooltips: {
-                backgroundColor: "rgb(255,255,255)",
-                bodyFontColor: "#858796",
-                borderColor: '#dddfeb',
-                borderWidth: 1,
-                xPadding: 15,
-                yPadding: 15,
-                displayColors: false,
-                caretPadding: 10,
+        // Staff Attendance Pie Chart
+        var ctxStaff = document.getElementById("staffAttendanceChart");
+        var staffChart = new Chart(ctxStaff, {
+            type: 'pie',
+            data: {
+                labels: ['Present', 'Absent', 'On Leave'],
+                datasets: [{
+                    data: [<?php echo $total_present; ?>, <?php echo $total_absent; ?>,
+                        <?php echo $total_leave; ?>
+                    ],
+                    backgroundColor: ['#1cc88a', '#e74a3b', '#f6c23e'],
+                    hoverBackgroundColor: ['#17a673', '#c73e31', '#d4a12c'],
+                    hoverBorderColor: "rgba(234, 236, 244, 1)",
+                }],
             },
-            legend: {
-                display: true,
-                position: 'bottom'
-            }
-        },
-    });
+            options: {
+                maintainAspectRatio: false,
+                tooltips: {
+                    backgroundColor: "rgb(255,255,255)",
+                    bodyFontColor: "#858796",
+                    borderColor: '#dddfeb',
+                    borderWidth: 1,
+                    xPadding: 15,
+                    yPadding: 15,
+                    displayColors: false,
+                    caretPadding: 10,
+                },
+                legend: {
+                    display: true,
+                    position: 'bottom'
+                }
+            },
+        });
 
-    // MODIFIED PDF Download Logic
-    function generateAndSubmitPdf(htmlContent, filename) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '?';
+        // MODIFIED PDF Download Logic
+        function generateAndSubmitPdf(htmlContent, filename) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '?';
 
-        const hiddenInputHtml = document.createElement('input');
-        hiddenInputHtml.type = 'hidden';
-        hiddenInputHtml.name = 'pdf_html';
-        hiddenInputHtml.value = htmlContent;
-        form.appendChild(hiddenInputHtml);
+            const hiddenInputHtml = document.createElement('input');
+            hiddenInputHtml.type = 'hidden';
+            hiddenInputHtml.name = 'pdf_html';
+            hiddenInputHtml.value = htmlContent;
+            form.appendChild(hiddenInputHtml);
 
-        // NEW: Add the filename to the form
-        const hiddenInputFilename = document.createElement('input');
-        hiddenInputFilename.type = 'hidden';
-        hiddenInputFilename.name = 'pdf_filename';
-        hiddenInputFilename.value = filename;
-        form.appendChild(hiddenInputFilename);
+            // NEW: Add the filename to the form
+            const hiddenInputFilename = document.createElement('input');
+            hiddenInputFilename.type = 'hidden';
+            hiddenInputFilename.name = 'pdf_filename';
+            hiddenInputFilename.value = filename;
+            form.appendChild(hiddenInputFilename);
 
-        const hiddenInputFlag = document.createElement('input');
-        hiddenInputFlag.type = 'hidden';
-        hiddenInputFlag.name = 'download_pdf';
-        hiddenInputFlag.value = '1';
-        form.appendChild(hiddenInputFlag);
+            const hiddenInputFlag = document.createElement('input');
+            hiddenInputFlag.type = 'hidden';
+            hiddenInputFlag.name = 'download_pdf';
+            hiddenInputFlag.value = '1';
+            form.appendChild(hiddenInputFlag);
 
-        document.body.appendChild(form);
-        form.submit();
-    }
+            document.body.appendChild(form);
+            form.submit();
+        }
 
-    // Get the main filename determined by PHP
-    const mainPdfFilename = '<?php echo $pdf_filename; ?>';
+        // Get the main filename determined by PHP
+        const mainPdfFilename = '<?php echo $pdf_filename; ?>';
 
-    document.getElementById('download-full-report-btn').addEventListener('click', function() {
-        const staffChartImage = staffChart.toBase64Image();
-        const overallHtml =
-            `<div class="row"><div class="col-6"><h4>Daily: <?php echo $daily_percentage; ?>%</h4></div><div class="col-6"><h4>Monthly: <?php echo $monthly_percentage; ?>%</h4></div></div>`;
-        const lowAttHtml = document.getElementById('low-attendance-table').innerHTML;
-        const staffTableHtml = document.getElementById('staff-list-wrapper').innerHTML;
+        document.getElementById('download-full-report-btn').addEventListener('click', function() {
+            const staffChartImage = staffChart.toBase64Image();
+            const overallHtml =
+                `<div class="row"><div class="col-6"><h4>Daily: <?php echo $daily_percentage; ?>%</h4></div><div class="col-6"><h4>Monthly: <?php echo $monthly_percentage; ?>%</h4></div></div>`;
+            const lowAttHtml = document.getElementById('low-attendance-table').innerHTML;
+            const staffTableHtml = document.getElementById('staff-list-wrapper').innerHTML;
 
-        const pdfHtml = `
+            const pdfHtml = `
             <!DOCTYPE html><html><head><title>Full Attendance Report</title><style>
                 body{font-family:sans-serif} .header{text-align:center;margin-bottom:20px} h1,h2,h3{margin:0} h2{font-size:1.2em;font-weight:normal} table{width:100%;border-collapse:collapse;margin-bottom:20px;font-size:12px} th,td{border:1px solid #ddd;padding:6px} th{background-color:#f2f2f2} .chart-container{text-align:center;margin-top:20px;page-break-inside:avoid} .chart-container img{max-width:100%;height:auto} .row{width:100%;display:table} .col-6{width:48%;display:table-cell;padding:1%}
             </style></head><body>
@@ -551,32 +552,32 @@ if (!$is_ajax_request) {
                 <div class="row"><div class="col-6">${staffTableHtml}</div><div class="col-6"><div class="chart-container"><img src="${staffChartImage}"></div></div></div>
             </body></html>`;
 
-        // Pass the dynamic filename
-        generateAndSubmitPdf(pdfHtml, mainPdfFilename);
-    });
+            // Pass the dynamic filename
+            generateAndSubmitPdf(pdfHtml, mainPdfFilename);
+        });
 
-    document.querySelectorAll('.download-section-btn').forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-            const sectionId = this.dataset.section;
-            const sectionElement = document.getElementById(sectionId + '-section');
-            const title = sectionElement.querySelector('.card-header h6').textContent;
-            let contentHtml = '';
+        document.querySelectorAll('.download-section-btn').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                const sectionId = this.dataset.section;
+                const sectionElement = document.getElementById(sectionId + '-section');
+                const title = sectionElement.querySelector('.card-header h6').textContent;
+                let contentHtml = '';
 
-            if (sectionId === 'overall-attendance') {
-                contentHtml =
-                    `<div class="row"><div class="col-6"><h4>Daily Attendance (<?php echo $selected_date; ?>):</h4><p style="font-size:24px;">${'<?php echo $daily_percentage; ?>'}</p></div><div class="col-6"><h4>Monthly Attendance (<?php echo $selected_month; ?>):</h4><p style="font-size:24px;">${'<?php echo $monthly_percentage; ?>'}</p></div></div>`;
-            } else if (sectionId === 'low-attendance') {
-                contentHtml = document.getElementById('low-attendance-table').innerHTML;
-            } else if (sectionId === 'staff-attendance') {
-                const staffChartImage = staffChart.toBase64Image();
-                const staffTableHtml = document.getElementById('staff-list-wrapper').innerHTML;
-                contentHtml =
-                    `<div class="row"><div class="col-6">${staffTableHtml}</div><div class="col-6"><div class="chart-container"><img src="${staffChartImage}"></div></div></div>`;
-            }
+                if (sectionId === 'overall-attendance') {
+                    contentHtml =
+                        `<div class="row"><div class="col-6"><h4>Daily Attendance (<?php echo $selected_date; ?>):</h4><p style="font-size:24px;">${'<?php echo $daily_percentage; ?>'}</p></div><div class="col-6"><h4>Monthly Attendance (<?php echo $selected_month; ?>):</h4><p style="font-size:24px;">${'<?php echo $monthly_percentage; ?>'}</p></div></div>`;
+                } else if (sectionId === 'low-attendance') {
+                    contentHtml = document.getElementById('low-attendance-table').innerHTML;
+                } else if (sectionId === 'staff-attendance') {
+                    const staffChartImage = staffChart.toBase64Image();
+                    const staffTableHtml = document.getElementById('staff-list-wrapper').innerHTML;
+                    contentHtml =
+                        `<div class="row"><div class="col-6">${staffTableHtml}</div><div class="col-6"><div class="chart-container"><img src="${staffChartImage}"></div></div></div>`;
+                }
 
-            const sectionFilename = title.replace(/[^a-zA-Z0-9]+/g, '_') + '_Report.pdf';
-            const pdfHtml = `
+                const sectionFilename = title.replace(/[^a-zA-Z0-9]+/g, '_') + '_Report.pdf';
+                const pdfHtml = `
                 <!DOCTYPE html><html><head><title>${title}</title><style>
                     body{font-family:sans-serif} .header{text-align:center;margin-bottom:20px} h1,h2{margin:0} h2{font-size:1.2em;font-weight:normal} table{width:100%;border-collapse:collapse;font-size:12px} th,td{border:1px solid #ddd;padding:6px} th{background-color:#f2f2f2} .chart-container{text-align:center;margin-top:20px} .chart-container img{max-width:100%;height:auto} .row{width:100%;display:table} .col-6{width:48%;display:table-cell;padding:1%}
                 </style></head><body>
@@ -584,10 +585,10 @@ if (!$is_ajax_request) {
                     ${contentHtml}
                 </body></html>`;
 
-            // Pass the dynamic filename for the section
-            generateAndSubmitPdf(pdfHtml, sectionFilename);
+                // Pass the dynamic filename for the section
+                generateAndSubmitPdf(pdfHtml, sectionFilename);
+            });
         });
-    });
     </script>
 </body>
 

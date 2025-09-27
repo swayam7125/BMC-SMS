@@ -39,6 +39,9 @@ try {
     $stmt->execute([$school_id]);
     $books = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
+    error_log("DB Error in browse_books.php (teacher): " . $e->getMessage());
+    die("An error occurred while fetching books. Please try again later.");
+}
     die("Database Error: " . $e->getMessage());
 }
 ?>
@@ -109,9 +112,11 @@ if (!$is_ajax_request) {
                 </div>
             </div>
 <?php
+<?php
 if (!$is_ajax_request) {
     include '../../includes/footer.php';
 }
+?>        </div>
 ?>        </div>
     </div>
 
