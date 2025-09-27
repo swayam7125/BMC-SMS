@@ -54,32 +54,27 @@ $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
 <head>
     <meta charset="utf-8">
     <title>Marks Entry - School Management System</title>
-    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800,900" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-    <link href="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../../assets/css/sidebar.css">
-    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-    <link rel="stylesheet" href="../../assets/css/table-to-card.css">
+    <link href="../../../assets/css/sb-admin-2.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../../assets/css/scrollbar_hidden.css">
 </head>
 
 <body id="page-top" data-class-std="<?php echo htmlspecialchars($class_teacher_std); ?>">
     <div id="wrapper">
-        <?php
-if (!$is_ajax_request) {
-    include '../../../includes/sidebar.php';
-}
-?>
-        <div id="content-wrapper" class="d-flex flex-column">
+<?php
+            if (!$is_ajax_request) {
+                include '../../../includes/sidebar.php';
+            }
+        ?> 
+                <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
 <?php
-if (!$is_ajax_request) {
-    include '../../../includes/header.php';
-}
-?>
-?>
+            if (!$is_ajax_request) {
+                include '../../../includes/header.php';
+            }
+        ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Marks Entry: Class <?php echo htmlspecialchars($class_teacher_std); ?></h1>
@@ -138,10 +133,10 @@ if (!$is_ajax_request) {
                 </div>
             </div>
 <?php
-if (!$is_ajax_request) {
-    include '../../../includes/footer.php';
-}
-?>        </div>
+            if (!$is_ajax_request) {
+                include '../../../includes/footer.php';
+            }
+        ?>         </div>
     </div>
     <?php include_once "../../../includes/logout_modal.php" ?>
     <script src="../../../assets/vendor/jquery/jquery.min.js"></script>
