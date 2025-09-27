@@ -120,7 +120,7 @@ $page_title = "My Attendance Report";
             </div>
             <?php
             if (!$is_ajax_request) {
-                include '../../includes/sidebar.php';
+                include '../../includes/footer.php';
             }
             ?>
         </div>

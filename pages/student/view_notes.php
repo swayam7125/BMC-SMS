@@ -161,7 +161,7 @@ if (!$is_ajax_request) {
             <div id="content">
 <?php
 if (!$is_ajax_request) {
-    include '../../includes/footer.php';
+    include '../../includes/header.php';
 }
 ?>
                 <div class="container-fluid">

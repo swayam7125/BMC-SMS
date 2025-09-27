@@ -55,24 +55,28 @@ $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
 <head>
     <meta charset="utf-8">
     <title>Marks Entry - School Management System</title>
-    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800,900" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-    <link href="../../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../../../assets/css/sidebar.css">
-    <link rel="stylesheet" href="../../../assets/css/scrollbar_hidden.css">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link rel="stylesheet" href="../../assets/css/table-to-card.css">
 </head>
 
 <body id="page-top" data-class-std="<?php echo htmlspecialchars($class_teacher_std); ?>">
     <div id="wrapper">
         <?php
 if (!$is_ajax_request) {
-    include '../../includes/sidebar.php';
+    include '../../../includes/sidebar.php';
 }
 ?> <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php
 if (!$is_ajax_request) {
-    include '../../includes/header.php';
+    include '../../../includes/header.php';
 }
 ?>
                 <div class="container-fluid">
@@ -138,7 +142,7 @@ if (!$is_ajax_request) {
             </div>
             <?php
 if (!$is_ajax_request) {
-    include '../../includes/footer.php';
+    include '../../../includes/footer.php';
 }
 ?>
         </div>

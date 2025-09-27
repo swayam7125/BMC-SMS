@@ -126,11 +126,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && is_ajax_request()) {
     <meta charset="utf-8">
     <title>Enroll School - School Management System</title>
     <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
-    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+
     <style>
         .select2-container .select2-selection--multiple { min-height: 38px; border-color: #d1d3e2 !important; }
         .select2-container--default .select2-selection--multiple .select2-selection__choice { background-color: #4e73df; border-color: #4e73df; color: white; }

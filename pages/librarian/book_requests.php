@@ -44,7 +44,7 @@ try {
             FROM "book_requests" br 
             JOIN "users" u ON br.requester_id = u.id 
             WHERE br.school_id = ? AND br.status = \'Pending\' 
-            ORDER BY br.request_date ASC';
+            ORDER BY br.created_at ASC';
 
     $stmt_requests = $conn->prepare($sql);
     $stmt_requests->execute([$school_id]);
@@ -63,11 +63,15 @@ $pageTitle = "Book Acquisition Requests";
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
         <title><?php echo htmlspecialchars($pageTitle); ?></title>
 
-        <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
-        <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800,900" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+        <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
         <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
+        <link href="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
         <link rel="stylesheet" href="../../assets/css/sidebar.css">
         <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+        <link rel="stylesheet" href="../../assets/css/table-to-card.css">
 
         <style>
             .mobile-card-view {
