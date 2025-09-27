@@ -61,13 +61,13 @@ $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
     <div id="wrapper">
         <?php
 if (!$is_ajax_request) {
-    include '../../includes/sidebar.php';
+    include '../../../includes/sidebar.php';
 }
 ?> <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php
 if (!$is_ajax_request) {
-    include '../../includes/header.php';
+    include '../../../includes/header.php';
 }
 ?>
                 <div class="container-fluid">
@@ -112,7 +112,7 @@ if (!$is_ajax_request) {
             </div>
             <?php
 if (!$is_ajax_request) {
-    include '../../includes/footer.php';
+    include '../../../includes/footer.php';
 }
 ?>
         </div>

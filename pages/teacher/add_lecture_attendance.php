@@ -104,12 +104,15 @@ try {
     }
     $errorMessage = "A database error occurred: " . $e->getMessage();
     error_log("Add Lecture Attendance Error: " . $e->getMessage());
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
     <title>Take Lecture Attendance</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
@@ -117,26 +120,24 @@ try {
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <style>
-    .disabled-card {
-        opacity: 0.65;
-        background-color: #f8f9fc;
-    }
+        .disabled-card {
+            opacity: 0.65;
+            background-color: #f8f9fc;
+        }
     </style>
 </head>
 
 <body id="page-top">
     <div id="wrapper">
-        <?php
+<?php
 if (!$is_ajax_request) {
     include '../../includes/sidebar.php';
 }
-?> <div id="content-wrapper" class="d-flex flex-column">
+?>        <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php
+<?php
 if (!$is_ajax_request) {
     include '../../includes/header.php';
-}
-?><?php
 }
 ?>
                 <div class="container-fluid">
@@ -144,34 +145,32 @@ if (!$is_ajax_request) {
 
                     <?php if (isset($successMessage)) echo "<div class='alert alert-success'>$successMessage</div>"; ?>
                     <?php if (!empty($errorMessage)): ?>
-                    <div class='alert alert-danger'><?php echo $errorMessage; ?></div>
+                        <div class='alert alert-danger'><?php echo $errorMessage; ?></div>
                     <?php endif; ?>
                     <?php if ($is_holiday): ?>
-                    <div class="card shadow mb-4">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">Attendance on
-                                <?php echo htmlspecialchars($current_date); ?></h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="alert alert-info">
-                                <h4 class="alert-heading"><i class="fas fa-calendar-check"></i> Public Holiday</h4>
-                                <p>You cannot mark attendance for this day because it is a public holiday:
-                                    <strong><?php echo htmlspecialchars($holiday_description); ?></strong>.</p>
+                         <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Attendance on <?php echo htmlspecialchars($current_date); ?></h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-info">
+                                    <h4 class="alert-heading"><i class="fas fa-calendar-check"></i> Public Holiday</h4>
+                                    <p>You cannot mark attendance for this day because it is a public holiday: <strong><?php echo htmlspecialchars($holiday_description); ?></strong>.</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
                     <?php else: ?>
-                    <div class="row">
-                        <?php if (empty($lectures_today)): ?>
-                        <div class="col-12">
-                            <p>You have no lectures scheduled for today.</p>
-                        </div>
-                        <?php else: foreach ($lectures_today as $lecture): ?>
-                        <?php $is_active = ($current_time >= $lecture['start_time'] && $current_time <= $lecture['end_time']);
+                        <div class="row">
+                            <?php if (empty($lectures_today)): ?>
+                                <div class="col-12">
+                                    <p>You have no lectures scheduled for today.</p>
+                                </div>
+                            <?php else: foreach ($lectures_today as $lecture): ?>
+                                    <?php $is_active = ($current_time >= $lecture['start_time'] && $current_time <= $lecture['end_time']);
                                     $card_class = $is_active ? '' : 'disabled-card'; ?>
-                        <div class="col-xl-4 col-md-6 mb-4">
-                            <div class="card shadow h-100 <?php echo $card_class; ?>">
-                                <div class="card-body">
+                                    <div class="col-xl-4 col-md-6 mb-4">
+                                        <div class="card shadow h-100 <?php echo $card_class; ?>">
+                                            <div class="card-body">
                                     <div class="font-weight-bold text-primary text-uppercase mb-1">Period
                                         <?php echo htmlspecialchars($lecture['period_number']); ?></div>
                                     <div class="h5 mb-0 font-weight-bold text-gray-800">Std
@@ -180,91 +179,71 @@ if (!$is_ajax_request) {
                                     <div class="text-muted small">
                                         <?php echo date('h:i A', strtotime($lecture['start_time'])) . ' - ' . date('h:i A', strtotime($lecture['end_time'])); ?>
                                     </div>
-                                    <?php if ($is_active): ?>
-                                    <a href="add_lecture_attendance.php?lecture_id=<?php echo $lecture['id']; ?>"
-                                        class="btn btn-primary btn-sm mt-3"><i class="fas fa-check-circle"></i> Take
-                                        Attendance</a>
-                                    <?php else: ?>
-                                    <button class="btn btn-secondary btn-sm mt-3" disabled><i class="fas fa-clock"></i>
-                                        Not Lecture Time</button>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        </div>
-                        <?php endforeach;
+                                                <?php if ($is_active): ?>
+                                                    <a href="add_lecture_attendance.php?lecture_id=<?php echo $lecture['id']; ?>" class="btn btn-primary btn-sm mt-3"><i class="fas fa-check-circle"></i> Take Attendance</a>
+                                                <?php else: ?>
+                                                    <button class="btn btn-secondary btn-sm mt-3" disabled><i class="fas fa-clock"></i> Not Lecture Time</button>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                            <?php endforeach;
                             endif; ?>
-                    </div>
+                        </div>
 
-                    <?php if ($selected_lecture && !empty($students)): ?>
-                    <div class="card shadow mb-4">
-                        <div class="card-header">
+                        <?php if ($selected_lecture && !empty($students)): ?>
+                            <div class="card shadow mb-4">
+                                <div class="card-header">
                             <h6 class="m-0 font-weight-bold text-primary">Taking Attendance for: Std
                                 <?php echo htmlspecialchars($selected_lecture['standard']); ?> | Period
                                 <?php echo htmlspecialchars($selected_lecture['period_number']); ?> | Subject:
                                 <?php echo htmlspecialchars($selected_lecture['subject_name']); ?></h6>
-                        </div>
-                        <div class="card-body">
-                            <form method="POST" action="add_lecture_attendance.php">
-                                <input type="hidden" name="attendance_date" value="<?php echo date('Y-m-d'); ?>">
-                                <input type="hidden" name="period_number"
-                                    value="<?php echo htmlspecialchars($selected_lecture['period_number']); ?>">
-                                <input type="hidden" name="standard"
-                                    value="<?php echo htmlspecialchars($selected_lecture['standard']); ?>">
-                                <input type="hidden" name="subject"
-                                    value="<?php echo htmlspecialchars($selected_lecture['subject_name']); ?>">
-                                <div class="table-responsive">
-                                    <table class="table table-bordered">
-                                        <thead>
-                                            <tr>
-                                                <th>Roll No</th>
-                                                <th>Student Name</th>
-                                                <th>Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php foreach ($students as $student): ?>
-                                            <tr>
-                                                <td><?php echo htmlspecialchars($student['rollno']); ?></td>
-                                                <td><?php echo htmlspecialchars($student['student_name']); ?></td>
-                                                <td>
-                                                    <div class="form-check form-check-inline"><input
-                                                            class="form-check-input" type="radio"
-                                                            name="attendance[<?php echo $student['id']; ?>]"
-                                                            value="Present" checked><label
-                                                            class="form-check-label">Present</label></div>
-                                                    <div class="form-check form-check-inline"><input
-                                                            class="form-check-input" type="radio"
-                                                            name="attendance[<?php echo $student['id']; ?>]"
-                                                            value="Absent"><label
-                                                            class="form-check-label">Absent</label></div>
-                                                    <div class="form-check form-check-inline"><input
-                                                            class="form-check-input" type="radio"
-                                                            name="attendance[<?php echo $student['id']; ?>]"
-                                                            value="Leave"><label class="form-check-label">Leave</label>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <?php endforeach; ?>
-                                        </tbody>
-                                    </table>
                                 </div>
-                                <button type="submit" name="save_attendance" class="btn btn-success">Save
-                                    Attendance</button>
-                            </form>
-                        </div>
-                    </div>
-                    <?php elseif (isset($_GET['lecture_id'])): ?>
-                    <div class="alert alert-warning">No students found for this class.</div>
-                    <?php endif; ?>
+                                <div class="card-body">
+                                    <form method="POST" action="add_lecture_attendance.php">
+                                        <input type="hidden" name="attendance_date" value="<?php echo date('Y-m-d'); ?>">
+                                        <input type="hidden" name="period_number" value="<?php echo htmlspecialchars($selected_lecture['period_number']); ?>">
+                                        <input type="hidden" name="standard" value="<?php echo htmlspecialchars($selected_lecture['standard']); ?>">
+                                        <input type="hidden" name="subject" value="<?php echo htmlspecialchars($selected_lecture['subject_name']); ?>">
+                                        <div class="table-responsive">
+                                            <table class="table table-bordered">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Roll No</th>
+                                                        <th>Student Name</th>
+                                                        <th>Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <?php foreach ($students as $student): ?>
+                                                        <tr>
+                                                            <td><?php echo htmlspecialchars($student['rollno']); ?></td>
+                                                            <td><?php echo htmlspecialchars($student['student_name']); ?></td>
+                                                            <td>
+                                                                <div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="attendance[<?php echo $student['id']; ?>]" value="Present" checked><label class="form-check-label">Present</label></div>
+                                                                <div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="attendance[<?php echo $student['id']; ?>]" value="Absent"><label class="form-check-label">Absent</label></div>
+                                                                <div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="attendance[<?php echo $student['id']; ?>]" value="Leave"><label class="form-check-label">Leave</label></div>
+                                                            </td>
+                                                        </tr>
+                                                    <?php endforeach; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <button type="submit" name="save_attendance" class="btn btn-success">Save Attendance</button>
+                                    </form>
+                                </div>
+                            </div>
+                        <?php elseif (isset($_GET['lecture_id'])): ?>
+                            <div class="alert alert-warning">No students found for this class.</div>
+                        <?php endif; ?>
                     <?php endif; ?>
                 </div>
             </div>
-            <?php
+<?php
 if (!$is_ajax_request) {
     include '../../includes/footer.php';
 }
-?>
-        </div>
+?>        </div>
     </div>
     <?php include_once "../../includes/logout_modal.php" ?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
@@ -278,15 +257,14 @@ if (is_ajax_request()) {
     $content = ob_get_clean();
     
     // Extract just the main content area for the AJAX response
-    if (preg_match('/<div class="container-fluid".*?>(.*?)<\ /div>/s', $content, $matches)) {
-    echo '<div class="container-fluid">' . $matches[1] . '</div>';
+    if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
+        echo '<div class="container-fluid">' . $matches[1] . '</div>';
     } else {
-    // Fallback if the main container isn't found
-    echo $content;
+        // Fallback if the main container isn't found
+        echo $content;
     }
     // Stop the script for AJAX requests
     exit;
-    }
-    ?>
-
+}
+?>
 </html>
