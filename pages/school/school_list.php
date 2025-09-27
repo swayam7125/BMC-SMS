@@ -52,37 +52,37 @@ try {
 <body id="page-top">
     <div id="wrapper">
         <?php
-if (!$is_ajax_request) {
-    include '../../includes/sidebar.php';
-}
-?>
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php
-if (!$is_ajax_request) {
-    include '../../includes/header.php';
-}
-?>
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
+                ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">School Tables</h1>
                     <p class="mb-4">Complete list of all schools in the school management system.</p>
 
                     <?php if (isset($_GET['success'])): ?>
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                        <?php echo htmlspecialchars($_GET['success']); ?>
-                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <?php echo htmlspecialchars($_GET['success']); ?>
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
                     <?php endif; ?>
 
                     <?php if (isset($_GET['error'])): ?>
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        <?php echo htmlspecialchars($_GET['error']); ?>
-                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <?php echo htmlspecialchars($_GET['error']); ?>
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
                     <?php endif; ?>
 
                     <div class="card shadow mb-4">
@@ -116,7 +116,7 @@ if (!$is_ajax_request) {
                                             foreach ($schools as $row) {
                                                 // Handle the aggregated principal names, showing "Not Assigned" if none exist.
                                                 $principalName = $row['principal_names'] ? htmlspecialchars($row['principal_names']) : '<span class="text-danger">Not Assigned</span>';
-                                                
+
                                                 echo "<tr>";
                                                 echo "<td>" . htmlspecialchars($row['id']) . "</td>";
                                                 echo "<td>";
@@ -154,10 +154,10 @@ if (!$is_ajax_request) {
                 </div>
             </div>
             <?php
-if (!$is_ajax_request) {
-    include '../../includes/footer.php';
-}
-?>
+            if (!$is_ajax_request) {
+                include '../../includes/footer.php';
+            }
+            ?>
         </div>
     </div>
     <a class="scroll-to-top rounded" href="#page-top">
@@ -186,8 +186,8 @@ if (!$is_ajax_request) {
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
-    <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
-    <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+    <script src="/BMC-SMS/assets/vendor/datatables/jquery.dataTables.min.js"></script>
+    <script src="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
     <script src="../../assets/js/custom_school_scripts.js"></script>
 </body>
 
