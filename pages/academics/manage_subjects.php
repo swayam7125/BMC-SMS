@@ -87,42 +87,41 @@ try {
 }
 
 ?>
-    <!DOCTYPE html>
-    <html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Manage Subjects</title>
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Subjects</title>
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800,900" rel="stylesheet">
     <link href="/BMC-SMS/assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link href="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
-        <style>
-            .select2-container--bootstrap4 .select2-selection--multiple {
-                min-height: calc(1.5em + .75rem + 2px);
-            }
-        </style>
-    </head>
+    <style>
+        .select2-container--bootstrap4 .select2-selection--multiple {
+            min-height: calc(1.5em + .75rem + 2px);
+        }
+    </style>
+</head>
 
-    <body id="page-top">
-        <div id="wrapper">
+<body id="page-top">
+    <div id="wrapper">
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
+        <div id="content-wrapper" class="d-flex flex-column">
             <?php
             if (!$is_ajax_request) {
-                include '../../includes/sidebar.php';
+                include '../../includes/header.php';
             }
             ?>
-            <div id="content-wrapper" class="d-flex flex-column">
-                <?php
-                if (!$is_ajax_request) {
-                    include '../../includes/header.php';
-                }
-                ?>
-                <div id="content">
+            <div id="content">
 
-                    <div id="main-content">
+                <div id="main-content">
                     <div class="container-fluid">
 
                         <h1 class="h3 mb-4 text-gray-800">Manage Subjects</h1>
@@ -248,6 +247,7 @@ try {
             <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
             <script>
+                // Using jQuery's ready function for consistency with plugins
                 $(document).ready(function() {
                     // Initialize Select2
                     $('.select2-multiple').select2({
@@ -256,45 +256,56 @@ try {
                         width: '100%'
                     });
 
-                    // Handle Add New Subject via AJAX
+                    // Handle Add New Subject via Fetch
                     $('#saveNewSubjectBtn').on('click', function() {
-                        const subjectName = $('#new_subject_name').val().trim();
+                        const subjectNameInput = $('#new_subject_name');
+                        const modalMessage = $('#modal-message');
+                        const subjectName = subjectNameInput.val().trim();
+
                         if (subjectName) {
-                            $.ajax({
-                                url: '../academics/ajax_handler.php',
-                                type: 'POST',
-                                data: {
-                                    action: 'add_subject',
-                                    subject_name: subjectName
-                                },
-                                dataType: 'json',
-                                success: function(response) {
-                                    if (response.success) {
-                                        // Add the new subject to the dropdown list
-                                        const newOption = new Option(response.subject.subject_name,
-                                            response.subject.subject_id, false, false);
+                            const formData = new FormData();
+                            formData.append('action', 'add_subject');
+                            formData.append('subject_name', subjectName);
+
+                            fetch('../academics/ajax_handler.php', {
+                                    method: 'POST',
+                                    body: formData
+                                })
+                                .then(response => {
+                                    if (!response.ok) {
+                                        throw new Error(`HTTP error! Status: ${response.status}`);
+                                    }
+                                    return response.json();
+                                })
+                                .then(data => {
+                                    if (data.success) {
+                                        // Use jQuery to append and trigger the change for Select2
+                                        const newOption = new Option(data.subject.subject_name, data.subject.subject_id, false, false);
                                         $('#subject_ids').append(newOption).trigger('change');
 
+                                        // Hide the modal and clear the input using jQuery
                                         $('#addSubjectModal').modal('hide');
-                                        $('#new_subject_name').val('');
+                                        subjectNameInput.val('');
                                     } else {
-                                        $('#modal-message').html(
-                                            `<div class="alert alert-danger">${response.message}</div>`
-                                        );
+                                        modalMessage.html(`<div class="alert alert-danger">${data.message || 'An unknown error occurred.'}</div>`);
                                     }
-                                },
-                                error: function() {
-                                    $('#modal-message').html(
-                                        '<div class="alert alert-danger">An error occurred while adding the subject.</div>'
-                                    );
-                                }
-                            });
+                                })
+                                .catch(error => {
+                                    console.error('Error adding subject:', error);
+                                    modalMessage.html('<div class="alert alert-danger">An error occurred while adding the subject. Please try again.</div>');
+                                });
                         } else {
                             alert('Please enter a valid subject name.');
                         }
                     });
+
+                    // Clear modal message when it's opened
+                    $('#addSubjectModal').on('show.bs.modal', function() {
+                        $('#modal-message').html('');
+                        $('#new_subject_name').val('');
+                    });
                 });
             </script>
-    </body>
+</body>
 
-    </html>
+</html>
