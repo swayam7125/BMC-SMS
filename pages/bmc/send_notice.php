@@ -52,8 +52,7 @@ try {
             $conn->beginTransaction();
 
             // Insert the notice
-            $stmt_notice = $conn->prepare("INSERT INTO bmc_notices (title, content, file_path, original_filename, sent_by_id) VALUES (?, ?, ?, ?, ?)");
-            $stmt_notice->execute([$title, $content, $filePathForDB, $originalFilename, $userId]);
+            $stmt_notice = $conn->prepare("INSERT INTO notice (title, content, file_path, original_filename, user_id) VALUES (?, ?, ?, ?, ?)");            $stmt_notice->execute([$title, $content, $filePathForDB, $originalFilename, $userId]);
             $notice_id = $conn->lastInsertId();
 
             // Create notifications for all principals
@@ -75,13 +74,11 @@ try {
     }
 
     // --- Data Fetching for History Table ---
-    $stmt_history = $conn->prepare("SELECT title, created_at FROM bmc_notices WHERE sent_by_id = ? ORDER BY created_at DESC");
-    $stmt_history->execute([$userId]);
+    $stmt_history = $conn->prepare("SELECT title, created_at FROM notice WHERE user_id = ? ORDER BY created_at DESC");    $stmt_history->execute([$userId]);
     $notice_history = $stmt_history->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     if ($conn->inTransaction()) $conn->rollBack();
-    error_log("Database error in send_notice.php: " . $e->getMessage());
-    $errorMessage = "A database error occurred. Please try again.";
+    $errorMessage = "Database Error: " . $e->getMessage(); 
 }
 
 ?>
