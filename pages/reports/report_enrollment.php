@@ -1,6 +1,7 @@
 <?php
 // --- PDF GENERATION SETUP ---
 require_once '../../includes/dompdf/autoload.inc.php';
+
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
@@ -9,15 +10,15 @@ if (isset($_POST['download_pdf'])) {
     $options = new Options();
     $options->set('isRemoteEnabled', true);
     $dompdf = new Dompdf($options);
-    
+
     $html = $_POST['pdf_html'];
     // ⭐ Get the dynamic filename from the POST request, with a default fallback
     $filename = $_POST['pdf_filename'] ?? 'Enrollment_Report.pdf';
-    
+
     $dompdf->loadHtml($html);
     $dompdf->setPaper('A4', 'portrait');
     $dompdf->render();
-    
+
     // ⭐ Use the dynamic filename for the download
     $dompdf->stream($filename, ["Attachment" => 1]);
     exit();
@@ -47,7 +48,7 @@ if ($role === 'principal') {
     $stmt = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
     $stmt->execute([$userId]);
     $school_id = $stmt->fetchColumn();
-} 
+}
 // For Superadmins, School ID comes from a filter
 else if ($role === 'superadmin') {
     // Fetch all schools for the filter dropdown
@@ -105,7 +106,7 @@ try {
     }
 
     // --- UPDATED QUERIES using dynamic clauses ---
-    
+
     // Query for the table and bar chart
     $query = "SELECT std, COUNT(*) as student_count FROM student $where_clause GROUP BY std ORDER BY std ASC";
     $stmt = $conn->prepare($query);
@@ -116,7 +117,7 @@ try {
         $labels[] = "Std " . $row['std'];
         $counts[] = $row['student_count'];
     }
-    
+
     // Query for the area chart
     $area_chart_query = "SELECT TO_CHAR(date_of_joining, 'YYYY') as year, COUNT(id) as new_students FROM student WHERE date_of_joining >= NOW() - INTERVAL '5 years' $and_clause GROUP BY year ORDER BY year ASC";
     $area_stmt = $conn->prepare($area_chart_query);
@@ -168,8 +169,6 @@ try {
     $transport_stmt = $conn->prepare($transport_query);
     $transport_stmt->execute($params);
     $transport_data = $transport_stmt->fetchAll(PDO::FETCH_ASSOC);
-
-
 } catch (Exception $e) {
     $errorMessage = "An error occurred: " . $e->getMessage();
 }
@@ -180,6 +179,7 @@ if ($role === 'principal' && !$school_id) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Enrollment Report</title>
@@ -192,20 +192,21 @@ if ($role === 'principal' && !$school_id) {
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link href="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
         <?php
-if (!$is_ajax_request) {
-    include '../../includes/sidebar.php';
-}
-?>
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php
-if (!$is_ajax_request) {
-    include '../../includes/header.php';
-}
-?>
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
+                ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800"><?php echo $report_title; ?></h1>
@@ -215,29 +216,29 @@ if (!$is_ajax_request) {
                     </div>
 
                     <?php if ($role === 'superadmin'): ?>
-                    <div class="card shadow mb-4">
-                        <div class="card-body">
-                            <form method="GET" action="" class="form-inline">
-                                <div class="form-group mr-3">
-                                    <label for="school_id" class="mr-2"><strong>Filter by School:</strong></label>
-                                    <select name="school_id" id="school_id" class="form-control" onchange="this.form.submit()">
-                                        <option value="">-- All Schools --</option>
-                                        <?php foreach($schools as $school): ?>
-                                            <option value="<?php echo $school['id']; ?>" <?php if ($school['id'] == $school_id) echo 'selected'; ?>>
-                                                <?php echo htmlspecialchars($school['school_name']); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                            </form>
+                        <div class="card shadow mb-4">
+                            <div class="card-body">
+                                <form method="GET" action="" class="form-inline">
+                                    <div class="form-group mr-3">
+                                        <label for="school_id" class="mr-2"><strong>Filter by School:</strong></label>
+                                        <select name="school_id" id="school_id" class="form-control" onchange="this.form.submit()">
+                                            <option value="">-- All Schools --</option>
+                                            <?php foreach ($schools as $school): ?>
+                                                <option value="<?php echo $school['id']; ?>" <?php if ($school['id'] == $school_id) echo 'selected'; ?>>
+                                                    <?php echo htmlspecialchars($school['school_name']); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
-                    </div>
                     <?php endif; ?>
 
                     <?php if ($errorMessage): ?>
                         <div class="alert alert-danger"><?php echo $errorMessage; ?></div>
                     <?php endif; ?>
-                    
+
                     <div id="report-content">
                         <div class="card shadow mb-4" id="yearly-trend-section">
                             <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
@@ -250,7 +251,7 @@ if (!$is_ajax_request) {
                         </div>
 
                         <div class="card shadow mb-4" id="admissions-left-section">
-                             <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                                 <h6 class="m-0 font-weight-bold text-primary">Admissions vs. Left Students</h6>
                                 <div class="d-flex align-items-center">
                                     <form method="GET" action="" class="form-inline mr-2">
@@ -258,7 +259,7 @@ if (!$is_ajax_request) {
                                         <div class="form-group">
                                             <label for="academic_year" class="mr-2">Year:</label>
                                             <select name="academic_year" id="academic_year" class="form-control form-control-sm" onchange="this.form.submit()">
-                                                <?php foreach($academic_years as $year): ?>
+                                                <?php foreach ($academic_years as $year): ?>
                                                     <option value="<?php echo htmlspecialchars($year); ?>" <?php if ($year == $selected_academic_year) echo 'selected'; ?>>
                                                         <?php echo htmlspecialchars($year); ?>
                                                     </option>
@@ -274,15 +275,28 @@ if (!$is_ajax_request) {
                                     <div class="col-lg-6">
                                         <div class="table-responsive" id="admissions-table">
                                             <table class="table table-bordered">
-                                                <thead><tr><th>Category</th><th>Count</th></tr></thead>
+                                                <thead>
+                                                    <tr>
+                                                        <th>Category</th>
+                                                        <th>Count</th>
+                                                    </tr>
+                                                </thead>
                                                 <tbody>
-                                                    <tr><td>New Admissions</td><td><?php echo $new_admissions; ?></td></tr>
-                                                    <tr><td>Students Who Left</td><td><?php echo $students_left; ?></td></tr>
+                                                    <tr>
+                                                        <td>New Admissions</td>
+                                                        <td><?php echo $new_admissions; ?></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Students Who Left</td>
+                                                        <td><?php echo $students_left; ?></td>
+                                                    </tr>
                                                 </tbody>
                                             </table>
                                         </div>
                                     </div>
-                                    <div class="col-lg-6"><div class="chart-bar" style="height: 250px;"><canvas id="admissionsLeftChart"></canvas></div></div>
+                                    <div class="col-lg-6">
+                                        <div class="chart-bar" style="height: 250px;"><canvas id="admissionsLeftChart"></canvas></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -300,7 +314,7 @@ if (!$is_ajax_request) {
                                         <div class="table-responsive mt-4" id="gender-table">
                                             <table class="table table-sm table-bordered">
                                                 <tbody>
-                                                <?php foreach($gender_data as $row) echo "<tr><td>".htmlspecialchars(ucfirst($row['gender']))."</td><td>".$row['count']."</td></tr>"; ?>
+                                                    <?php foreach ($gender_data as $row) echo "<tr><td>" . htmlspecialchars(ucfirst($row['gender'])) . "</td><td>" . $row['count'] . "</td></tr>"; ?>
                                                 </tbody>
                                             </table>
                                         </div>
@@ -311,7 +325,7 @@ if (!$is_ajax_request) {
                                         <div class="table-responsive mt-4" id="transport-table">
                                             <table class="table table-sm table-bordered">
                                                 <tbody>
-                                                <?php foreach($transport_data as $row) echo "<tr><td>".htmlspecialchars(ucfirst($row['transport_mode']))."</td><td>".$row['count']."</td></tr>"; ?>
+                                                    <?php foreach ($transport_data as $row) echo "<tr><td>" . htmlspecialchars(ucfirst($row['transport_mode'])) . "</td><td>" . $row['count'] . "</td></tr>"; ?>
                                                 </tbody>
                                             </table>
                                         </div>
@@ -321,7 +335,7 @@ if (!$is_ajax_request) {
                         </div>
 
                         <div class="card shadow mb-4" id="std-count-section">
-                             <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                                 <h6 class="m-0 font-weight-bold text-primary">Student Count per Standard</h6>
                                 <a href="#" class="download-section-btn" data-section="std-count" title="Download this section"><i class="fas fa-download fa-sm"></i></a>
                             </div>
@@ -330,16 +344,26 @@ if (!$is_ajax_request) {
                                     <div class="col-lg-6">
                                         <div class="table-responsive" id="std-count-table">
                                             <table class="table table-bordered">
-                                                <thead><tr><th>Standard</th><th>Number of Students</th></tr></thead>
+                                                <thead>
+                                                    <tr>
+                                                        <th>Standard</th>
+                                                        <th>Number of Students</th>
+                                                    </tr>
+                                                </thead>
                                                 <tbody>
                                                     <?php foreach ($report_data as $row): ?>
-                                                    <tr><td><?php echo htmlspecialchars($row['std']); ?></td><td><?php echo $row['student_count']; ?></td></tr>
+                                                        <tr>
+                                                            <td><?php echo htmlspecialchars($row['std']); ?></td>
+                                                            <td><?php echo $row['student_count']; ?></td>
+                                                        </tr>
                                                     <?php endforeach; ?>
                                                 </tbody>
                                             </table>
                                         </div>
                                     </div>
-                                    <div class="col-lg-6"><div class="chart-bar" style="height: 320px;"><canvas id="enrollmentBarChart"></canvas></div></div>
+                                    <div class="col-lg-6">
+                                        <div class="chart-bar" style="height: 320px;"><canvas id="enrollmentBarChart"></canvas></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -347,62 +371,169 @@ if (!$is_ajax_request) {
                 </div>
             </div>
             <?php
-if (!$is_ajax_request) {
-    include '../../includes/footer.php';
-}
-?>
+            if (!$is_ajax_request) {
+                include '../../includes/footer.php';
+            }
+            ?>
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php"; ?>
-
+    <script src="/BMC-SMS/assets/js/global-ajax-filters.js"></script>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-    // Chart Instances
-    var myBarChart = new Chart(document.getElementById("enrollmentBarChart"), { type: 'bar', data: { labels: <?php echo json_encode($labels); ?>, datasets: [{ label: "Students", data: <?php echo json_encode($counts); ?>, backgroundColor: "#4e73df", barPercentage: 0.6 }] }, options: { maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } } } });
-    var myAreaChart = new Chart(document.getElementById("enrollmentAreaChart"), { type: 'line', data: { labels: <?php echo json_encode($area_chart_labels); ?>, datasets: [{ label: "Enrollments", data: <?php echo json_encode($area_chart_data); ?>, lineTension: 0.3, backgroundColor: "rgba(78, 115, 223, 0.05)", borderColor: "#4e73df", pointRadius: 3 }] }, options: { maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } } } });
-    var admissionsChart = new Chart(document.getElementById("admissionsLeftChart"), { type: 'bar', data: { labels: ['New Admissions', 'Students Left'], datasets: [{ label: 'Count', data: [<?php echo $new_admissions; ?>, <?php echo $students_left; ?>], backgroundColor: ['#1cc88a', '#e74a3b'] }] }, options: { maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } } } });
-    var genderChart = new Chart(document.getElementById("genderPieChart"), { type: 'pie', data: { labels: <?php echo json_encode(array_map('ucfirst', array_column($gender_data, 'gender'))); ?>, datasets: [{ data: <?php echo json_encode(array_column($gender_data, 'count')); ?>, backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc'] }] }, options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } } });
-    var transportChart = new Chart(document.getElementById("transportPieChart"), { type: 'pie', data: { labels: <?php echo json_encode(array_map('ucfirst', array_column($transport_data, 'transport_mode'))); ?>, datasets: [{ data: <?php echo json_encode(array_column($transport_data, 'count')); ?>, backgroundColor: ['#f6c23e', '#e74a3b', '#858796', '#5a5c69'] }] }, options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } } });
+        // Chart Instances
+        var myBarChart = new Chart(document.getElementById("enrollmentBarChart"), {
+            type: 'bar',
+            data: {
+                labels: <?php echo json_encode($labels); ?>,
+                datasets: [{
+                    label: "Students",
+                    data: <?php echo json_encode($counts); ?>,
+                    backgroundColor: "#4e73df",
+                    barPercentage: 0.6
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+        var myAreaChart = new Chart(document.getElementById("enrollmentAreaChart"), {
+            type: 'line',
+            data: {
+                labels: <?php echo json_encode($area_chart_labels); ?>,
+                datasets: [{
+                    label: "Enrollments",
+                    data: <?php echo json_encode($area_chart_data); ?>,
+                    lineTension: 0.3,
+                    backgroundColor: "rgba(78, 115, 223, 0.05)",
+                    borderColor: "#4e73df",
+                    pointRadius: 3
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+        var admissionsChart = new Chart(document.getElementById("admissionsLeftChart"), {
+            type: 'bar',
+            data: {
+                labels: ['New Admissions', 'Students Left'],
+                datasets: [{
+                    label: 'Count',
+                    data: [<?php echo $new_admissions; ?>, <?php echo $students_left; ?>],
+                    backgroundColor: ['#1cc88a', '#e74a3b']
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+        var genderChart = new Chart(document.getElementById("genderPieChart"), {
+            type: 'pie',
+            data: {
+                labels: <?php echo json_encode(array_map('ucfirst', array_column($gender_data, 'gender'))); ?>,
+                datasets: [{
+                    data: <?php echo json_encode(array_column($gender_data, 'count')); ?>,
+                    backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc']
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+        var transportChart = new Chart(document.getElementById("transportPieChart"), {
+            type: 'pie',
+            data: {
+                labels: <?php echo json_encode(array_map('ucfirst', array_column($transport_data, 'transport_mode'))); ?>,
+                datasets: [{
+                    data: <?php echo json_encode(array_column($transport_data, 'count')); ?>,
+                    backgroundColor: ['#f6c23e', '#e74a3b', '#858796', '#5a5c69']
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
 
-    // --- ⭐ MODIFIED PDF Download Logic ---
-    function generateAndSubmitPdf(htmlContent, filename) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '?'; // Submit to the same page to be handled by the logic at the top
+        // --- ⭐ MODIFIED PDF Download Logic ---
+        function generateAndSubmitPdf(htmlContent, filename) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '?'; // Submit to the same page to be handled by the logic at the top
 
-        // Input for the HTML content
-        const hiddenInputHtml = document.createElement('input');
-        hiddenInputHtml.type = 'hidden';
-        hiddenInputHtml.name = 'pdf_html';
-        hiddenInputHtml.value = htmlContent;
-        form.appendChild(hiddenInputHtml);
+            // Input for the HTML content
+            const hiddenInputHtml = document.createElement('input');
+            hiddenInputHtml.type = 'hidden';
+            hiddenInputHtml.name = 'pdf_html';
+            hiddenInputHtml.value = htmlContent;
+            form.appendChild(hiddenInputHtml);
 
-        // ⭐ NEW: Input for the dynamic filename
-        const hiddenInputFilename = document.createElement('input');
-        hiddenInputFilename.type = 'hidden';
-        hiddenInputFilename.name = 'pdf_filename';
-        hiddenInputFilename.value = filename;
-        form.appendChild(hiddenInputFilename);
-        
-        // Input for the download flag
-        const hiddenInputFlag = document.createElement('input');
-        hiddenInputFlag.type = 'hidden';
-        hiddenInputFlag.name = 'download_pdf';
-        hiddenInputFlag.value = '1';
-        form.appendChild(hiddenInputFlag);
+            // ⭐ NEW: Input for the dynamic filename
+            const hiddenInputFilename = document.createElement('input');
+            hiddenInputFilename.type = 'hidden';
+            hiddenInputFilename.name = 'pdf_filename';
+            hiddenInputFilename.value = filename;
+            form.appendChild(hiddenInputFilename);
 
-        document.body.appendChild(form);
-        form.submit();
-    }
+            // Input for the download flag
+            const hiddenInputFlag = document.createElement('input');
+            hiddenInputFlag.type = 'hidden';
+            hiddenInputFlag.name = 'download_pdf';
+            hiddenInputFlag.value = '1';
+            form.appendChild(hiddenInputFlag);
 
-    // ⭐ Get the main filename determined by PHP
-    const mainPdfFilename = '<?php echo $pdf_filename; ?>';
+            document.body.appendChild(form);
+            form.submit();
+        }
 
-    document.getElementById('download-full-report-btn').addEventListener('click', function() {
-        const pdfHtml = `
+        // ⭐ Get the main filename determined by PHP
+        const mainPdfFilename = '<?php echo $pdf_filename; ?>';
+
+        document.getElementById('download-full-report-btn').addEventListener('click', function() {
+            const pdfHtml = `
             <!DOCTYPE html><html><head><title>Full Enrollment Report</title><style>
                 body { font-family: sans-serif; } .header { text-align: center; margin-bottom: 20px; }
                 .header h1 { margin: 0; } .header h2 { margin: 0; font-size: 1.2em; font-weight: normal; }
@@ -418,41 +549,45 @@ if (!$is_ajax_request) {
                 <h3>Demographic Analysis</h3><div class="row"><div class="col-6">${document.getElementById('gender-table').innerHTML}<div class="chart-container"><img src="${genderChart.toBase64Image()}"></div></div><div class="col-6">${document.getElementById('transport-table').innerHTML}<div class="chart-container"><img src="${transportChart.toBase64Image()}"></div></div></div>
                 <h3>Student Count per Standard</h3><div class="row"><div class="col-6">${document.getElementById('std-count-table').innerHTML}</div><div class="col-6"><div class="chart-container"><img src="${myBarChart.toBase64Image()}"></div></div></div>
             </body></html>`;
-        
-        // ⭐ Pass the dynamic filename to the function
-        generateAndSubmitPdf(pdfHtml, mainPdfFilename);
-    });
 
-    document.querySelectorAll('.download-section-btn').forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-            const sectionId = this.dataset.section;
-            const sectionElement = document.getElementById(sectionId + '-section');
-            const title = sectionElement.querySelector('.card-header h6').textContent;
-            
-            let chartImage = ''; let tableHtml = ''; let contentHtml = '';
+            // ⭐ Pass the dynamic filename to the function
+            generateAndSubmitPdf(pdfHtml, mainPdfFilename);
+        });
 
-            if (sectionId === 'yearly-trend') chartImage = myAreaChart.toBase64Image();
-            if (sectionId === 'admissions-left') chartImage = admissionsChart.toBase64Image();
-            if (sectionId === 'demographics') {
-                 const genderImg = genderChart.toBase64Image(); const transportImg = transportChart.toBase64Image();
-                 const genderTable = document.getElementById('gender-table').innerHTML; const transportTable = document.getElementById('transport-table').innerHTML;
-                 contentHtml = `<div class="row"><div class="col-6">${genderTable}<div class="chart-container"><img src="${genderImg}"></div></div><div class="col-6">${transportTable}<div class="chart-container"><img src="${transportImg}"></div></div></div>`;
-            }
-            if (sectionId === 'std-count') chartImage = myBarChart.toBase64Image();
-            
-            const tableElement = sectionElement.querySelector('.table-responsive');
-            if(tableElement) tableHtml = tableElement.innerHTML;
-            
-            if (!contentHtml) {
-                contentHtml = `<div class="row"><div class="col-6">${tableHtml}</div><div class="col-6"><div class="chart-container"><img src="${chartImage}"></div></div></div>`;
-                if(!tableHtml) contentHtml = `<div class="chart-container"><img src="${chartImage}"></div>`;
-            }
-            
-            // ⭐ Use a sanitized version of the section title for section downloads
-            const sectionFilename = title.replace(/[^a-zA-Z0-9]+/g, '_') + '_Report.pdf';
+        document.querySelectorAll('.download-section-btn').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                const sectionId = this.dataset.section;
+                const sectionElement = document.getElementById(sectionId + '-section');
+                const title = sectionElement.querySelector('.card-header h6').textContent;
 
-            const pdfHtml = `
+                let chartImage = '';
+                let tableHtml = '';
+                let contentHtml = '';
+
+                if (sectionId === 'yearly-trend') chartImage = myAreaChart.toBase64Image();
+                if (sectionId === 'admissions-left') chartImage = admissionsChart.toBase64Image();
+                if (sectionId === 'demographics') {
+                    const genderImg = genderChart.toBase64Image();
+                    const transportImg = transportChart.toBase64Image();
+                    const genderTable = document.getElementById('gender-table').innerHTML;
+                    const transportTable = document.getElementById('transport-table').innerHTML;
+                    contentHtml = `<div class="row"><div class="col-6">${genderTable}<div class="chart-container"><img src="${genderImg}"></div></div><div class="col-6">${transportTable}<div class="chart-container"><img src="${transportImg}"></div></div></div>`;
+                }
+                if (sectionId === 'std-count') chartImage = myBarChart.toBase64Image();
+
+                const tableElement = sectionElement.querySelector('.table-responsive');
+                if (tableElement) tableHtml = tableElement.innerHTML;
+
+                if (!contentHtml) {
+                    contentHtml = `<div class="row"><div class="col-6">${tableHtml}</div><div class="col-6"><div class="chart-container"><img src="${chartImage}"></div></div></div>`;
+                    if (!tableHtml) contentHtml = `<div class="chart-container"><img src="${chartImage}"></div>`;
+                }
+
+                // ⭐ Use a sanitized version of the section title for section downloads
+                const sectionFilename = title.replace(/[^a-zA-Z0-9]+/g, '_') + '_Report.pdf';
+
+                const pdfHtml = `
                 <!DOCTYPE html><html><head><title>${title}</title><style>
                     body { font-family: sans-serif; } .header { text-align: center; margin-bottom: 20px; }
                     h1, h2 { margin: 0; } h2 { font-size: 1.2em; font-weight: normal; }
@@ -466,10 +601,11 @@ if (!$is_ajax_request) {
                     ${contentHtml}
                 </body></html>`;
 
-            // ⭐ Pass the specific section filename
-            generateAndSubmitPdf(pdfHtml, sectionFilename);
+                // ⭐ Pass the specific section filename
+                generateAndSubmitPdf(pdfHtml, sectionFilename);
+            });
         });
-    });
     </script>
 </body>
+
 </html>

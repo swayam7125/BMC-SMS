@@ -21,12 +21,11 @@ try {
     $stmt = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
     $stmt->execute([$principal_id]);
     $school_id = $stmt->fetchColumn();
-    
+
     // Correctly fetch the earliest joining date from the hr table for the date picker
     $joining_stmt = $conn->prepare("SELECT MIN(date_of_joining) FROM hr WHERE school_id = ?");
     $joining_stmt->execute([$school_id]);
     $earliest_joining_date = $joining_stmt->fetchColumn();
-
 } catch (PDOException $e) {
     error_log("Error fetching school ID for principal: " . $e->getMessage());
     die("A database error occurred.");
@@ -64,7 +63,6 @@ try {
     $stmt = $conn->prepare($query);
     $stmt->execute([$filter_date, $school_id]);
     $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
 } catch (PDOException $e) {
     error_log("Error fetching HR attendance records: " . $e->getMessage());
     die("A database error occurred. Please try again later.");
@@ -75,6 +73,7 @@ $page_title = "HR Attendance History";
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title><?php echo htmlspecialchars($page_title); ?></title>
@@ -85,28 +84,29 @@ $page_title = "HR Attendance History";
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link href="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
 </head>
+
 <body id="page-top">
     <div id="wrapper">
-       <?php
-if (!$is_ajax_request) {
-    include '../../includes/sidebar.php';
-}
-?> 
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php
-if (!$is_ajax_request) {
-    include '../../includes/header.php';
-}
-?> 
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
+                ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-2 text-gray-800">HR Attendance History</h1>
-                    
+
                     <?php if (isset($_GET['success'])): ?>
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                        <?php echo htmlspecialchars($_GET['success']); ?>
-                        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                    </div>
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <?php echo htmlspecialchars($_GET['success']); ?>
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        </div>
                     <?php endif; ?>
 
                     <div class="card shadow mb-4">
@@ -114,8 +114,8 @@ if (!$is_ajax_request) {
                             <h6 class="m-0 font-weight-bold text-primary">View Attendance Records</h6>
                         </div>
                         <div class="card-body">
-                             <div class="d-flex flex-wrap align-items-center justify-content-between mb-4">
-                                 <form method="GET" action="" class="form-inline">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between mb-4">
+                                <form method="GET" action="" class="form-inline">
                                     <div class="form-group">
                                         <label for="date" class="mr-2">Date:</label>
                                         <input type="date" id="date" name="date" class="form-control" value="<?php echo htmlspecialchars($filter_date); ?>" min="<?php echo htmlspecialchars($earliest_joining_date ?? ''); ?>" max="<?php echo date('Y-m-d'); ?>">
@@ -137,13 +137,15 @@ if (!$is_ajax_request) {
                                     </thead>
                                     <tbody>
                                         <?php if (empty($records)): ?>
-                                            <tr><td colspan="3" class="text-center">No HR staff found for this school or date.</td></tr>
+                                            <tr>
+                                                <td colspan="3" class="text-center">No HR staff found for this school or date.</td>
+                                            </tr>
                                         <?php else: ?>
                                             <?php foreach ($records as $record): ?>
-                                            <tr>
-                                                <td><?php echo htmlspecialchars($record['hr_name']); ?></td>
-                                                <td>
-                                                    <?php 
+                                                <tr>
+                                                    <td><?php echo htmlspecialchars($record['hr_name']); ?></td>
+                                                    <td>
+                                                        <?php
                                                         $status = $record['status'] ?? 'Not Marked';
                                                         $badge_class = 'badge-secondary';
                                                         $is_editable = true;
@@ -163,15 +165,15 @@ if (!$is_ajax_request) {
                                                             if ($status == 'Leave') $badge_class = 'badge-warning';
                                                             if ($status == 'Half Day') $badge_class = 'badge-info';
                                                         }
-                                                        echo "<span class='badge {$badge_class} p-2'>" . htmlspecialchars($status) . "</span>"; 
-                                                    ?>
-                                                </td>
-                                                <td>
-                                                    <a href="hr_attendance.php?attendance_date=<?php echo htmlspecialchars($filter_date); ?>&edit_hr_id=<?php echo $record['hr_id']; ?>" class="btn btn-sm btn-warning <?php echo $is_editable ? '' : 'disabled'; ?>">
-                                                        <i class="fas fa-edit"></i> Edit
-                                                    </a>
-                                                </td>
-                                            </tr>
+                                                        echo "<span class='badge {$badge_class} p-2'>" . htmlspecialchars($status) . "</span>";
+                                                        ?>
+                                                    </td>
+                                                    <td>
+                                                        <a href="hr_attendance.php?attendance_date=<?php echo htmlspecialchars($filter_date); ?>&edit_hr_id=<?php echo $record['hr_id']; ?>" class="btn btn-sm btn-warning <?php echo $is_editable ? '' : 'disabled'; ?>">
+                                                            <i class="fas fa-edit"></i> Edit
+                                                        </a>
+                                                    </td>
+                                                </tr>
                                             <?php endforeach; ?>
                                         <?php endif; ?>
                                     </tbody>
@@ -182,10 +184,10 @@ if (!$is_ajax_request) {
                 </div>
             </div>
             <?php
-if (!$is_ajax_request) {
-    include '../../includes/footer.php';
-}
-?> 
+            if (!$is_ajax_request) {
+                include '../../includes/footer.php';
+            }
+            ?>
         </div>
     </div>
     <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
@@ -194,11 +196,16 @@ if (!$is_ajax_request) {
     <script src="/BMC-SMS/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="/BMC-SMS/assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="/BMC-SMS/assets/js/sb-admin-2.min.js"></script>
+    <script src="/BMC-SMS/assets/js/global-ajax-filters.js"></script>
     <script src="/BMC-SMS/assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
     <script>
-        $(document).ready(function() { 
-            $('#dataTable').DataTable({ "order": [[0, "asc"]] }); 
+        $(document).ready(function() {
+            $('#dataTable').DataTable({
+                "order": [
+                    [0, "asc"]
+                ]
+            });
         });
     </script>
 </body>
@@ -207,7 +214,7 @@ if (!$is_ajax_request) {
 if (is_ajax_request()) {
     // Get the captured HTML
     $content = ob_get_clean();
-    
+
     // Extract just the main content area for the AJAX response
     if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
         echo '<div class="container-fluid">' . $matches[1] . '</div>';
@@ -219,4 +226,5 @@ if (is_ajax_request()) {
     exit;
 }
 ?>
+
 </html>

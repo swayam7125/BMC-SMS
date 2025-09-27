@@ -1,6 +1,7 @@
 <?php
 // --- PDF GENERATION SETUP ---
 require_once '../../includes/dompdf/autoload.inc.php';
+
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
@@ -173,8 +174,9 @@ try {
             }
         }
     }
-
-} catch (Exception $e) { $errorMessage = "An error occurred: " . $e->getMessage(); }
+} catch (Exception $e) {
+    $errorMessage = "An error occurred: " . $e->getMessage();
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -191,29 +193,29 @@ try {
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link href="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
     <style>
-    form.form-inline {
-        display: flex;
-        flex-flow: row wrap;
-        align-items: center;
-    }
+        form.form-inline {
+            display: flex;
+            flex-flow: row wrap;
+            align-items: center;
+        }
     </style>
 </head>
 
 <body id="page-top">
     <div id="wrapper">
         <?php
-if (!$is_ajax_request) {
-    include '../../includes/sidebar.php';
-}
-?>
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
 
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php
-if (!$is_ajax_request) {
-    include '../../includes/header.php';
-}
-?>
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
+                ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800"><?php echo htmlspecialchars($report_title); ?></h1>
@@ -226,41 +228,42 @@ if (!$is_ajax_request) {
                         <div class="card-body">
                             <form method="GET" action="" class="form-inline align-items-center">
                                 <?php if ($role === 'superadmin'): ?>
-                                <div class="form-group mr-3 mb-2">
-                                    <label for="school_id" class="mr-2"><strong>School:</strong></label>
-                                    <select name="school_id" id="school_id" class="form-control">
-                                        <option value="">-- All Schools --</option>
-                                        <?php foreach($schools as $school): ?>
-                                        <option value="<?php echo $school['id']; ?>"
-                                            <?php if ($school['id'] == $school_id) echo 'selected'; ?>>
-                                            <?php echo htmlspecialchars($school['school_name']); ?>
-                                        </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
+                                    <div class="form-group mr-3 mb-2">
+                                        <label for="school_id" class="mr-2"><strong>School:</strong></label>
+                                        <select name="school_id" id="school_id" class="form-control">
+                                            <option value="">-- All Schools --</option>
+                                            <?php foreach ($schools as $school): ?>
+                                                <option value="<?php echo $school['id']; ?>"
+                                                    <?php if ($school['id'] == $school_id) echo 'selected'; ?>>
+                                                    <?php echo htmlspecialchars($school['school_name']); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
                                 <?php endif; ?>
                                 <div class="form-group mr-3 mb-2">
                                     <label for="academic_year" class="mr-2"><strong>Academic Year:</strong></label>
                                     <select name="academic_year" id="academic_year" class="form-control">
                                         <?php if (empty($available_years)): ?>
-                                        <option value="">No years found</option>
-                                        <?php else: foreach($available_years as $year): ?>
-                                        <option value="<?php echo $year; ?>"
-                                            <?php if ($year == $selected_year) echo 'selected'; ?>>
-                                            <?php echo htmlspecialchars($year); ?>
-                                        </option>
-                                        <?php endforeach; endif; ?>
+                                            <option value="">No years found</option>
+                                            <?php else: foreach ($available_years as $year): ?>
+                                                <option value="<?php echo $year; ?>"
+                                                    <?php if ($year == $selected_year) echo 'selected'; ?>>
+                                                    <?php echo htmlspecialchars($year); ?>
+                                                </option>
+                                        <?php endforeach;
+                                        endif; ?>
                                     </select>
                                 </div>
                                 <div class="form-group mr-3 mb-2">
                                     <label for="std" class="mr-2"><strong>Standard:</strong></label>
                                     <select name="std" id="std" class="form-control">
                                         <option value="all">-- All --</option>
-                                        <?php foreach($available_standards as $standard): ?>
-                                        <option value="<?php echo $standard; ?>"
-                                            <?php if ($standard == $selected_std) echo 'selected'; ?>>
-                                            <?php echo htmlspecialchars($standard); ?>
-                                        </option>
+                                        <?php foreach ($available_standards as $standard): ?>
+                                            <option value="<?php echo $standard; ?>"
+                                                <?php if ($standard == $selected_std) echo 'selected'; ?>>
+                                                <?php echo htmlspecialchars($standard); ?>
+                                            </option>
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
@@ -281,9 +284,9 @@ if (!$is_ajax_request) {
                             </div>
                             <div class="card-body">
                                 <?php if (empty($chart_datasets)): ?>
-                                <div class="text-center text-muted">No data available for the selected filters.</div>
+                                    <div class="text-center text-muted">No data available for the selected filters.</div>
                                 <?php else: ?>
-                                <div class="chart-bar"><canvas id="examComparisonChart"></canvas></div>
+                                    <div class="chart-bar"><canvas id="examComparisonChart"></canvas></div>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -306,16 +309,17 @@ if (!$is_ajax_request) {
                                         </thead>
                                         <tbody>
                                             <?php if (empty($performance_data)): ?>
-                                            <tr>
-                                                <td colspan="3" class="text-center">No performance data available.</td>
-                                            </tr>
-                                            <?php else: foreach ($performance_data as $row): ?>
-                                            <tr>
-                                                <td><?php echo htmlspecialchars($row['std']); ?></td>
-                                                <td><?php echo htmlspecialchars($row['subject_name']); ?></td>
-                                                <td><?php echo $row['average_percentage']; ?>%</td>
-                                            </tr>
-                                            <?php endforeach; endif; ?>
+                                                <tr>
+                                                    <td colspan="3" class="text-center">No performance data available.</td>
+                                                </tr>
+                                                <?php else: foreach ($performance_data as $row): ?>
+                                                    <tr>
+                                                        <td><?php echo htmlspecialchars($row['std']); ?></td>
+                                                        <td><?php echo htmlspecialchars($row['subject_name']); ?></td>
+                                                        <td><?php echo $row['average_percentage']; ?>%</td>
+                                                    </tr>
+                                            <?php endforeach;
+                                            endif; ?>
                                         </tbody>
                                     </table>
                                 </div>
@@ -325,10 +329,10 @@ if (!$is_ajax_request) {
                 </div>
             </div>
             <?php
-if (!$is_ajax_request) {
-    include '../../includes/footer.php';
-}
-?>
+            if (!$is_ajax_request) {
+                include '../../includes/footer.php';
+            }
+            ?>
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php"; ?>
@@ -336,74 +340,75 @@ if (!$is_ajax_request) {
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
+    <script src="/BMC-SMS/assets/js/global-ajax-filters.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
     <script>
-    $(document).ready(function() {
-        $('#performanceTable').DataTable({
-            "pageLength": 10
+        $(document).ready(function() {
+            $('#performanceTable').DataTable({
+                "pageLength": 10
+            });
         });
-    });
 
-    var examChart = new Chart(document.getElementById("examComparisonChart"), {
-        type: 'bar',
-        data: {
-            labels: <?php echo json_encode($chart_labels ?? []); ?>,
-            datasets: <?php echo json_encode($chart_datasets ?? []); ?>
-        },
-        options: {
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 100,
-                    ticks: {
-                        callback: function(value) {
-                            return value + "%"
+        var examChart = new Chart(document.getElementById("examComparisonChart"), {
+            type: 'bar',
+            data: {
+                labels: <?php echo json_encode($chart_labels ?? []); ?>,
+                datasets: <?php echo json_encode($chart_datasets ?? []); ?>
+            },
+            options: {
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + "%"
+                            }
                         }
                     }
-                }
-            },
-            plugins: {
-                legend: {
-                    position: 'bottom'
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
                 }
             }
+        });
+
+        function generateAndSubmitPdf(htmlContent, filename) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '?';
+            const hiddenInputHtml = document.createElement('input');
+            hiddenInputHtml.type = 'hidden';
+            hiddenInputHtml.name = 'pdf_html';
+            hiddenInputHtml.value = htmlContent;
+            form.appendChild(hiddenInputHtml);
+            const hiddenInputFilename = document.createElement('input');
+            hiddenInputFilename.type = 'hidden';
+            hiddenInputFilename.name = 'pdf_filename';
+            hiddenInputFilename.value = filename;
+            form.appendChild(hiddenInputFilename);
+            const hiddenInputFlag = document.createElement('input');
+            hiddenInputFlag.type = 'hidden';
+            hiddenInputFlag.name = 'download_pdf';
+            hiddenInputFlag.value = '1';
+            form.appendChild(hiddenInputFlag);
+            document.body.appendChild(form);
+            form.submit();
         }
-    });
 
-    function generateAndSubmitPdf(htmlContent, filename) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '?';
-        const hiddenInputHtml = document.createElement('input');
-        hiddenInputHtml.type = 'hidden';
-        hiddenInputHtml.name = 'pdf_html';
-        hiddenInputHtml.value = htmlContent;
-        form.appendChild(hiddenInputHtml);
-        const hiddenInputFilename = document.createElement('input');
-        hiddenInputFilename.type = 'hidden';
-        hiddenInputFilename.name = 'pdf_filename';
-        hiddenInputFilename.value = filename;
-        form.appendChild(hiddenInputFilename);
-        const hiddenInputFlag = document.createElement('input');
-        hiddenInputFlag.type = 'hidden';
-        hiddenInputFlag.name = 'download_pdf';
-        hiddenInputFlag.value = '1';
-        form.appendChild(hiddenInputFlag);
-        document.body.appendChild(form);
-        form.submit();
-    }
+        const mainPdfFilename = '<?php echo $pdf_filename; ?>';
 
-    const mainPdfFilename = '<?php echo $pdf_filename; ?>';
+        document.getElementById('download-full-report-btn').addEventListener('click', function() {
+            const examChartImg = examChart.toBase64Image();
+            const performanceTableHtml = document.getElementById('performanceTable').parentElement.innerHTML
+                .replace(/ id="performanceTable"/g, '').replace(/<input.*?>/g, '');
 
-    document.getElementById('download-full-report-btn').addEventListener('click', function() {
-        const examChartImg = examChart.toBase64Image();
-        const performanceTableHtml = document.getElementById('performanceTable').parentElement.innerHTML
-            .replace(/ id="performanceTable"/g, '').replace(/<input.*?>/g, '');
-
-        const pdfHtml = `
+            const pdfHtml = `
             <!DOCTYPE html><html><head><title>Academic Report</title><style>
                 body{font-family:sans-serif} .header{text-align:center;margin-bottom:20px} h1,h2,h3{margin:0} h2{font-size:1.2em;font-weight:normal} table{width:100%;border-collapse:collapse;margin-bottom:20px;font-size:12px} th,td{border:1px solid #ddd;padding:6px} th{background-color:#f2f2f2} .chart-container{text-align:center;margin-top:20px;page-break-inside:avoid} .chart-container img{max-width:95%;height:auto}
             </style></head><body>
@@ -411,8 +416,8 @@ if (!$is_ajax_request) {
                 <h3>Exam Performance Comparison</h3><div class="chart-container"><img src="${examChartImg}"></div>
                 <h3>Average Performance by Subject & Standard</h3>${performanceTableHtml}
             </body></html>`;
-        generateAndSubmitPdf(pdfHtml, mainPdfFilename);
-    });
+            generateAndSubmitPdf(pdfHtml, mainPdfFilename);
+        });
     </script>
 </body>
 

@@ -51,6 +51,7 @@ $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Marks Entry - School Management System</title>
@@ -68,18 +69,18 @@ $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
 <body id="page-top" data-class-std="<?php echo htmlspecialchars($class_teacher_std); ?>">
     <div id="wrapper">
         <?php
-if (!$is_ajax_request) {
-    include '../../../includes/sidebar.php';
-}
-?>
+        if (!$is_ajax_request) {
+            include '../../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-<?php
-if (!$is_ajax_request) {
-    include '../../../includes/header.php';
-}
-?>
-?>
+                <?php
+                if (!$is_ajax_request) {
+                    include '../../../includes/header.php';
+                }
+                ?>
+                ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Marks Entry: Class <?php echo htmlspecialchars($class_teacher_std); ?></h1>
@@ -137,14 +138,16 @@ if (!$is_ajax_request) {
                     </div>
                 </div>
             </div>
-<?php
-if (!$is_ajax_request) {
-    include '../../../includes/footer.php';
-}
-?>        </div>
+            <?php
+            if (!$is_ajax_request) {
+                include '../../../includes/footer.php';
+            }
+            ?>
+        </div>
     </div>
     <?php include_once "../../../includes/logout_modal.php" ?>
     <script src="../../../assets/vendor/jquery/jquery.min.js"></script>
+    <script src="/BMC-SMS/assets/js/global-ajax-filters.js"></script>
     <script src="../../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../../assets/js/sb-admin-2.min.js"></script>
     <script src="../../../assets/js/custom_marks_scripts.js"></script>
@@ -154,7 +157,7 @@ if (!$is_ajax_request) {
 if (is_ajax_request()) {
     // Get the captured HTML
     $content = ob_get_clean();
-    
+
     // Extract just the main content area for the AJAX response
     if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
         echo '<div class="container-fluid">' . $matches[1] . '</div>';
@@ -166,4 +169,5 @@ if (is_ajax_request()) {
     exit;
 }
 ?>
+
 </html>

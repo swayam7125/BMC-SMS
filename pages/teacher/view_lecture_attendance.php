@@ -99,20 +99,20 @@ try {
 <body id="page-top">
     <div id="wrapper">
         <?php
-if (!$is_ajax_request) {
-    include '../../includes/sidebar.php';
-}
-?> <div id="content-wrapper" class="d-flex flex-column">
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?> <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php
-if (!$is_ajax_request) {
-    include '../../includes/header.php';
-}
-?>
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
+                ?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">View Lecture Attendance</h1>
                     <?php if ($errorMessage): ?>
-                    <div class="alert alert-danger"><?php echo htmlspecialchars($errorMessage); ?></div>
+                        <div class="alert alert-danger"><?php echo htmlspecialchars($errorMessage); ?></div>
                     <?php endif; ?>
                     <div class="card shadow mb-4">
                         <div class="card-header">
@@ -131,12 +131,12 @@ if (!$is_ajax_request) {
                                         <?php echo $is_holiday ? 'disabled' : 'required'; ?>>
                                         <option value="">-- Select a Lecture --</option>
                                         <?php foreach ($teacher_lectures as $lec): ?>
-                                        <option value="<?php echo $lec['id']; ?>"
-                                            <?php if ($selected_lecture_id == $lec['id']) echo 'selected'; ?>>
-                                            Std <?php echo htmlspecialchars($lec['standard']); ?> -
-                                            Period <?php echo htmlspecialchars($lec['period_number']); ?>
-                                            (<?php echo htmlspecialchars($lec['subject_name']); ?>)
-                                        </option>
+                                            <option value="<?php echo $lec['id']; ?>"
+                                                <?php if ($selected_lecture_id == $lec['id']) echo 'selected'; ?>>
+                                                Std <?php echo htmlspecialchars($lec['standard']); ?> -
+                                                Period <?php echo htmlspecialchars($lec['period_number']); ?>
+                                                (<?php echo htmlspecialchars($lec['subject_name']); ?>)
+                                            </option>
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
@@ -147,43 +147,43 @@ if (!$is_ajax_request) {
                     </div>
 
                     <?php if ($is_holiday): ?>
-                    <div class="card shadow mb-4">
-                        <div class="card-header">
-                            <h6 class="m-0 font-weight-bold text-primary">Attendance Records for
-                                <?php echo htmlspecialchars($view_date); ?></h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="alert alert-info">
-                                <h4 class="alert-heading"><i class="fas fa-calendar-check"></i> Public Holiday</h4>
-                                <p>No attendance records are available for this day because it is a public holiday:
-                                    <strong><?php echo htmlspecialchars($holiday_description); ?></strong>.
-                                </p>
+                        <div class="card shadow mb-4">
+                            <div class="card-header">
+                                <h6 class="m-0 font-weight-bold text-primary">Attendance Records for
+                                    <?php echo htmlspecialchars($view_date); ?></h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-info">
+                                    <h4 class="alert-heading"><i class="fas fa-calendar-check"></i> Public Holiday</h4>
+                                    <p>No attendance records are available for this day because it is a public holiday:
+                                        <strong><?php echo htmlspecialchars($holiday_description); ?></strong>.
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                    </div>
                     <?php elseif ($selected_lecture_id): ?>
-                    <div class="card shadow mb-4">
-                        <div class="card-header">
-                            <h6 class="m-0 font-weight-bold text-primary">Displaying Records for
-                                <?php echo htmlspecialchars($view_date); ?></h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-bordered" id="attendanceTable" width="100%" cellspacing="0">
-                                    <thead>
-                                        <tr>
-                                            <th>Roll No</th>
-                                            <th>Student Name</th>
-                                            <th>Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php if (!empty($attendance_records)): foreach ($attendance_records as $record): ?>
-                                        <tr>
-                                            <td><?php echo htmlspecialchars($record['rollno']); ?></td>
-                                            <td><?php echo htmlspecialchars($record['student_name']); ?></td>
-                                            <td>
-                                                <?php
+                        <div class="card shadow mb-4">
+                            <div class="card-header">
+                                <h6 class="m-0 font-weight-bold text-primary">Displaying Records for
+                                    <?php echo htmlspecialchars($view_date); ?></h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered" id="attendanceTable" width="100%" cellspacing="0">
+                                        <thead>
+                                            <tr>
+                                                <th>Roll No</th>
+                                                <th>Student Name</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php if (!empty($attendance_records)): foreach ($attendance_records as $record): ?>
+                                                    <tr>
+                                                        <td><?php echo htmlspecialchars($record['rollno']); ?></td>
+                                                        <td><?php echo htmlspecialchars($record['student_name']); ?></td>
+                                                        <td>
+                                                            <?php
                                                             $status = htmlspecialchars($record['status']);
                                                             $badge_class = 'badge-secondary';
                                                             if ($status == 'Present') $badge_class = 'badge-success';
@@ -191,59 +191,60 @@ if (!$is_ajax_request) {
                                                             elseif ($status == 'Leave') $badge_class = 'badge-warning';
                                                             echo "<span class='badge {$badge_class}'>{$status}</span>";
                                                             ?>
-                                            </td>
-                                        </tr>
-                                        <?php endforeach;
+                                                        </td>
+                                                    </tr>
+                                                <?php endforeach;
                                             else: ?>
-                                        <tr>
-                                            <td colspan="3" class="text-center">No attendance records found for the
-                                                selected lecture and date.</td>
-                                        </tr>
-                                        <?php endif; ?>
-                                    </tbody>
-                                </table>
+                                                <tr>
+                                                    <td colspan="3" class="text-center">No attendance records found for the
+                                                        selected lecture and date.</td>
+                                                </tr>
+                                            <?php endif; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
-                    </div>
                     <?php endif; ?>
                 </div>
             </div>
             <?php
-if (!$is_ajax_request) {
-    include '../../includes/footer.php';
-}
-?>
+            if (!$is_ajax_request) {
+                include '../../includes/footer.php';
+            }
+            ?>
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php" ?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
+    <script src="/BMC-SMS/assets/js/global-ajax-filters.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
     <script>
-    $(document).ready(function() {
-        $('#attendanceTable').DataTable();
+        $(document).ready(function() {
+            $('#attendanceTable').DataTable();
 
-        // Set max date for the date picker
-        var today = new Date().toISOString().split('T')[0];
-        document.getElementById('view_date').setAttribute('max', today);
+            // Set max date for the date picker
+            var today = new Date().toISOString().split('T')[0];
+            document.getElementById('view_date').setAttribute('max', today);
 
-        // Handle date change event
-        $('#view_date').on('change', function() {
-            // Get the current URL and the selected date
-            var url = new URL(window.location.href);
-            var selectedDate = $(this).val();
+            // Handle date change event
+            $('#view_date').on('change', function() {
+                // Get the current URL and the selected date
+                var url = new URL(window.location.href);
+                var selectedDate = $(this).val();
 
-            // Set the new date as a URL parameter
-            url.searchParams.set('view_date', selectedDate);
+                // Set the new date as a URL parameter
+                url.searchParams.set('view_date', selectedDate);
 
-            // Clear the lecture_id parameter to ensure the holiday check is performed first
-            url.searchParams.delete('lecture_id');
+                // Clear the lecture_id parameter to ensure the holiday check is performed first
+                url.searchParams.delete('lecture_id');
 
-            // Reload the page
-            window.location.href = url.toString();
+                // Reload the page
+                window.location.href = url.toString();
+            });
         });
-    });
     </script>
 </body>
 <?php
@@ -251,17 +252,17 @@ if (!$is_ajax_request) {
 if (is_ajax_request()) {
     // Get the captured HTML
     $content = ob_get_clean();
-    
+
     // Extract just the main content area for the AJAX response
     if (preg_match('/<div class="container-fluid".*?>(.*?)<\ /div>/s', $content, $matches)) {
-    echo '<div class="container-fluid">' . $matches[1] . '</div>';
+        echo '<div class="container-fluid">' . $matches[1] . '</div>';
     } else {
-    // Fallback if the main container isn't found
-    echo $content;
+        // Fallback if the main container isn't found
+        echo $content;
     }
     // Stop the script for AJAX requests
     exit;
-    }
-    ?>
+}
+?>
 
 </html>
