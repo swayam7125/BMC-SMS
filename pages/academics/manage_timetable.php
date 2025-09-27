@@ -1,12 +1,4 @@
 <?php
-/*
-|--------------------------------------------------------------------------
-| BACKEND LOGIC (CONTROLLER)
-|--------------------------------------------------------------------------
-| This section handles all server-side operations.
-*/
-
-// Core Includes
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php';
@@ -75,12 +67,12 @@ try {
             $conn->beginTransaction();
 
             // Clear existing timetable for this standard
-            $stmt_delete = $conn->prepare("DELETE FROM timetable WHERE standard = ? AND school_id = ?");
+            $stmt_delete = $conn->prepare("DELETE FROM school_timetable WHERE standard = ? AND school_id = ?");
             $stmt_delete->execute([$standard, $school_id]);
 
             // Insert new timetable entries
             $stmt_insert = $conn->prepare(
-                "INSERT INTO timetable (school_id, standard, day_of_week, period_id, teacher_id, subject_id) VALUES (?, ?, ?, ?, ?, ?)"
+                "INSERT INTO school_timetable (school_id, standard, day_of_week, period_number, teacher_id, subject_id) VALUES (?, ?, ?, ?, ?, ?)"
             );
 
             foreach ($timetable as $day => $periods) {
@@ -105,16 +97,16 @@ try {
     $selected_standard = $_GET['standard'] ?? ($_POST['standard'] ?? null);
     if ($selected_standard && $school_id) {
         $stmt_timetable = $conn->prepare(
-            "SELECT day_of_week, period_id, teacher_id, subject_id FROM timetable WHERE standard = ? AND school_id = ?"
+            "SELECT day_of_week, period_number, teacher_id, subject_name FROM school_timetable WHERE standard = ? AND school_id = ?"
         );
         $stmt_timetable->execute([$selected_standard, $school_id]);
         $results = $stmt_timetable->fetchAll(PDO::FETCH_ASSOC);
 
         // Organize data for easy access in the view
         foreach ($results as $row) {
-            $timetable_data[$row['day_of_week']][$row['period_id']] = [
+            $timetable_data[$row['day_of_week']][$row['period_number']] = [
                 'teacher_id' => $row['teacher_id'],
-                'subject_id' => $row['subject_id']
+                'subject_name' => $row['subject_name']
             ];
         }
     }
