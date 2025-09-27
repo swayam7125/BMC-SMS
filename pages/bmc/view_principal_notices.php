@@ -67,11 +67,11 @@ try {
                 include '../../includes/sidebar.php';
             } ?>
             <div id="content-wrapper" class="d-flex flex-column">
-                <div id="content">
+                <div id="content" class="d-flex flex-column">
                     <?php if (!$is_ajax_request) {
                         include '../../includes/header.php';
                     } ?>
-                    <div id="main-content">
+                    <div id="main-content" class="flex-grow-1">
 
                     <div class="container-fluid">
                         <h1 class="h3 mb-4 text-gray-800">Notices from Principals</h1>
@@ -112,9 +112,11 @@ try {
                         </div>
                     </div>
                 </div>
-                <?php if (!$is_ajax_request) {
-                            include '../../includes/footer.php';
-                        } ?>
+                <?php 
+                if (!$is_ajax_request) {
+                    include '../../includes/footer.php';
+                } 
+                ?>
             </div>
         </div>
         <?php include_once "../../includes/logout_modal.php" ?>

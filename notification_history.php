@@ -65,7 +65,6 @@ try {
     $stmt_types = $conn->prepare("SELECT DISTINCT type FROM notifications WHERE user_id = ? ORDER BY type ASC");
     $stmt_types->execute([$userId]);
     $notification_types = $stmt_types->fetchAll(PDO::FETCH_COLUMN, 0);
-
 } catch (PDOException $e) {
     error_log("Notification History Error: " . $e->getMessage());
     die("A database error occurred. Please try again later.");
@@ -73,29 +72,51 @@ try {
 
 // Re-use the function from header.php if it's not already defined
 if (!function_exists('getNotificationIcon')) {
-    function getNotificationIcon($type) {
+    function getNotificationIcon($type)
+    {
         switch ($type) {
-            case 'borrow_status': return 'fas fa-book-reader text-white';
-            case 'borrow_request': return 'fas fa-hand-holding-hand text-white';
-            case 'leave_request': return 'fas fa-calendar-plus text-white';
-            case 'hr_leave_request': return 'fas fa-user-plus text-white';
-            case 'hr_leave_status': return 'fas fa-check-circle text-white';
-            case 'new_notice': return 'fas fa-file-alt text-white';
-            case 'principal_notice': return 'fas fa-user-tie text-white';
-            case 'principal_to_librarian_notice': return 'fas fa-user-graduate text-white';
-            case 'leave_status': return 'fas fa-check-circle text-white';
-            case 'school_notice': return 'fas fa-chalkboard-teacher text-white';
-            case 'new_assignment': return 'fas fa-file-signature text-white';
-            case 'assignment_submission': return 'fas fa-file-upload text-white';
-            case 'marks_uploaded': return 'fas fa-award text-white';
-            case 'exam_timetable': return 'fas fa-calendar-alt text-white';
-            case 'new_notes': return 'fas fa-sticky-note text-white';
-            case 'result_published': return 'fas fa-poll-h text-white';
-            case 'acquisition_request': return 'fas fa-inbox text-white';
-            case 'acquisition_status': return 'fas fa-check-circle text-white';
-            case 'teacher_salary': return 'fas fa-receipt text-white';
-            case 'librarian_salary': return 'fas fa-receipt text-white';
-            default: return 'fas fa-bell text-white';
+            case 'borrow_status':
+                return 'fas fa-book-reader text-white';
+            case 'borrow_request':
+                return 'fas fa-hand-holding-hand text-white';
+            case 'leave_request':
+                return 'fas fa-calendar-plus text-white';
+            case 'hr_leave_request':
+                return 'fas fa-user-plus text-white';
+            case 'hr_leave_status':
+                return 'fas fa-check-circle text-white';
+            case 'new_notice':
+                return 'fas fa-file-alt text-white';
+            case 'principal_notice':
+                return 'fas fa-user-tie text-white';
+            case 'principal_to_librarian_notice':
+                return 'fas fa-user-graduate text-white';
+            case 'leave_status':
+                return 'fas fa-check-circle text-white';
+            case 'school_notice':
+                return 'fas fa-chalkboard-teacher text-white';
+            case 'new_assignment':
+                return 'fas fa-file-signature text-white';
+            case 'assignment_submission':
+                return 'fas fa-file-upload text-white';
+            case 'marks_uploaded':
+                return 'fas fa-award text-white';
+            case 'exam_timetable':
+                return 'fas fa-calendar-alt text-white';
+            case 'new_notes':
+                return 'fas fa-sticky-note text-white';
+            case 'result_published':
+                return 'fas fa-poll-h text-white';
+            case 'acquisition_request':
+                return 'fas fa-inbox text-white';
+            case 'acquisition_status':
+                return 'fas fa-check-circle text-white';
+            case 'teacher_salary':
+                return 'fas fa-receipt text-white';
+            case 'librarian_salary':
+                return 'fas fa-receipt text-white';
+            default:
+                return 'fas fa-bell text-white';
         }
     }
 }
@@ -105,6 +126,7 @@ if (!defined('BASE_WEB_PATH')) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Notification History</title>
@@ -114,24 +136,45 @@ if (!defined('BASE_WEB_PATH')) {
     <link href="/BMC-SMS/assets/css/sidebar.css" rel="stylesheet">
     <link href="/BMC-SMS/assets/css/scrollbar_hidden.css" rel="stylesheet">
     <style>
-        .icon-circle { height: 2.5rem; width: 2.5rem; border-radius: 100%; display: flex; align-items: center; justify-content: center; }
-        .filter-toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; }
-        .filter-inputs { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; }
+        .icon-circle {
+            height: 2.5rem;
+            width: 2.5rem;
+            border-radius: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .filter-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .filter-inputs {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 1rem;
+        }
     </style>
 </head>
+
 <body id="page-top">
     <div id="wrapper">
-<?php
-if (!$is_ajax_request) {
-    include '../../includes/sidebar.php';
-}
-?>        <div id="content-wrapper" class="d-flex flex-column">
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?> <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-<?php
-if (!$is_ajax_request) {
-    include '../../includes/header.php';
-}
-?>                <div class="container-fluid">
+                <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
+                ?> <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Notification History</h1>
                         <a href="/BMC-SMS/dashboard.php" class="btn btn-sm btn-secondary shadow-sm"><i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Dashboard</a>
@@ -153,7 +196,7 @@ if (!$is_ajax_request) {
                                             </select>
                                         </div>
                                         <div class="input-group">
-                                             <div class="input-group-prepend"><span class="input-group-text">Date Range</span></div>
+                                            <div class="input-group-prepend"><span class="input-group-text">Date Range</span></div>
                                             <input type="date" id="start_date" name="start_date" class="form-control" value="<?php echo htmlspecialchars($start_date); ?>" title="Start Date">
                                             <input type="date" id="end_date" name="end_date" class="form-control" value="<?php echo htmlspecialchars($end_date); ?>" title="End Date">
                                         </div>
@@ -167,7 +210,9 @@ if (!$is_ajax_request) {
                         </div>
                     </div>
                     <div class="card shadow mb-4">
-                        <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">All Notifications</h6></div>
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">All Notifications</h6>
+                        </div>
                         <div class="card-body">
                             <div class="list-group list-group-flush">
                                 <?php if (empty($all_notifications)): ?>
@@ -175,17 +220,17 @@ if (!$is_ajax_request) {
                                 <?php else: ?>
                                     <?php foreach ($all_notifications as $notification): ?>
                                         <?php
-                                            $base_link = htmlspecialchars(BASE_WEB_PATH . ltrim($notification['link'], '/'));
-                                            $is_unread = !$notification['is_read'];
+                                        $base_link = htmlspecialchars(BASE_WEB_PATH . ltrim($notification['link'], '/'));
+                                        $is_unread = !$notification['is_read'];
 
-                                            // Add a special class and data-attribute for unread notifications to be handled by JS
-                                            $link_class = $is_unread ? 'notification-history-link unread' : '';
-                                            $data_attr = $is_unread ? 'data-notif-id="' . htmlspecialchars($notification['id']) . '"' : '';
+                                        // Add a special class and data-attribute for unread notifications to be handled by JS
+                                        $link_class = $is_unread ? 'notification-history-link unread' : '';
+                                        $data_attr = $is_unread ? 'data-notif-id="' . htmlspecialchars($notification['id']) . '"' : '';
 
-                                            $icon_class = getNotificationIcon($notification['type']);
-                                            $bgClass = $is_unread ? 'bg-light' : '';
-                                            $iconBgClass = $is_unread ? 'bg-primary' : 'bg-success';
-                                            $fontWeightClass = $is_unread ? 'font-weight-bold' : '';
+                                        $icon_class = getNotificationIcon($notification['type']);
+                                        $bgClass = $is_unread ? 'bg-light' : '';
+                                        $iconBgClass = $is_unread ? 'bg-primary' : 'bg-success';
+                                        $fontWeightClass = $is_unread ? 'font-weight-bold' : '';
                                         ?>
                                         <a href="<?php echo $base_link; ?>" class="list-group-item list-group-item-action d-flex align-items-center <?php echo $bgClass; ?> <?php echo $link_class; ?>" <?php echo $data_attr; ?>>
                                             <div class="mr-3">
@@ -208,11 +253,12 @@ if (!$is_ajax_request) {
                     </div>
                 </div>
             </div>
-<?php
-if (!$is_ajax_request) {
-    include '../../includes/footer.php';
-}
-?>        </div>
+            <?php
+            if (!$is_ajax_request) {
+                include '../../includes/footer.php';
+            }
+            ?>
+        </div>
     </div>
     <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
     <?php include_once $_SERVER['DOCUMENT_ROOT'] . "/BMC-SMS/includes/logout_modal.php" ?>
@@ -220,38 +266,40 @@ if (!$is_ajax_request) {
     <script src="/BMC-SMS/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="/BMC-SMS/assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="/BMC-SMS/assets/js/sb-admin-2.min.js"></script>
+    <script src="/BMC-SMS/assets/vendor/datatables/jquery.dataTables.min.js"></script>
+    <script src="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const base_api_path = '<?php echo BASE_WEB_PATH; ?>includes/actions/mark_notifications_as_read.php';
+        document.addEventListener('DOMContentLoaded', function() {
+            const base_api_path = '<?php echo BASE_WEB_PATH; ?>includes/actions/mark_notifications_as_read.php';
 
-        // Add click handler for unread notifications on this page
-        document.querySelectorAll('.notification-history-link.unread').forEach(link => {
-            link.addEventListener('click', function(event) {
-                event.preventDefault(); // Stop navigation
+            // Add click handler for unread notifications on this page
+            document.querySelectorAll('.notification-history-link.unread').forEach(link => {
+                link.addEventListener('click', function(event) {
+                    event.preventDefault(); // Stop navigation
 
-                const notifId = this.getAttribute('data-notif-id');
-                const targetUrl = this.getAttribute('href');
+                    const notifId = this.getAttribute('data-notif-id');
+                    const targetUrl = this.getAttribute('href');
 
-                if (notifId) {
-                    let formData = new FormData();
-                    formData.append('notif_id', notifId);
+                    if (notifId) {
+                        let formData = new FormData();
+                        formData.append('notif_id', notifId);
 
-                    // Call the API and then navigate, ensuring the read status is updated
-                    fetch(base_api_path, {
-                        method: 'POST',
-                        body: formData,
-                        keepalive: true
-                    })
-                    .catch(error => console.error('Error marking notification as read:', error))
-                    .finally(() => {
-                        window.location.href = targetUrl; // Navigate after the attempt
-                    });
-                } else {
-                    window.location.href = targetUrl; // Fallback navigation
-                }
+                        // Call the API and then navigate, ensuring the read status is updated
+                        fetch(base_api_path, {
+                                method: 'POST',
+                                body: formData,
+                                keepalive: true
+                            })
+                            .catch(error => console.error('Error marking notification as read:', error))
+                            .finally(() => {
+                                window.location.href = targetUrl; // Navigate after the attempt
+                            });
+                    } else {
+                        window.location.href = targetUrl; // Fallback navigation
+                    }
+                });
             });
         });
-    });
     </script>
 </body>
 <?php
@@ -259,7 +307,7 @@ if (!$is_ajax_request) {
 if (is_ajax_request()) {
     // Get the captured HTML
     $content = ob_get_clean();
-    
+
     // Extract just the main content area for the AJAX response
     if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
         echo '<div class="container-fluid">' . $matches[1] . '</div>';
@@ -271,5 +319,6 @@ if (is_ajax_request()) {
     exit;
 }
 ?>
+
 </html>
 <?php $conn = null; ?>
