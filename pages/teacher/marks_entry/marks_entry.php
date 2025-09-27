@@ -76,7 +76,6 @@ $academic_year_suggestion = $current_year . '-' . ($current_year + 1);
                     include '../../../includes/header.php';
                 }
                 ?>
-                ?>
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Marks Entry: Class <?php echo htmlspecialchars($class_teacher_std); ?></h1>
