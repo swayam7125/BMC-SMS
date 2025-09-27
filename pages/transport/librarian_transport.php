@@ -1,16 +1,20 @@
 <?php
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
+include_once "../../includes/log_system.php"; // Correctly include the log system
 
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 $userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+$userName = isset($_COOKIE['encrypted_user_name']) ? decrypt_id($_COOKIE['encrypted_user_name']) : 'N/A';
 
 if ($role !== 'principal') {
     header("Location: ../../login.php");
     exit;
 }
+
+// The log for page access has been removed from here.
 
 $school_id = null;
 if ($userId) {
@@ -37,6 +41,7 @@ if (isset($_GET['errors'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_transport'])) {
     $librarian_transport_data = $_POST['librarian_transport'] ?? [];
     $current_section = $_POST['current_section'] ?? 'school';
+    $updated_count = count($librarian_transport_data);
 
     // A flag to determine if a mode change occurred that requires a tab switch
     $redirect_section = $current_section;
@@ -82,9 +87,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_transport'])) 
         }
         $conn->commit();
         $success = "Librarian transport information updated successfully!";
+        // Log the successful update
+        log_interaction($role, $userId, "TRANSPORT: Updated transport details for {$updated_count} librarian(s).", $userName);
+
     } catch (PDOException $e) {
         $conn->rollBack();
         $errors[] = "Database update failed: " . $e->getMessage();
+        // Log the error
+        log_interaction($role, $userId, "TRANSPORT ERROR: Failed to update librarian transport. " . $e->getMessage(), $userName);
     }
 
     // Redirect to the determined section after form submission, passing success/error messages

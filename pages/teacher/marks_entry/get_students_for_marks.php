@@ -1,73 +1,93 @@
 <?php
-header('Content-Type: application/json');
-include_once "../../../includes/connect.php";
+include_once '../../../includes/connect.php';
+include_once '../../../encryption.php';
+include_once '../../../includes/log_system.php'; // Log system included
 
-$response = ['success' => false, 'students' => [], 'subjects' => [], 'message' => 'An error occurred.'];
+// Get user info for logging
+$role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
+$userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+$userName = isset($_COOKIE['encrypted_user_name']) ? decrypt_id($_COOKIE['encrypted_user_name']) : 'N/A';
 
-if (isset($_POST['class_std']) && isset($_POST['exam_type']) && isset($_POST['academic_year'])) {
-    $class_std = $_POST['class_std'];
-    $exam_type = $_POST['exam_type'];
-    $academic_year = $_POST['academic_year'];
-
-    try {
-        // PDO Change: Converted all mysqli queries to PDO
-        $subjects_query = "SELECT s.subject_name 
-                           FROM standard_subjects ss
-                           JOIN subjects s ON ss.subject_id = s.subject_id
-                           WHERE ss.standard = ?
-                           ORDER BY s.subject_name";
-        $stmt_subjects = $conn->prepare($subjects_query);
-        $stmt_subjects->execute([$class_std]);
-        $subjects = $stmt_subjects->fetchAll(PDO::FETCH_COLUMN, 0);
-
-        if (empty($subjects)) {
-            $response['message'] = "No subjects have been assigned to this standard. Please contact the administrator.";
-            echo json_encode($response);
-            exit;
-        }
-        $response['subjects'] = $subjects;
-
-        $student_query = "SELECT id, student_name, rollno FROM student WHERE std = ? ORDER BY rollno";
-        $stmt_students = $conn->prepare($student_query);
-        $stmt_students->execute([$class_std]);
-
-        $students_result = $stmt_students->fetchAll(PDO::FETCH_ASSOC);
-        $students = [];
-        foreach ($students_result as $student_row) {
-            $students[$student_row['id']] = [
-                'id' => $student_row['id'],
-                'student_name' => $student_row['student_name'],
-                'rollno' => $student_row['rollno'],
-                'marks' => []
-            ];
-        }
-
-        if (!empty($students)) {
-            $student_ids = array_keys($students);
-            $placeholders = implode(',', array_fill(0, count($student_ids), '?'));
-
-            $marks_query = "SELECT student_id, subject_name, marks_obtained FROM student_marks WHERE exam_type = ? AND academic_year = ? AND student_id IN ($placeholders)";
-            $stmt_marks = $conn->prepare($marks_query);
-
-            $params = array_merge([$exam_type, $academic_year], $student_ids);
-            $stmt_marks->execute($params);
-
-            while ($mark_row = $stmt_marks->fetch(PDO::FETCH_ASSOC)) {
-                if (isset($students[$mark_row['student_id']])) {
-                    $students[$mark_row['student_id']]['marks'][$mark_row['subject_name']] = $mark_row['marks_obtained'];
-                }
-            }
-        }
-
-        $response['success'] = true;
-        $response['students'] = array_values($students);
-        $response['message'] = 'Students and subjects loaded successfully.';
-    } catch (PDOException $e) {
-        $response['message'] = 'Database error: ' . $e->getMessage();
-        error_log("Get Students for Marks Error: " . $e->getMessage());
-    }
-} else {
-    $response['message'] = 'Required parameters are missing.';
+if ($role !== 'teacher') {
+    http_response_code(403);
+    echo "Unauthorized access.";
+    exit;
 }
 
-echo json_encode($response);
+$teacher_id = $userId;
+$school_id = null;
+$error_msg = '';
+
+try {
+    // Get school_id for the teacher
+    $stmt_school = $conn->prepare("SELECT school_id FROM teacher WHERE id = ?");
+    $stmt_school->execute([$teacher_id]);
+    $school_id = $stmt_school->fetchColumn();
+
+    if (!$school_id) {
+        throw new Exception("Could not determine teacher's school.");
+    }
+
+    $academic_year = isset($_POST['academic_year']) ? $_POST['academic_year'] : '';
+    $standard = isset($_POST['standard']) ? $_POST['standard'] : '';
+    $exam_type = isset($_POST['exam_type']) ? $_POST['exam_type'] : '';
+    $subject = isset($_POST['subject']) ? $_POST['subject'] : '';
+
+    if (empty($academic_year) || empty($standard) || empty($exam_type) || empty($subject)) {
+        echo "<div class='alert alert-warning'>Please select all fields to fetch students.</div>";
+        exit;
+    }
+
+    // Fetch students for the selected standard
+    $stmt_students = $conn->prepare("SELECT id, student_name, rollno FROM student WHERE school_id = ? AND std = ? ORDER BY rollno");
+    $stmt_students->execute([$school_id, $standard]);
+    $students = $stmt_students->fetchAll(PDO::FETCH_ASSOC);
+
+    if (empty($students)) {
+        echo "<div class='alert alert-info'>No students found for the selected standard.</div>";
+        exit;
+    }
+
+    // Fetch existing marks to pre-fill the form
+    $student_ids = array_column($students, 'id');
+    $placeholders = implode(',', array_fill(0, count($student_ids), '?'));
+    
+    $stmt_marks = $conn->prepare("
+        SELECT student_id, marks_obtained, total_marks 
+        FROM student_marks 
+        WHERE student_id IN ($placeholders) 
+          AND academic_year = ? 
+          AND std = ? 
+          AND exam_type = ? 
+          AND subject_name = ?
+    ");
+    $params = array_merge($student_ids, [$academic_year, $standard, $exam_type, $subject]);
+    $stmt_marks->execute($params);
+    $existing_marks = $stmt_marks->fetchAll(PDO::FETCH_KEY_PAIR);
+
+    // Log the action of loading students
+    log_interaction($role, $userId, "MARKS ENTRY: Loaded students for marks entry. Standard: {$standard}, Year: {$academic_year}, Exam: {$exam_type}, Subject: {$subject}.", $userName);
+
+    // Generate the student list table
+    $output = '<table class="table table-bordered"><thead><tr><th>Roll No</th><th>Student Name</th><th>Marks Obtained</th><th>Total Marks</th></tr></thead><tbody>';
+    foreach ($students as $student) {
+        $marks_obtained = $existing_marks[$student['id']]['marks_obtained'] ?? '';
+        $total_marks = $existing_marks[$student['id']]['total_marks'] ?? '100'; // Default to 100
+        $output .= '<tr>';
+        $output .= '<td>' . htmlspecialchars($student['rollno']) . '</td>';
+        $output .= '<td>' . htmlspecialchars($student['student_name']) . '</td>';
+        $output .= '<td><input type="number" name="marks[' . $student['id'] . '][obtained]" class="form-control" value="' . htmlspecialchars($marks_obtained) . '" min="0" required></td>';
+        $output .= '<td><input type="number" name="marks[' . $student['id'] . '][total]" class="form-control" value="' . htmlspecialchars($total_marks) . '" min="0" required></td>';
+        $output .= '</tr>';
+    }
+    $output .= '</tbody></table>';
+    $output .= '<button type="submit" class="btn btn-primary mt-3">Save Marks</button>';
+    echo $output;
+
+} catch (Exception $e) {
+    http_response_code(500);
+    // Log any errors
+    log_interaction($role, $userId, "MARKS ENTRY ERROR: Failed to load students for marks entry. Error: " . $e->getMessage(), $userName);
+    echo "<div class='alert alert-danger'>An error occurred: " . htmlspecialchars($e->getMessage()) . "</div>";
+}
+?>

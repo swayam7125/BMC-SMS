@@ -2,168 +2,121 @@
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php';
+include_once '../../includes/log_system.php'; // Log system included
 
-// This check is crucial for the AJAX navigation to work.
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
-// $is_ajax_request = is_ajax_request();
 
-$role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : '';
-$current_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+// Get user info for logging
+$role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
+$userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+$userName = isset($_COOKIE['encrypted_user_name']) ? decrypt_id($_COOKIE['encrypted_user_name']) : 'N/A';
 
-if ($role !== 'principal' || !$current_user_id) {
-    header("Location: /BMC-SMS/dashboard.php");
+if ($role !== 'principal') {
+    header("Location: ../../login.php");
     exit;
 }
 
-$leave_requests = [];
-$leave_history = [];
-
+$school_id = null;
 try {
-    // Mark notifications as read
-    $stmt_mark_all_read = $conn->prepare("UPDATE notifications SET is_read = TRUE WHERE user_id = ? AND type = 'hr_leave_request' AND is_read = FALSE");
-    $stmt_mark_all_read->execute([$current_user_id]);
-
-    // Fetch pending leave applications
-    $query_pending = "SELECT l.id, h.hr_name, l.from_date, l.to_date, l.leave_type, l.reason, l.applied_on
-                      FROM hr_leave_applications l
-                      JOIN hr h ON l.hr_id = h.id
-                      WHERE l.status = 'Pending'
-                      ORDER BY l.applied_on ASC";
-    $stmt_pending = $conn->prepare($query_pending);
-    $stmt_pending->execute();
-    $leave_requests = $stmt_pending->fetchAll(PDO::FETCH_ASSOC);
-
-    // Fetch the last 5 approved and rejected leave applications (History)
-    $query_history = "SELECT h.hr_name, l.from_date, l.to_date, l.leave_type, l.reason, l.status, l.rejection_reason
-                      FROM hr_leave_applications l
-                      JOIN hr h ON l.hr_id = h.id
-                      WHERE l.status IN ('Approved', 'Rejected')
-                      ORDER BY l.applied_on DESC
-                      LIMIT 5";
-    $stmt_history = $conn->prepare($query_history);
-    $stmt_history->execute();
-    $leave_history = $stmt_history->fetchAll(PDO::FETCH_ASSOC);
+    $stmt = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
+    $stmt->execute([$userId]);
+    $school_id = $stmt->fetchColumn();
 } catch (PDOException $e) {
-    error_log("Principal HR Leave Requests Error: " . $e->getMessage());
-    die("A database error occurred.");
+    die("Database error: " . $e->getMessage());
 }
 
+if (!$school_id) {
+    die("Error: Could not determine your school.");
+}
+
+// Fetch leave applications for the school
+$leave_applications = [];
+try {
+    $stmt = $conn->prepare("
+        SELECT la.id, h.hr_name, la.from_date, la.to_date, la.reason, la.leave_type, la.status, la.applied_on 
+        FROM hr_leave_applications la
+        JOIN hr h ON la.hr_id = h.id
+        WHERE h.school_id = ?
+        ORDER BY la.applied_on DESC
+    ");
+    $stmt->execute([$school_id]);
+    $leave_applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    // Log the error
+    log_interaction($role, $userId, "LEAVE MGMT (HR) ERROR: Failed to fetch leave applications. DB Error: " . $e->getMessage(), $userName);
+    die("Database error fetching leave applications: " . $e->getMessage());
+}
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
-    <title>HR Leave Requests</title>
-    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800,900" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <title>HR Leave Management</title>
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-    <link href="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
 </head>
-
 <body id="page-top">
     <div id="wrapper">
-        <?php
-        if (!$is_ajax_request) {
-            include '../../includes/sidebar.php';
-        }
-        ?>
-        <div id="content-wrapper" class="d-flex flex-column">
+<?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?>        <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php
-                if (!$is_ajax_request) {
-                    include '../../includes/header.php';
-                }
-                ?>
+<?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">HR Leave Management</h1>
-
+                    <div id="message-container"></div>
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">Pending Applications</h6>
+                            <h6 class="m-0 font-weight-bold text-primary">Leave Applications</h6>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
-                                <table class="table table-bordered">
+                                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
                                     <thead>
                                         <tr>
-                                            <th>HR Name</th>
-                                            <th>From Date</th>
-                                            <th>To Date</th>
-                                            <th>Leave Type</th>
-                                            <th>Reason</th>
                                             <th>Applied On</th>
+                                            <th>HR Name</th>
+                                            <th>From</th>
+                                            <th>To</th>
+                                            <th>Type</th>
+                                            <th>Reason</th>
+                                            <th>Status</th>
                                             <th>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php if (!empty($leave_requests)): foreach ($leave_requests as $row): ?>
-                                                <tr>
-                                                    <td><?php echo htmlspecialchars($row['hr_name']); ?></td>
-                                                    <td><?php echo htmlspecialchars($row['from_date']); ?></td>
-                                                    <td><?php echo htmlspecialchars($row['to_date']); ?></td>
-                                                    <td><?php echo htmlspecialchars($row['leave_type']); ?></td>
-                                                    <td><?php echo htmlspecialchars($row['reason']); ?></td>
-                                                    <td><?php echo htmlspecialchars(date('d-m-Y H:i', strtotime($row['applied_on']))); ?></td>
-                                                    <td>
-                                                        <a href="update_hr_leave_status.php?id=<?php echo $row['id']; ?>&action=approve" class="btn btn-success btn-sm">Approve</a>
-                                                        <button type="button" class="btn btn-danger btn-sm reject-btn" data-toggle="modal" data-target="#rejectionModal" data-id="<?php echo $row['id']; ?>">Reject</button>
-                                                    </td>
-                                                </tr>
-                                            <?php endforeach;
-                                        else: ?>
-                                            <tr>
-                                                <td colspan="7" class="text-center">No pending leave requests.</td>
-                                            </tr>
-                                        <?php endif; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card shadow mb-4">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">Approved & Rejected Applications</h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-bordered" width="100%" cellspacing="0">
-                                    <thead>
+                                        <?php foreach ($leave_applications as $app): ?>
                                         <tr>
-                                            <th>HR Name</th>
-                                            <th>From Date</th>
-                                            <th>To Date</th>
-                                            <th>Leave Type</th>
-                                            <th>Reason</th>
-                                            <th>Status & Rejection Reason</th>
+                                            <td><?php echo date('d-m-Y', strtotime($app['applied_on'])); ?></td>
+                                            <td><?php echo htmlspecialchars($app['hr_name']); ?></td>
+                                            <td><?php echo date('d-m-Y', strtotime($app['from_date'])); ?></td>
+                                            <td><?php echo date('d-m-Y', strtotime($app['to_date'])); ?></td>
+                                            <td><?php echo htmlspecialchars($app['leave_type']); ?></td>
+                                            <td><?php echo htmlspecialchars($app['reason']); ?></td>
+                                            <td>
+                                                <span class="badge badge-<?php echo $app['status'] == 'Approved' ? 'success' : ($app['status'] == 'Rejected' ? 'danger' : 'warning'); ?>">
+                                                    <?php echo htmlspecialchars($app['status']); ?>
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <?php if ($app['status'] == 'Pending'): ?>
+                                                    <button class="btn btn-success btn-sm action-btn" data-action="Approved" data-id="<?php echo $app['id']; ?>">Approve</button>
+                                                    <button class="btn btn-danger btn-sm action-btn" data-action="Rejected" data-id="<?php echo $app['id']; ?>" data-toggle="modal" data-target="#rejectionModal">Reject</button>
+                                                <?php endif; ?>
+                                            </td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php if (!empty($leave_history)): foreach ($leave_history as $row): ?>
-                                                <tr>
-                                                    <td><?php echo htmlspecialchars($row['hr_name']); ?></td>
-                                                    <td><?php echo htmlspecialchars($row['from_date']); ?></td>
-                                                    <td><?php echo htmlspecialchars($row['to_date']); ?></td>
-                                                    <td><?php echo htmlspecialchars($row['leave_type']); ?></td>
-                                                    <td><?php echo htmlspecialchars($row['reason']); ?></td>
-                                                    <td>
-                                                        <span class="badge badge-<?php echo ($row['status'] == 'Approved') ? 'success' : 'danger'; ?> p-2"><?php echo htmlspecialchars($row['status']); ?></span>
-                                                        <?php if ($row['status'] == 'Rejected' && !empty($row['rejection_reason'])): ?>
-                                                            <br><small class="text-muted mt-1"><strong>Reason:</strong> <?php echo htmlspecialchars($row['rejection_reason']); ?></small>
-                                                        <?php endif; ?>
-                                                    </td>
-                                                </tr>
-                                            <?php endforeach;
-                                        else: ?>
-                                            <tr>
-                                                <td colspan="6" class="text-center">No processed leave applications found.</td>
-                                            </tr>
-                                        <?php endif; ?>
+                                        <?php endforeach; ?>
                                     </tbody>
                                 </table>
                             </div>
@@ -171,60 +124,91 @@ try {
                     </div>
                 </div>
             </div>
-            <?php
-            if (!$is_ajax_request) {
-                include '../../includes/footer.php';
-            }
-            ?>
-        </div>
+<?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?>        </div>
     </div>
-    <div class="modal fade" id="rejectionModal" tabindex="-1" role="dialog" aria-labelledby="rejectionModalLabel" aria-hidden="true">
+    <div class="modal fade" id="rejectionModal" tabindex="-1" role="dialog">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="rejectionModalLabel">Reason for Rejection</h5><button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                    <h5 class="modal-title">Rejection Reason</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
                 </div>
-                <form action="update_hr_leave_status.php" method="POST">
-                    <div class="modal-body">
-                        <p>Please provide a reason for rejecting this leave application.</p>
-                        <input type="hidden" name="leave_id" id="leave_id_input">
-                        <input type="hidden" name="action" value="reject">
-                        <div class="form-group"><label for="rejection_reason_textarea">Rejection Reason</label><textarea class="form-control" id="rejection_reason_textarea" name="rejection_reason" rows="4" required></textarea></div>
-                    </div>
-                    <div class="modal-footer"><button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button><button class="btn btn-danger" type="submit">Submit Rejection</button></div>
-                </form>
+                <div class="modal-body">
+                    <form id="rejectionForm">
+                        <input type="hidden" name="leave_id" id="rejection_leave_id">
+                        <input type="hidden" name="status" value="Rejected">
+                        <div class="form-group">
+                            <label for="rejection_reason">Please provide a reason for rejection:</label>
+                            <textarea class="form-control" id="rejection_reason" name="rejection_reason" rows="3" required></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" id="submitRejection" class="btn btn-danger">Submit Rejection</button>
+                </div>
             </div>
         </div>
     </div>
-    <?php include_once "../../includes/logout_modal.php" ?>
+    <?php include_once "../../includes/logout_modal.php"; ?>
+
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
+    <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
+    <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
     <script>
         $(document).ready(function() {
-            $('.reject-btn').on('click', function() {
+            var table = $('#dataTable').DataTable({
+                 "order": [[ 0, "desc" ]]
+            });
+            
+            function handleLeaveAction(data) {
+                $.ajax({
+                    url: 'update_hr_leave_status.php',
+                    type: 'POST',
+                    data: data,
+                    dataType: 'json',
+                    success: function(response) {
+                        var messageClass = response.status === 'success' ? 'alert-success' : 'alert-danger';
+                        $('#message-container').html('<div class="alert ' + messageClass + '">' + response.message + '</div>');
+                        setTimeout(function() {
+                            location.reload();
+                        }, 1500); 
+                    },
+                    error: function() {
+                        $('#message-container').html('<div class="alert alert-danger">An unexpected error occurred.</div>');
+                    }
+                });
+            }
+
+            $('.action-btn').on('click', function() {
+                var action = $(this).data('action');
                 var leaveId = $(this).data('id');
-                $('#leave_id_input').val(leaveId);
+                if (action === 'Approved') {
+                    if (confirm('Are you sure you want to approve this leave application?')) {
+                        handleLeaveAction({ leave_id: leaveId, status: 'Approved' });
+                    }
+                } else if (action === 'Rejected') {
+                    $('#rejection_leave_id').val(leaveId);
+                }
+            });
+
+            $('#submitRejection').on('click', function() {
+                var form = $('#rejectionForm');
+                if (form[0].checkValidity()) {
+                    handleLeaveAction(form.serialize());
+                    $('#rejectionModal').modal('hide');
+                } else {
+                    form[0].reportValidity();
+                }
             });
         });
     </script>
 </body>
-<?php
-// Add this block at the very end of the file
-if (is_ajax_request()) {
-    // Get the captured HTML
-    $content = ob_get_clean();
-
-    // Extract just the main content area for the AJAX response
-    if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
-        echo '<div class="container-fluid">' . $matches[1] . '</div>';
-    } else {
-        // Fallback if the main container isn't found
-        echo $content;
-    }
-    // Stop the script for AJAX requests
-    exit;
-}
-?>
-
 </html>

@@ -1,11 +1,19 @@
 <?php
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
+include_once "../../includes/log_system.php"; // Log system included
+
+// Start session to store messages
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
 
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
+// Get user info for logging
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 $userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+$userName = isset($_COOKIE['encrypted_user_name']) ? decrypt_id($_COOKIE['encrypted_user_name']) : 'N/A';
 
 if ($role !== 'principal') {
     header("Location: ../../login.php");
@@ -14,86 +22,125 @@ if ($role !== 'principal') {
 
 $school_id = null;
 if ($userId) {
-    $stmt = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
-    $stmt->execute([$userId]);
-    $school_id = $stmt->fetchColumn();
+    try {
+        $stmt = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
+        $stmt->execute([$userId]);
+        $school_id = $stmt->fetchColumn();
+    } catch (PDOException $e) {
+        die("Error fetching school ID: " . $e->getMessage());
+    }
 }
 if (!$school_id) {
     die("Error: Could not determine your school.");
 }
 
 $errors = [];
-$success = '';
-$edit_vehicle = null;
 
-// Handle Delete Request
-if (isset($_GET['delete_id'])) {
-    $delete_id = (int)$_GET['delete_id'];
-    try {
-        $stmt = $conn->prepare("DELETE FROM vehicles WHERE id = ? AND school_id = ?");
-        $stmt->execute([$delete_id, $school_id]);
-        $success = "Vehicle deleted successfully!";
-    } catch (PDOException $e) {
-        $errors[] = "Error deleting vehicle: " . $e->getMessage();
-    }
-    header("Location: manage_vehicles.php?success=" . urlencode($success));
-    exit;
+// Function to set messages in session
+function set_message($type, $message) {
+    $_SESSION['message'] = ['type' => $type, 'text' => $message];
 }
 
-// Handle Edit Request
-if (isset($_GET['edit_id'])) {
-    $edit_id = (int)$_GET['edit_id'];
-    $stmt = $conn->prepare("SELECT * FROM vehicles WHERE id = ? AND school_id = ?");
-    $stmt->execute([$edit_id, $school_id]);
-    $edit_vehicle = $stmt->fetch(PDO::FETCH_ASSOC);
+// Function to display messages from session
+function display_message() {
+    if (isset($_SESSION['message'])) {
+        $type = $_SESSION['message']['type'];
+        $text = $_SESSION['message']['text'];
+        echo "<div class='alert alert-{$type}'>{$text}</div>";
+        unset($_SESSION['message']);
+    }
 }
 
-// Handle Add/Update Vehicle
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_vehicle'])) {
-    $id = !empty($_POST['id']) ? (int)$_POST['id'] : null;
-    $vehicle_number = trim($_POST['vehicle_number']);
-    $model = trim($_POST['model']);
-    $seating_capacity = (int)$_POST['seating_capacity'];
-    $insurance_expiry_date = $_POST['insurance_expiry_date'] ?: null;
+try {
+    // Handle Add Vehicle
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_vehicle'])) {
+        $vehicle_number = trim($_POST['vehicle_number']);
+        $model = trim($_POST['model']);
+        $seating_capacity = (int)$_POST['seating_capacity'];
+        $insurance_expiry_date = $_POST['insurance_expiry_date'];
 
-    if (empty($vehicle_number) || $seating_capacity <= 0) {
-        $errors[] = "Vehicle Number and Seating Capacity are required.";
-    }
-
-    if (empty($errors)) {
-        try {
-            if ($id) { // Update
-                $sql = "UPDATE vehicles SET vehicle_number = ?, model = ?, seating_capacity = ?, insurance_expiry_date = ? WHERE id = ? AND school_id = ?";
-                $stmt = $conn->prepare($sql);
-                $stmt->execute([$vehicle_number, $model, $seating_capacity, $insurance_expiry_date, $id, $school_id]);
-                $success = "Vehicle updated successfully!";
-            } else { // Insert
-                $sql = "INSERT INTO vehicles (school_id, vehicle_number, model, seating_capacity, insurance_expiry_date) VALUES (?, ?, ?, ?, ?)";
-                $stmt = $conn->prepare($sql);
-                $stmt->execute([$school_id, $vehicle_number, $model, $seating_capacity, $insurance_expiry_date]);
-                $success = "Vehicle added successfully!";
+        if (empty($vehicle_number) || empty($model) || empty($seating_capacity) || empty($insurance_expiry_date)) {
+            $errors[] = "All fields are required.";
+        } else {
+            $stmt = $conn->prepare("INSERT INTO vehicles (school_id, vehicle_number, model, seating_capacity, insurance_expiry_date) VALUES (?, ?, ?, ?, ?)");
+            if ($stmt->execute([$school_id, $vehicle_number, $model, $seating_capacity, $insurance_expiry_date])) {
+                set_message('success', "Vehicle '{$vehicle_number}' added successfully!");
+                // Log action
+                log_interaction($role, $userId, "TRANSPORT: Added new vehicle '{$vehicle_number}'.", $userName);
+            } else {
+                set_message('danger', "Failed to add vehicle.");
+                log_interaction($role, $userId, "TRANSPORT ERROR: Failed to add vehicle '{$vehicle_number}'.", $userName);
             }
-            header("Location: manage_vehicles.php?success=" . urlencode($success));
-            exit;
-        } catch (PDOException $e) {
-            $errors[] = "Database error: " . $e->getMessage();
         }
     }
-}
+    // Handle Edit Vehicle
+    elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_vehicle'])) {
+        $vehicle_id = (int)$_POST['edit_vehicle_id'];
+        $vehicle_number = trim($_POST['edit_vehicle_number']);
+        $model = trim($_POST['edit_model']);
+        $seating_capacity = (int)$_POST['edit_seating_capacity'];
+        $insurance_expiry_date = $_POST['edit_insurance_expiry_date'];
 
-if (isset($_GET['success'])) {
-    $success = htmlspecialchars($_GET['success']);
-}
+        if (empty($vehicle_number) || empty($model) || empty($seating_capacity) || empty($insurance_expiry_date)) {
+            $errors[] = "All fields are required.";
+        } else {
+            $stmt = $conn->prepare("UPDATE vehicles SET vehicle_number = ?, model = ?, seating_capacity = ?, insurance_expiry_date = ? WHERE id = ? AND school_id = ?");
+            if ($stmt->execute([$vehicle_number, $model, $seating_capacity, $insurance_expiry_date, $vehicle_id, $school_id])) {
+                set_message('success', "Vehicle '{$vehicle_number}' updated successfully!");
+                // Log action
+                log_interaction($role, $userId, "TRANSPORT: Updated vehicle '{$vehicle_number}' (ID: {$vehicle_id}).", $userName);
+            } else {
+                set_message('danger', "Failed to update vehicle.");
+                 log_interaction($role, $userId, "TRANSPORT ERROR: Failed to update vehicle '{$vehicle_number}' (ID: {$vehicle_id}).", $userName);
+            }
+        }
+    }
+    // Handle Delete Vehicle
+    elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_vehicle'])) {
+        $vehicle_id = (int)$_POST['delete_vehicle_id'];
+        $stmt_get_name = $conn->prepare("SELECT vehicle_number FROM vehicles WHERE id = ?");
+        $stmt_get_name->execute([$vehicle_id]);
+        $vehicle_number = $stmt_get_name->fetchColumn();
+        
+        $stmt = $conn->prepare("DELETE FROM vehicles WHERE id = ? AND school_id = ?");
+        if ($stmt->execute([$vehicle_id, $school_id])) {
+            set_message('success', "Vehicle '{$vehicle_number}' deleted successfully!");
+            // Log action
+            log_interaction($role, $userId, "TRANSPORT: Deleted vehicle '{$vehicle_number}' (ID: {$vehicle_id}).", $userName);
+        } else {
+            set_message('danger', "Failed to delete vehicle.");
+            log_interaction($role, $userId, "TRANSPORT ERROR: Failed to delete vehicle '{$vehicle_number}' (ID: {$vehicle_id}).", $userName);
+        }
+    }
 
-// Fetch all vehicles for the school
-$vehicles = [];
-try {
-    $stmt = $conn->prepare("SELECT * FROM vehicles WHERE school_id = ? ORDER BY vehicle_number");
-    $stmt->execute([$school_id]);
-    $vehicles = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    if (!empty($errors)) {
+        $_SESSION['form_errors'] = $errors;
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        header("Location: manage_vehicles.php");
+        exit();
+    }
+
 } catch (PDOException $e) {
-    $errors[] = "Could not fetch vehicle list: " . $e->getMessage();
+    $error_message = "Database error: " . $e->getMessage();
+    set_message('danger', $error_message);
+    // Log database error
+    log_interaction($role, $userId, "DATABASE ERROR on vehicle management page: " . $e->getMessage(), $userName);
+    header("Location: manage_vehicles.php");
+    exit();
 }
+
+if(isset($_SESSION['form_errors'])) {
+    $errors = $_SESSION['form_errors'];
+    unset($_SESSION['form_errors']);
+}
+
+// Fetch Data for Display
+$vehicles_query = $conn->prepare("SELECT * FROM vehicles WHERE school_id = ? ORDER BY vehicle_number");
+$vehicles_query->execute([$school_id]);
+$vehicles = $vehicles_query->fetchAll(PDO::FETCH_ASSOC);
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -101,11 +148,11 @@ try {
     <meta charset="utf-8">
     <title>Manage Vehicles - School Management System</title>
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-    <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
     <div id="wrapper">
@@ -121,54 +168,29 @@ if (!$is_ajax_request) {
 }
 ?>                <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Manage Vehicles</h1>
-                    
-                    <?php if (!empty($errors)): ?>
-                        <div class="alert alert-danger">
-                            <?php foreach ($errors as $error): ?><p class="mb-0"><?php echo htmlspecialchars($error); ?></p><?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
-                    <?php if ($success): ?>
-                        <div class="alert alert-success"><?php echo $success; ?></div>
-                    <?php endif; ?>
+                    <?php display_message(); ?>
+                    <?php if (!empty($errors)): ?><div class="alert alert-danger"><?php foreach ($errors as $error): echo "<p class='mb-0'>".htmlspecialchars($error)."</p>"; endforeach; ?></div><?php endif; ?>
 
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-plus-circle"></i> <?php echo $edit_vehicle ? 'Edit Vehicle' : 'Add New Vehicle'; ?></h6>
+                            <h6 class="m-0 font-weight-bold text-primary">Add New Vehicle</h6>
                         </div>
                         <div class="card-body">
                             <form method="POST" action="manage_vehicles.php">
-                                <?php if ($edit_vehicle): ?>
-                                    <input type="hidden" name="id" value="<?php echo $edit_vehicle['id']; ?>">
-                                <?php endif; ?>
                                 <div class="form-row">
-                                    <div class="form-group col-md-3">
-                                        <label for="vehicle_number">Vehicle Number *</label>
-                                        <input type="text" class="form-control" name="vehicle_number" placeholder="Format : GJ-05-AA-9999" value="<?php echo htmlspecialchars($edit_vehicle['vehicle_number'] ?? ''); ?>" required>
-                                    </div>
-                                    <div class="form-group col-md-3">
-                                        <label for="model">Model</label>
-                                        <input type="text" class="form-control" name="model" value="<?php echo htmlspecialchars($edit_vehicle['model'] ?? ''); ?>">
-                                    </div>
-                                    <div class="form-group col-md-3">
-                                        <label for="seating_capacity">Seating Capacity *</label>
-                                        <input type="number" class="form-control" name="seating_capacity" value="<?php echo htmlspecialchars($edit_vehicle['seating_capacity'] ?? ''); ?>" required>
-                                    </div>
-                                    <div class="form-group col-md-3">
-                                        <label for="insurance_expiry_date">Insurance Expiry</label>
-                                        <input type="date" class="form-control" id="insurance_expiry_date" name="insurance_expiry_date" value="<?php echo htmlspecialchars($edit_vehicle['insurance_expiry_date'] ?? ''); ?>">
-                                    </div>
+                                    <div class="form-group col-md-3"><input type="text" class="form-control" name="vehicle_number" placeholder="Vehicle Number" required></div>
+                                    <div class="form-group col-md-3"><input type="text" class="form-control" name="model" placeholder="Model" required></div>
+                                    <div class="form-group col-md-2"><input type="number" class="form-control" name="seating_capacity" placeholder="Seating Capacity" required></div>
+                                    <div class="form-group col-md-2"><input type="date" class="form-control" name="insurance_expiry_date" placeholder="Insurance Expiry" required></div>
+                                    <div class="form-group col-md-2"><button type="submit" name="add_vehicle" class="btn btn-primary btn-block">Add Vehicle</button></div>
                                 </div>
-                                <button type="submit" name="save_vehicle" class="btn btn-primary"><?php echo $edit_vehicle ? 'Update Vehicle' : 'Save Vehicle'; ?></button>
-                                <?php if ($edit_vehicle): ?>
-                                    <a href="manage_vehicles.php" class="btn btn-secondary">Cancel Edit</a>
-                                <?php endif; ?>
                             </form>
                         </div>
                     </div>
 
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-bus"></i> Existing Vehicles</h6>
+                            <h6 class="m-0 font-weight-bold text-primary">Existing Vehicles</h6>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
@@ -177,30 +199,40 @@ if (!$is_ajax_request) {
                                         <tr>
                                             <th>Vehicle Number</th>
                                             <th>Model</th>
-                                            <th>Capacity</th>
+                                            <th>Seating Capacity</th>
                                             <th>Insurance Expiry</th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <?php foreach ($vehicles as $vehicle): ?>
-                                            <tr>
-                                                <td><?php echo htmlspecialchars($vehicle['vehicle_number']); ?></td>
-                                                <td><?php echo htmlspecialchars($vehicle['model']); ?></td>
-                                                <td><?php echo htmlspecialchars($vehicle['seating_capacity']); ?></td>
-                                                <td><?php echo $vehicle['insurance_expiry_date'] ? date('d M, Y', strtotime($vehicle['insurance_expiry_date'])) : 'N/A'; ?></td>
-                                                <td>
-                                                    <a href="?edit_id=<?php echo $vehicle['id']; ?>" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i></a>
-                                                    <a href="#" data-toggle="modal" data-target="#deleteModal" data-url="?delete_id=<?php echo $vehicle['id']; ?>" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></a>
-                                                </td>
-                                            </tr>
+                                        <tr>
+                                            <td><?php echo htmlspecialchars($vehicle['vehicle_number']); ?></td>
+                                            <td><?php echo htmlspecialchars($vehicle['model']); ?></td>
+                                            <td><?php echo htmlspecialchars($vehicle['seating_capacity']); ?></td>
+                                            <td><?php echo date('d-M-Y', strtotime($vehicle['insurance_expiry_date'])); ?></td>
+                                            <td>
+                                                <button class="btn btn-sm btn-warning" data-toggle="modal" data-target="#editModal"
+                                                        data-id="<?php echo $vehicle['id']; ?>"
+                                                        data-number="<?php echo htmlspecialchars($vehicle['vehicle_number']); ?>"
+                                                        data-model="<?php echo htmlspecialchars($vehicle['model']); ?>"
+                                                        data-capacity="<?php echo $vehicle['seating_capacity']; ?>"
+                                                        data-expiry="<?php echo $vehicle['insurance_expiry_date']; ?>">
+                                                    Edit
+                                                </button>
+                                                <button class="btn btn-sm btn-danger" data-toggle="modal" data-target="#deleteModal"
+                                                        data-id="<?php echo $vehicle['id']; ?>"
+                                                        data-number="<?php echo htmlspecialchars($vehicle['vehicle_number']); ?>">
+                                                    Delete
+                                                </button>
+                                            </td>
+                                        </tr>
                                         <?php endforeach; ?>
                                     </tbody>
                                 </table>
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
 <?php
@@ -209,53 +241,83 @@ if (!$is_ajax_request) {
 }
 ?>        </div>
     </div>
-
-    <?php include_once "../../includes/logout_modal.php"; ?>
-    
-    <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal fade" id="editModal" tabindex="-1" role="dialog">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="deleteModalLabel">Confirm Deletion</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    Are you sure you want to delete this item? This action cannot be undone.
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                    <a href="#" id="confirmDeleteBtn" class="btn btn-danger">Delete</a>
-                </div>
+                <form method="POST" action="manage_vehicles.php">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Vehicle</h5>
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="edit_vehicle_id" id="edit_vehicle_id">
+                        <div class="form-group"><label>Vehicle Number</label><input type="text" class="form-control" name="edit_vehicle_number" id="edit_vehicle_number" required></div>
+                        <div class="form-group"><label>Model</label><input type="text" class="form-control" name="edit_model" id="edit_model" required></div>
+                        <div class="form-group"><label>Seating Capacity</label><input type="number" class="form-control" name="edit_seating_capacity" id="edit_seating_capacity" required></div>
+                        <div class="form-group"><label>Insurance Expiry Date</label><input type="date" class="form-control" name="edit_insurance_expiry_date" id="edit_insurance_expiry_date" required></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="submit" name="edit_vehicle" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
-
+    <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <form method="POST" action="manage_vehicles.php">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Delete Vehicle</h5>
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Are you sure you want to delete vehicle <strong id="delete_vehicle_number"></strong>?</p>
+                        <input type="hidden" name="delete_vehicle_id" id="delete_vehicle_id">
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" name="delete_vehicle" class="btn btn-danger">Delete</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <?php include_once "../../includes/logout_modal.php"; ?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
-
+    <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
+    <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
     <script>
-    $(document).ready(function() {
-        $('#deleteModal').on('show.bs.modal', function (event) {
-            var button = $(event.relatedTarget); // Button that triggered the modal
-            var url = button.data('url');       // Extract URL from data-url attribute
-            var modal = $(this);
-            modal.find('#confirmDeleteBtn').attr('href', url);
+        $(document).ready(function() {
+            $('#dataTable').DataTable();
         });
+        $('#editModal').on('show.bs.modal', function(event) {
+            var button = $(event.relatedTarget);
+            var id = button.data('id');
+            var number = button.data('number');
+            var model = button.data('model');
+            var capacity = button.data('capacity');
+            var expiry = button.data('expiry');
 
-    // Blur past dates for "Insurance Expiry Date"
-            const dateInput = document.getElementById('insurance_expiry_date');
-            if (dateInput) {
-                const today = new Date();
-                const year = today.getFullYear();
-                const month = String(today.getMonth() + 1).padStart(2, '0');
-                const day = String(today.getDate()).padStart(2, '0');
-                const formattedDate = `${year}-${month}-${day}`;
-                dateInput.setAttribute('min', formattedDate);
-            }
-    });
+            var modal = $(this);
+            modal.find('#edit_vehicle_id').val(id);
+            modal.find('#edit_vehicle_number').val(number);
+            modal.find('#edit_model').val(model);
+            modal.find('#edit_seating_capacity').val(capacity);
+            modal.find('#edit_insurance_expiry_date').val(expiry);
+        });
+        $('#deleteModal').on('show.bs.modal', function(event) {
+            var button = $(event.relatedTarget);
+            var id = button.data('id');
+            var number = button.data('number');
+            var modal = $(this);
+            modal.find('#delete_vehicle_id').val(id);
+            modal.find('#delete_vehicle_number').text(number);
+        });
     </script>
 </body>
 </html>

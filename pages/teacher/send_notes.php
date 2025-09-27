@@ -1,255 +1,246 @@
 <?php
-include_once "../../encryption.php";
-include_once "../../includes/connect.php";
-include_once "../../includes/ajax_helpers.php";
-// include_once "../../includes/email_functions.php"; // Uncomment if email is set up
+include_once '../../includes/connect.php';
+include_once '../../encryption.php';
+include_once '../../includes/ajax_helpers.php';
+include_once '../../includes/log_system.php'; // Log system included
 
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
-// Check if this is an AJAX request
-if (is_ajax_request()) {
-    // Start output buffering to capture the HTML
-    ob_start();
-}
+// Get user info for logging
+$role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
+$userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+$userName = isset($_COOKIE['encrypted_user_name']) ? decrypt_id($_COOKIE['encrypted_user_name']) : 'N/A';
 
-$role = null;
-$userId = null;
-$schoolId = null;
-$senderName = 'the school';
-$availableStandards = [];
-$notesHistory = [];
-
-if (isset($_COOKIE['encrypted_user_role'])) $role = decrypt_id($_COOKIE['encrypted_user_role']);
-if (isset($_COOKIE['encrypted_user_id'])) $userId = decrypt_id($_COOKIE['encrypted_user_id']);
-
-if (!$role || !$userId || !in_array($role, ['teacher', 'principal'])) {
+if ($role !== 'teacher') {
     header("Location: ../../login.php");
     exit;
 }
 
+$teacher_id = $userId;
+$school_id = null;
+$teacher_standards = [];
+$past_notes = [];
+$success_msg = '';
+$error_msg = '';
+
 try {
-    switch ($role) {
-        case 'teacher':
-            $stmt = $conn->prepare("SELECT school_id, std, teacher_name FROM teacher WHERE id = ?");
-            $stmt->execute([$userId]);
-            if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                $schoolId = $row['school_id'];
-                $senderName = $row['teacher_name'];
-                if (!empty($row['std'])) $availableStandards = explode(',', $row['std']);
-            }
-            break;
-        case 'principal':
-            $stmt = $conn->prepare("SELECT school_id, principal_name FROM principal WHERE id = ?");
-            $stmt->execute([$userId]);
-            if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                $schoolId = $row['school_id'];
-                $senderName = $row['principal_name'];
-                // PostgreSQL Change: Cast to INTEGER for proper sorting
-                $std_stmt = $conn->prepare("SELECT DISTINCT std FROM student WHERE school_id = ? ORDER BY CAST(std AS INTEGER)");
-                $std_stmt->execute([$schoolId]);
-                $availableStandards = $std_stmt->fetchAll(PDO::FETCH_COLUMN, 0);
-            }
-            break;
+    // Fetch teacher's school_id and assigned standards
+    $stmt_teacher = $conn->prepare("SELECT school_id, std FROM teacher WHERE id = ?");
+    $stmt_teacher->execute([$teacher_id]);
+    $teacher_info = $stmt_teacher->fetch(PDO::FETCH_ASSOC);
+    if ($teacher_info) {
+        $school_id = $teacher_info['school_id'];
+        $teacher_standards = $teacher_info['std'] ? explode(',', trim($teacher_info['std'], '{}')) : [];
+    } else {
+        die("Could not retrieve teacher information.");
     }
 
-    if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_note'])) {
-        $title = $_POST['title'];
-        $content = $_POST['content'];
-        $target_standard = $_POST['target_standard'];
-        $filePathForDB = null;
-        $originalFilename = null;
+    // Handle form submission to send new notes
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $title = trim($_POST['title']);
+        $content = trim($_POST['content']);
+        $standards = $_POST['standards'] ?? [];
+        $file_path = null;
+        $original_filename = null;
 
-        if (empty($target_standard)) {
-            die("Error: Please select a standard.");
-        }
-
-        if (isset($_FILES['note_file']) && $_FILES['note_file']['error'] == 0) {
-            $originalFilename = basename($_FILES["note_file"]["name"]);
-            $uploadDirServer = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/teacher/uploads/notes/';
-            $uploadDirWeb = '/pages/teacher/uploads/notes/';
-
-            if (!is_dir($uploadDirServer)) {
-                mkdir($uploadDirServer, 0777, true);
+        if (empty($title) || empty($content) || empty($standards)) {
+            $error_msg = "Title, content, and at least one standard are required.";
+        } else {
+            if (isset($_FILES['notes_file']) && $_FILES['notes_file']['error'] == 0) {
+                $upload_dir = 'uploads/';
+                if (!is_dir($upload_dir)) {
+                    mkdir($upload_dir, 0777, true);
+                }
+                $filename = 'note_' . uniqid() . '_' . basename($_FILES['notes_file']['name']);
+                $file_path = $upload_dir . $filename;
+                $original_filename = basename($_FILES['notes_file']['name']);
+                if (!move_uploaded_file($_FILES['notes_file']['tmp_name'], $file_path)) {
+                    $error_msg = "Failed to upload file.";
+                    $file_path = null;
+                    $original_filename = null;
+                }
+                 $file_path = "/BMC-SMS/pages/teacher/" . $file_path;
             }
-            $storageFilename = uniqid('note_', true) . '_' . preg_replace('/[^A-Za-z0-9\._-]/', '', $originalFilename);
-            $serverFilePath = $uploadDirServer . $storageFilename;
-            if (move_uploaded_file($_FILES["note_file"]["tmp_name"], $serverFilePath)) {
-                $filePathForDB = $uploadDirWeb . $storageFilename;
+
+            if (empty($error_msg)) {
+                $conn->beginTransaction();
+                // Insert notes for each selected standard
+                $stmt = $conn->prepare(
+                    "INSERT INTO notes (user_id, school_id, target_standard, title, content, file_path, original_filename) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?)"
+                );
+                foreach ($standards as $standard) {
+                    $stmt->execute([$teacher_id, $school_id, $standard, $title, $content, $file_path, $original_filename]);
+                }
+                
+                // Notify students in the selected standards
+                $placeholders = implode(',', array_fill(0, count($standards), '?'));
+                $stmt_students = $conn->prepare("SELECT id FROM student WHERE school_id = ? AND std IN ($placeholders)");
+                $stmt_students->execute(array_merge([$school_id], $standards));
+                $student_ids = $stmt_students->fetchAll(PDO::FETCH_COLUMN);
+
+                if (!empty($student_ids)) {
+                    $notification_msg = "New notes available: " . htmlspecialchars($title);
+                    $notification_link = "pages/student/view_notes.php";
+                    $notification_type = "notes";
+                    $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");
+                    foreach ($student_ids as $student_id) {
+                        $stmt_notify->execute([$student_id, $notification_msg, $notification_link, $notification_type]);
+                    }
+                }
+                
+                $conn->commit();
+                $success_msg = "Notes have been successfully sent!";
+                $standards_string = implode(', ', $standards);
+                log_interaction($role, $userId, "NOTES: Sent notes titled '{$title}' to Standard(s): {$standards_string}.", $userName);
             }
         }
-
-        $conn->beginTransaction();
-
-        $stmt_insert = $conn->prepare("INSERT INTO notes (user_id, school_id, target_standard, title, content, file_path, original_filename) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $stmt_insert->execute([$userId, $schoolId, $target_standard, $title, $content, $filePathForDB, $originalFilename]);
-
-        $stmt_students = $conn->prepare("SELECT id, student_name, email FROM student WHERE school_id = ? AND std = ?");
-        $stmt_students->execute([$schoolId, $target_standard]);
-        $students_to_notify = $stmt_students->fetchAll(PDO::FETCH_ASSOC);
-
-        if ($students_to_notify) {
-            $notification_message = "New notes posted: " . substr($title, 0, 40) . "...";
-            $notification_link = "pages/student/view_notes.php";
-            $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, 'new_notes')");
-            foreach ($students_to_notify as $student) {
-                $stmt_notify->execute([$student['id'], $notification_message, $notification_link]);
-                // Email logic would go here
-            }
-        }
-
-        $conn->commit();
-        header("Location: send_notes.php?success=1");
-        exit();
     }
 
-    $stmt_history = $conn->prepare("SELECT title, target_standard, created_at FROM notes WHERE user_id = ? ORDER BY created_at DESC LIMIT 5");
-    $stmt_history->execute([$userId]);
-    $notesHistory = $stmt_history->fetchAll(PDO::FETCH_ASSOC);
-} catch (Exception $e) {
-    if (isset($conn) && $conn->inTransaction()) {
+    // Fetch past notes sent by the teacher
+    $stmt_notes = $conn->prepare(
+        "SELECT title, string_agg(target_standard, ', ') as standards, created_at, file_path
+         FROM notes 
+         WHERE user_id = ? 
+         GROUP BY title, content, created_at, file_path
+         ORDER BY created_at DESC"
+    );
+    $stmt_notes->execute([$teacher_id]);
+    $past_notes = $stmt_notes->fetchAll(PDO::FETCH_ASSOC);
+
+} catch (PDOException $e) {
+    if ($conn->inTransaction()) {
         $conn->rollBack();
     }
-    error_log("Send Notes Error: " . $e->getMessage());
-    die("A database error occurred.");
+    $error_msg = "Database Error: " . $e->getMessage();
+    log_interaction($role, $userId, "NOTES ERROR: An error occurred on the Send Notes page. DB Error: " . $e->getMessage(), $userName);
 }
-
-$pageTitle = 'Send Notes';
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="utf-8">
-    <title><?php echo htmlspecialchars($pageTitle); ?></title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+    <meta charset="UTF-8">
+    <title>Send Notes</title>
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
-
 <body id="page-top">
     <div id="wrapper">
-        <?php
+<?php
 if (!$is_ajax_request) {
     include '../../includes/sidebar.php';
 }
-?> <div id="content-wrapper" class="d-flex flex-column">
+?>        <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php
+<?php
 if (!$is_ajax_request) {
     include '../../includes/header.php';
 }
 ?>
                 <div class="container-fluid">
-                    <h1 class="h3 mb-4 text-gray-800">Send a Note</h1>
-                    <?php if (isset($_GET['success'])): ?>
-                    <div class="alert alert-success">Note sent successfully!</div>
-                    <?php endif; ?>
-                    <div class="row">
-                        <div class="col-lg-7">
-                            <div class="card shadow mb-4">
-                                <div class="card-header py-3">
-                                    <h6 class="m-0 font-weight-bold text-primary">New Note Details</h6>
-                                </div>
-                                <div class="card-body">
-                                    <form method="POST" action="send_notes.php" enctype="multipart/form-data">
-                                        <div class="form-group">
-                                            <label for="target_standard">Send to Standard</label>
-                                            <select class="form-control" id="target_standard" name="target_standard"
-                                                required>
-                                                <option value="">-- Select a Standard --</option>
-                                                <?php foreach ($availableStandards as $standard): ?>
-                                                <option value="<?php echo htmlspecialchars(trim($standard)); ?>">
-                                                    Standard <?php echo htmlspecialchars(trim($standard)); ?></option>
-                                                <?php endforeach; ?>
-                                                <?php if (empty($availableStandards)): ?>
-                                                <option disabled>No standards available.</option>
-                                                <?php endif; ?>
-                                            </select>
-                                        </div>
-                                        <div class="form-group"><label for="title">Title</label><input type="text"
-                                                class="form-control" id="title" name="title" required></div>
-                                        <div class="form-group"><label for="content">Content</label><textarea
-                                                class="form-control" id="content" name="content" rows="4"
-                                                required></textarea></div>
-                                        <div class="form-group"><label for="note_file">Attach File
-                                                (Optional)</label><input type="file" class="form-control-file"
-                                                id="note_file" name="note_file"></div>
-                                        <button type="submit" name="send_note" class="btn btn-primary">Send
-                                            Note</button>
-                                    </form>
-                                </div>
-                            </div>
+                    <h1 class="h3 mb-4 text-gray-800">Send Notes to Students</h1>
+                    <?php if ($success_msg): ?><div class="alert alert-success"><?php echo htmlspecialchars($success_msg); ?></div><?php endif; ?>
+                    <?php if ($error_msg): ?><div class="alert alert-danger"><?php echo htmlspecialchars($error_msg); ?></div><?php endif; ?>
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">Compose Notes</h6>
                         </div>
-                        <div class="col-lg-5">
-                            <div class="card shadow mb-4">
-                                <div class="card-header py-3">
-                                    <h6 class="m-0 font-weight-bold text-primary">Sent Notes History (Last 5)</h6>
+                        <div class="card-body">
+                            <form method="POST" enctype="multipart/form-data">
+                                <div class="form-group">
+                                    <label for="title">Title *</label>
+                                    <input type="text" class="form-control" id="title" name="title" required>
                                 </div>
-                                <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered" width="100%" cellspacing="0">
-                                            <thead>
-                                                <tr>
-                                                    <th>Title</th>
-                                                    <th>For Standard</th>
-                                                    <th>Date</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php if (!empty($notesHistory)): foreach ($notesHistory as $note): ?>
-                                                <tr>
-                                                    <td><?php echo htmlspecialchars($note['title']); ?></td>
-                                                    <td><?php echo htmlspecialchars($note['target_standard']); ?></td>
-                                                    <td><?php echo date('d-m-Y H:i', strtotime($note['created_at'])); ?>
-                                                    </td>
-
-                                                </tr>
-                                                <?php endforeach;
-                                                else: ?>
-                                                <tr>
-                                                    <td colspan="3" class="text-center">No notes sent yet.</td>
-                                                </tr>
-                                                <?php endif; ?>
-                                            </tbody>
-                                        </table>
+                                <div class="form-group">
+                                    <label for="content">Content *</label>
+                                    <textarea class="form-control" id="content" name="content" rows="5" required></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>Send to Standards *</label>
+                                    <div>
+                                        <?php foreach ($teacher_standards as $standard): ?>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="checkbox" name="standards[]" id="std_<?php echo htmlspecialchars($standard); ?>" value="<?php echo htmlspecialchars($standard); ?>">
+                                                <label class="form-check-label" for="std_<?php echo htmlspecialchars($standard); ?>"><?php echo htmlspecialchars($standard); ?></label>
+                                            </div>
+                                        <?php endforeach; ?>
                                     </div>
                                 </div>
+                                <div class="form-group">
+                                    <label for="notes_file">Attach File (Optional)</label>
+                                    <input type="file" class="form-control-file" id="notes_file" name="notes_file">
+                                </div>
+                                <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Send Notes</button>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">Past Notes History</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                    <thead>
+                                        <tr>
+                                            <th>Date Sent</th>
+                                            <th>Title</th>
+                                            <th>Sent To (Standards)</th>
+                                            <th>Attachment</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if (empty($past_notes)): ?>
+                                            <tr><td colspan="4" class="text-center">You have not sent any notes yet.</td></tr>
+                                        <?php else: ?>
+                                            <?php foreach ($past_notes as $note): ?>
+                                                <tr>
+                                                    <td><?php echo date('d-M-Y h:i A', strtotime($note['created_at'])); ?></td>
+                                                    <td><?php echo htmlspecialchars($note['title']); ?></td>
+                                                    <td><?php echo htmlspecialchars($note['standards']); ?></td>
+                                                    <td>
+                                                        <?php if ($note['file_path']): ?>
+                                                            <a href="<?php echo htmlspecialchars($note['file_path']); ?>" target="_blank" class="btn btn-sm btn-info">
+                                                                <i class="fas fa-download"></i> View
+                                                            </a>
+                                                        <?php else: ?>
+                                                            No Attachment
+                                                        <?php endif; ?>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
+
                 </div>
             </div>
-            <?php
+<?php
 if (!$is_ajax_request) {
     include '../../includes/footer.php';
 }
-?>
-        </div>
+?>        </div>
     </div>
     <?php include_once "../../includes/logout_modal.php" ?>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../../assets/vendor/jquery/jquery.min.js"></script>
+    <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
+    <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
+    <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#dataTable').DataTable({
+                 "order": [[ 0, "desc" ]] // Sort by the first column (Date Sent) in descending order
+            });
+        });
+    </script>
 </body>
-<?php
-// Add this block at the very end of the file
-if (is_ajax_request()) {
-    // Get the captured HTML
-    $content = ob_get_clean();
-    
-    // Extract just the main content area for the AJAX response
-    if (preg_match('/<div class="container-fluid".*?>(.*?)<\ /div>/s', $content, $matches)) {
-    echo '<div class="container-fluid">' . $matches[1] . '</div>';
-    } else {
-    // Fallback if the main container isn't found
-    echo $content;
-    }
-    // Stop the script for AJAX requests
-    exit;
-    }
-    ?>
-
 </html>

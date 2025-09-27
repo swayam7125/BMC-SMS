@@ -2,6 +2,7 @@
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php';
+include_once '../../includes/log_system.php'; // Correctly include the log system
 
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
@@ -10,6 +11,7 @@ $user_id = null;
 $school_id = null;
 $success_msg = '';
 $errors = [];
+$userName = 'Guest'; // Default user name
 
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
@@ -17,18 +19,23 @@ if (isset($_COOKIE['encrypted_user_role'])) {
 if (isset($_COOKIE['encrypted_user_id'])) {
     $user_id = decrypt_id($_COOKIE['encrypted_user_id']);
 }
+if (isset($_COOKIE['encrypted_user_name'])) {
+    $userName = decrypt_id($_COOKIE['encrypted_user_name']);
+}
 
 if (!in_array($role, ['student', 'teacher'])) {
     header("Location: ../../login.php");
     exit;
 }
 
+// Log the action of viewing the page
+log_interaction($role, $user_id, 'User accessed the "Request a New Book" page.', $userName);
+
 try {
     if ($user_id) {
         $table = ($role === 'student') ? 'student' : 'teacher';
-        // FIX: The `name` column is named differently for students and teachers.
-        // It's better to fetch both to have a consistent variable.
-        $stmt_user = $conn->prepare("SELECT school_id, " . ($role === 'student' ? 'student_name' : 'teacher_name') . " as name FROM $table WHERE id = ?");
+        $name_column = ($role === 'student') ? 'student_name' : 'teacher_name';
+        $stmt_user = $conn->prepare("SELECT school_id, {$name_column} as name FROM {$table} WHERE id = ?");
         $stmt_user->execute([$user_id]);
         if ($userData = $stmt_user->fetch(PDO::FETCH_ASSOC)) {
             $school_id = $userData['school_id'];
@@ -37,6 +44,7 @@ try {
     }
 
     if (!$school_id) {
+        log_interaction($role, $user_id, "ACTION DENIED: Could not determine user's school on request_new_book page.", $userName);
         die("Could not determine your school. Action denied.");
     }
 
@@ -54,21 +62,18 @@ try {
             
             if ($stmt_insert->execute([$user_id, $role, $school_id, $book_title, $author, $reason])) {
                 $success_msg = "Your request has been submitted successfully! The librarian will review it shortly.";
+                // Log the successful submission
+                log_interaction($role, $user_id, "BOOK REQUEST: User submitted a request for '{$book_title}' by {$author}.", $userName);
 
-                // --- START: FIX - CREATE NOTIFICATION FOR LIBRARIAN ---
                 try {
-                    // 1. Find the librarian(s) for the current school
                     $stmt_librarians = $conn->prepare("SELECT id FROM librarian WHERE school_id = ?");
                     $stmt_librarians->execute([$school_id]);
                     $librarian_ids = $stmt_librarians->fetchAll(PDO::FETCH_COLUMN, 0);
                     
-                    // The requester's name is already fetched above.
-
-                    // 2. Create and send a notification to each librarian
                     if (!empty($librarian_ids)) {
                         $notification_msg = "New book acquisition request from " . htmlspecialchars($requester_name) . " for \"" . htmlspecialchars($book_title) . "\".";
                         $notification_link = "pages/librarian/book_requests.php";
-                        $notification_type = "acquisition_request"; // Use the correct, specific type
+                        $notification_type = "acquisition_request";
 
                         $stmt_notify = $conn->prepare(
                             "INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)"
@@ -79,19 +84,21 @@ try {
                         }
                     }
                 } catch (PDOException $e) {
-                    // Log the notification error, but don't disrupt the user. Their request was successful.
                     error_log("Failed to create book acquisition notification: " . $e->getMessage());
                 }
-                // --- END: FIX ---
 
             } else {
                 $errors[] = "Database error: Could not submit your request.";
+                 // Log the failed submission
+                log_interaction($role, $user_id, "BOOK REQUEST FAILED: Database error on submission for '{$book_title}'.", $userName);
             }
         }
     }
 } catch (PDOException $e) {
     $errors[] = "A database error occurred: " . $e->getMessage();
     error_log("Request New Book Error: " . $e->getMessage());
+    // Log the database error
+    log_interaction($role, $user_id, "DATABASE ERROR on request_new_book page: " . $e->getMessage(), $userName);
 }
 ?>
 <!DOCTYPE html>

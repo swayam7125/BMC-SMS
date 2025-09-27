@@ -1,101 +1,69 @@
 <?php
-// /includes/actions/handle_borrow_request_user.php
-
-include_once '../../includes/connect.php';
+session_start();
+include_once '../connect.php';
 include_once '../../encryption.php';
+include_once '../log_system.php'; // Log system included
 
-$role = null;
-$user_id = null;
+header('Content-Type: application/json');
 
-if (isset($_COOKIE['encrypted_user_role'])) {
-    $role = decrypt_id($_COOKIE['encrypted_user_role']);
-}
-if (isset($_COOKIE['encrypted_user_id'])) {
-    $user_id = decrypt_id($_COOKIE['encrypted_user_id']);
-}
-
-if (($role !== 'student' && $role !== 'teacher') || !$user_id) {
-    header("Location: ../../login.php");
-    exit;
-}
+// Get user info for logging
+$role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
+$userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+$userName = isset($_COOKIE['encrypted_user_name']) ? decrypt_id($_COOKIE['encrypted_user_name']) : 'N/A';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header("Location: ../../dashboard.php");
+    echo json_encode(['status' => 'error', 'message' => 'Invalid request method.']);
     exit;
 }
 
-$redirect_path = ($role === 'student') ? '/BMC-SMS/pages/student/browse_books.php' : '/BMC-SMS/pages/teacher/browse_books.php';
+$book_id = $_POST['book_id'] ?? null;
+$borrower_id = $_POST['borrower_id'] ?? null;
+$borrower_role = $_POST['borrower_role'] ?? null;
+$school_id = $_POST['school_id'] ?? null;
+$requested_due_date = $_POST['requested_due_date'] ?? null;
 
-// Validate input
-if (!isset($_POST['book_id']) || !filter_var($_POST['book_id'], FILTER_VALIDATE_INT) || !isset($_POST['requested_due_date'])) {
-    header("Location: " . $redirect_path . "?error=Invalid data submitted.");
-    exit;
-}
-$book_id = $_POST['book_id'];
-$requested_due_date = $_POST['requested_due_date'];
-
-$today = date('Y-m-d');
-if ($requested_due_date < $today) {
-    header("Location: " . $redirect_path . "?error=The desired return date cannot be in the past.");
+if (empty($book_id) || empty($borrower_id) || empty($borrower_role) || empty($school_id) || empty($requested_due_date)) {
+    echo json_encode(['status' => 'error', 'message' => 'All fields are required.']);
     exit;
 }
 
 try {
-    // --- CORRECTED: Using PDO to fetch user and book data ---
-    $table = ($role === 'student') ? '"student"' : '"teacher"';
-    $stmt_user = $conn->prepare("SELECT \"school_id\" FROM $table WHERE \"id\" = ?");
-    $stmt_user->execute([$user_id]);
-    $school_id = $stmt_user->fetchColumn();
-
-    if (!$school_id) {
-        header("Location: " . $redirect_path . "?error=Could not verify your school information.");
+    // Check for existing pending requests by the same user for the same book
+    $stmt_check = $conn->prepare("SELECT COUNT(*) FROM borrow_requests WHERE book_id = ? AND borrower_id = ? AND borrower_role = ? AND status = 'Pending'");
+    $stmt_check->execute([$book_id, $borrower_id, $borrower_role]);
+    if ($stmt_check->fetchColumn() > 0) {
+        echo json_encode(['status' => 'error', 'message' => 'You already have a pending request for this book.']);
         exit;
     }
 
-    $stmt_book = $conn->prepare('SELECT "quantity_available" FROM "books" WHERE "book_id" = ? AND "school_id" = ?');
-    $stmt_book->execute([$book_id, $school_id]);
-    $book_data = $stmt_book->fetch(PDO::FETCH_ASSOC);
+    // Insert the new borrow request
+    $stmt_insert = $conn->prepare("INSERT INTO borrow_requests (book_id, school_id, borrower_id, borrower_role, requested_due_date) VALUES (?, ?, ?, ?::borrow_requester_role, ?)");
+    $stmt_insert->execute([$book_id, $school_id, $borrower_id, $borrower_role, $requested_due_date]);
 
-    if (!$book_data || $book_data['quantity_available'] <= 0) {
-        header("Location: " . $redirect_path . "?error=Sorry, this book is no longer available.");
-        exit;
-    }
-
-    $stmt_check = $conn->prepare('SELECT "request_id" FROM "borrow_requests" WHERE "book_id" = ? AND "borrower_id" = ? AND "status" = \'Pending\'');
-    $stmt_check->execute([$book_id, $user_id]);
-    if ($stmt_check->fetch()) {
-        header("Location: " . $redirect_path . "?error=You already have a pending request for this book.");
-        exit;
-    }
-
-    $stmt_insert = $conn->prepare('INSERT INTO "borrow_requests" (book_id, school_id, borrower_id, borrower_role, requested_due_date) VALUES (?, ?, ?, ?, ?)');
-    if ($stmt_insert->execute([$book_id, $school_id, $user_id, $role, $requested_due_date])) {
+    // Notify the librarian(s)
+    $stmt_librarians = $conn->prepare("SELECT id FROM librarian WHERE school_id = ?");
+    $stmt_librarians->execute([$school_id]);
+    $librarian_ids = $stmt_librarians->fetchAll(PDO::FETCH_COLUMN, 0);
+    
+    if (!empty($librarian_ids)) {
+        $notification_msg = htmlspecialchars($userName) . " has requested to borrow a book.";
+        $notification_link = "pages/librarian/borrow_requests.php";
+        $notification_type = "borrow_request";
+        $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");
         
-        // --- NOTIFICATION LOGIC ---
-        $stmt_librarian = $conn->prepare('SELECT "id" FROM "librarian" WHERE "school_id" = ?');
-        $stmt_librarian->execute([$school_id]);
-        $librarian_id = $stmt_librarian->fetchColumn();
-
-        if ($librarian_id) {
-            $user_name = isset($_COOKIE['encrypted_user_name']) ? decrypt_id($_COOKIE['encrypted_user_name']) : 'A user';
-            $message = htmlspecialchars($user_name) . " has requested to borrow a book.";
-            $link = "pages/librarian/borrow_requests.php";
-            $type = "borrow_request";
-
-            $stmt_notify = $conn->prepare('INSERT INTO "notifications" (user_id, message, link, type) VALUES (?, ?, ?, ?)');
-            $stmt_notify->execute([$librarian_id, $message, $link, $type]);
+        foreach ($librarian_ids as $librarian_id) {
+            $stmt_notify->execute([$librarian_id, $notification_msg, $notification_link, $notification_type]);
         }
-        
-        header("Location: " . $redirect_path . "?success=Your request has been sent to the librarian!");
-    } else {
-        header("Location: " . $redirect_path . "?error=An unexpected error occurred. Please try again.");
     }
+    
+    // Log the action
+    log_interaction($role, $userId, "LIBRARY: Submitted a request to borrow book ID {$book_id}.", $userName);
+    
+    echo json_encode(['status' => 'success', 'message' => 'Your request to borrow the book has been sent successfully.']);
 
 } catch (PDOException $e) {
-    header("Location: " . $redirect_path . "?error=Database error: " . urlencode($e->getMessage()));
+    // Log the error
+    log_interaction($role, $userId, "LIBRARY ERROR: Failed to request book ID {$book_id}. DB Error: " . $e->getMessage(), $userName);
+    echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $e->getMessage()]);
 }
-
-$conn = null;
-exit;
-
-// The final ?>
+?>

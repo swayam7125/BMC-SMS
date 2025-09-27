@@ -10,13 +10,24 @@ date_default_timezone_set('Asia/Kolkata');
 // Adjust the paths if this file is located elsewhere.
 include_once __DIR__ . "/encryption.php";
 include_once __DIR__ . "/includes/connect.php";
+include_once __DIR__ . "/includes/log_system.php"; 
 
 header('Content-Type: application/json');
 
 $userId = null;
+$role = null; 
+$userName = 'Guest'; 
+
 if (isset($_COOKIE['encrypted_user_id'])) {
     $userId = decrypt_id($_COOKIE['encrypted_user_id']);
 }
+if (isset($_COOKIE['encrypted_user_role'])) {
+    $role = decrypt_id($_COOKIE['encrypted_user_role']);
+}
+if (isset($_COOKIE['encrypted_user_name'])) {
+    $userName = decrypt_id($_COOKIE['encrypted_user_name']);
+}
+
 
 if (!$userId) {
     echo json_encode(['error' => 'User not authenticated.']);
@@ -24,6 +35,8 @@ if (!$userId) {
 }
 
 $notifications = [];
+$unread_count = 0;
+$total_count = 0;
 
 try {
     // This query correctly fetches ALL notifications (read and unread) for the dashboard
@@ -31,8 +44,34 @@ try {
     $stmt->execute([$userId]);
     $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+    // Get counts for logging
+    $total_count = count($notifications);
+    $unread_count = count(array_filter($notifications, function($n) { return !$n['is_read']; }));
+    
+    $notification_summary = [];
+    foreach ($notifications as $notification) {
+        $type = $notification['type'];
+        if (!isset($notification_summary[$type])) {
+            $notification_summary[$type] = 0;
+        }
+        $notification_summary[$type]++;
+    }
+
+    $summary_parts = [];
+    foreach ($notification_summary as $type => $count) {
+        $summary_parts[] = "$type ($count)";
+    }
+    $summary_string = !empty($summary_parts) ? " Types: " . implode(', ', $summary_parts) . "." : "";
+
+    // Log the action with more details
+    $log_message = "API: User fetched notifications. Total found: {$total_count}, Unread: {$unread_count}." . $summary_string;
+    log_interaction($role, $userId, $log_message, $userName);
+
+
 } catch (PDOException $e) {
     error_log("Fetch Notifications Error: " . $e->getMessage());
+    // Log the error
+    log_interaction($role, $userId, "API ERROR: Failed to fetch notifications. DB Error: " . $e->getMessage(), $userName);
     echo json_encode(['error' => 'A database error occurred.']);
     // Close the connection before exiting
     $conn = null;
@@ -45,7 +84,7 @@ $conn = null;
 
 // --- Categorize Notifications ---
 $categorized = [
-    'Acquisition Requests' => [], // FIX: Added a new category for Acquisition Requests
+    'Acquisition Requests' => [], 
     'Assignments' => [],
     'Leave Status' => [],
     'Notices' => [],
@@ -65,7 +104,7 @@ foreach ($notifications as $notification) {
         'raw_date' => $notification['created_at']
     ];
 
-    // FIX: Added logic to categorize acquisition_request notifications
+    
     if (strpos($type, 'acquisition_request') !== false) {
         $categorized['Acquisition Requests'][] = $formatted_notification;
     } elseif (strpos($type, 'assignment') !== false) {

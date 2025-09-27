@@ -1,180 +1,224 @@
 <?php
-include_once "../../encryption.php";
-include_once "../../includes/connect.php";
-include_once "../../includes/ajax_helpers.php";
+include_once '../../includes/connect.php';
+include_once '../../encryption.php';
+include_once '../../includes/ajax_helpers.php';
+include_once '../../includes/log_system.php'; // Log system included
 
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
-// Check if this is an AJAX request
-if (is_ajax_request()) {
-    // Start output buffering to capture the HTML
-    ob_start();
-}
-
+// Get user info for logging
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 $userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+$userName = isset($_COOKIE['encrypted_user_name']) ? decrypt_id($_COOKIE['encrypted_user_name']) : 'N/A';
 
-if (!$role || !$userId || $role !== 'teacher') {
-    header("Location: ../../login.php?error=Access Denied");
+if ($role !== 'teacher') {
+    header("Location: ../../login.php");
     exit;
 }
 
-$isClassTeacher = false;
-$classTeacherStd = '';
-$schoolId = null;
-$error = '';
+$teacher_id = $userId;
+$school_id = null;
+$class_teacher_std = null;
+$success_msg = '';
+$error_msg = '';
+$past_timetables = [];
 
 try {
-    $stmt = $conn->prepare("SELECT class_teacher, class_teacher_std, school_id FROM teacher WHERE id = ? AND class_teacher = B'1'");
-    $stmt->execute([$userId]);
-    if ($teacher_info = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        if (!empty($teacher_info['class_teacher_std'])) {
-            $isClassTeacher = true;
-            $classTeacherStd = $teacher_info['class_teacher_std'];
-            $schoolId = $teacher_info['school_id'];
-        }
+    // Fetch teacher's school_id and class teacher standard
+    $stmt_teacher = $conn->prepare("SELECT school_id, class_teacher_std FROM teacher WHERE id = ? AND class_teacher = TRUE");
+    $stmt_teacher->execute([$teacher_id]);
+    $teacher_info = $stmt_teacher->fetch(PDO::FETCH_ASSOC);
+
+    if ($teacher_info) {
+        $school_id = $teacher_info['school_id'];
+        $class_teacher_std = $teacher_info['class_teacher_std'];
+    } else {
+        // This page is only for class teachers, so if no standard is assigned, they can't use it.
+        $error_msg = "You are not assigned as a class teacher for any standard. This feature is unavailable.";
     }
 
-    if ($_SERVER["REQUEST_METHOD"] == "POST" && $isClassTeacher) {
-        if (isset($_FILES['timetable_file']) && $_FILES['timetable_file']['error'] == 0) {
-            $originalFilename = basename($_FILES["timetable_file"]["name"]);
-            $uploadDirServer = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/teacher/uploads/timetables/';
-            $uploadDirWeb = '/pages/teacher/uploads/timetables/';
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $class_teacher_std) {
+        $standard = $_POST['standard'] ?? null;
+        $file_path = null;
+        $original_filename = null;
 
-            if (!is_dir($uploadDirServer)) {
-                mkdir($uploadDirServer, 0777, true);
-            }
-            $storageFilename = uniqid('tt_', true) . '_' . preg_replace('/[^A-Za-z0-9\._-]/', '', $originalFilename);
-            $serverFilePath = $uploadDirServer . $storageFilename;
-
-            if (move_uploaded_file($_FILES["timetable_file"]["tmp_name"], $serverFilePath)) {
-                $filePathForDB = $uploadDirWeb . $storageFilename;
-
-                $conn->beginTransaction();
-
-                $insert_stmt = $conn->prepare("INSERT INTO exam_timetables (school_id, title, file_path, original_filename, uploaded_by) VALUES (?, ?, ?, ?, ?)");
-                $title = "Class Timetable for Standard " . $classTeacherStd;
-                $insert_stmt->execute([$schoolId, $title, $filePathForDB, $originalFilename, $userId]);
-
-                $stmt_students = $conn->prepare("SELECT id FROM student WHERE school_id = ? AND std = ?");
-                $stmt_students->execute([$schoolId, $classTeacherStd]);
-                $student_ids_to_notify = $stmt_students->fetchAll(PDO::FETCH_COLUMN, 0);
-
-                if (!empty($student_ids_to_notify)) {
-                    $notification_message = "A new timetable has been uploaded for your class.";
-                    $notification_link = "pages/student/view_timetable.php";
-                    $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, 'exam_timetable')");
-                    foreach ($student_ids_to_notify as $student_id) {
-                        $stmt_notify->execute([$student_id, $notification_message, $notification_link]);
-                    }
-                }
-
-                $conn->commit();
-                header("Location: send_timetable.php?success=1");
-                exit();
-            } else {
-                $error = "Failed to move the uploaded file.";
-            }
+        if (empty($standard)) {
+            $error_msg = "Standard is a required field.";
+        } elseif ($standard !== $class_teacher_std) {
+            $error_msg = "You are not authorized to send timetables for the selected standard.";
         } else {
-            $error = "File upload failed. Please select a valid file.";
+            if (isset($_FILES['timetable_file']) && $_FILES['timetable_file']['error'] == 0) {
+                $upload_dir = 'uploads/timetables/';
+                if (!is_dir($upload_dir)) {
+                    mkdir($upload_dir, 0777, true);
+                }
+                $filename = 'tt_' . uniqid() . '_' . basename($_FILES['timetable_file']['name']);
+                $file_path = $upload_dir . $filename;
+                $original_filename = basename($_FILES['timetable_file']['name']);
+
+                if (move_uploaded_file($_FILES['timetable_file']['tmp_name'], $file_path)) {
+                    $full_file_path = "/BMC-SMS/pages/teacher/" . $file_path;
+                    
+                    $conn->beginTransaction();
+
+                    $stmt = $conn->prepare(
+                        "INSERT INTO timetables (school_id, standard, class_teacher_id, timetable_file, original_filename) VALUES (?, ?, ?, ?, ?)"
+                    );
+                    $stmt->execute([$school_id, $standard, $teacher_id, $full_file_path, $original_filename]);
+
+                    // Notify students of the standard
+                    $stmt_students = $conn->prepare("SELECT id FROM student WHERE school_id = ? AND std = ?");
+                    $stmt_students->execute([$school_id, $standard]);
+                    $student_ids = $stmt_students->fetchAll(PDO::FETCH_COLUMN);
+
+                    if (!empty($student_ids)) {
+                        $notification_msg = "A new timetable has been uploaded for your class.";
+                        $notification_link = "pages/student/view_timetable.php";
+                        $notification_type = "timetable";
+                        $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");
+                        foreach ($student_ids as $student_id) {
+                            $stmt_notify->execute([$student_id, $notification_msg, $notification_link, $notification_type]);
+                        }
+                    }
+
+                    $conn->commit();
+                    $success_msg = "Timetable sent successfully!";
+                    // Log the successful action
+                    log_interaction($role, $userId, "TIMETABLE: Sent timetable for Standard {$standard}.", $userName);
+
+                } else {
+                    $error_msg = "Failed to upload file.";
+                    log_interaction($role, $userId, "TIMETABLE ERROR: File upload failed for Standard {$standard}.", $userName);
+                }
+            } else {
+                $error_msg = "File upload is required.";
+            }
         }
     }
-} catch (Exception $e) {
-    if (isset($conn) && $conn->inTransaction()) {
+
+    // Fetch past timetables sent by this teacher
+    if ($class_teacher_std) {
+        $stmt_past = $conn->prepare("SELECT standard, original_filename, timetable_file, created_at FROM timetables WHERE class_teacher_id = ? ORDER BY created_at DESC");
+        $stmt_past->execute([$teacher_id]);
+        $past_timetables = $stmt_past->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+} catch (PDOException $e) {
+    if ($conn->inTransaction()) {
         $conn->rollBack();
     }
-    $error = "A database error occurred: " . $e->getMessage();
-    error_log("Send Timetable Error: " . $e->getMessage());
+    $error_msg = "Database Error: " . $e->getMessage();
+    log_interaction($role, $userId, "TIMETABLE ERROR: An error occurred on the Send Timetable page. DB Error: " . $e->getMessage(), $userName);
 }
-$pageTitle = 'Send Timetable';
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="utf-8">
-    <title><?php echo htmlspecialchars($pageTitle); ?></title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+    <meta charset="UTF-8">
+    <title>Send Timetable</title>
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
-
 <body id="page-top">
     <div id="wrapper">
-        <?php
+<?php
 if (!$is_ajax_request) {
     include '../../includes/sidebar.php';
 }
-?> <div id="content-wrapper" class="d-flex flex-column">
+?>        <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php
+<?php
 if (!$is_ajax_request) {
     include '../../includes/header.php';
 }
-?> <div class="container-fluid">
-                    <h1 class="h3 mb-4 text-gray-800">Send Timetable</h1>
-                    <?php if (!empty($error)): ?>
-                    <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
-                    <?php endif; ?>
-                    <?php if (isset($_GET['success'])): ?>
-                    <div class="alert alert-success">Timetable uploaded successfully!</div>
-                    <?php endif; ?>
-
-                    <?php if (!$isClassTeacher): ?>
-                    <div class="alert alert-danger">You are not assigned as a class teacher. You do not have permission
-                        to upload a timetable.</div>
-                    <?php else: ?>
+?>
+                <div class="container-fluid">
+                    <h1 class="h3 mb-4 text-gray-800">Send Timetable to Class</h1>
+                    <?php if ($success_msg): ?><div class="alert alert-success"><?php echo htmlspecialchars($success_msg); ?></div><?php endif; ?>
+                    <?php if ($error_msg): ?><div class="alert alert-danger"><?php echo htmlspecialchars($error_msg); ?></div><?php endif; ?>
+                    
+                    <?php if ($class_teacher_std): ?>
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">Upload Timetable for Your Class</h6>
+                            <h6 class="m-0 font-weight-bold text-primary">Upload Timetable</h6>
                         </div>
                         <div class="card-body">
-                            <form method="POST" action="send_timetable.php" enctype="multipart/form-data">
-                                <div class="form-group"><label for="target_standard">Standard</label><input type="text"
-                                        class="form-control" id="target_standard" name="target_standard"
-                                        value="Standard <?php echo htmlspecialchars($classTeacherStd); ?>" readonly>
+                            <form method="POST" enctype="multipart/form-data">
+                                <div class="form-group">
+                                    <label for="standard">Standard</label>
+                                    <input type="text" class="form-control" id="standard" name="standard" value="<?php echo htmlspecialchars($class_teacher_std); ?>" readonly>
                                 </div>
-                                <div class="form-group"><label for="timetable_file">Upload Timetable File (PDF, PNG,
-                                        JPG)</label><input type="file" class="form-control-file" id="timetable_file"
-                                        name="timetable_file" accept=".pdf,.png,.jpg,.jpeg" required></div>
-                                <button type="submit" name="send_timetable" class="btn btn-primary">Upload
-                                    Timetable</button>
+                                <div class="form-group">
+                                    <label for="timetable_file">Attach Timetable File *</label>
+                                    <input type="file" class="form-control-file" id="timetable_file" name="timetable_file" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Send Timetable</button>
                             </form>
+                        </div>
+                    </div>
+                    
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">Past Timetable History</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                    <thead>
+                                        <tr>
+                                            <th>Date Sent</th>
+                                            <th>Standard</th>
+                                            <th>File Name</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if (empty($past_timetables)): ?>
+                                            <tr><td colspan="4" class="text-center">You have not sent any timetables yet.</td></tr>
+                                        <?php else: ?>
+                                            <?php foreach ($past_timetables as $timetable): ?>
+                                                <tr>
+                                                    <td><?php echo date('d-M-Y h:i A', strtotime($timetable['created_at'])); ?></td>
+                                                    <td><?php echo htmlspecialchars($timetable['standard']); ?></td>
+                                                    <td><?php echo htmlspecialchars($timetable['original_filename']); ?></td>
+                                                    <td>
+                                                        <a href="<?php echo htmlspecialchars($timetable['timetable_file']); ?>" target="_blank" class="btn btn-sm btn-info">
+                                                            <i class="fas fa-download"></i> View
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                     <?php endif; ?>
                 </div>
             </div>
-            <?php
+<?php
 if (!$is_ajax_request) {
     include '../../includes/footer.php';
 }
-?>
-        </div>
+?>        </div>
     </div>
     <?php include_once "../../includes/logout_modal.php" ?>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../../assets/vendor/jquery/jquery.min.js"></script>
+    <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
+    <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
+    <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#dataTable').DataTable({
+                 "order": [[ 0, "desc" ]] // Sort by the first column (Date Sent) in descending order
+            });
+        });
+    </script>
 </body>
-<?php
-// Add this block at the very end of the file
-if (is_ajax_request()) {
-    // Get the captured HTML
-    $content = ob_get_clean();
-    
-    // Extract just the main content area for the AJAX response
-    if (preg_match('/<div class="container-fluid".*?>(.*?)<\ /div>/s', $content, $matches)) {
-    echo '<div class="container-fluid">' . $matches[1] . '</div>';
-    } else {
-    // Fallback if the main container isn't found
-    echo $content;
-    }
-    // Stop the script for AJAX requests
-    exit;
-    }
-    ?>
-
 </html>

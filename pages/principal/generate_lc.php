@@ -1,119 +1,132 @@
 <?php
-include_once "../../includes/connect.php";
-include_once "../../encryption.php";
-include_once "../../includes/ajax_helpers.php";
+include_once '../../includes/connect.php';
+include_once '../../encryption.php';
+include_once '../../includes/ajax_helpers.php';
+include_once '../../includes/log_system.php'; // Log system included
 
-// This check is crucial for the AJAX navigation to work.
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
-// $is_ajax_request = is_ajax_request();
 
+// Get user info
+$role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
+$userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+$userName = isset($_COOKIE['encrypted_user_name']) ? decrypt_id($_COOKIE['encrypted_user_name']) : 'N/A';
 
-if (!isset($_COOKIE['encrypted_user_role']) || decrypt_id($_COOKIE['encrypted_user_role']) !== 'principal') {
+if ($role !== 'principal') {
     header("Location: ../../login.php");
     exit;
 }
 
-if (!defined('BASE_URL')) {
-    define('BASE_URL', '/BMC-SMS/');
+// Log page access - this is minimal and happens only once on load
+if (!$is_ajax_request && !isset($_SESSION['lc_page_visited'])) {
+    log_interaction($role, $userId, "Accessed the Generate Leaving Certificate page.", $userName);
+    $_SESSION['lc_page_visited'] = true;
+}
+
+
+$school_id = null;
+try {
+    $stmt = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
+    $stmt->execute([$userId]);
+    $school_id = $stmt->fetchColumn();
+} catch (PDOException $e) {
+    die("Database error fetching school ID: " . $e->getMessage());
+}
+
+if (!$school_id) {
+    die("Error: Could not determine your school.");
+}
+
+$students = [];
+try {
+    $stmt = $conn->prepare("SELECT id, student_name, rollno, std FROM student WHERE school_id = ? ORDER BY std, rollno");
+    $stmt->execute([$school_id]);
+    $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    die("Database error fetching students: " . $e->getMessage());
 }
 
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="utf-8">
-    <title>Generate Leave Certificate - School Management System</title>
-    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
+    <meta charset="UTF-8">
+    <title>Generate Leaving Certificate</title>
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-</head>
+    <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
 
+</head>
 <body id="page-top">
     <div id="wrapper">
-        <?php
-        if (!$is_ajax_request) {
-            include '../../includes/sidebar.php';
-        }
-        ?>
-        <div id="content-wrapper" class="d-flex flex-column">
+<?php
+if (!$is_ajax_request) {
+    include '../../includes/sidebar.php';
+}
+?>        <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php
-                if (!$is_ajax_request) {
-                    include '../../includes/header.php';
-                }
-                ?>
+<?php
+if (!$is_ajax_request) {
+    include '../../includes/header.php';
+}
+?>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Generate Leaving Certificate</h1>
-
-                    <?php if (isset($_GET['success'])): ?>
-                        <div class="alert alert-success"><?php echo htmlspecialchars($_GET['success']); ?></div>
-                    <?php endif; ?>
-                    <?php if (isset($_GET['error'])): ?>
-                        <div class="alert alert-danger"><?php echo htmlspecialchars($_GET['error']); ?></div>
-                    <?php endif; ?>
-
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">Enter Student Details</h6>
+                            <h6 class="m-0 font-weight-bold text-primary">Select a Student</h6>
                         </div>
                         <div class="card-body">
-                            <form action="process_lc.php" method="POST">
-                                <div class="form-group"><label for="student_email">Student's Email Address</label><input type="email" class="form-control" id="student_email" name="student_email" placeholder="Enter student's email" required></div>
-                                <div class="form-group"><label for="leaving_date">Leaving Date</label><input type="date" class="form-control" id="leaving_date" name="leaving_date" required></div>
-                                <div class="form-group"><label for="reason_for_leaving">Reason for Leaving</label><textarea class="form-control" id="reason_for_leaving" name="reason_for_leaving" rows="3" required></textarea></div>
-                                <button type="submit" class="btn btn-primary">Generate LC</button>
-                            </form>
+                            <div class="table-responsive">
+                                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                    <thead>
+                                        <tr>
+                                            <th>Standard</th>
+                                            <th>Roll No</th>
+                                            <th>Student Name</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($students as $student): ?>
+                                        <tr>
+                                            <td><?php echo htmlspecialchars($student['std']); ?></td>
+                                            <td><?php echo htmlspecialchars($student['rollno']); ?></td>
+                                            <td><?php echo htmlspecialchars($student['student_name']); ?></td>
+                                            <td>
+                                                <a href="process_lc.php?student_id=<?php echo encrypt_id($student['id']); ?>" class="btn btn-primary btn-sm">
+                                                    <i class="fas fa-file-pdf"></i> Generate LC
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <?php
-            if (!$is_ajax_request) {
-                include '../../includes/footer.php';
-            }
-            ?>
-        </div>
+<?php
+if (!$is_ajax_request) {
+    include '../../includes/footer.php';
+}
+?>        </div>
     </div>
-    <?php include_once "../../includes/logout_modal.php" ?>
+    <?php include_once "../../includes/logout_modal.php"; ?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
-
+    <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
+    <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const leavingDateInput = document.getElementById('leaving_date');
-
-            // Get today's date in YYYY-MM-DD format
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-based
-            const day = String(today.getDate()).padStart(2, '0');
-            const formattedDate = `${year}-${month}-${day}`;
-
-            // Set the min attribute of the date input
-            leavingDateInput.setAttribute('min', formattedDate);
+        $(document).ready(function() {
+            $('#dataTable').DataTable();
         });
     </script>
 </body>
-<?php
-// Add this block at the very end of the file
-if (is_ajax_request()) {
-    // Get the captured HTML
-    $content = ob_get_clean();
-
-    // Extract just the main content area for the AJAX response
-    if (preg_match('/<div class="container-fluid".*?>(.*?)<\/div>/s', $content, $matches)) {
-        echo '<div class="container-fluid">' . $matches[1] . '</div>';
-    } else {
-        // Fallback if the main container isn't found
-        echo $content;
-    }
-    // Stop the script for AJAX requests
-    exit;
-}
-?>
-
 </html>

@@ -1,11 +1,18 @@
 <?php
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
+include_once "../../includes/log_system.php"; // Correctly include the log system
+
+// Start session to store messages
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
 
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
 $userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+$userName = isset($_COOKIE['encrypted_user_name']) ? decrypt_id($_COOKIE['encrypted_user_name']) : 'N/A';
 
 if ($role !== 'principal') {
     header("Location: ../../login.php");
@@ -14,83 +21,124 @@ if ($role !== 'principal') {
 
 $school_id = null;
 if ($userId) {
-    $stmt = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
-    $stmt->execute([$userId]);
-    $school_id = $stmt->fetchColumn();
+    try {
+        $stmt = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
+        $stmt->execute([$userId]);
+        $school_id = $stmt->fetchColumn();
+    } catch (PDOException $e) {
+        die("Error fetching school ID: " . $e->getMessage());
+    }
 }
-if (!$school_id) die("Error: Could not determine your school.");
+if (!$school_id) {
+    die("Error: Could not determine your school.");
+}
 
 $errors = [];
 $success = '';
-$edit_driver = null;
 
-// Handle Delete Request
-if (isset($_GET['delete_id'])) {
-    $delete_id = (int)$_GET['delete_id'];
-    try {
-        $stmt = $conn->prepare("DELETE FROM drivers WHERE id = ? AND school_id = ?");
-        $stmt->execute([$delete_id, $school_id]);
-        $success = "Driver deleted successfully!";
-    } catch (PDOException $e) {
-        $errors[] = "Error deleting driver: " . $e->getMessage();
-    }
-    header("Location: manage_drivers.php?success=" . urlencode($success));
-    exit;
+// Function to set messages in session
+function set_message($type, $message) {
+    $_SESSION['message'] = ['type' => $type, 'text' => $message];
 }
 
-// Handle Edit Request
-if (isset($_GET['edit_id'])) {
-    $edit_id = (int)$_GET['edit_id'];
-    $stmt = $conn->prepare("SELECT * FROM drivers WHERE id = ? AND school_id = ?");
-    $stmt->execute([$edit_id, $school_id]);
-    $edit_driver = $stmt->fetch(PDO::FETCH_ASSOC);
+// Function to display messages from session
+function display_message() {
+    if (isset($_SESSION['message'])) {
+        $type = $_SESSION['message']['type'];
+        $text = $_SESSION['message']['text'];
+        echo "<div class='alert alert-{$type}'>{$text}</div>";
+        unset($_SESSION['message']);
+    }
 }
 
-// Handle Add/Edit Driver
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_driver'])) {
-    $driver_id = !empty($_POST['driver_id']) ? (int)$_POST['driver_id'] : null;
-    $driver_name = trim($_POST['driver_name']);
-    $phone_number = trim($_POST['phone_number']);
-    $license_number = trim($_POST['license_number']);
+try {
+    // Handle Add Driver
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_driver'])) {
+        $driver_name = trim($_POST['driver_name']);
+        // CORRECTED: The column name in the database is phone_number
+        $phone = trim($_POST['phone_number']);
+        $license_number = trim($_POST['license_number']);
 
-    if (empty($driver_name) || empty($phone_number) || empty($license_number)) {
-        $errors[] = "All fields are required.";
-    }
-
-    if (empty($errors)) {
-        try {
-            if ($driver_id) { // Update
-                $sql = "UPDATE drivers SET driver_name = ?, phone_number = ?, license_number = ? WHERE id = ? AND school_id = ?";
-                $stmt = $conn->prepare($sql);
-                $stmt->execute([$driver_name, $phone_number, $license_number, $driver_id, $school_id]);
-                $success = "Driver updated successfully!";
-            } else { // Insert
-                $sql = "INSERT INTO drivers (school_id, driver_name, phone_number, license_number) VALUES (?, ?, ?, ?)";
-                $stmt = $conn->prepare($sql);
-                $stmt->execute([$school_id, $driver_name, $phone_number, $license_number]);
-                $success = "Driver added successfully!";
+        if (empty($driver_name) || empty($phone) || empty($license_number)) {
+            $errors[] = "All fields are required.";
+        } else {
+            // CORRECTED: Removed vehicle_id from the INSERT statement
+            $stmt = $conn->prepare("INSERT INTO drivers (school_id, driver_name, phone_number, license_number) VALUES (?, ?, ?, ?)");
+            if ($stmt->execute([$school_id, $driver_name, $phone, $license_number])) {
+                set_message('success', "Driver '{$driver_name}' added successfully!");
+                log_interaction($role, $userId, "TRANSPORT: Added new driver '{$driver_name}'.", $userName);
+            } else {
+                set_message('danger', "Failed to add driver.");
+                log_interaction($role, $userId, "TRANSPORT ERROR: Failed to add new driver '{$driver_name}'.", $userName);
             }
-            header("Location: manage_drivers.php?success=" . urlencode($success));
-            exit;
-        } catch (PDOException $e) {
-            $errors[] = "Database error: " . $e->getMessage();
         }
     }
-}
+    // Handle Edit Driver
+    elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_driver'])) {
+        $driver_id = (int)$_POST['edit_driver_id'];
+        $driver_name = trim($_POST['edit_driver_name']);
+         // CORRECTED: The column name in the database is phone_number
+        $phone = trim($_POST['edit_phone_number']);
+        $license_number = trim($_POST['edit_license_number']);
 
-if (isset($_GET['success'])) {
-    $success = htmlspecialchars($_GET['success']);
-}
+        if (empty($driver_name) || empty($phone) || empty($license_number)) {
+            $errors[] = "All fields are required.";
+        } else {
+            // CORRECTED: Removed vehicle_id from the UPDATE statement
+            $stmt = $conn->prepare("UPDATE drivers SET driver_name = ?, phone_number = ?, license_number = ? WHERE id = ? AND school_id = ?");
+            if ($stmt->execute([$driver_name, $phone, $license_number, $driver_id, $school_id])) {
+                set_message('success', "Driver '{$driver_name}' updated successfully!");
+                log_interaction($role, $userId, "TRANSPORT: Updated driver details for '{$driver_name}' (ID: {$driver_id}).", $userName);
+            } else {
+                set_message('danger', "Failed to update driver.");
+                log_interaction($role, $userId, "TRANSPORT ERROR: Failed to update driver '{$driver_name}' (ID: {$driver_id}).", $userName);
+            }
+        }
+    }
+    // Handle Delete Driver
+    elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_driver'])) {
+        $driver_id = (int)$_POST['delete_driver_id'];
+        $stmt_get_name = $conn->prepare("SELECT driver_name FROM drivers WHERE id = ?");
+        $stmt_get_name->execute([$driver_id]);
+        $driver_name = $stmt_get_name->fetchColumn();
 
-// Fetch all drivers for the school
-$drivers = [];
-try {
-    $stmt = $conn->prepare("SELECT * FROM drivers WHERE school_id = ? ORDER BY driver_name");
-    $stmt->execute([$school_id]);
-    $drivers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $conn->prepare("DELETE FROM drivers WHERE id = ? AND school_id = ?");
+        if ($stmt->execute([$driver_id, $school_id])) {
+            set_message('success', "Driver '{$driver_name}' deleted successfully!");
+            log_interaction($role, $userId, "TRANSPORT: Deleted driver '{$driver_name}' (ID: {$driver_id}).", $userName);
+        } else {
+            set_message('danger', "Failed to delete driver.");
+            log_interaction($role, $userId, "TRANSPORT ERROR: Failed to delete driver '{$driver_name}' (ID: {$driver_id}).", $userName);
+        }
+    }
+
+    if (!empty($errors)) {
+        $_SESSION['form_errors'] = $errors;
+    }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        header("Location: manage_drivers.php");
+        exit();
+    }
+
 } catch (PDOException $e) {
-    $errors[] = "Could not fetch driver list: " . $e->getMessage();
+    $error_message = "Database error: " . $e->getMessage();
+    set_message('danger', $error_message);
+    log_interaction($role, $userId, "DATABASE ERROR on driver management page: " . $e->getMessage(), $userName);
+    header("Location: manage_drivers.php");
+    exit();
 }
+
+if(isset($_SESSION['form_errors'])) {
+    $errors = $_SESSION['form_errors'];
+    unset($_SESSION['form_errors']);
+}
+
+// Fetch Data for Display
+// CORRECTED: Removed the LEFT JOIN with the vehicles table as there is no direct link.
+$drivers_query = $conn->prepare("SELECT * FROM drivers WHERE school_id = ? ORDER BY driver_name");
+$drivers_query->execute([$school_id]);
+$drivers = $drivers_query->fetchAll(PDO::FETCH_ASSOC);
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -98,11 +146,11 @@ try {
     <meta charset="utf-8">
     <title>Manage Drivers - School Management System</title>
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-    <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
     <div id="wrapper">
@@ -118,48 +166,51 @@ if (!$is_ajax_request) {
 }
 ?>                <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Manage Drivers</h1>
-                    <?php if (!empty($errors)): ?>
-                        <div class="alert alert-danger"><?php foreach ($errors as $error): ?><p class="mb-0"><?php echo htmlspecialchars($error); ?></p><?php endforeach; ?></div>
-                    <?php endif; ?>
-                    <?php if ($success): ?><div class="alert alert-success"><?php echo $success; ?></div><?php endif; ?>
+                    <?php display_message(); ?>
+                    <?php if (!empty($errors)): ?><div class="alert alert-danger"><?php foreach ($errors as $error): echo "<p class='mb-0'>".htmlspecialchars($error)."</p>"; endforeach; ?></div><?php endif; ?>
 
                     <div class="card shadow mb-4">
-                        <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-plus-circle"></i> <?php echo $edit_driver ? 'Edit Driver' : 'Add New Driver'; ?></h6></div>
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">Add New Driver</h6>
+                        </div>
                         <div class="card-body">
                             <form method="POST" action="manage_drivers.php">
-                                <?php if ($edit_driver): ?>
-                                    <input type="hidden" name="driver_id" value="<?php echo $edit_driver['id']; ?>">
-                                <?php endif; ?>
                                 <div class="form-row">
-                                    <div class="form-group col-md-4"><label for="driver_name">Driver Name *</label><input type="text" class="form-control" name="driver_name" value="<?php echo htmlspecialchars($edit_driver['driver_name'] ?? ''); ?>" required></div>
-                                    <div class="form-group col-md-4"><label for="phone_number">Phone Number *</label><input type="text" class="form-control" name="phone_number" value="<?php echo htmlspecialchars($edit_driver['phone_number'] ?? ''); ?>" required></div>
-                                    <div class="form-group col-md-4"><label for="license_number">License Number *</label><input type="text" class="form-control" placeholder="Format : SS-RRYYYYNNNNNNN" name="license_number" value="<?php echo htmlspecialchars($edit_driver['license_number'] ?? ''); ?>" required></div>
+                                    <div class="form-group col-md-4"><input type="text" class="form-control" name="driver_name" placeholder="Driver Name" required></div>
+                                    <div class="form-group col-md-3"><input type="text" class="form-control" name="phone_number" placeholder="Phone Number" required></div>
+                                    <div class="form-group col-md-3"><input type="text" class="form-control" name="license_number" placeholder="License Number" required></div>
+                                    <div class="form-group col-md-2"><button type="submit" name="add_driver" class="btn btn-primary btn-block">Add Driver</button></div>
                                 </div>
-                                <button type="submit" name="save_driver" class="btn btn-primary"><?php echo $edit_driver ? 'Update Driver' : 'Save Driver'; ?></button>
-                                <?php if ($edit_driver): ?>
-                                    <a href="manage_drivers.php" class="btn btn-secondary">Cancel Edit</a>
-                                <?php endif; ?>
                             </form>
                         </div>
                     </div>
 
                     <div class="card shadow mb-4">
-                        <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-id-card-alt"></i> Existing Drivers</h6></div>
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">Existing Drivers</h6>
+                        </div>
                         <div class="card-body">
                             <div class="table-responsive">
-                                <table class="table table-bordered" width="100%" cellspacing="0">
-                                    <thead><tr><th>Name</th><th>Phone</th><th>License No.</th><th>Actions</th></tr></thead>
+                                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Phone</th>
+                                            <th>License Number</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
                                     <tbody>
                                         <?php foreach ($drivers as $driver): ?>
-                                            <tr>
-                                                <td><?php echo htmlspecialchars($driver['driver_name']); ?></td>
-                                                <td><?php echo htmlspecialchars($driver['phone_number']); ?></td>
-                                                <td><?php echo htmlspecialchars($driver['license_number']); ?></td>
-                                                <td>
-                                                    <a href="?edit_id=<?php echo $driver['id']; ?>" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i></a>
-                                                    <a href="#" data-toggle="modal" data-target="#deleteModal" data-url="?delete_id=<?php echo $driver['id']; ?>" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></a>
-                                                </td>
-                                            </tr>
+                                        <tr>
+                                            <td><?php echo htmlspecialchars($driver['driver_name']); ?></td>
+                                            <td><?php echo htmlspecialchars($driver['phone_number']); ?></td>
+                                            <td><?php echo htmlspecialchars($driver['license_number']); ?></td>
+                                            <td>
+                                                <button class="btn btn-sm btn-warning" data-toggle="modal" data-target="#editModal" data-id="<?php echo $driver['id']; ?>" data-name="<?php echo htmlspecialchars($driver['driver_name']); ?>" data-phone="<?php echo htmlspecialchars($driver['phone_number']); ?>" data-license="<?php echo htmlspecialchars($driver['license_number']); ?>">Edit</button>
+                                                <button class="btn btn-sm btn-danger" data-toggle="modal" data-target="#deleteModal" data-id="<?php echo $driver['id']; ?>" data-name="<?php echo htmlspecialchars($driver['driver_name']); ?>">Delete</button>
+                                            </td>
+                                        </tr>
                                         <?php endforeach; ?>
                                     </tbody>
                                 </table>
@@ -174,42 +225,80 @@ if (!$is_ajax_request) {
 }
 ?>        </div>
     </div>
-
-    <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal fade" id="editModal" tabindex="-1" role="dialog">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="deleteModalLabel">Confirm Deletion</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    Are you sure you want to delete this item? This action cannot be undone.
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                    <a href="#" id="confirmDeleteBtn" class="btn btn-danger">Delete</a>
-                </div>
+                <form method="POST" action="manage_drivers.php">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Driver</h5>
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="edit_driver_id" id="edit_driver_id">
+                        <div class="form-group"><label>Name</label><input type="text" class="form-control" name="edit_driver_name" id="edit_driver_name" required></div>
+                        <div class="form-group"><label>Phone</label><input type="text" class="form-control" name="edit_phone_number" id="edit_phone_number" required></div>
+                        <div class="form-group"><label>License Number</label><input type="text" class="form-control" name="edit_license_number" id="edit_license_number" required></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="submit" name="edit_driver" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
-    
+    <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <form method="POST" action="manage_drivers.php">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Delete Driver</h5>
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Are you sure you want to delete the driver <strong id="delete_driver_name"></strong>?</p>
+                        <input type="hidden" name="delete_driver_id" id="delete_driver_id">
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" name="delete_driver" class="btn btn-danger">Delete</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
     <?php include_once "../../includes/logout_modal.php"; ?>
-    
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
-
+    <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
+    <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
     <script>
-    $(document).ready(function() {
-        $('#deleteModal').on('show.bs.modal', function (event) {
-            var button = $(event.relatedTarget);
-            var url = button.data('url');
-            var modal = $(this);
-            modal.find('#confirmDeleteBtn').attr('href', url);
+        $(document).ready(function() {
+            $('#dataTable').DataTable();
         });
-    });
+        $('#editModal').on('show.bs.modal', function(event) {
+            var button = $(event.relatedTarget);
+            var id = button.data('id');
+            var name = button.data('name');
+            var phone = button.data('phone');
+            var license = button.data('license');
+            var modal = $(this);
+            modal.find('#edit_driver_id').val(id);
+            modal.find('#edit_driver_name').val(name);
+            // CORRECTED: The ID of the phone input is edit_phone_number
+            modal.find('#edit_phone_number').val(phone);
+            modal.find('#edit_license_number').val(license);
+        });
+        $('#deleteModal').on('show.bs.modal', function(event) {
+            var button = $(event.relatedTarget);
+            var id = button.data('id');
+            var name = button.data('name');
+            var modal = $(this);
+            modal.find('#delete_driver_id').val(id);
+            modal.find('#delete_driver_name').text(name);
+        });
     </script>
 </body>
 </html>
