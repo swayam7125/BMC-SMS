@@ -6,7 +6,6 @@ include_once '../../includes/ajax_helpers.php';
 
 // This check is crucial for the AJAX navigation to work.
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
-// $is_ajax_request = is_ajax_request();
 
 $message = '';
 $hr_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
@@ -88,6 +87,7 @@ try {
         <link rel="stylesheet" href="../../assets/css/sidebar.css">
         <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
         <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700" rel="stylesheet">
+        <link rel="stylesheet" href="../../assets/css/responsive.css" />
     </head>
 
     <body id="page-top">
@@ -210,6 +210,8 @@ try {
         <script src="../../assets/vendor/jquery/jquery.min.js"></script>
         <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
         <script src="../../assets/js/sb-admin-2.min.js"></script>
+        <script src="../../assets/js/responsive-tables.js"></script>
+
         <script>
             document.addEventListener('DOMContentLoaded', function() {
                 const fromDateInput = document.getElementById('from_date');

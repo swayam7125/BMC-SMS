@@ -145,6 +145,8 @@ $active_section = isset($_GET['section']) ? $_GET['section'] : 'school';
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../assets/css/responsive.css" />
+
     <style>
         .transport-details {
             display: none;
@@ -339,6 +341,8 @@ if (!$is_ajax_request) {
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
+    <script src="../../assets/js/responsive-tables.js"></script>
+
     <script>
         function showSection(section) {
             document.getElementById('school-section').style.display = 'none';

@@ -288,6 +288,8 @@ $current_image_web_path = getWebAccessibleImagePath($principal['principal_image'
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link rel="stylesheet" href="../../assets/css/responsive.css" />
+
 </head>
 
 <body id="page-top">
@@ -491,6 +493,8 @@ $current_image_web_path = getWebAccessibleImagePath($principal['principal_image'
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
+    <script src="../../assets/js/responsive-tables.js"></script>
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.timing-row .custom-control-input').forEach(function(checkbox) {

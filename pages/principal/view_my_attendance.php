@@ -60,6 +60,7 @@ $page_title = "My Attendance Report";
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link href="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../assets/css/responsive.css" />
 </head>
 
 <body id="page-top">
@@ -153,6 +154,8 @@ if (!$is_ajax_request) {
     <script src="/BMC-SMS/assets/js/sb-admin-2.min.js"></script>
     <script src="/BMC-SMS/assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+    <script src="../../assets/js/responsive-tables.js"></script>
+
     <script>
         $(document).ready(function() {
             $('#dataTable').DataTable({

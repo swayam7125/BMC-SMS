@@ -1,10 +1,4 @@
 <?php
-/*
- * Filename: librarian_delete.php
- * Description: Securely deletes a librarian record, archives it, and removes associated files.
- * This is a backend script with no visual output.
- */
-
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 include_once "../../includes/log_system.php"; // ADDED: Log system dependency

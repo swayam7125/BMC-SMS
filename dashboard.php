@@ -419,6 +419,7 @@ if ($userId && isset($conn)) {
     <link rel="stylesheet" href="/BMC-SMS/assets/css/sidebar.css">
     <link rel="stylesheet" href="/BMC-SMS/assets/css/scrollbar_hidden.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link rel="stylesheet" href="../../assets/css/responsive.css" />
     <style>
         .notification-dashboard-list {
             max-height: 350px;
@@ -881,7 +882,7 @@ if ($userId && isset($conn)) {
     <script src="/BMC-SMS/assets/js/notification.js"></script>
     <script src="/BMC-SMS/assets/js/sidebar.js"></script>
     <script src="/BMC-SMS/assets/vendor/jquery/jquery.min.js"></script>
-
+    <script src="../../assets/js/responsive-tables.js"></script>
     <script>
         // New script block to handle notification clicks on the dashboard
         document.addEventListener('DOMContentLoaded', function() {

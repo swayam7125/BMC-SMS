@@ -1,6 +1,4 @@
 <?php
-// ajax_handler.php
-
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 

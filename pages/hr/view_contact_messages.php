@@ -1,5 +1,4 @@
 <?php
-// Adjust the paths to your existing project structure
 include_once '../../includes/connect.php'; 
 include_once '../../encryption.php';
 
@@ -93,6 +92,7 @@ try {
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link rel="stylesheet" href="../../assets/css/responsive.css" />
     <style>
         .unread-row {
             font-weight: bold;
@@ -221,6 +221,8 @@ try {
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
+    <script src="../../assets/js/responsive-tables.js"></script>
+
     <script>
         $(document).ready(function() {
             $('#messagesTable').DataTable({

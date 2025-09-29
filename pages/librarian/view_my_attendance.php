@@ -43,6 +43,7 @@ try {
     <link rel="stylesheet" href="../../assets/css/table-to-card.css">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link rel="stylesheet" href="../../assets/css/responsive.css">
 </head>
 
 <body id="page-top">
@@ -110,6 +111,7 @@ try {
     <script src="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
     <script src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
     <script src="https://cdn.datatables.net/responsive/2.2.9/js/responsive.bootstrap4.min.js"></script>
+    <script src="../../assets/js/responsive-tables.js"></script>
     <script>
         $(document).ready(function() {
             $('#attendanceTable').DataTable({

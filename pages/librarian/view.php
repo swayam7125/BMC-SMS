@@ -1,10 +1,4 @@
 <?php
-/*
- * Filename: view.php
- * Description: Displays a detailed profile page for a specific librarian.
- */
-
-// --- Includes & Setup ---
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 
@@ -104,6 +98,7 @@ try {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link rel="stylesheet" href="../../assets/css/responsive.css" />
     <style>
         .profile-photo {
             width: 150px;
@@ -327,6 +322,7 @@ try {
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
+    <script src="../../assets/js/responsive-tables.js"></script>
 </body>
 
 </html>

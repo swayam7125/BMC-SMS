@@ -1,16 +1,10 @@
 <?php
-/*
-|--------------------------------------------------------------------------
-| BACKEND LOGIC (CONTROLLER)
-|--------------------------------------------------------------------------
-*/
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
 include_once "../../includes/ajax_helpers.php";
 
 // This check is crucial for the AJAX navigation to work.
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
-// $is_ajax_request = is_ajax_request();
 
 // --- Authorization & Initialization ---
 $role = null;
@@ -77,7 +71,8 @@ try {
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-</head>
+    <link rel="stylesheet" href="../../assets/css/responsive.css" />
+    </head>
 
 <body id="page-top">
     <div id="wrapper">
@@ -153,6 +148,7 @@ try {
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
+        <script src="../../assets/js/responsive-tables.js"></script>
 </body>
 
 </html>

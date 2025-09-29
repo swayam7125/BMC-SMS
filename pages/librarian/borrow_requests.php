@@ -1,16 +1,10 @@
 <?php
-/*
-|--------------------------------------------------------------------------
-| BACKEND LOGIC (CONTROLLER)
-|--------------------------------------------------------------------------
-*/
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php';
 
 // This check is crucial for the AJAX navigation to work.
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
-// $is_ajax_request = is_ajax_request();
 
 $success_message = isset($_GET['success']) ? htmlspecialchars($_GET['success']) : null;
 $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null;
@@ -76,6 +70,8 @@ $pageTitle = "Book Borrow Requests";
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link rel="stylesheet" href="../../assets/css/table-to-card.css">
+    <link rel="stylesheet" href="../../assets/css/responsive.css" />
+
     <style>
         .mobile-card-view {
             display: none;
@@ -252,6 +248,7 @@ $pageTitle = "Book Borrow Requests";
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
+    <script src="../../assets/js/responsive-tables.js"></script>
 
     <script>
         $(document).ready(function() {
