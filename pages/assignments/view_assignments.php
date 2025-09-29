@@ -1,9 +1,4 @@
 <?php
-/*
-|--------------------------------------------------------------------------
-| BACKEND LOGIC (CONTROLLER)
-|--------------------------------------------------------------------------
-*/
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
 include_once "../../includes/email_functions.php";
@@ -94,7 +89,7 @@ try {
             FROM assignments a
             JOIN teacher t ON a.teacher_id = t.id
             LEFT JOIN assignment_submissions s ON a.id = s.assignment_id AND s.student_id = :userId
-            WHERE a.std = :std AND a.school_id = :schoolId";
+            WHERE a.standard = :std AND a.school_id = :schoolId";
 
     // Filtering logic
     if ($filter === 'submitted') $sql .= " AND s.status IS NOT NULL AND s.status != 'Rejected'";
@@ -122,12 +117,6 @@ try {
     error_log("Database error in view_assignments.php: " . $e->getMessage());
     $errorMessage = "A database error occurred.";
 }
-
-/*
-|--------------------------------------------------------------------------
-| FRONTEND VIEW (HTML)
-|--------------------------------------------------------------------------
-*/
 ?>
 <!DOCTYPE html>
 <html lang="en">
