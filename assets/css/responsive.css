@@ -1,0 +1,72 @@
+/*--------------------------------------------------------------
+# Responsive & Table-to-Card Styles
+--------------------------------------------------------------*/
+
+/* General Responsive Adjustments */
+@media (max-width: 768px) {
+  .topbar {
+    height: auto;
+    padding: 0.5rem 1rem;
+  }
+
+  .topbar .navbar-search {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+
+  .topbar .nav-item .nav-link {
+    height: auto;
+    padding: 0.5rem;
+  }
+  
+  .card-body {
+    padding: 1rem;
+  }
+}
+
+/* Table to Card Conversion */
+@media (max-width: 767px) {
+  .table-responsive-stack {
+    display: block;
+    width: 100%;
+    border: none;
+  }
+
+  .table-responsive-stack thead {
+    display: none;
+  }
+
+  .table-responsive-stack tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .table-responsive-stack tr {
+    display: block;
+    margin-bottom: 1rem;
+    border: 1px solid #e3e6f0;
+    border-radius: 0.35rem;
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+  }
+
+  .table-responsive-stack td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border: none;
+    border-bottom: 1px solid #e3e6f0;
+    text-align: right;
+  }
+  
+  .table-responsive-stack tr td:last-child {
+      border-bottom: none;
+  }
+
+  .table-responsive-stack td:before {
+    content: attr(data-label);
+    font-weight: bold;
+    text-align: left;
+    padding-right: 1rem;
+  }
+}
