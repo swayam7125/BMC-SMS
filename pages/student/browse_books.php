@@ -7,23 +7,34 @@ error_reporting(E_ALL);
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php';
+include_once '../../includes/log_system.php'; // ADDED: Log system dependency
 
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
 $role = null;
 $user_id = null;
+$user_name = 'Unknown'; // ADDED: Default user name
+
 if (isset($_COOKIE['encrypted_user_role'])) {
     $role = decrypt_id($_COOKIE['encrypted_user_role']);
 }
 if (isset($_COOKIE['encrypted_user_id'])) {
     $user_id = decrypt_id($_COOKIE['encrypted_user_id']);
 }
+if (isset($_COOKIE['encrypted_user_name'])) {
+    $user_name = decrypt_id($_COOKIE['encrypted_user_name']);
+}
+
 
 // Ensure the user is a student
 if ($role !== 'student') {
     header("Location: ../../login.php");
     exit;
 }
+
+// --- LOG PAGE VIEW ---
+log_interaction($role, $user_id, 'Viewed the book browsing page.', $user_name);
+// ---------------------
 
 $school_id = null;
 try {
@@ -67,7 +78,7 @@ if (!$is_ajax_request) {
 ?>        <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
 <?php
-if (!$is_ajax_request) {
+if (!$is_axax_request) {
     include '../../includes/header.php';
 }
 ?>
@@ -144,7 +155,7 @@ if (!$is_ajax_request) {
             </div>
         </div>
     </div>
-    
+
     <?php include_once "../../includes/logout_modal.php" ?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
@@ -159,13 +170,13 @@ if (!$is_ajax_request) {
             $('.request-borrow-btn').on('click', function() {
                 var bookId = $(this).data('book-id');
                 $('#modal_book_id').val(bookId);
-                
+
                 var today = new Date();
                 var minDate = new Date(today);
-                minDate.setDate(today.getDate() + 1); 
+                minDate.setDate(today.getDate() + 1);
                 var maxDate = new Date(today);
                 maxDate.setDate(today.getDate() + 15);
-                
+
                 $('#requested_due_date').attr('min', minDate.toISOString().split('T')[0]);
                 $('#requested_due_date').attr('max', maxDate.toISOString().split('T')[0]);
             });

@@ -1,11 +1,14 @@
 <?php
+// Define a constant for the project root directory for reliable file includes.
+define('ROOT_PATH', dirname(__DIR__, 3));
+
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php';
+include_once '../../includes/log_system.php'; // Includes your log_interaction function
 
 // This check is crucial for the AJAX navigation to work.
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
-// $is_ajax_request = is_ajax_request();
 
 date_default_timezone_set('Asia/Kolkata');
 
@@ -25,10 +28,16 @@ function formatIndianCurrency($number)
     return '₹' . $rest_formatted . ',' . $last_three . $decimal_part;
 }
 
-$role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
-$userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+$role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : 'guest';
+$userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : 0;
+$userName = isset($_COOKIE['encrypted_user_name']) ? decrypt_id($_COOKIE['encrypted_user_name']) : 'Guest';
+
 
 if ($role !== 'hr' || !$userId) {
+    // This is a security event, so it should be logged.
+    if (function_exists('log_interaction')) {
+        log_interaction($role, $userId, "Unauthorized attempt to access process_librarian_salary.php", $userName);
+    }
     header("Location: /BMC-SMS/login.php");
     exit();
 }
@@ -39,13 +48,22 @@ try {
     $stmt->execute([$userId]);
     $school_id = $stmt->fetchColumn();
 } catch (Exception $e) {
+    // This is a critical error, not a page load, so it should be logged.
+    if (function_exists('log_interaction')) {
+        log_interaction($role, $userId, "DB Error fetching HR user data for librarian salary: " . $e->getMessage(), $userName);
+    }
     die("Error fetching user data: " . $e->getMessage());
 }
 
 if (!$school_id) {
+    // This is a critical configuration error, so it should be logged.
+    if (function_exists('log_interaction')) {
+        log_interaction($role, $userId, "Configuration Error: HR user not associated with a school for librarian salary.", $userName);
+    }
     die("Error: HR user is not associated with any school.");
 }
 
+// ACTION: User is submitting the form to process payments.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_pay_submit'])) {
     $selected_librarians = $_POST['selected_librarians'] ?? [];
     $payroll_data_submitted = $_POST['payroll_data'] ?? [];
@@ -57,9 +75,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_pay_submit'])) {
         exit();
     }
 
+    $count = count($selected_librarians);
+    $monthName = date('F', mktime(0, 0, 0, $salary_month, 10));
+    
+    // Log the initiation of the action
+    log_interaction($role, $userId, "Initiated bulk salary payment for $count librarians for $monthName $salary_year.", $userName);
+
     try {
         $conn->beginTransaction();
-        // Use the new table name 'librarian_payroll' and 'hr_user_id' column
         $payment_stmt = $conn->prepare(
             "INSERT INTO librarian_payroll (librarian_id, hr_user_id, school_id, salary_month, salary_year, base_salary, total_working_days, present_days, absent_days, deduction_amount, total_incentives, net_salary_paid) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
@@ -72,32 +95,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_pay_submit'])) {
             $data = $payroll_data_submitted[$librarian_id] ?? null;
             if ($data) {
                 $payment_stmt->execute([
-                    $librarian_id,
-                    $userId,
-                    $school_id,
-                    $salary_month,
-                    $salary_year,
-                    (float)$data['base_salary'],
-                    (int)$data['total_working_days'],
-                    (float)$data['present_days'],
-                    (int)$data['absent_days'],
-                    (float)$data['deduction_amount'],
-                    (float)$data['total_incentives'],
+                    $librarian_id, $userId, $school_id, $salary_month, $salary_year,
+                    (float)$data['base_salary'], (int)$data['total_working_days'], (float)$data['present_days'],
+                    (int)$data['absent_days'], (float)$data['deduction_amount'], (float)$data['total_incentives'],
                     (float)$data['net_salary_paid']
                 ]);
-                $monthName = date('F', mktime(0, 0, 0, $salary_month, 10));
                 $message = "Your salary for $monthName $salary_year amounting to " . formatIndianCurrency($data['net_salary_paid']) . " has been processed.";
-                $notify_stmt->execute([$librarian_id, $message, 'librarian_salary', 'pages/librarian/view_salary_history.php']);
+                $notify_stmt->execute([$librarian_id, $message, 'salary', 'pages/librarian/view_salary_history.php']);
             }
         }
         $conn->commit();
-        $count = count($selected_librarians);
+        
+        // Log the successful completion of the action
+        log_interaction($role, $userId, "Successfully processed salary payment for $count librarian(s) for $monthName $salary_year.", $userName);
+        
         header("Location: " . $_SERVER['PHP_SELF'] . "?month=$salary_month&year=$salary_year&success=" . urlencode("Successfully processed payments for $count librarian(s)!"));
         exit();
     } catch (Exception $e) {
         if ($conn->inTransaction()) {
             $conn->rollBack();
         }
+        
+        // Log the failure of the action
+        log_interaction($role, $userId, "Bulk librarian salary payment failed for $monthName $salary_year. Error: " . $e->getMessage(), $userName);
+
         header("Location: " . $_SERVER['PHP_SELF'] . "?month=$salary_month&year=$salary_year&error=" . urlencode("Error: " . $e->getMessage()));
         exit();
     }
@@ -127,7 +148,7 @@ try {
     $librarian_stmt = $conn->prepare("SELECT id, librarian_name, salary FROM librarian WHERE school_id = ? ORDER BY librarian_name");
     $librarian_stmt->execute([$school_id]);
     $librarians = $librarian_stmt->fetchAll(PDO::FETCH_ASSOC);
-    // Use the new table name 'librarian_payroll'
+
     $paid_stmt = $conn->prepare("SELECT librarian_id FROM librarian_payroll WHERE school_id = ? AND salary_month = ? AND salary_year = ?");
     $paid_stmt->execute([$school_id, $filter_month, $filter_year]);
     $paid_librarians = $paid_stmt->fetchAll(PDO::FETCH_COLUMN);
@@ -169,11 +190,12 @@ try {
     }
 } catch (Exception $e) {
     $errorMessage = "An error occurred: " . $e->getMessage();
+    // Log the error in data fetching as it prevents the user from taking action.
+    log_interaction($role, $userId, "Error fetching librarian payroll data: " . $e->getMessage(), $userName);
 }
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <title>Process Librarian Payroll</title>
@@ -184,7 +206,6 @@ try {
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
-
 <body id="page-top">
     <div id="wrapper">
         <?php
@@ -204,7 +225,6 @@ try {
                     <?php if (isset($_GET['success'])): ?><div class="alert alert-success alert-dismissible fade show" role="alert"><?php echo htmlspecialchars($_GET['success']); ?><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div><?php endif; ?>
                     <?php if (isset($_GET['error'])): ?><div class="alert alert-danger alert-dismissible fade show" role="alert"><?php echo htmlspecialchars($_GET['error']); ?><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div><?php endif; ?>
                     <?php if ($errorMessage): ?><div class="alert alert-danger"><?php echo $errorMessage; ?></div><?php endif; ?>
-
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
                             <h6 class="m-0 font-weight-bold text-primary">Select Payroll Period</h6>
@@ -238,7 +258,6 @@ try {
                             </form>
                         </div>
                     </div>
-
                     <?php if (!empty($payroll_data)): ?>
                         <div class="card shadow mb-4">
                             <div class="card-header py-3">
@@ -246,13 +265,12 @@ try {
                             </div>
                             <div class="card-body">
                                 <form action="" method="POST">
-                                    <input type="hidden" name="salary_month" value="<?php echo $filter_month; ?>">
-                                    <input type="hidden" name="salary_year" value="<?php echo $filter_year; ?>">
+                                    <input type="hidden" name="salary_month" value="<?php echo $filter_month; ?>"><input type="hidden" name="salary_year" value="<?php echo $filter_year; ?>">
                                     <div class="table-responsive">
                                         <table class="table table-bordered">
                                             <thead>
                                                 <tr>
-                                                    <th><input type="checkbox" id="selectAllLibrarian"></th>
+                                                    <th><input type="checkbox" id="selectAll"></th>
                                                     <th>Librarian Name</th>
                                                     <th>Base Salary</th>
                                                     <th>Absence Deductions</th>
@@ -287,9 +305,7 @@ try {
                                             </tbody>
                                         </table>
                                     </div>
-                                    <?php if ($pending_librarians_exist): ?>
-                                        <button type="submit" name="bulk_pay_submit" class="btn btn-success mt-3"><i class="fas fa-check-double"></i> Pay Selected Librarians</button>
-                                    <?php endif; ?>
+                                    <?php if ($pending_librarians_exist): ?><button type="submit" name="bulk_pay_submit" class="btn btn-success mt-3"><i class="fas fa-check-double"></i> Pay Selected Librarians</button><?php endif; ?>
                                 </form>
                             </div>
                         </div>
@@ -303,12 +319,18 @@ try {
             ?>
         </div>
     </div>
-
     <?php include_once "../../includes/logout_modal.php"; ?>
-
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
+    <script>
+        // JavaScript for select all checkbox
+        document.getElementById('selectAll').addEventListener('click', function (event) {
+            var checkboxes = document.querySelectorAll('.librarian-checkbox');
+            for (var checkbox of checkboxes) {
+                checkbox.checked = event.target.checked;
+            }
+        });
+    </script>
 </body>
-
 </html>

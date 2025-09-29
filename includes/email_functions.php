@@ -1,68 +1,129 @@
 <?php
-// --- FILE: includes/email_functions.php ---
-
-// Import PHPMailer classes into the global namespace
+// It's good practice to use PHPMailer for sending emails as it's more reliable than the mail() function.
+// If you haven't installed it, run: composer require phpmailer/phpmailer
 use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
 
-// Load the PHPMailer source files.
-require_once __DIR__ . '/PHPMailer/src/Exception.php';
-require_once __DIR__ . '/PHPMailer/src/PHPMailer.php';
-require_once __DIR__ . '/PHPMailer/src/SMTP.php';
+// You might need to adjust the path to the autoloader based on your project structure
+require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
 
-/**
- * Sends an email using PHPMailer with Gmail SMTP.
- *
- * @param string $to The recipient's email address.
- * @param string $subject The subject of the email.
- * @param string $body The HTML body of the email.
- * @return bool Returns true on success, false on failure.
- */
-function send_email($to, $subject, $body)
-{
-    // Create a new PHPMailer instance; passing `true` enables exceptions
+function send_otp_email($email, $otp) {
     $mail = new PHPMailer(true);
-
     try {
-        // --- Server Settings ---
-
-        // DEBUGGING DISABLED FOR PRODUCTION
-        // This is the only change needed.
-        $mail->SMTPDebug = SMTP::DEBUG_OFF;
-
-        // This block is a workaround for local XAMPP servers with SSL issues.
-        // It's safe to leave this in place.
-        $mail->SMTPOptions = array(
-            'ssl' => array(
-                'verify_peer' => false,
-                'verify_peer_name' => false,
-                'allow_self_signed' => true
-            )
-        );
-
+        //Server settings
         $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com';
+        $mail->Host       = 'smtp.example.com'; // Set your SMTP server
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'sms0407111726@gmail.com'; // Your full Gmail address
-        $mail->Password   = 'damsvtdbkypkmvrn';      // Your 16-character Google App Password
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-        $mail->Port       = 465;
+        $mail->Username   = 'your_email@example.com'; // SMTP username
+        $mail->Password   = 'your_password'; // SMTP password
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = 587;
 
-        // --- Recipients & Content ---
-        $mail->setFrom('sms0407111726@gmail.com', 'BMC School System');
-        $mail->addAddress($to);
+        //Recipients
+        $mail->setFrom('no-reply@bmcsms.com', 'BMC-SMS');
+        $mail->addAddress($email);
+
+        // Content
         $mail->isHTML(true);
-        $mail->Subject = $subject;
-        $mail->Body    = $body;
-        $mail->AltBody = strip_tags($body);
+        $mail->Subject = 'Your Password Reset OTP';
+        $mail->Body    = "Your One-Time Password (OTP) for resetting your password is: <b>{$otp}</b>. It is valid for 10 minutes.";
+        $mail->AltBody = "Your One-Time Password (OTP) for resetting your password is: {$otp}. It is valid for 10 minutes.";
 
         $mail->send();
-        return true; // Email sent successfully
-
+        return true;
     } catch (Exception $e) {
-        // Log the detailed error message to the server's error log
-        error_log("Message could not be sent. Mailer Error: {$mail->ErrorInfo}");
-        return false; // Email sending failed
+        error_log("OTP Email could not be sent. Mailer Error: {$mail->ErrorInfo}");
+        return false;
+    }
+}
+
+/**
+ * Sends an email to a student upon admission approval.
+ *
+ * @param string $email The student's email address.
+ * @param string $student_name The student's name.
+ * @param string $password The temporary password for the student's new account.
+ * @return bool True on success, false on failure.
+ */
+function sendAdmissionApprovalEmail($email, $student_name, $password) {
+    $mail = new PHPMailer(true);
+    try {
+        // Server settings (configure with your actual SMTP details)
+        $mail->isSMTP();
+        $mail->Host = 'smtp.example.com';
+        $mail->SMTPAuth = true;
+        $mail->Username = 'your_email@example.com';
+        $mail->Password = 'your_password';
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port = 587;
+
+        // Recipients
+        $mail->setFrom('admissions@bmcsms.com', 'BMC-SMS Admissions');
+        $mail->addAddress($email, $student_name);
+
+        // Content
+        $mail->isHTML(true);
+        $mail->Subject = 'Congratulations! Your Admission has been Approved';
+        $mail->Body    = "
+            <p>Dear {$student_name},</p>
+            <p>We are pleased to inform you that your admission to our institution has been approved.</p>
+            <p>An account has been created for you in our student portal. You can log in using the following credentials:</p>
+            <ul>
+                <li><strong>Email:</strong> {$email}</li>
+                <li><strong>Password:</strong> {$password}</li>
+            </ul>
+            <p>We strongly recommend that you change your password after your first login.</p>
+            <p>Welcome aboard!</p>
+            <p>Best regards,<br>The Admissions Team</p>";
+        $mail->AltBody = "Dear {$student_name},\nYour admission has been approved. Your login email is {$email} and your password is {$password}. Please change it after your first login.";
+
+        $mail->send();
+        return true;
+    } catch (Exception $e) {
+        error_log("Admission Approval Email could not be sent to {$email}. Mailer Error: {$mail->ErrorInfo}");
+        return false;
+    }
+}
+
+/**
+ * Sends an email to a student upon admission rejection.
+ *
+ * @param string $email The student's email address.
+ * @param string $student_name The student's name.
+ * @param string $reason The reason for rejection.
+ * @return bool True on success, false on failure.
+ */
+function sendAdmissionRejectionEmail($email, $student_name, $reason) {
+    $mail = new PHPMailer(true);
+    try {
+        // Server settings (configure with your actual SMTP details)
+        $mail->isSMTP();
+        $mail->Host = 'smtp.example.com';
+        $mail->SMTPAuth = true;
+        $mail->Username = 'your_email@example.com';
+        $mail->Password = 'your_password';
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port = 587;
+
+        // Recipients
+        $mail->setFrom('admissions@bmcsms.com', 'BMC-SMS Admissions');
+        $mail->addAddress($email, $student_name);
+
+        // Content
+        $mail->isHTML(true);
+        $mail->Subject = 'Update on Your Admission Application';
+        $mail->Body    = "
+            <p>Dear {$student_name},</p>
+            <p>Thank you for your interest in our institution. After careful review of your application, we regret to inform you that we are unable to offer you admission at this time.</p>
+            <p><strong>Reason:</strong> " . htmlspecialchars($reason) . "</p>
+            <p>We wish you the best in your future academic endeavors.</p>
+            <p>Sincerely,<br>The Admissions Team</p>";
+        $mail->AltBody = "Dear {$student_name},\nWe regret to inform you that we are unable to offer you admission. Reason: " . $reason;
+
+        $mail->send();
+        return true;
+    } catch (Exception $e) {
+        error_log("Admission Rejection Email could not be sent to {$email}. Mailer Error: {$mail->ErrorInfo}");
+        return false;
     }
 }

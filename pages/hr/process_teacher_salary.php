@@ -2,10 +2,10 @@
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php';
+include_once '../../includes/log_system.php'; // Includes your log_interaction function
 
 // This check is crucial for the AJAX navigation to work.
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
-// $is_ajax_request = is_ajax_request();
 
 date_default_timezone_set('Asia/Kolkata');
 
@@ -25,10 +25,16 @@ function formatIndianCurrency($number)
     return '₹' . $rest_formatted . ',' . $last_three . $decimal_part;
 }
 
-$role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
-$userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+$role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : 'guest';
+$userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : 0;
+$userName = isset($_COOKIE['encrypted_user_name']) ? decrypt_id($_COOKIE['encrypted_user_name']) : 'Guest';
+
 
 if ($role !== 'hr' || !$userId) {
+    // This is a security event, so it should be logged.
+    if (function_exists('log_interaction')) {
+        log_interaction($role, $userId, "Unauthorized attempt to access process_teacher_salary.php", $userName);
+    }
     header("Location: /BMC-SMS/login.php");
     exit();
 }
@@ -39,14 +45,22 @@ try {
     $stmt->execute([$userId]);
     $school_id = $stmt->fetchColumn();
 } catch (Exception $e) {
+    // This is a critical error, not a page load, so it should be logged.
+    if (function_exists('log_interaction')) {
+        log_interaction($role, $userId, "DB Error fetching HR user data: " . $e->getMessage(), $userName);
+    }
     die("Error fetching user data: " . $e->getMessage());
 }
 
 if (!$school_id) {
+    // This is a critical configuration error, so it should be logged.
+    if (function_exists('log_interaction')) {
+        log_interaction($role, $userId, "Configuration Error: HR user is not associated with any school.", $userName);
+    }
     die("Error: HR user is not associated with any school.");
 }
 
-// Bulk Payment Processing Logic
+// ACTION: User is submitting the form to process payments. This is where logging should happen.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_pay_submit'])) {
     $selected_teachers = $_POST['selected_teachers'] ?? [];
     $payroll_data_submitted = $_POST['payroll_data'] ?? [];
@@ -58,9 +72,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_pay_submit'])) {
         exit();
     }
 
+    $count = count($selected_teachers);
+    $monthName = date('F', mktime(0, 0, 0, $salary_month, 10));
+    
+    // Log the initiation of the action
+    log_interaction($role, $userId, "Initiated bulk salary payment for $count teachers for $monthName $salary_year.", $userName);
+
     try {
         $conn->beginTransaction();
-        // Use the new table name 'teacher_payroll' and 'hr_user_id' column
         $payment_stmt = $conn->prepare(
             "INSERT INTO teacher_payroll (teacher_id, hr_user_id, school_id, salary_month, salary_year, base_salary, total_working_days, present_days, absent_days, deduction_amount, total_incentives, net_salary_paid) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
@@ -73,32 +92,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_pay_submit'])) {
             $data = $payroll_data_submitted[$teacher_id] ?? null;
             if ($data) {
                 $payment_stmt->execute([
-                    $teacher_id,
-                    $userId,
-                    $school_id,
-                    $salary_month,
-                    $salary_year,
-                    (float)$data['base_salary'],
-                    (int)$data['total_working_days'],
-                    (float)$data['present_days'],
-                    (int)$data['absent_days'],
-                    (float)$data['deduction_amount'],
-                    (float)$data['total_incentives'],
+                    $teacher_id, $userId, $school_id, $salary_month, $salary_year,
+                    (float)$data['base_salary'], (int)$data['total_working_days'], (float)$data['present_days'],
+                    (int)$data['absent_days'], (float)$data['deduction_amount'], (float)$data['total_incentives'],
                     (float)$data['net_salary_paid']
                 ]);
-                $monthName = date('F', mktime(0, 0, 0, $salary_month, 10));
                 $message = "Your salary for $monthName $salary_year amounting to " . formatIndianCurrency($data['net_salary_paid']) . " has been processed.";
                 $notify_stmt->execute([$teacher_id, $message, 'salary', 'pages/teacher/view_salary_history.php']);
             }
         }
         $conn->commit();
-        $count = count($selected_teachers);
+        
+        // Log the successful completion of the action
+        log_interaction($role, $userId, "Successfully processed salary payment for $count teacher(s) for $monthName $salary_year.", $userName);
+        
         header("Location: " . $_SERVER['PHP_SELF'] . "?month=$salary_month&year=$salary_year&success=" . urlencode("Successfully processed payments for $count teacher(s)!"));
         exit();
     } catch (Exception $e) {
         if ($conn->inTransaction()) {
             $conn->rollBack();
         }
+        
+        // Log the failure of the action
+        log_interaction($role, $userId, "Bulk salary payment failed for $monthName $salary_year. Error: " . $e->getMessage(), $userName);
+
         header("Location: " . $_SERVER['PHP_SELF'] . "?month=$salary_month&year=$salary_year&error=" . urlencode("Error: " . $e->getMessage()));
         exit();
     }
@@ -128,7 +145,7 @@ try {
     $teacher_stmt = $conn->prepare("SELECT id, teacher_name, salary FROM teacher WHERE school_id = ? ORDER BY teacher_name");
     $teacher_stmt->execute([$school_id]);
     $teachers = $teacher_stmt->fetchAll(PDO::FETCH_ASSOC);
-    // Use the new table name 'teacher_payroll'
+
     $paid_stmt = $conn->prepare("SELECT teacher_id FROM teacher_payroll WHERE school_id = ? AND salary_month = ? AND salary_year = ?");
     $paid_stmt->execute([$school_id, $filter_month, $filter_year]);
     $paid_teachers = $paid_stmt->fetchAll(PDO::FETCH_COLUMN);
@@ -170,11 +187,12 @@ try {
     }
 } catch (Exception $e) {
     $errorMessage = "An error occurred: " . $e->getMessage();
+    // Log the error in data fetching as it prevents the user from taking action.
+    log_interaction($role, $userId, "Error fetching teacher payroll data: " . $e->getMessage(), $userName);
 }
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <title>Process Teacher Payroll</title>
@@ -185,7 +203,6 @@ try {
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
 </head>
-
 <body id="page-top">
     <div id="wrapper">
         <?php
@@ -299,12 +316,18 @@ try {
             ?>
         </div>
     </div>
-
     <?php include_once "../../includes/logout_modal.php"; ?>
-
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
+    <script>
+        // JavaScript for select all checkbox
+        document.getElementById('selectAll').addEventListener('click', function (event) {
+            var checkboxes = document.querySelectorAll('.teacher-checkbox');
+            for (var checkbox of checkboxes) {
+                checkbox.checked = event.target.checked;
+            }
+        });
+    </script>
 </body>
-
 </html>

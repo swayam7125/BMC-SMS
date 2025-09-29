@@ -1,38 +1,42 @@
 <?php
-// Use cookies for user identification, consistent with other files
-require_once __DIR__ . "/../../includes/connect.php";
-require_once __DIR__ . "/../../encryption.php";
+// Define a constant for the project root directory for reliable file includes.
+define('ROOT_PATH', dirname(__DIR__, 3));
+
+include_once '../../includes/connect.php';
+include_once '../../encryption.php';
+include_once '../../includes/ajax_helpers.php';
+include_once '../../includes/log_system.php'; // Includes your log_interaction function
 
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
-// Check for user role and get user ID from cookies
-if (!isset($_COOKIE['encrypted_user_id']) || !isset($_COOKIE['encrypted_user_role'])) {
-    header("Location: ../../login.php");
-    exit;
-}
+$role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : 'guest';
+$userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : 0;
+$userName = isset($_COOKIE['encrypted_user_name']) ? decrypt_id($_COOKIE['encrypted_user_name']) : 'Guest';
 
-$hr_id = decrypt_id($_COOKIE['encrypted_user_id']);
-$role = decrypt_id($_COOKIE['encrypted_user_role']);
-
-if ($role !== 'hr') {
+if ($role !== 'hr' || !$userId) {
+    if (function_exists('log_interaction')) {
+        log_interaction($role, $userId, "Unauthorized attempt to access manage_fees.php", $userName);
+    }
     header("Location: ../../login.php");
     exit;
 }
 
 $stmt = $conn->prepare("SELECT school_id FROM hr WHERE id = :hr_id");
-$stmt->bindParam(':hr_id', $hr_id);
+$stmt->bindParam(':hr_id', $userId);
 $stmt->execute();
 $hr = $stmt->fetch();
 $school_id = $hr['school_id'];
 
-// Handle form submission to add new fee and send notifications
+// ACTION: User is submitting the form to add a new fee. This is the primary action to log.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_fee'])) {
     $standard = $_POST['standard'];
     $fee_type = trim($_POST['fee_type']);
     $amount = $_POST['amount'];
     $due_date = !empty($_POST['due_date']) ? $_POST['due_date'] : null;
-    // MODIFICATION: Capture selected student IDs
     $student_ids = $_POST['student_ids'] ?? [];
+
+    // Log the initiation of the action
+    log_interaction($role, $userId, "Initiated adding new fee '$fee_type' for Standard $standard.", $userName);
 
     $conn->beginTransaction();
     try {
@@ -40,17 +44,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_fee'])) {
         $stmt->execute([':school_id' => $school_id, ':standard' => $standard, ':fee_type' => $fee_type, ':amount' => $amount, ':due_date' => $due_date]);
         $last_fee_id = $conn->lastInsertId();
         
-        // MODIFICATION: Logic to determine which students to assign the fee to
         $students_to_assign = [];
         if (!empty($student_ids)) {
-            // Case A: Assign to specifically selected students
             $placeholders = implode(',', array_fill(0, count($student_ids), '?'));
             $validate_stmt = $conn->prepare("SELECT id FROM student WHERE id IN ($placeholders) AND school_id = ? AND std = ?");
             $params = array_merge($student_ids, [$school_id, $standard]);
             $validate_stmt->execute($params);
             $students_to_assign = $validate_stmt->fetchAll(PDO::FETCH_ASSOC);
         } else {
-            // Case B: No students selected, so assign to everyone in the standard
             $all_students_stmt = $conn->prepare("SELECT id FROM student WHERE school_id = :school_id AND std = :standard");
             $all_students_stmt->execute([':school_id' => $school_id, ':standard' => $standard]);
             $students_to_assign = $all_students_stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -62,7 +63,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_fee'])) {
 
             foreach ($students_to_assign as $student) {
                 $assign_stmt->execute([':student_id' => $student['id'], ':fee_id' => $last_fee_id]);
-                // Create notification for each student
                 $message = "A new fee of ₹" . number_format($amount, 2) . " for '" . htmlspecialchars($fee_type) . "' has been added. The due date is " . date('d-M-Y', strtotime($due_date)) . ".";
                 $link = "/BMC-SMS/pages/student/view_fees.php"; 
                 $notify_stmt->execute([$student['id'], $message, $link, 'new_fee']);
@@ -71,9 +71,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_fee'])) {
         
         $conn->commit();
         $success_message = "Fee added and assigned to " . count($students_to_assign) . " students successfully! Notifications have been sent.";
+        
+        // Log the successful completion of the action
+        log_interaction($role, $userId, "Successfully added fee '$fee_type' (₹$amount) and assigned it to " . count($students_to_assign) . " students in Standard $standard.", $userName);
+
     } catch (Exception $e) {
         $conn->rollBack();
         $error_message = "Failed to add fee: " . $e->getMessage();
+        
+        // Log the failure of the action
+        log_interaction($role, $userId, "Failed to add fee '$fee_type' for Standard $standard. Error: " . $e->getMessage(), $userName);
     }
 }
 
@@ -106,7 +113,6 @@ foreach ($fees as $fee) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -135,7 +141,6 @@ foreach ($fees as $fee) {
         }
     </style>
 </head>
-
 <body id="page-top">
     <div id="wrapper">
         <?php
@@ -183,8 +188,7 @@ foreach ($fees as $fee) {
                                 <div class="card-body">
                                     <div class="row no-gutters align-items-center">
                                         <div class="col mr-2">
-                                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                                Total Expected</div>
+                                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Expected</div>
                                             <div class="h5 mb-0 font-weight-bold text-gray-800">₹<?php echo number_format($total_amount_expected, 2); ?></div>
                                         </div>
                                         <div class="col-auto">
@@ -200,8 +204,7 @@ foreach ($fees as $fee) {
                                 <div class="card-body">
                                     <div class="row no-gutters align-items-center">
                                         <div class="col mr-2">
-                                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                                Amount Collected</div>
+                                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Amount Collected</div>
                                             <div class="h5 mb-0 font-weight-bold text-gray-800">₹<?php echo number_format($total_amount_collected, 2); ?></div>
                                         </div>
                                         <div class="col-auto">
@@ -247,8 +250,7 @@ foreach ($fees as $fee) {
                                 <div class="card-body">
                                     <div class="row no-gutters align-items-center">
                                         <div class="col mr-2">
-                                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                                Pending Amount</div>
+                                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Pending Amount</div>
                                             <div class="h5 mb-0 font-weight-bold text-gray-800">₹<?php echo number_format($total_amount_expected - $total_amount_collected, 2); ?></div>
                                         </div>
                                         <div class="col-auto">
@@ -312,24 +314,6 @@ foreach ($fees as $fee) {
                             <h6 class="m-0 font-weight-bold text-primary">
                                 <i class="fas fa-table mr-2"></i>Fee Structure Overview
                             </h6>
-                            <div class="dropdown no-arrow">
-                                <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink"
-                                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                    <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
-                                </a>
-                                <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in"
-                                    aria-labelledby="dropdownMenuLink">
-                                    <div class="dropdown-header">Export Options:</div>
-                                    <a class="dropdown-item" href="#" onclick="$('#dataTable').DataTable().button('excel').trigger();">
-                                        <i class="fas fa-file-excel fa-sm fa-fw mr-2 text-gray-400"></i>
-                                        Excel
-                                    </a>
-                                    <a class="dropdown-item" href="#" onclick="window.print();">
-                                        <i class="fas fa-print fa-sm fa-fw mr-2 text-gray-400"></i>
-                                        Print
-                                    </a>
-                                </div>
-                            </div>
                         </div>
                         <div class="card-body">
                             <?php if (empty($fees)): ?>
@@ -476,7 +460,6 @@ foreach ($fees as $fee) {
             "responsive": true,
         });
 
-        // MODIFICATION: JavaScript for the new dynamic student selector
         function setupCustomDropdown(wrapper) {
             const displayInput = wrapper.find('input[type="text"]');
             const optionsContainer = wrapper.find('.dropdown-menu');

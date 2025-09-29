@@ -1,6 +1,7 @@
 <?php
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
+include_once '../../includes/log_system.php'; // ADDED: Log system dependency
 
 // This check is crucial for the AJAX navigation to work.
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
@@ -10,10 +11,17 @@ $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SER
 
 // --- Authorization Check (ensure only HR can access) ---
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
+$hr_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null; // ADDED: Get user ID for logging
+$hr_user_name = isset($_COOKIE['encrypted_user_name']) ? decrypt_id($_COOKIE['encrypted_user_name']) : 'Unknown'; // ADDED: Get user name for logging
+
 if ($role !== 'hr') {
     header("Location: ../../login.php?error=Unauthorized");
     exit;
 }
+
+// --- LOG PAGE VIEW ---
+log_interaction($role, $hr_user_id, 'Viewed the admission applications management page.', $hr_user_name);
+// ---------------------
 
 $message = '';
 
@@ -34,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['application_id'])) {
     // Input validation: Check for mandatory fields only if Accepted is chosen
     if (!in_array($status_action, ['Accepted', 'Rejected', 'Pending'])) {
         $message = '<div class="alert alert-danger">Invalid status action.</div>';
-    } 
+    }
     // UPDATED VALIDATION: Now only checks for meeting date/time if Accepted
     else if ($status_action === 'Accepted' && (empty($meeting_date) || empty($meeting_time))) {
         $message = '<div class="alert alert-danger">The Acceptance action requires Meeting Date and Time.</div>';
@@ -43,9 +51,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['application_id'])) {
             $conn->beginTransaction();
 
             // REMOVED 'roll_no' and 'class' columns from the update statement
-            $update_sql = "UPDATE admission_applications SET 
-                           status = :status, remarks = :remarks, 
-                           roll_no = NULL, class = NULL, 
+            $update_sql = "UPDATE admission_applications SET
+                           status = :status, remarks = :remarks,
+                           roll_no = NULL, class = NULL,
                            meeting_date = :meeting_date, meeting_time = :meeting_time
                            WHERE id = :id";
             $stmt = $conn->prepare($update_sql);
@@ -61,7 +69,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['application_id'])) {
             ]);
 
             if ($success) {
-                $hr_user_id = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+                // --- LOG SUCCESSFUL STATUS UPDATE ---
+                $log_message = "Updated admission application ID {$application_id} to status: {$status_action}.";
+                log_interaction($role, $hr_user_id, $log_message, $hr_user_name);
+                // ------------------------------------
+
                 if ($hr_user_id) {
                     $stmt_mark_read = $conn->prepare("UPDATE notifications SET is_read = true WHERE user_id = ? AND type = 'new_admission_request'");
                     $stmt_mark_read->execute([$hr_user_id]);
@@ -75,6 +87,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['application_id'])) {
             $conn->rollBack();
             $message = '<div class="alert alert-danger">Database Error: ' . $e->getMessage() . '</div>';
             error_log("Admission status update error: " . $e->getMessage());
+
+            // --- LOG DATABASE ERROR ---
+            $error_log_message = "Failed to update status for application ID {$application_id}. Error: " . $e->getMessage();
+            log_interaction($role, $hr_user_id, $error_log_message, $hr_user_name);
+            // --------------------------
         }
 
         $redirect_msg = urlencode(strip_tags($message));
@@ -151,22 +168,22 @@ try {
             border-color: #dc3545; /* Danger border */
             color: #dc3545;
         }
-        
+
     </style>
 </head>
 
 <body id="page-top">
     <div id="wrapper">
-        <?php 
-        if (!$is_ajax_request) { 
-            include '../../includes/sidebar.php'; 
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
         }
         ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <?php
-                if (!$is_ajax_request) { 
-                    include '../../includes/header.php'; 
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
                 }
                 ?>
                 <div class="container-fluid">
@@ -266,37 +283,37 @@ try {
                         <hr class="my-4">
 
                         <h5 class="mb-3 text-primary">Update Status</h5>
-                        
+
                         <div class="form-group status-radio-group">
                             <label class="text-muted mb-2">Action</label>
-                            
+
                             <div class="form-check">
                                 <input class="form-check-input status-radio" type="radio" name="status_action" id="status_pending" value="Pending" required>
                                 <label class="form-check-label" for="status_pending">
                                     <i class="fas fa-history"></i> Keep as Pending
                                 </label>
                             </div>
-                            
+
                             <div class="form-check">
                                 <input class="form-check-input status-radio" type="radio" name="status_action" id="status_accepted" value="Accepted" required>
                                 <label class="form-check-label" for="status_accepted">
                                     <i class="fas fa-check-circle"></i> Accept Application
                                 </label>
                             </div>
-                            
+
                             <div class="form-check">
                                 <input class="form-check-input status-radio" type="radio" name="status_action" id="status_rejected" value="Rejected" required>
                                 <label class="form-check-label" for="status_rejected">
                                     <i class="fas fa-times-circle"></i> Reject Application
                                 </label>
                             </div>
-                            
+
                             <input type="radio" name="status_action" id="status_select" value="" style="display:none;" checked>
                         </div>
                         <div id="acceptFields" style="display:none;">
                             <hr>
                             <h6 class="text-success">Acceptance Details</h6>
-                            
+
                             <h6 class="text-info mt-4">Schedule Orientation/Sign-up Meeting (Mandatory)</h6>
                             <div class="form-row">
                                 <div class="form-group col-md-6">
@@ -344,10 +361,10 @@ try {
                 var applicationId = $(this).data('id');
 
                 $('#modalApplicationId').val(applicationId);
-                $('#fullApplicationDetails').html('<p class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading details...</p>'); 
-                
+                $('#fullApplicationDetails').html('<p class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading details...</p>');
+
                 // Reset radio buttons
-                $('.status-radio').prop('checked', false); 
+                $('.status-radio').prop('checked', false);
                 $('#status_select').prop('checked', true); // Select the hidden "Select Status" option initially
                 $('#acceptFields').hide();
                 $('#rejectFields').hide();
@@ -363,11 +380,11 @@ try {
                         $('#fullApplicationDetails').html(response);
 
                         var currentStatus = $('#fullApplicationDetails').find('span[data-current-status]').data('current-status');
-                        
+
                         // Select the correct radio button based on status
                         var radioId = '#status_' + currentStatus.toLowerCase().replace(/\s+/g, '_');
                         $(radioId).prop('checked', true);
-                        
+
                         $('#modalAppName').text($('#fullApplicationDetails').find('span[data-student-name]').data('student-name'));
 
                         // Set comment and meeting details if available
@@ -376,9 +393,9 @@ try {
                         var meetingTime = $('#fullApplicationDetails').find('span[data-meeting-time]').data('meeting-time');
 
                         $('#comment').val(currentComment);
-                        $('#meeting_date').val(meetingDate); 
-                        $('#meeting_time').val(meetingTime); 
-                        
+                        $('#meeting_date').val(meetingDate);
+                        $('#meeting_time').val(meetingTime);
+
                         // Trigger change handler to show/hide fields based on the selected radio
                         $('.status-radio:checked').trigger('change');
                     },
@@ -391,13 +408,13 @@ try {
             // Logic to show/hide fields, targeting the radio buttons
             $(document).on('change', '.status-radio', function() {
                 var action = $(this).val(); // Get the value of the selected radio button
-                
+
                 // Remove existing active styles (resets border/text color)
                 $('.status-radio-group input[type="radio"] + .form-check-label').css({
                     'border-color': '#e3e6f0',
                     'color': '#5a5c69'
                 }).removeClass('font-weight-bold');
-                
+
                 // Apply active style to the selected label
                 if (action) {
                     var targetLabel = $(this).next('.form-check-label');
@@ -413,24 +430,24 @@ try {
 
                 // Set required states for the mandatory fields (only meeting fields remain)
                 $('#meeting_date, #meeting_time').prop('required', false);
-                
+
                 $('#acceptFields, #rejectFields').hide();
 
                 if (action === 'Accepted') {
                     $('#acceptFields').show();
-                    
+
                     // ⭐ ALL 4 FIELDS ARE NOW SET TO REQUIRED:
-                    $('#student_roll_no, #student_class, #meeting_date, #meeting_time').prop('required', true); 
-                    
+                    $('#student_roll_no, #student_class, #meeting_date, #meeting_time').prop('required', true);
+
                     // Pre-fill roll/class if already accepted
                     var roll = $('#fullApplicationDetails').find('span[data-current-roll]').data('current-roll');
                     var class_name = $('#fullApplicationDetails').find('span[data-current-class]').data('current-class');
                     $('#student_roll_no').val(roll);
                     $('#student_class').val(class_name);
-                    
+
                 } else if (action === 'Rejected') {
                     $('#rejectFields').show();
-                    
+
                 } else {
                     // Default/Pending
                 }

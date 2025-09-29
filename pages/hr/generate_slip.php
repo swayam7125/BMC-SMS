@@ -1,8 +1,28 @@
 <?php
+// --- SETUP AND INCLUDES ---
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
+include_once '../../includes/log_system.php'; // ADDED: Log system dependency
 
 date_default_timezone_set('Asia/Kolkata');
+
+// --- USER AUTHENTICATION AND DETAILS ---
+$hr_user_id = null;
+$hr_role = null;
+$hr_user_name = 'Unknown';
+
+if (isset($_COOKIE['encrypted_user_id'])) {
+    $hr_user_id = decrypt_id($_COOKIE['encrypted_user_id']);
+}
+if (isset($_COOKIE['encrypted_user_role'])) {
+    $hr_role = decrypt_id($_COOKIE['encrypted_user_role']);
+}
+if (isset($_COOKIE['encrypted_user_name'])) {
+    $hr_user_name = decrypt_id($_COOKIE['encrypted_user_name']);
+}
+
+// Although this is a public-facing link, we can still log if an HR user is generating it.
+// No redirection is needed if the user is not HR, as the link might be shared.
 
 // --- HELPER FUNCTION TO CONVERT NUMBER TO WORDS ---
 function getIndianCurrencyInWords(float $number)
@@ -95,13 +115,32 @@ if ($slip_id && $type) {
             $school_details = $school_stmt->fetch(PDO::FETCH_ASSOC);
         }
     } catch (Exception $e) {
+        // --- LOG DATA FETCHING ERROR ---
+        if ($hr_role === 'hr') {
+            log_interaction($hr_role, $hr_user_id, "Error generating payslip: " . $e->getMessage(), $hr_user_name);
+        }
+        // -----------------------------
         die("Error: " . $e->getMessage());
     }
 }
 
 if (!$record || !$staff_details || !$school_details) {
+    // --- LOG FAILED ATTEMPT ---
+    if ($hr_role === 'hr') {
+        $log_message = "Failed to generate payslip. Slip ID: {$slip_id}, Type: {$type}. Reason: Record, staff, or school details not found.";
+        log_interaction($hr_role, $hr_user_id, $log_message, $hr_user_name);
+    }
+    // -------------------------
     die("<h1>Payslip not found or invalid access.</h1>");
 }
+
+// --- LOG SUCCESSFUL PAYSLIP GENERATION ---
+if ($hr_role === 'hr') {
+    $salary_period_log = date('F Y', mktime(0, 0, 0, $record['salary_month'], 1, $record['salary_year']));
+    $log_message = "Generated payslip for {$staff_details['name']} ({$type}) for the period of {$salary_period_log}.";
+    log_interaction($hr_role, $hr_user_id, $log_message, $hr_user_name);
+}
+// ------------------------------------------
 
 $salary_period = date('F Y', mktime(0, 0, 0, $record['salary_month'], 1, $record['salary_year']));
 $amount_in_words = getIndianCurrencyInWords($record['net_salary_paid']);
