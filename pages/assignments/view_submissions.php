@@ -200,18 +200,7 @@ try {
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            $('#submissionsTable').DataTable();
-
-            $('#rejectModal').on('show.bs.modal', function(event) {
-                var button = $(event.relatedTarget);
-                var submissionId = button.data('submission-id');
-                var modal = $(this);
-                modal.find('#modalSubmissionId').val(submissionId);
-            });
-        });
-    </script>
+    <script src="../../assets/js/view_submission.js"></script>
 </body>
 
 </html>

@@ -214,18 +214,7 @@ try {
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const dueDateInput = document.getElementById('due_date');
-            const today = new Date().toISOString().split('T')[0];
-            dueDateInput.setAttribute('min', today);
-
-            $('.custom-file-input').on('change', function() {
-                var fileName = $(this).val().split('\\').pop();
-                $(this).siblings('.custom-file-label').addClass("selected").html(fileName);
-            });
-        });
-    </script>
+    <script src="../../assets/js/send_assignment.js"></script>
 </body>
 
 </html>
