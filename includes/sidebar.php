@@ -50,6 +50,8 @@ $unread_hr_leave_status = 0; // For HR leave status
 $unread_admissions = 0; 
 $unread_contact_messages = 0; // ⭐ NEW: Contact message counter
 $unread_update_requests = 0; // ⭐ NEW: School update request counter for SA
+$unread_exam_submissions = 0; // Counter for unread student exam registration submissions 
+
 $is_class_teacher = false; // Initialize teacher-specific flag
 
 // Fetch counts based on the user's role if a valid user ID and connection exist
@@ -179,7 +181,8 @@ if (isset($conn) && $user_id) {
                 $sql_hr_counts = "SELECT 
                                     COUNT(*) FILTER (WHERE type = 'hr_leave_status' AND is_read = false) AS hr_leave_status,
                                     COUNT(*) FILTER (WHERE type = 'new_contact_message' AND is_read = false) AS contact_messages,
-                                    COUNT(*) FILTER (WHERE type = 'new_admission_request' AND is_read = false) AS admissions
+                                    COUNT(*) FILTER (WHERE type = 'new_admission_request' AND is_read = false) AS admissions,
+                                    COUNT(*) FILTER (WHERE type = 'exam_registration_submission' AND is_read = false) AS exam_submissions
                                 FROM notifications WHERE user_id = ?";
                 $stmt_hr_counts = $conn->prepare($sql_hr_counts);
                 $stmt_hr_counts->execute([$user_id]);
@@ -187,8 +190,9 @@ if (isset($conn) && $user_id) {
                 
                 if ($result) {
                     $unread_hr_leave_status = (int) ($result['hr_leave_status'] ?? 0);
-                    $unread_contact_messages = (int) ($result['contact_messages'] ?? 0); // ⭐ NEW: Fetch contact message count
+                    $unread_contact_messages = (int) ($result['contact_messages'] ?? 0);
                     $unread_admissions = (int) ($result['admissions'] ?? 0);
+                    $unread_exam_submissions = (int) ($result['exam_submissions'] ?? 0); // ⭐ FETCHED NEW COUNTER
                 }
                 
                 $sql_hr_salary = "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND type = 'hr_salary' AND is_read = false";
@@ -903,6 +907,8 @@ if (isset($conn) && $user_id) {
 
         case 'student':
             $library_pages_student = ['browse_books.php', 'my_library_record.php', 'request_new_book.php'];
+            // ⭐ NEW: Student Exam Registration Page variable
+            $exam_reg_page = ['view_exam_registration.php'];
         ?>
             <div class="sidebar-heading font-weight-semibold">My Academics</div>
             <li class="nav-item <?php echo ($current_page == 'profile.php') ? 'active' : ''; ?>">
@@ -1001,7 +1007,15 @@ if (isset($conn) && $user_id) {
                     </div>
                 </a>
             </li>
-
+            
+            <li class="nav-item <?php echo (is_active_page($exam_reg_page)) ? 'active' : ''; ?>">
+                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/student/view_exam_registration.php">
+                    <div>
+                        <i class="fas fa-check-to-slot"></i>
+                        <span>Exam Registration</span>
+                    </div>
+                </a>
+            </li>
             <hr class="sidebar-divider">
             <div class="sidebar-heading font-weight-semibold">Library</div>
             <li class="nav-item">
@@ -1181,6 +1195,8 @@ if (isset($conn) && $user_id) {
             $payroll_pages = ['process_teacher_salary.php', 'process_librarian_salary.php', 'process_hr_salary.php', 'process_principal_salary.php'];
             $hr_leave_pages = ['my_leave_management.php'];
             $hr_manage_profiles_pages = ['principal_list.php', 'teacher_list.php', 'student_list.php', 'librarian_list.php'];
+            // ⭐ UPDATED: Define the pages for Exam Management (including the view page)
+            $hr_exam_pages = ['manage_exam_registration.php', 'view_student_registrations.php'];
         ?>
             <div class="sidebar-heading font-weight-semibold">Management</div>
             <li class="nav-item <?php echo ($current_page == 'profile.php') ? 'active' : ''; ?>">
@@ -1227,6 +1243,32 @@ if (isset($conn) && $user_id) {
                     </div>
                 </a>
             </li>
+            
+            <li class="nav-item">
+                <a class="nav-link <?php echo (is_active_page($hr_exam_pages)) ? '' : 'collapsed'; ?>" href="#"
+                   data-toggle="collapse" data-target="#collapseExamManagement">
+                    <div><i class="fas fa-calendar-check"></i> 
+                        <span>Exam Management</span>
+                    </div>
+                </a>
+                <div id="collapseExamManagement" class="collapse <?php echo (is_active_page($hr_exam_pages)) ? 'show' : ''; ?>"
+                     data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item <?php echo ($current_page == 'manage_exam_registration.php') ? 'active' : ''; ?>" 
+                            href="<?php echo BASE_WEB_PATH; ?>pages/hr/manage_exam_registration.php">Set Exam Dates</a>
+                        <a class="collapse-item <?php echo ($current_page == 'view_student_registrations.php') ? 'active' : ''; ?>" 
+                            href="<?php echo BASE_WEB_PATH; ?>pages/hr/view_student_registrations.php"
+                            data-notification-type="exam_registration_submission"> View Registrations
+                            <?php if ($unread_exam_submissions > 0): ?>
+                            <span class="badge badge-danger badge-counter">
+                                <?php echo ($unread_exam_submissions > 9) ? '9+' : $unread_exam_submissions; ?>
+                            </span>
+                        <?php endif; ?>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            
             <li class="nav-item <?php echo ($current_page == 'view_my_salary.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/hr/view_my_salary.php"
                     data-notification-type="hr_salary">
