@@ -60,15 +60,41 @@
             if (tableElement && $.fn.DataTable && !$.fn.DataTable.isDataTable(tableElement)) {
                 this.tables.principals = $('#principalListTable').DataTable({
                     ...config,
-                    order: [[0, 'asc']],
-                    columnDefs: [{ targets: [-1], orderable: false }, { targets: [4], className: 'text-center' }],
-                    columns: [
-                        { data: 'id', title: 'ID' },
-                        { data: 'name', title: 'Name' },
-                        { data: 'email', title: 'Email' },
-                        { data: 'school', title: 'School' },
-                        { data: 'status', title: 'Status' },
-                        { data: 'actions', title: 'Actions', orderable: false }
+                    order: [
+                        [0, 'asc']
+                    ],
+                    columnDefs: [{
+                        targets: [-1],
+                        orderable: false
+                    }, {
+                        targets: [4],
+                        className: 'text-center'
+                    }],
+                    columns: [{
+                            data: 'id',
+                            title: 'ID'
+                        },
+                        {
+                            data: 'name',
+                            title: 'Name'
+                        },
+                        {
+                            data: 'email',
+                            title: 'Email'
+                        },
+                        {
+                            data: 'school',
+                            title: 'School'
+                        },
+                        {
+                            data: 'status',
+                            title: 'Status'
+                        },
+                        {
+                            data: 'actions',
+                            title: 'Actions',
+                            orderable: false
+                        }
                     ]
                 });
             }
@@ -76,20 +102,38 @@
 
         initTeacherTable(config) {
             if ($('#teacherListTable').length > 0 && $.fn.DataTable && !$.fn.DataTable.isDataTable('#teacherListTable')) {
-                this.tables.teachers = $('#teacherListTable').DataTable({ ...config, order: [[0, 'asc']], columnDefs: [{ targets: [-1], orderable: false }] });
+                this.tables.teachers = $('#teacherListTable').DataTable({
+                    ...config,
+                    order: [
+                        [0, 'asc']
+                    ],
+                    columnDefs: [{
+                        targets: [-1],
+                        orderable: false
+                    }]
+                });
             }
         }
 
         initStudentTable(config) {
             if ($('#studentListTable').length > 0 && $.fn.DataTable && !$.fn.DataTable.isDataTable('#studentListTable')) {
-                this.tables.students = $('#studentListTable').DataTable({ ...config, order: [[0, 'asc']], columnDefs: [{ targets: [-1], orderable: false }] });
+                this.tables.students = $('#studentListTable').DataTable({
+                    ...config,
+                    order: [
+                        [0, 'asc']
+                    ],
+                    columnDefs: [{
+                        targets: [-1],
+                        orderable: false
+                    }]
+                });
             }
         }
 
         destroyAll() {
-            Object.values(this.tables).forEach(table => { 
-                if(table && $.fn.DataTable.isDataTable(table.table().node())) {
-                    table.destroy(); 
+            Object.values(this.tables).forEach(table => {
+                if (table && $.fn.DataTable.isDataTable(table.table().node())) {
+                    table.destroy();
                 }
             });
             this.tables = {};
@@ -106,7 +150,45 @@
 
 <script>
     class FormValidator {
-        constructor(){this.init()}init(){this.bindEvents()}bindEvents(){$(document).on("input blur","input, textarea, select",e=>{this.validateField($(e.target))}),$(document).on("submit",'form[data-validate="true"]',e=>{if(!this.validateForm($(e.target)))return e.preventDefault(),!1})}validateField($field){const fieldName=$field.attr("name"),fieldValue=$field.val().trim(),fieldType=$field.attr("type"),required=$field.prop("required");let isValid=!0,errorMessage="";if($field.removeClass("is-invalid"),$field.siblings(".invalid-feedback").remove(),required&&!fieldValue&&(isValid=!1,errorMessage="This field is required"),"email"===fieldType&&fieldValue&&!this.isValidEmail(fieldValue)&&(isValid=!1,errorMessage="Please enter a valid email address"),$field.hasClass("phone")&&fieldValue&&!this.isValidPhone(fieldValue)&&(isValid=!1,errorMessage="Please enter a valid phone number"),"password"===fieldType&&fieldValue&&fieldValue.length<6&&(isValid=!1,errorMessage="Password must be at least 6 characters long"),$field.hasClass("confirm-password")){const originalPassword=$(`input[name="${fieldName.replace("_confirm","")}"]`).val();fieldValue!==originalPassword&&(isValid=!1,errorMessage="Passwords do not match")}return isValid||($field.addClass("is-invalid"),$field.after(`<div class="invalid-feedback">${errorMessage}</div>`)),isValid}validateForm($form){let isFormValid=!0;return $form.find("input, textarea, select").each((index,element)=>{this.validateField($(element))||(isFormValid=!1)}),isFormValid}isValidEmail(email){return/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)}isValidPhone(phone){return/^[\+]?[1-9][\d]{0,15}$/.test(phone.replace(/[\s\-\(\)]/g,""))}}
+        constructor() {
+            this.init()
+        }
+        init() {
+            this.bindEvents()
+        }
+        bindEvents() {
+            $(document).on("input blur", "input, textarea, select", e => {
+                this.validateField($(e.target))
+            }), $(document).on("submit", 'form[data-validate="true"]', e => {
+                if (!this.validateForm($(e.target))) return e.preventDefault(), !1
+            })
+        }
+        validateField($field) {
+            const fieldName = $field.attr("name"),
+                fieldValue = $field.val().trim(),
+                fieldType = $field.attr("type"),
+                required = $field.prop("required");
+            let isValid = !0,
+                errorMessage = "";
+            if ($field.removeClass("is-invalid"), $field.siblings(".invalid-feedback").remove(), required && !fieldValue && (isValid = !1, errorMessage = "This field is required"), "email" === fieldType && fieldValue && !this.isValidEmail(fieldValue) && (isValid = !1, errorMessage = "Please enter a valid email address"), $field.hasClass("phone") && fieldValue && !this.isValidPhone(fieldValue) && (isValid = !1, errorMessage = "Please enter a valid phone number"), "password" === fieldType && fieldValue && fieldValue.length < 6 && (isValid = !1, errorMessage = "Password must be at least 6 characters long"), $field.hasClass("confirm-password")) {
+                const originalPassword = $(`input[name="${fieldName.replace("_confirm","")}"]`).val();
+                fieldValue !== originalPassword && (isValid = !1, errorMessage = "Passwords do not match")
+            }
+            return isValid || ($field.addClass("is-invalid"), $field.after(`<div class="invalid-feedback">${errorMessage}</div>`)), isValid
+        }
+        validateForm($form) {
+            let isFormValid = !0;
+            return $form.find("input, textarea, select").each((index, element) => {
+                this.validateField($(element)) || (isFormValid = !1)
+            }), isFormValid
+        }
+        isValidEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+        }
+        isValidPhone(phone) {
+            return /^[\+]?[1-9][\d]{0,15}$/.test(phone.replace(/[\s\-\(\)]/g, ""))
+        }
+    }
     window.formValidator = new FormValidator();
 </script>
 
@@ -116,19 +198,19 @@
             this.updateInterval = 30000;
             this.init();
         }
-        
+
         init() {
             this.startPeriodicUpdates();
             this.bindEvents();
         }
-        
+
         startPeriodicUpdates() {
             this.updateNotifications();
             setInterval(() => {
                 this.updateNotifications();
             }, this.updateInterval);
         }
-        
+
         updateNotifications() {
             $.ajax({
                 url: "/BMC-SMS/includes/ajax/get_notifications.php",
@@ -145,7 +227,7 @@
                 }
             });
         }
-        
+
         updateBadges(counts) {
             for (const [type, count] of Object.entries(counts)) {
                 const $links = $(`.nav-link[data-notification-type="${type}"], .collapse-item[data-notification-type="${type}"]`);
@@ -164,34 +246,37 @@
                 });
             }
         }
-        
+
         showNewNotifications(notifications) {
             notifications.forEach(notification => {
                 this.showToast(notification.message, notification.type || "info");
             });
         }
-        
+
         showToast(message, type = "info") {
             const toastId = "toast-" + Date.now();
             const toast = $('<div id="' + toastId + '" class="toast" role="alert" aria-live="assertive" aria-atomic="true" style="position: fixed; top: 20px; right: 20px; z-index: 1050;">' +
                 '<div class="toast-header">' +
-                    '<strong class="mr-auto text-' + type + '">Notification</strong>' +
-                    '<small class="text-muted">now</small>' +
-                    '<button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">' +
-                        '<span aria-hidden="true">&times;</span>' +
-                    '</button>' +
+                '<strong class="mr-auto text-' + type + '">Notification</strong>' +
+                '<small class="text-muted">now</small>' +
+                '<button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">' +
+                '<span aria-hidden="true">&times;</span>' +
+                '</button>' +
                 '</div>' +
                 '<div class="toast-body">' + message + '</div>' +
-            '</div>');
-            
+                '</div>');
+
             $("body").append(toast);
-            toast.toast({ autohide: true, delay: 5000 });
+            toast.toast({
+                autohide: true,
+                delay: 5000
+            });
             toast.toast("show");
             toast.on("hidden.bs.toast", function() {
                 $(this).remove();
             });
         }
-        
+
         bindEvents() {
             $(document).on("click", "[data-notification-type]", e => {
                 const $target = $(e.currentTarget);
@@ -201,7 +286,7 @@
                 }
             });
         }
-        
+
         markAsRead(type) {
             $.post("/BMC-SMS/includes/ajax/mark_notifications_read.php", {
                 type: type
@@ -212,7 +297,7 @@
             }, "json");
         }
     }
-    
+
     window.notificationManager = new NotificationManager();
 </script>
 
@@ -240,3 +325,5 @@
         }, 5000);
     }
 </script>
+
+<script src="/BMC-SMS/assets/js/responsive-tables.js"></script>

@@ -47,7 +47,7 @@ $unread_teacher_salary = 0; // For teacher salary history
 $unread_principal_salary = 0; // For principal salary history
 $unread_hr_salary = 0; // For hr salary history
 $unread_hr_leave_status = 0; // For HR leave status
-$unread_admissions = 0; 
+$unread_admissions = 0;
 $unread_contact_messages = 0; // ⭐ NEW: Contact message counter
 $unread_update_requests = 0; // ⭐ NEW: School update request counter for SA
 $is_class_teacher = false; // Initialize teacher-specific flag
@@ -106,7 +106,7 @@ if (isset($conn) && $user_id) {
                 $stmt_librarian_reqs = $conn->prepare($sql_librarian_requests);
                 $stmt_librarian_reqs->execute([$user_id]);
                 $unread_librarian_requests = (int) $stmt_librarian_reqs->fetchColumn();
-                
+
                 $sql_hr_requests = "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = false AND type = 'hr_leave_request'";
                 $stmt_hr_reqs = $conn->prepare($sql_hr_requests);
                 $stmt_hr_reqs->execute([$user_id]);
@@ -174,7 +174,7 @@ if (isset($conn) && $user_id) {
                     $unread_update_requests = (int) ($result['update_requests'] ?? 0);
                 }
                 break;
-                
+
             case 'hr':
                 $sql_hr_counts = "SELECT 
                                     COUNT(*) FILTER (WHERE type = 'hr_leave_status' AND is_read = false) AS hr_leave_status,
@@ -184,13 +184,13 @@ if (isset($conn) && $user_id) {
                 $stmt_hr_counts = $conn->prepare($sql_hr_counts);
                 $stmt_hr_counts->execute([$user_id]);
                 $result = $stmt_hr_counts->fetch(PDO::FETCH_ASSOC);
-                
+
                 if ($result) {
                     $unread_hr_leave_status = (int) ($result['hr_leave_status'] ?? 0);
                     $unread_contact_messages = (int) ($result['contact_messages'] ?? 0); // ⭐ NEW: Fetch contact message count
                     $unread_admissions = (int) ($result['admissions'] ?? 0);
                 }
-                
+
                 $sql_hr_salary = "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND type = 'hr_salary' AND is_read = false";
                 $stmt_hr_salary = $conn->prepare($sql_hr_salary);
                 $stmt_hr_salary->execute([$user_id]);
@@ -285,7 +285,7 @@ if (isset($conn) && $user_id) {
                     </div>
                 </div>
             </li>
-            
+
             <li class="nav-item <?php echo ($current_page == 'manage_school_requests.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="/BMC-SMS/pages/bmc/manage_school_requests.php"
                     data-notification-type="school_update_request">
@@ -396,100 +396,100 @@ if (isset($conn) && $user_id) {
             $reports_pages = ['report_enrollment.php', 'report_attendance.php', 'report_academic.php', 'report_payroll.php', 'report_library.php'];
 
         ?>
-    <div class="sidebar-heading font-weight-semibold">School Management</div>
-    <li class="nav-item <?php echo ($current_page == 'profile.php') ? 'active' : ''; ?>">
-        <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/user/profile.php">
-            <div><i class="fas fa-fw fa-id-card"></i>
-                <span>My Profile</span>
-            </div>
-        </a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link <?php echo (is_active_page($teacher_pages)) ? '' : 'collapsed'; ?>" href="#"
-            data-toggle="collapse" data-target="#collapseTeacher">
-            <div><i class="fas fa-fw fa-person-chalkboard"></i>
-                <span>Manage Teachers</span>
-            </div>
-        </a>
-        <div id="collapseTeacher" class="collapse <?php echo (is_active_page($teacher_pages)) ? 'show' : ''; ?>"
-            data-parent="#accordionSidebar">
-            <div class="bg-white py-2 collapse-inner rounded">
-                <a class="collapse-item <?php echo ($current_page == 'teacher_enrollment.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>includes/forms/teacher_enrollment.php">Enroll Teacher</a>
-                <a class="collapse-item <?php echo ($current_page == 'teacher_list.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>pages/teacher/teacher_list.php">Teacher List</a>
-                <a class="collapse-item <?php echo ($current_page == 'teacher_attendance.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>pages/principal/teacher_attendance.php">Teacher Attendance</a>
-                <a class="collapse-item <?php echo ($current_page == 'view_teacher_attendance.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_teacher_attendance.php">View Teacher
-                    Attendance</a>
-            </div>
-        </div>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link <?php echo (is_active_page($librarian_pages)) ? '' : 'collapsed'; ?>" href="#"
-            data-toggle="collapse" data-target="#collapseLibrarian">
-            <div><i class="fas fa-fw fa-book-reader"></i>
-                <span>Manage Librarians</span>
-            </div>
-        </a>
-        <div id="collapseLibrarian" class="collapse <?php echo (is_active_page($librarian_pages)) ? 'show' : ''; ?>"
-            data-parent="#accordionSidebar">
-            <div class="bg-white py-2 collapse-inner rounded">
-                <a class="collapse-item <?php echo ($current_page == 'librarian_enrollment.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>includes/forms/librarian_enrollment.php">Enroll Librarian</a>
-                <a class="collapse-item <?php echo ($current_page == 'librarian_list.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>pages/librarian/librarian_list.php">Librarian List</a>
-                <a class="collapse-item <?php echo ($current_page == 'librarian_attendance.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>pages/principal/librarian_attendance.php">Librarian Attendance</a>
-                <a class="collapse-item <?php echo ($current_page == 'view_librarian_attendance.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_librarian_attendance.php">View Librarian
-                    Attendance</a>
-            </div>
-        </div>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link <?php echo (is_active_page($student_pages)) ? '' : 'collapsed'; ?>" href="#"
-            data-toggle="collapse" data-target="#collapseStudent">
-            <div><i class="fas fa-fw fa-children"></i>
-                <span>Manage Students</span>
-            </div>
-        </a>
-        <div id="collapseStudent" class="collapse <?php echo (is_active_page($student_pages)) ? 'show' : ''; ?>"
-            data-parent="#accordionSidebar">
-            <div class="bg-white py-2 collapse-inner rounded">
-                <a class="collapse-item <?php echo ($current_page == 'student_enrollment.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>includes/forms/student_enrollment.php">Enroll Student</a>
-                <a class="collapse-item <?php echo ($current_page == 'student_list.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>pages/student/student_list.php">Student List</a>
-                <a class="collapse-item <?php echo ($current_page == 'generate_lc.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>pages/principal/generate_lc.php">Generate LC</a>
-            </div>
-        </div>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link <?php echo (is_active_page($hr_pages)) ? '' : 'collapsed'; ?>" href="#"
-            data-toggle="collapse" data-target="#collapsePayrollUsers">
-            <div><i class="fas fa-fw fa-users-cog"></i>
-                <span>Manage HR</span>
-            </div>
-        </a>
-        <div id="collapsePayrollUsers" class="collapse <?php echo (is_active_page($hr_pages)) ? 'show' : ''; ?>"
-            data-parent="#accordionSidebar">
-            <div class="bg-white py-2 collapse-inner rounded">
-                <a class="collapse-item <?php echo ($current_page == 'hr_enrollment.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>includes/forms/hr_enrollment.php">Enroll HR</a>
-                <a class="collapse-item <?php echo ($current_page == 'hr_list.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>pages/hr/hr_list.php">HR List</a>
-                <a class="collapse-item <?php echo ($current_page == 'hr_attendance.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>pages/principal/hr_attendance.php">HR Attendance</a>
-                <a class="collapse-item <?php echo ($current_page == 'view_hr_attendance.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_hr_attendance.php">View HR Attendance</a>
-            </div>
-        </div>
-    </li>
-    <?php
-                $transport_pages = ['manage_vehicles.php','manage_drivers.php','manage_routes.php','teacher_transport.php','librarian_transport.php','student_transport.php'];
+            <div class="sidebar-heading font-weight-semibold">School Management</div>
+            <li class="nav-item <?php echo ($current_page == 'profile.php') ? 'active' : ''; ?>">
+                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/user/profile.php">
+                    <div><i class="fas fa-fw fa-id-card"></i>
+                        <span>My Profile</span>
+                    </div>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?php echo (is_active_page($teacher_pages)) ? '' : 'collapsed'; ?>" href="#"
+                    data-toggle="collapse" data-target="#collapseTeacher">
+                    <div><i class="fas fa-fw fa-person-chalkboard"></i>
+                        <span>Manage Teachers</span>
+                    </div>
+                </a>
+                <div id="collapseTeacher" class="collapse <?php echo (is_active_page($teacher_pages)) ? 'show' : ''; ?>"
+                    data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item <?php echo ($current_page == 'teacher_enrollment.php') ? 'active' : ''; ?>"
+                            href="<?php echo BASE_WEB_PATH; ?>includes/forms/teacher_enrollment.php">Enroll Teacher</a>
+                        <a class="collapse-item <?php echo ($current_page == 'teacher_list.php') ? 'active' : ''; ?>"
+                            href="<?php echo BASE_WEB_PATH; ?>pages/teacher/teacher_list.php">Teacher List</a>
+                        <a class="collapse-item <?php echo ($current_page == 'teacher_attendance.php') ? 'active' : ''; ?>"
+                            href="<?php echo BASE_WEB_PATH; ?>pages/principal/teacher_attendance.php">Teacher Attendance</a>
+                        <a class="collapse-item <?php echo ($current_page == 'view_teacher_attendance.php') ? 'active' : ''; ?>"
+                            href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_teacher_attendance.php">View Teacher
+                            Attendance</a>
+                    </div>
+                </div>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?php echo (is_active_page($librarian_pages)) ? '' : 'collapsed'; ?>" href="#"
+                    data-toggle="collapse" data-target="#collapseLibrarian">
+                    <div><i class="fas fa-fw fa-book-reader"></i>
+                        <span>Manage Librarians</span>
+                    </div>
+                </a>
+                <div id="collapseLibrarian" class="collapse <?php echo (is_active_page($librarian_pages)) ? 'show' : ''; ?>"
+                    data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item <?php echo ($current_page == 'librarian_enrollment.php') ? 'active' : ''; ?>"
+                            href="<?php echo BASE_WEB_PATH; ?>includes/forms/librarian_enrollment.php">Enroll Librarian</a>
+                        <a class="collapse-item <?php echo ($current_page == 'librarian_list.php') ? 'active' : ''; ?>"
+                            href="<?php echo BASE_WEB_PATH; ?>pages/librarian/librarian_list.php">Librarian List</a>
+                        <a class="collapse-item <?php echo ($current_page == 'librarian_attendance.php') ? 'active' : ''; ?>"
+                            href="<?php echo BASE_WEB_PATH; ?>pages/principal/librarian_attendance.php">Librarian Attendance</a>
+                        <a class="collapse-item <?php echo ($current_page == 'view_librarian_attendance.php') ? 'active' : ''; ?>"
+                            href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_librarian_attendance.php">View Librarian
+                            Attendance</a>
+                    </div>
+                </div>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?php echo (is_active_page($student_pages)) ? '' : 'collapsed'; ?>" href="#"
+                    data-toggle="collapse" data-target="#collapseStudent">
+                    <div><i class="fas fa-fw fa-children"></i>
+                        <span>Manage Students</span>
+                    </div>
+                </a>
+                <div id="collapseStudent" class="collapse <?php echo (is_active_page($student_pages)) ? 'show' : ''; ?>"
+                    data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item <?php echo ($current_page == 'student_enrollment.php') ? 'active' : ''; ?>"
+                            href="<?php echo BASE_WEB_PATH; ?>includes/forms/student_enrollment.php">Enroll Student</a>
+                        <a class="collapse-item <?php echo ($current_page == 'student_list.php') ? 'active' : ''; ?>"
+                            href="<?php echo BASE_WEB_PATH; ?>pages/student/student_list.php">Student List</a>
+                        <a class="collapse-item <?php echo ($current_page == 'generate_lc.php') ? 'active' : ''; ?>"
+                            href="<?php echo BASE_WEB_PATH; ?>pages/principal/generate_lc.php">Generate LC</a>
+                    </div>
+                </div>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?php echo (is_active_page($hr_pages)) ? '' : 'collapsed'; ?>" href="#"
+                    data-toggle="collapse" data-target="#collapsePayrollUsers">
+                    <div><i class="fas fa-fw fa-users-cog"></i>
+                        <span>Manage HR</span>
+                    </div>
+                </a>
+                <div id="collapsePayrollUsers" class="collapse <?php echo (is_active_page($hr_pages)) ? 'show' : ''; ?>"
+                    data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item <?php echo ($current_page == 'hr_enrollment.php') ? 'active' : ''; ?>"
+                            href="<?php echo BASE_WEB_PATH; ?>includes/forms/hr_enrollment.php">Enroll HR</a>
+                        <a class="collapse-item <?php echo ($current_page == 'hr_list.php') ? 'active' : ''; ?>"
+                            href="<?php echo BASE_WEB_PATH; ?>pages/hr/hr_list.php">HR List</a>
+                        <a class="collapse-item <?php echo ($current_page == 'hr_attendance.php') ? 'active' : ''; ?>"
+                            href="<?php echo BASE_WEB_PATH; ?>pages/principal/hr_attendance.php">HR Attendance</a>
+                        <a class="collapse-item <?php echo ($current_page == 'view_hr_attendance.php') ? 'active' : ''; ?>"
+                            href="<?php echo BASE_WEB_PATH; ?>pages/principal/view_hr_attendance.php">View HR Attendance</a>
+                    </div>
+                </div>
+            </li>
+            <?php
+            $transport_pages = ['manage_vehicles.php', 'manage_drivers.php', 'manage_routes.php', 'teacher_transport.php', 'librarian_transport.php', 'student_transport.php'];
             ?>
             <li class="nav-item">
                 <a class="nav-link <?php echo (is_active_page($transport_pages)) ? '' : 'collapsed'; ?>" href="#"
@@ -573,124 +573,124 @@ if (isset($conn) && $user_id) {
                 </div>
             </li>
 
-    <li class="nav-item">
-        <a class="nav-link <?php echo (is_active_page($academics_pages)) ? '' : 'collapsed'; ?>" href="#"
-            data-toggle="collapse" data-target="#collapseAcademics">
-            <div><i class="fas fa-fw fa-book"></i>
-                <span>Academics</span>
-            </div>
-        </a>
-        <div id="collapseAcademics" class="collapse <?php echo (is_active_page($academics_pages)) ? 'show' : ''; ?>"
-            data-parent="#accordionSidebar">
-            <div class="bg-white py-2 collapse-inner rounded">
-                <a class="collapse-item <?php echo ($current_page == 'manage_subjects.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>pages/academics/manage_subjects.php">Manage Subjects</a>
-                <a class="collapse-item <?php echo ($current_page == 'manage_timetable.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>pages/academics/manage_timetable.php">Manage Timetable</a>
-                <a class="collapse-item <?php echo ($current_page == 'send_exam_timetable.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>pages/principal/send_exam_timetable.php">Send Exam Timetable</a>
-                <a class="collapse-item <?php echo ($current_page == 'manage_holidays.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>pages/principal/manage_holidays.php">Holiday Management</a>
-            </div>
-        </div>
-    </li>
-    <li class="nav-item <?php echo ($current_page == 'school_settings.php') ? 'active' : ''; ?>">
-        <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/principal/school_settings.php">
-            <div><i class="fas fa-fw fa-cogs"></i>
-                <span>School Settings</span>
-            </div>
-        </a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link <?php echo $is_leave_management_active ? '' : 'collapsed'; ?>" href="#"
-            data-toggle="collapse" data-target="#collapseLeave">
-            <div>
-                <i class="fas fa-fw fa-calendar-alt"></i>
-                <span>Leave Management</span>
-                <?php
-                            $total_leave_notifs = $unread_leave_requests + $unread_librarian_requests + $unread_hr_requests;
-                            if ($total_leave_notifs > 0):
+            <li class="nav-item">
+                <a class="nav-link <?php echo (is_active_page($academics_pages)) ? '' : 'collapsed'; ?>" href="#"
+                    data-toggle="collapse" data-target="#collapseAcademics">
+                    <div><i class="fas fa-fw fa-book"></i>
+                        <span>Academics</span>
+                    </div>
+                </a>
+                <div id="collapseAcademics" class="collapse <?php echo (is_active_page($academics_pages)) ? 'show' : ''; ?>"
+                    data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item <?php echo ($current_page == 'manage_subjects.php') ? 'active' : ''; ?>"
+                            href="<?php echo BASE_WEB_PATH; ?>pages/academics/manage_subjects.php">Manage Subjects</a>
+                        <a class="collapse-item <?php echo ($current_page == 'manage_timetable.php') ? 'active' : ''; ?>"
+                            href="<?php echo BASE_WEB_PATH; ?>pages/academics/manage_timetable.php">Manage Timetable</a>
+                        <a class="collapse-item <?php echo ($current_page == 'send_exam_timetable.php') ? 'active' : ''; ?>"
+                            href="<?php echo BASE_WEB_PATH; ?>pages/principal/send_exam_timetable.php">Send Exam Timetable</a>
+                        <a class="collapse-item <?php echo ($current_page == 'manage_holidays.php') ? 'active' : ''; ?>"
+                            href="<?php echo BASE_WEB_PATH; ?>pages/principal/manage_holidays.php">Holiday Management</a>
+                    </div>
+                </div>
+            </li>
+            <li class="nav-item <?php echo ($current_page == 'school_settings.php') ? 'active' : ''; ?>">
+                <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/principal/school_settings.php">
+                    <div><i class="fas fa-fw fa-cogs"></i>
+                        <span>School Settings</span>
+                    </div>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?php echo $is_leave_management_active ? '' : 'collapsed'; ?>" href="#"
+                    data-toggle="collapse" data-target="#collapseLeave">
+                    <div>
+                        <i class="fas fa-fw fa-calendar-alt"></i>
+                        <span>Leave Management</span>
+                        <?php
+                        $total_leave_notifs = $unread_leave_requests + $unread_librarian_requests + $unread_hr_requests;
+                        if ($total_leave_notifs > 0):
                         ?>
-                <span class="badge badge-danger badge-counter">
-                    <?php echo ($total_leave_notifs > 9) ? '9+' : $total_leave_notifs; ?>
-                </span>
-                <?php endif; ?>
-            </div>
-        </a>
-        <div id="collapseLeave" class="collapse <?php echo $is_leave_management_active ? 'show' : ''; ?>"
-            data-parent="#accordionSidebar">
-            <div class="bg-white py-2 collapse-inner rounded">
-                <a class="collapse-item <?php echo ($current_page == 'teacher_leave_management.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>pages/principal/teacher_leave_management.php"
-                    data-notification-type="leave_request">
-                    Teacher Leave
-                    <?php if ($unread_leave_requests > 0): ?>
-                    <span
-                        class="badge badge-danger badge-counter"><?php echo ($unread_leave_requests > 9) ? '9+' : $unread_leave_requests; ?></span>
-                    <?php endif; ?>
+                            <span class="badge badge-danger badge-counter">
+                                <?php echo ($total_leave_notifs > 9) ? '9+' : $total_leave_notifs; ?>
+                            </span>
+                        <?php endif; ?>
+                    </div>
                 </a>
-                <a class="collapse-item <?php echo ($current_page == 'librarian_leave_management.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>pages/principal/librarian_leave_management.php"
-                    data-notification-type="librarian_leave_request">
-                    Librarian Leave
-                    <?php if ($unread_librarian_requests > 0): ?>
-                    <span
-                        class="badge badge-danger badge-counter"><?php echo ($unread_librarian_requests > 9) ? '9+' : $unread_librarian_requests; ?></span>
-                    <?php endif; ?>
+                <div id="collapseLeave" class="collapse <?php echo $is_leave_management_active ? 'show' : ''; ?>"
+                    data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item <?php echo ($current_page == 'teacher_leave_management.php') ? 'active' : ''; ?>"
+                            href="<?php echo BASE_WEB_PATH; ?>pages/principal/teacher_leave_management.php"
+                            data-notification-type="leave_request">
+                            Teacher Leave
+                            <?php if ($unread_leave_requests > 0): ?>
+                                <span
+                                    class="badge badge-danger badge-counter"><?php echo ($unread_leave_requests > 9) ? '9+' : $unread_leave_requests; ?></span>
+                            <?php endif; ?>
+                        </a>
+                        <a class="collapse-item <?php echo ($current_page == 'librarian_leave_management.php') ? 'active' : ''; ?>"
+                            href="<?php echo BASE_WEB_PATH; ?>pages/principal/librarian_leave_management.php"
+                            data-notification-type="librarian_leave_request">
+                            Librarian Leave
+                            <?php if ($unread_librarian_requests > 0): ?>
+                                <span
+                                    class="badge badge-danger badge-counter"><?php echo ($unread_librarian_requests > 9) ? '9+' : $unread_librarian_requests; ?></span>
+                            <?php endif; ?>
+                        </a>
+                        <a class="collapse-item <?php echo ($current_page == 'hr_leave_management.php') ? 'active' : ''; ?>"
+                            href="<?php echo BASE_WEB_PATH; ?>pages/principal/hr_leave_management.php"
+                            data-notification-type="hr_leave_request">
+                            HR Leave
+                            <?php if ($unread_hr_requests > 0): ?>
+                                <span
+                                    class="badge badge-danger badge-counter"><?php echo ($unread_hr_requests > 9) ? '9+' : $unread_hr_requests; ?></span>
+                            <?php endif; ?>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?php echo (is_active_page($past_data_pages_principal)) ? '' : 'collapsed'; ?>" href="#"
+                    data-toggle="collapse" data-target="#collapsePastDataPrincipal">
+                    <div><i class="fas fa-fw fa-history"></i>
+                        <span>View Past Data</span>
+                    </div>
                 </a>
-                <a class="collapse-item <?php echo ($current_page == 'hr_leave_management.php') ? 'active' : ''; ?>"
-                    href="<?php echo BASE_WEB_PATH; ?>pages/principal/hr_leave_management.php"
-                    data-notification-type="hr_leave_request">
-                    HR Leave
-                    <?php if ($unread_hr_requests > 0): ?>
-                    <span
-                        class="badge badge-danger badge-counter"><?php echo ($unread_hr_requests > 9) ? '9+' : $unread_hr_requests; ?></span>
-                    <?php endif; ?>
+                <div id="collapsePastDataPrincipal"
+                    class="collapse <?php echo (is_active_page($past_data_pages_principal)) ? 'show' : ''; ?>"
+                    data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item <?php echo ($current_page == 'past_teacher.php') ? 'active' : ''; ?>"
+                            href="/BMC-SMS/pages/past_record/past_teacher.php">Past Teacher List</a>
+                        <a class="collapse-item <?php echo ($current_page == 'past_librarian.php') ? 'active' : ''; ?>"
+                            href="/BMC-SMS/pages/past_record/past_librarian.php">Past Librarian List</a>
+                        <a class="collapse-item <?php echo ($current_page == 'past_hr.php') ? 'active' : ''; ?>"
+                            href="/BMC-SMS/pages/past_record/past_hr.php">Past HR List</a>
+                        <a class="collapse-item <?php echo ($current_page == 'past_student.php') ? 'active' : ''; ?>"
+                            href="/BMC-SMS/pages/past_record/past_student.php">Past Student List</a>
+                    </div>
+                </div>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?php echo (is_active_page($reports_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseReports"
+                    aria-expanded="true" aria-controls="collapseReports">
+                    <div><i class="fas fa-fw fa-chart-area"></i>
+                        <span>Reports</span>
+                    </div>
                 </a>
-            </div>
-        </div>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link <?php echo (is_active_page($past_data_pages_principal)) ? '' : 'collapsed'; ?>" href="#"
-            data-toggle="collapse" data-target="#collapsePastDataPrincipal">
-            <div><i class="fas fa-fw fa-history"></i>
-                <span>View Past Data</span>
-            </div>
-        </a>
-        <div id="collapsePastDataPrincipal"
-            class="collapse <?php echo (is_active_page($past_data_pages_principal)) ? 'show' : ''; ?>"
-            data-parent="#accordionSidebar">
-            <div class="bg-white py-2 collapse-inner rounded">
-                <a class="collapse-item <?php echo ($current_page == 'past_teacher.php') ? 'active' : ''; ?>"
-                    href="/BMC-SMS/pages/past_record/past_teacher.php">Past Teacher List</a>
-                <a class="collapse-item <?php echo ($current_page == 'past_librarian.php') ? 'active' : ''; ?>"
-                    href="/BMC-SMS/pages/past_record/past_librarian.php">Past Librarian List</a>
-                <a class="collapse-item <?php echo ($current_page == 'past_hr.php') ? 'active' : ''; ?>"
-                    href="/BMC-SMS/pages/past_record/past_hr.php">Past HR List</a>
-                <a class="collapse-item <?php echo ($current_page == 'past_student.php') ? 'active' : ''; ?>"
-                    href="/BMC-SMS/pages/past_record/past_student.php">Past Student List</a>
-            </div>
-        </div>
-    </li>
-     <li class="nav-item">
-        <a class="nav-link <?php echo (is_active_page($reports_pages)) ? '' : 'collapsed'; ?>" href="#" data-toggle="collapse" data-target="#collapseReports"
-            aria-expanded="true" aria-controls="collapseReports">
-            <div><i class="fas fa-fw fa-chart-area"></i>
-                <span>Reports</span>
-            </div>
-        </a>
-        <div id="collapseReports" class="collapse <?php echo (is_active_page($reports_pages)) ? 'show' : ''; ?>" aria-labelledby="headingReports" data-parent="#accordionSidebar">
-            <div class="bg-white py-2 collapse-inner rounded">
-                <h6 class="collapse-header">School Reports:</h6>
-                <a class="collapse-item <?php echo ($current_page == 'report_enrollment.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/reports/report_enrollment.php">Enrollment Report</a>
-                <a class="collapse-item <?php echo ($current_page == 'report_attendance.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/reports/report_attendance.php">Attendance Analysis</a>
-                <a class="collapse-item <?php echo ($current_page == 'report_academic.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/reports/report_academic.php">Academic Performance</a>
-                <a class="collapse-item <?php echo ($current_page == 'report_payroll.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/reports/report_payroll.php">Payroll Summary</a>
-                <a class="collapse-item <?php echo ($current_page == 'report_library.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/reports/report_library.php">Library Usage</a>
-            </div>
-        </div>
-    </li>
-    <?php
+                <div id="collapseReports" class="collapse <?php echo (is_active_page($reports_pages)) ? 'show' : ''; ?>" aria-labelledby="headingReports" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <h6 class="collapse-header">School Reports:</h6>
+                        <a class="collapse-item <?php echo ($current_page == 'report_enrollment.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/reports/report_enrollment.php">Enrollment Report</a>
+                        <a class="collapse-item <?php echo ($current_page == 'report_attendance.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/reports/report_attendance.php">Attendance Analysis</a>
+                        <a class="collapse-item <?php echo ($current_page == 'report_academic.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/reports/report_academic.php">Academic Performance</a>
+                        <a class="collapse-item <?php echo ($current_page == 'report_payroll.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/reports/report_payroll.php">Payroll Summary</a>
+                        <a class="collapse-item <?php echo ($current_page == 'report_library.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/reports/report_library.php">Library Usage</a>
+                    </div>
+                </div>
+            </li>
+        <?php
             break;
 
         case 'teacher':
@@ -1166,7 +1166,7 @@ if (isset($conn) && $user_id) {
                     data-notification-type="acquisition_request">
                     <div>
                         <i class="fas fa-fw fa-history"></i>
-                         <span>View Past Data</span>
+                        <span>View Past Data</span>
                         <?php if ($unread_acquisition_requests > 0): ?>
                             <span
                                 class="badge badge-danger badge-counter"><?php echo ($unread_acquisition_requests > 9) ? '9+' : $unread_acquisition_requests; ?></span>
@@ -1190,7 +1190,7 @@ if (isset($conn) && $user_id) {
                     </div>
                 </a>
             </li>
-            
+
             <li class="nav-item <?php echo ($current_page == 'request_school_update.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/hr/request_school_update.php">
                     <div><i class="fas fa-fw fa-edit"></i>
@@ -1212,7 +1212,7 @@ if (isset($conn) && $user_id) {
                     </div>
                 </a>
             </li>
-            
+
             <li class="nav-item <?php echo ($current_page == 'view_contact_messages.php') ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/hr/view_contact_messages.php"
                     data-notification-type="new_contact_message">
@@ -1243,26 +1243,27 @@ if (isset($conn) && $user_id) {
             </li>
             <li class="nav-item <?php echo (is_active_page($hr_leave_pages)) ? 'active' : ''; ?>">
                 <a class="nav-link" href="<?php echo BASE_WEB_PATH; ?>pages/hr/my_leave_management.php"
-                   data-notification-type="hr_leave_status">
+                    data-notification-type="hr_leave_status">
                     <div>
                         <i class="fas fa-fw fa-calendar-alt"></i>
                         <span>Manage Leave</span>
                         <?php if ($unread_hr_leave_status > 0): ?>
-                        <span class="badge badge-danger badge-counter">
-                            <?php echo ($unread_hr_leave_status > 9) ? '9+' : $unread_hr_leave_status; ?>
-                        </span>
+                            <span class="badge badge-danger badge-counter">
+                                <?php echo ($unread_hr_leave_status > 9) ? '9+' : $unread_hr_leave_status; ?>
+                            </span>
                         <?php endif; ?>
                     </div>
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link <?php echo (is_active_page($hr_manage_profiles_pages)) ? '' : 'collapsed'; ?>" href="#"
-                   data-toggle="collapse" data-target="#collapseManageProfiles">
+                    data-toggle="collapse" data-target="#collapseManageProfiles">
                     <div><i class="fas fa-fw fa-users"></i>
-                    <span>Manage Profiles</span></div>
+                        <span>Manage Profiles</span>
+                    </div>
                 </a>
                 <div id="collapseManageProfiles" class="collapse <?php echo (is_active_page($hr_manage_profiles_pages)) ? 'show' : ''; ?>"
-                     data-parent="#accordionSidebar">
+                    data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
                         <a class="collapse-item <?php echo ($current_page == 'principal_list.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/principal/principal_list.php">Principal Profile</a>
                         <a class="collapse-item <?php echo ($current_page == 'teacher_list.php') ? 'active' : ''; ?>" href="<?php echo BASE_WEB_PATH; ?>pages/teacher/teacher_list.php">Teacher Profile</a>
@@ -1332,36 +1333,36 @@ if (isset($conn) && $user_id) {
 <script src="/BMC-SMS/assets/js/sidebar.js"></script>
 
 <script>
-// Enhanced sidebar functionality for AJAX
-$(document).ready(function() {
-    // Add AJAX data attributes to navigation links
-    $('.nav-link, .collapse-item').each(function() {
-        const href = $(this).attr('href');
-        if (href && !href.startsWith('#') && !href.startsWith('javascript:') && !href.startsWith('http')) {
-            $(this).attr('data-ajax', 'true');
-        }
-    });
-    
-    // Update active states based on current URL
-    function updateActiveStates() {
-        const currentPath = window.location.pathname;
-        const currentPage = currentPath.substring(currentPath.lastIndexOf('/') + 1);
-        
-        $('.nav-link, .collapse-item').removeClass('active');
-        $('.nav-item').removeClass('active');
-        
-        // Find and activate current page
-        $(`.nav-link[href*="${currentPage}"], .collapse-item[href*="${currentPage}"]`).each(function() {
-            $(this).addClass('active');
-            $(this).closest('.nav-item').addClass('active');
-            $(this).closest('.collapse').addClass('show');
+    // Enhanced sidebar functionality for AJAX
+    $(document).ready(function() {
+        // Add AJAX data attributes to navigation links
+        $('.nav-link, .collapse-item').each(function() {
+            const href = $(this).attr('href');
+            if (href && !href.startsWith('#') && !href.startsWith('javascript:') && !href.startsWith('http')) {
+                $(this).attr('data-ajax', 'true');
+            }
         });
-    }
-    
-    // Update active states on page load
-    updateActiveStates();
-    
-    // Listen for AJAX page loads to update active states
-    $(document).on('ajax:page:loaded', updateActiveStates);
-});
+
+        // Update active states based on current URL
+        function updateActiveStates() {
+            const currentPath = window.location.pathname;
+            const currentPage = currentPath.substring(currentPath.lastIndexOf('/') + 1);
+
+            $('.nav-link, .collapse-item').removeClass('active');
+            $('.nav-item').removeClass('active');
+
+            // Find and activate current page
+            $(`.nav-link[href*="${currentPage}"], .collapse-item[href*="${currentPage}"]`).each(function() {
+                $(this).addClass('active');
+                $(this).closest('.nav-item').addClass('active');
+                $(this).closest('.collapse').addClass('show');
+            });
+        }
+
+        // Update active states on page load
+        updateActiveStates();
+
+        // Listen for AJAX page loads to update active states
+        $(document).on('ajax:page:loaded', updateActiveStates);
+    });
 </script>
