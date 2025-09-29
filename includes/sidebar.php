@@ -206,41 +206,7 @@ if (isset($conn) && $user_id) {
     }
 }
 ?>
-<style>
-    .sidebar .nav-item .nav-link {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    }
 
-    .sidebar .nav-item .nav-link>div,
-    .collapse-inner>.collapse-item {
-        display: flex;
-        align-items: center;
-    }
-
-    .sidebar .nav-item .nav-link .badge-counter,
-    .collapse-inner>.collapse-item .badge-counter {
-        margin-left: 0.5rem;
-        position: static;
-        transform: none;
-        font-size: 0.65rem;
-        padding: 0.25em 0.4em;
-        line-height: 1;
-    }
-
-    .sidebar.toggled .nav-item .nav-link {
-        justify-content: center;
-        position: relative;
-    }
-
-    .sidebar.toggled .nav-item .nav-link .badge-counter {
-        position: absolute;
-        top: 0.5rem;
-        right: 0.5rem;
-        transform: scale(0.7) translate(50%, -50%);
-    }
-</style>
 <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
 
     <a class="sidebar-brand d-flex align-items-center justify-content-center"
@@ -1373,38 +1339,3 @@ if (isset($conn) && $user_id) {
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="/BMC-SMS/assets/js/sidebar.js"></script>
-
-<script>
-    // Enhanced sidebar functionality for AJAX
-    $(document).ready(function() {
-        // Add AJAX data attributes to navigation links
-        $('.nav-link, .collapse-item').each(function() {
-            const href = $(this).attr('href');
-            if (href && !href.startsWith('#') && !href.startsWith('javascript:') && !href.startsWith('http')) {
-                $(this).attr('data-ajax', 'true');
-            }
-        });
-
-        // Update active states based on current URL
-        function updateActiveStates() {
-            const currentPath = window.location.pathname;
-            const currentPage = currentPath.substring(currentPath.lastIndexOf('/') + 1);
-
-            $('.nav-link, .collapse-item').removeClass('active');
-            $('.nav-item').removeClass('active');
-
-            // Find and activate current page
-            $(`.nav-link[href*="${currentPage}"], .collapse-item[href*="${currentPage}"]`).each(function() {
-                $(this).addClass('active');
-                $(this).closest('.nav-item').addClass('active');
-                $(this).closest('.collapse').addClass('show');
-            });
-        }
-
-        // Update active states on page load
-        updateActiveStates();
-
-        // Listen for AJAX page loads to update active states
-        $(document).on('ajax:page:loaded', updateActiveStates);
-    });
-</script>

@@ -119,3 +119,36 @@ html, body {
       font-weight: bold;
   }
 }
+    .sidebar .nav-item .nav-link {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .sidebar .nav-item .nav-link>div,
+    .collapse-inner>.collapse-item {
+        display: flex;
+        align-items: center;
+    }
+
+    .sidebar .nav-item .nav-link .badge-counter,
+    .collapse-inner>.collapse-item .badge-counter {
+        margin-left: 0.5rem;
+        position: static;
+        transform: none;
+        font-size: 0.65rem;
+        padding: 0.25em 0.4em;
+        line-height: 1;
+    }
+
+    .sidebar.toggled .nav-item .nav-link {
+        justify-content: center;
+        position: relative;
+    }
+
+    .sidebar.toggled .nav-item .nav-link .badge-counter {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        transform: scale(0.7) translate(50%, -50%);
+    }
