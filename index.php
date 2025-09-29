@@ -70,6 +70,7 @@ $page_map = [
     'teacher_transport' => __DIR__ . '/pages/transport/teacher_transport.php',
     'librarian_transport' => __DIR__ . '/pages/transport/librarian_transport.php',
     'student_transport' => __DIR__ . '/pages/transport/student_transport.php',
+    'hr_transport' => __DIR__ . '/pages/transport/hr_transport.php',
     'view_my_salary' => __DIR__ . '/pages/principal/view_my_salary.php',
     'send_school_notices' => __DIR__ . '/pages/principal/send_notice.php',
     'send_school_notices_to_bmc' => __DIR__ . '/pages/principal/send_notice_to_bmc.php',

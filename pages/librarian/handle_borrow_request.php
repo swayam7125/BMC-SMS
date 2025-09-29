@@ -1,10 +1,4 @@
 <?php
-/*
- * Filename: handle_borrow_request.php
- * Description: Handles approving (GET) and rejecting (POST) book borrow requests.
- * This script is a backend handler and has no visual output.
- */
-
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/log_system.php'; // ADDED: Log system dependency

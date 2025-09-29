@@ -205,6 +205,7 @@ try {
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link rel="stylesheet" href="../../assets/css/responsive.css" />
 </head>
 <body id="page-top">
     <div id="wrapper">
@@ -332,5 +333,6 @@ try {
             }
         });
     </script>
+    <script src="../../assets/js/responsive-tables.js"></script>
 </body>
 </html>

@@ -1,6 +1,4 @@
 <?php
-// pages/hr/get_admission_details.php
-
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 

@@ -1,11 +1,4 @@
 <?php
-/*
- * Filename: handle_acquisition_request.php
- * Description: Processes approval or rejection of book acquisition requests.
- * Author: Your Name
- * Date: 2024-09-18
- */
-
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/log_system.php'; // ADDED: Log system dependency

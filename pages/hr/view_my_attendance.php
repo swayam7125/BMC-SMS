@@ -6,7 +6,6 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/ajax_helpers.php';
 
 // This check is crucial for the AJAX navigation to work.
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
-// $is_ajax_request = is_ajax_request();
 
 // Decrypt the user role from the cookie.
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
@@ -52,6 +51,7 @@ $page_title = "My Attendance Report";
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link rel="stylesheet" href="../../assets/css/responsive.css" />
 </head>
 
 <body id="page-top">
@@ -134,17 +134,13 @@ $page_title = "My Attendance Report";
     <!-- Logout Modal-->
     <?php include_once $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/includes/logout_modal.php'; ?>
 
-    <!-- Core JavaScript-->
     <script src="/BMC-SMS/assets/vendor/jquery/jquery.min.js"></script>
     <script src="/BMC-SMS/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <!-- Easing Plugin JavaScript-->
     <script src="/BMC-SMS/assets/vendor/jquery-easing/jquery.easing.min.js"></script>
-    <!-- Custom scripts for all pages-->
     <script src="/BMC-SMS/assets/js/sb-admin-2.min.js"></script>
-    <!-- Page level plugins -->
     <script src="/BMC-SMS/assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
-    <!-- Page level custom scripts -->
+    <script src="../../assets/js/responsive-tables.js"></script>
     <script>
         // Initialize the DataTable with no default ordering.
         $(document).ready(function() {

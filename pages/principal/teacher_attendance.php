@@ -255,6 +255,8 @@ if (!$is_past_date) {
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link rel="stylesheet" href="../../assets/css/responsive.css" />
+
 </head>
 
 <body id="page-top">
@@ -527,7 +529,7 @@ if (!$is_past_date) {
             </div>
             <?php
             if (!$is_ajax_request) {
-                include '../../includes/header.php';
+                include '../../includes/footer.php';
             }
             ?>
         </div>
@@ -556,6 +558,8 @@ if (!$is_past_date) {
     <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+    <script src="../../assets/js/responsive-tables.js"></script>
+
     <script>
         $(document).ready(function() {
             var table = $('#dataTable').DataTable({

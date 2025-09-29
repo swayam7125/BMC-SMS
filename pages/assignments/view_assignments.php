@@ -1,9 +1,4 @@
 <?php
-/*
-|--------------------------------------------------------------------------
-| BACKEND LOGIC (CONTROLLER)
-|--------------------------------------------------------------------------
-*/
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
 include_once "../../includes/email_functions.php";
@@ -11,7 +6,6 @@ include_once "../../includes/ajax_helpers.php";
 
 // This check is crucial for the AJAX navigation to work.
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
-// $is_ajax_request = is_ajax_request();
 
 // --- Authorization & Initialization ---
 $role = null;
@@ -94,7 +88,7 @@ try {
             FROM assignments a
             JOIN teacher t ON a.teacher_id = t.id
             LEFT JOIN assignment_submissions s ON a.id = s.assignment_id AND s.student_id = :userId
-            WHERE a.std = :std AND a.school_id = :schoolId";
+            WHERE a.standard = :std AND a.school_id = :schoolId";
 
     // Filtering logic
     if ($filter === 'submitted') $sql .= " AND s.status IS NOT NULL AND s.status != 'Rejected'";
@@ -122,12 +116,6 @@ try {
     error_log("Database error in view_assignments.php: " . $e->getMessage());
     $errorMessage = "A database error occurred.";
 }
-
-/*
-|--------------------------------------------------------------------------
-| FRONTEND VIEW (HTML)
-|--------------------------------------------------------------------------
-*/
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -142,6 +130,7 @@ try {
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link rel="stylesheet" href="../../assets/css/responsive.css" />
 </head>
 
 <body id="page-top">
@@ -289,30 +278,9 @@ try {
         <script src="../../assets/vendor/jquery/jquery.min.js"></script>
         <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
         <script src="../../assets/js/sb-admin-2.min.js"></script>
-        <script>
-            $(document).ready(function() {
-                // Form submission on filter/sort change
-                $('#filterBy, #sortBy').on('change', function() {
-                    $('#filterForm').submit();
-                });
+        <script src="../../assets/js/responsive-tables.js"></script>
 
-                // Modal population
-                $('#uploadModal').on('show.bs.modal', function(event) {
-                    var button = $(event.relatedTarget);
-                    var assignmentId = button.data('assignment-id');
-                    var assignmentTitle = button.data('assignment-title');
-                    var modal = $(this);
-                    modal.find('#modalAssignmentTitle').text(assignmentTitle);
-                    modal.find('#modalAssignmentId').val(assignmentId);
-                });
-
-                // Custom file input label
-                $('.custom-file-input').on('change', function() {
-                    var fileName = $(this).val().split('\\').pop();
-                    $(this).siblings('.custom-file-label').addClass("selected").html(fileName);
-                });
-            });
-        </script>
+        <script src="../../assets/js/view_assignment.js"></script>
 </body>
 
 </html>

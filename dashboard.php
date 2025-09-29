@@ -2,7 +2,7 @@
 require_once __DIR__ . "/includes/ajax_helpers.php";
 require_once __DIR__ . "/includes/connect.php";
 require_once __DIR__ . "/encryption.php";
-require_once __DIR__ . '/includes/ajax_helpers.php'; 
+require_once __DIR__ . '/includes/ajax_helpers.php';
 
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
@@ -419,6 +419,7 @@ if ($userId && isset($conn)) {
     <link rel="stylesheet" href="/BMC-SMS/assets/css/sidebar.css">
     <link rel="stylesheet" href="/BMC-SMS/assets/css/scrollbar_hidden.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link rel="stylesheet" href="../../assets/css/responsive.css" />
     <style>
         .notification-dashboard-list {
             max-height: 350px;
@@ -869,11 +870,7 @@ if ($userId && isset($conn)) {
                         include './includes/footer.php';
                     ?>
                 </div>
-<?php
-if (!$is_ajax_request) {
-    include '../../includes/footer.php';
-}
-?>            </div>
+            </div>
         </div>
     </div> <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
     <?php include_once "./includes/logout_modal.php" ?>
@@ -885,46 +882,46 @@ if (!$is_ajax_request) {
     <script src="/BMC-SMS/assets/js/notification.js"></script>
     <script src="/BMC-SMS/assets/js/sidebar.js"></script>
     <script src="/BMC-SMS/assets/vendor/jquery/jquery.min.js"></script>
+    <script src="../../assets/js/responsive-tables.js"></script>
+    <script>
+        // New script block to handle notification clicks on the dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            const base_path = '/BMC-SMS/';
+            // API endpoint to mark notifications as read (adjust path if needed)
+            const notification_api_endpoint = base_path + 'includes/actions/mark_notifications_as_read.php';
 
-        <script>
-    // New script block to handle notification clicks on the dashboard
-    document.addEventListener('DOMContentLoaded', function() {
-        const base_path = '/BMC-SMS/';
-        // API endpoint to mark notifications as read (adjust path if needed)
-        const notification_api_endpoint = base_path + 'includes/actions/mark_notifications_as_read.php'; 
+            // Use event delegation to handle clicks on links that are dynamically added
+            document.getElementById('dashboard-notifications-list').addEventListener('click', function(event) {
+                // Find the clicked link
+                const link = event.target.closest('a.list-group-item');
+                if (!link) {
+                    return; // Click was not on a notification link
+                }
 
-        // Use event delegation to handle clicks on links that are dynamically added
-        document.getElementById('dashboard-notifications-list').addEventListener('click', function(event) {
-            // Find the clicked link
-            const link = event.target.closest('a.list-group-item');
-            if (!link) {
-                return; // Click was not on a notification link
-            }
+                // Get the notification ID and check if it's unread
+                const notifId = link.getAttribute('data-notif-id');
+                const targetUrl = link.getAttribute('href');
 
-            // Get the notification ID and check if it's unread
-            const notifId = link.getAttribute('data-notif-id');
-            const targetUrl = link.getAttribute('href');
+                if (notifId && link.classList.contains('unread')) {
+                    event.preventDefault(); // Stop the default navigation
 
-            if (notifId && link.classList.contains('unread')) {
-                event.preventDefault(); // Stop the default navigation
+                    let formData = new FormData();
+                    formData.append('action', 'mark_single_read');
+                    formData.append('notif_id', notifId);
 
-                let formData = new FormData();
-                formData.append('action', 'mark_single_read');
-                formData.append('notif_id', notifId);
-
-                fetch(notification_api_endpoint, {
-                        method: 'POST',
-                        body: formData
-                    })
-                    .catch(error => console.error('Error marking dashboard notification as read:', error))
-                    .finally(() => {
-                        // Navigate after the API call is complete
-                        window.location.href = targetUrl;
-                    });
-            }
+                    fetch(notification_api_endpoint, {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .catch(error => console.error('Error marking dashboard notification as read:', error))
+                        .finally(() => {
+                            // Navigate after the API call is complete
+                            window.location.href = targetUrl;
+                        });
+                }
+            });
         });
-    });
-</script>
+    </script>
 
 </html>
 <?php endif; // End the check for the non-AJAX footer 

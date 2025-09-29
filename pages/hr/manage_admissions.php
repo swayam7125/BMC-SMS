@@ -122,6 +122,7 @@ try {
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link rel="stylesheet" href="../../assets/css/responsive.css" />
     <style>
         /* Minimalist style for radio buttons */
         .status-radio-group .form-check {
@@ -353,6 +354,8 @@ try {
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+    <script src="../../assets/js/responsive-tables.js"></script>
+
     <script>
         $(document).ready(function() {
             $('#admissionsTable').DataTable();

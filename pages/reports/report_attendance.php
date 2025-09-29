@@ -237,6 +237,8 @@ $total_leave = array_sum(array_column($individual_staff_attendance, 'leave'));
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link href="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../assets/css/responsive.css" />
+
     <style>
         .staff-list-container {
             max-height: 250px;
@@ -467,6 +469,8 @@ $total_leave = array_sum(array_column($individual_staff_attendance, 'leave'));
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="../../assets/js/responsive-tables.js"></script>
+
     <script>
         // Staff Attendance Pie Chart
         var ctxStaff = document.getElementById("staffAttendanceChart");

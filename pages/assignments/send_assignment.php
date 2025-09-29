@@ -1,9 +1,4 @@
 <?php
-/*
-|--------------------------------------------------------------------------
-| BACKEND LOGIC (CONTROLLER)
-|--------------------------------------------------------------------------
-*/
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
 include_once "../../includes/email_functions.php";
@@ -11,7 +6,6 @@ include_once "../../includes/ajax_helpers.php";
 
 // This check is crucial for the AJAX navigation to work.
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
-// $is_ajax_request = is_ajax_request();
 
 // --- Authorization & Initialization ---
 $role = null;
@@ -105,12 +99,6 @@ try {
     error_log("Database Error in send_assignment.php: " . $e->getMessage());
     $errors[] = "A database error occurred. Please try again.";
 }
-
-/*
-|--------------------------------------------------------------------------
-| FRONTEND VIEW (HTML)
-|--------------------------------------------------------------------------
-*/
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -126,6 +114,7 @@ try {
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link rel="stylesheet" href="../../assets/css/responsive.css" />
 </head>
 
 <body id="page-top">
@@ -214,18 +203,9 @@ try {
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const dueDateInput = document.getElementById('due_date');
-            const today = new Date().toISOString().split('T')[0];
-            dueDateInput.setAttribute('min', today);
+    <script src="../../assets/js/responsive-tables.js"></script>
 
-            $('.custom-file-input').on('change', function() {
-                var fileName = $(this).val().split('\\').pop();
-                $(this).siblings('.custom-file-label').addClass("selected").html(fileName);
-            });
-        });
-    </script>
+    <script src="../../assets/js/send_assignment.js"></script>
 </body>
 
 </html>

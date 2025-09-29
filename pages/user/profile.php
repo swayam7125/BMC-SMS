@@ -193,6 +193,8 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link rel="stylesheet" href="../../assets/css/profile.css">
+    <link rel="stylesheet" href="../../assets/css/responsive.css" />
+
     <style>
         .table-timings th {
             width: 30%;
@@ -1050,6 +1052,7 @@ if (isset($_COOKIE['encrypted_user_id']) && isset($_COOKIE['encrypted_user_role'
         <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
         <script src="../../assets/js/sb-admin-2.min.js"></script>
         <script src="/BMC-SMS/assets/vendor/jquery/jquery.min.js"></script>
+        <script src="../../assets/js/responsive-tables.js"></script>
         <script>
             $(document).ready(function() {
                 $('#changePasswordForm').on('submit', function(e) {

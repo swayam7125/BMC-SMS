@@ -70,13 +70,16 @@ try {
                     $notification_link_student = "pages/student/view_exam_timetable.php";
                     $notification_type = "exam_timetable";
                     
-                    $stmt_notify_teacher = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");
-                    $stmt_notify_student = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");
+                    // Dynamically create placeholders for the IN clause
+                    $placeholders = implode(',', array_fill(0, count($user_ids), '?'));
                     
                     // Fetch roles to send correct links
-                    $stmt_roles = $conn->prepare("SELECT id, role FROM users WHERE id = ANY(?)");
-                    $stmt_roles->execute([$user_ids]);
+                    $stmt_roles = $conn->prepare("SELECT id, role FROM users WHERE id IN ($placeholders)");
+                    $stmt_roles->execute($user_ids);
                     $users_with_roles = $stmt_roles->fetchAll(PDO::FETCH_KEY_PAIR);
+
+                    $stmt_notify_teacher = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");
+                    $stmt_notify_student = $conn->prepare("INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)");
 
                     foreach ($user_ids as $user_id) {
                         if (isset($users_with_roles[$user_id])) {
@@ -126,6 +129,7 @@ try {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link rel="stylesheet" href="../../assets/css/responsive.css" />
 </head>
 <body id="page-top">
     <div id="wrapper">
@@ -216,6 +220,8 @@ if (!$is_ajax_request) {
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+    <script src="../../assets/js/responsive-tables.js"></script>
+
     <script>
         $(document).ready(function() {
             $('#dataTable').DataTable({

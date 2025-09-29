@@ -1,16 +1,10 @@
 <?php
-/*
-|--------------------------------------------------------------------------
-| BACKEND LOGIC (CONTROLLER)
-|--------------------------------------------------------------------------
-*/
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
 include_once "../../includes/ajax_helpers.php";
 
 // This check is crucial for the AJAX navigation to work.
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
-// $is_ajax_request = is_ajax_request();
 
 // --- Authorization & Initialization ---
 $role = null;
@@ -64,36 +58,37 @@ try {
 }
 
 ?>
-    <!DOCTYPE html>
-    <html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Assignment History</title>
-        <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assignment History</title>
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,900" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link rel="stylesheet" href="../../assets/css/responsive.css" />
     </head>
 
-    <body id="page-top">
-        <div id="wrapper">
-            <?php 
-            if (!$is_ajax_request) { 
-                include '../../includes/sidebar.php';
-            } 
-            ?>
+<body id="page-top">
+    <div id="wrapper">
+        <?php
+        if (!$is_ajax_request) {
+            include '../../includes/sidebar.php';
+        }
+        ?>
         <div id="content-wrapper" class="d-flex flex-column">
-                <div id="content">
-                    <?php 
-                    if (!$is_ajax_request) {
-                        include '../../includes/header.php';
-                    }
-                    ?>
-                    <div id="main-content">
+            <div id="content">
+                <?php
+                if (!$is_ajax_request) {
+                    include '../../includes/header.php';
+                }
+                ?>
+                <div id="main-content">
                     <div class="container-fluid">
                         <div class="d-sm-flex align-items-center justify-content-between mb-4">
                             <h1 class="h3 mb-0 text-gray-800">Assignment History</h1>
@@ -142,18 +137,21 @@ try {
                             </div>
                         </div>
                     </div>
-                    </div>
                 </div>
-                <?php if (!$is_ajax_request) { include '../../includes/footer.php'; } ?>
             </div>
+            <?php if (!$is_ajax_request) {
+                include '../../includes/footer.php';
+            } ?>
         </div>
-        <?php include_once "../../includes/logout_modal.php" ?>
-        <script src="../../assets/vendor/jquery/jquery.min.js"></script>
-        <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-        <script src="../../assets/js/sb-admin-2.min.js"></script>
-    </body>
+    </div>
+    <?php include_once "../../includes/logout_modal.php" ?>
+    <script src="../../assets/vendor/jquery/jquery.min.js"></script>
+    <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="../../assets/js/sb-admin-2.min.js"></script>
+        <script src="../../assets/js/responsive-tables.js"></script>
+</body>
 
-    </html>
-<?php 
+</html>
+<?php
 $conn = null;
 ?>

@@ -1,16 +1,10 @@
 <?php
-/*
-|--------------------------------------------------------------------------
-| BACKEND LOGIC (CONTROLLER)
-|--------------------------------------------------------------------------
-*/
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php';
 
 // This check is crucial for the AJAX navigation to work.
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
-// $is_ajax_request = is_ajax_request();
 
 $role = null;
 $user_id = null;
@@ -72,6 +66,7 @@ $pageTitle = "Book Acquisition Requests";
         <link rel="stylesheet" href="../../assets/css/sidebar.css">
         <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
         <link rel="stylesheet" href="../../assets/css/table-to-card.css">
+        <link rel="stylesheet" href="../../assets/css/responsive.css" />
 
         <style>
             .mobile-card-view {
@@ -210,6 +205,8 @@ if (!$is_ajax_request) {
         <script src="../../assets/vendor/jquery/jquery.min.js"></script>
         <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
         <script src="../../assets/js/sb-admin-2.min.js"></script>
+        <script src="../../assets/js/responsive-tables.js"></script>
+
     </body>
 
     </html>
