@@ -63,6 +63,7 @@ $attendance_percentage = ($total_lectures > 0) ? round(($present_count / $total_
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700" rel="stylesheet">
+    <link rel="stylesheet" href="../../assets/css/responsive.css" />
 
 </head>
 
@@ -179,6 +180,8 @@ if (!$is_ajax_request) {
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+    <script src="../../assets/js/responsive-tables.js"></script>
+
     <script>
     // Initialize the DataTable with custom settings
     $(document).ready(function() {

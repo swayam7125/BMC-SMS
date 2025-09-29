@@ -1,11 +1,4 @@
 <?php
-/*
- * Filename: get_borrowers.php
- * Description: API endpoint to fetch a list of students or teachers for a librarian's school.
- * Author: Your Name
- * Date: 2024-09-18
- */
-
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 

@@ -1,16 +1,10 @@
 <?php
-/*
-|--------------------------------------------------------------------------
-| BACKEND LOGIC (CONTROLLER)
-|--------------------------------------------------------------------------
-*/
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
 include_once "../../includes/ajax_helpers.php";
 
 // This check is crucial for the AJAX navigation to work.
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
-// $is_ajax_request = is_ajax_request();
 
 // --- Authorization & Initialization ---
 $role = decrypt_id($_COOKIE['encrypted_user_role'] ?? '');
@@ -59,6 +53,7 @@ try {
         <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
         <link rel="stylesheet" href="../../assets/css/sidebar.css">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+        <link rel="stylesheet" href="../../assets/css/responsive.css" />
     </head>
 
     <body id="page-top">
@@ -123,6 +118,7 @@ try {
         <script src="../../assets/vendor/jquery/jquery.min.js"></script>
         <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
         <script src="../../assets/js/sb-admin-2.min.js"></script>
+        <script src="../../assets/js/responsive-tables.js"></script>
     </body>
 
     </html>

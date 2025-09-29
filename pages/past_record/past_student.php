@@ -5,7 +5,6 @@ include_once "../../includes/ajax_helpers.php";
 
 // This check is crucial for the AJAX navigation to work.
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
-// $is_ajax_request = is_ajax_request();
 
 $role = null;
 if (isset($_COOKIE['encrypted_user_role'])) {
@@ -45,6 +44,7 @@ try {
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link href="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../assets/css/responsive.css" />
 </head>
 
 <body id="page-top">
@@ -121,6 +121,7 @@ try {
         <script src="../../assets/js/sb-admin-2.min.js"></script>
         <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
         <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+        <script src="../../assets/js/responsive-tables.js"></script>
         <script>
             $(document).ready(function() {
                 $('#pastStudentTable').DataTable({

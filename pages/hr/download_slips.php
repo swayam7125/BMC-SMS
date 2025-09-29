@@ -1,5 +1,4 @@
 <?php
-// 1. REQUIRE THE DOMPDF LIBRARY
 require_once '../../includes/dompdf/autoload.inc.php';
 
 // Reference the Dompdf namespace

@@ -1,10 +1,4 @@
 <?php
-/*
- * Filename: handle_return.php
- * Description: Processes the return of a borrowed book.
- * This script is a backend handler and has no visual output.
- */
-
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 

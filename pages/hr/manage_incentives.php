@@ -1,16 +1,9 @@
 <?php
-/*
-|--------------------------------------------------------------------------
-| 1. INCLUDES & SETUP
-|--------------------------------------------------------------------------
-| Includes required files and performs initial authorization and data setup.
-*/
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 
 // This check is crucial for the AJAX navigation to work.
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
-// $is_ajax_request = is_ajax_request();
 
 // Authorization check for HR user
 session_start();
@@ -39,13 +32,6 @@ if (!$school_id) {
 // Initialize feedback messages
 $errorMessage = '';
 $successMessage = '';
-
-/*
-|--------------------------------------------------------------------------
-| 2. HELPER FUNCTIONS
-|--------------------------------------------------------------------------
-| Reusable functions to avoid code duplication.
-*/
 
 /**
  * Calculates the final incentive amount for a given staff member.
@@ -81,14 +67,6 @@ function calculateIncentiveAmount($conn, $staff_id, $staff_role, $incentive_id)
     }
     return null;
 }
-
-
-/*
-|--------------------------------------------------------------------------
-| 3. FORM HANDLERS (POST REQUESTS)
-|--------------------------------------------------------------------------
-| This block processes all form submissions for the page.
-*/
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
@@ -264,14 +242,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-
-/*
-|--------------------------------------------------------------------------
-| 4. DATA FETCHING FOR PAGE DISPLAY
-|--------------------------------------------------------------------------
-| Retrieves all necessary data from the database to render the page.
-*/
-
 // Fetch all defined incentive types for the school
 $incentives = $conn->prepare("SELECT * FROM incentives WHERE school_id = ? ORDER BY incentive_name");
 $incentives->execute([$school_id]);
@@ -319,14 +289,6 @@ $assigned_stmt = $conn->prepare($assigned_incentives_query);
 $assigned_stmt->execute([$school_id]);
 $assigned_incentive_list = $assigned_stmt->fetchAll(PDO::FETCH_ASSOC);
 
-
-/*
-|--------------------------------------------------------------------------
-| 5. DATA PROCESSING FOR FRONTEND
-|--------------------------------------------------------------------------
-| Processes fetched data into formats suitable for JavaScript.
-*/
-
 // Group staff by role for the dropdown optgroups
 $staff_by_role = [];
 foreach ($all_staff_list as $staff) {
@@ -361,6 +323,8 @@ $staff_incentives_json = json_encode($staff_incentives_map);
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link rel="stylesheet" href="../../assets/css/responsive.css" />
+
     <style>
         .searchable-dropdown .dropdown-menu {
             display: none;
@@ -733,6 +697,7 @@ $staff_incentives_json = json_encode($staff_incentives_map);
     <script src="../../assets/js/sb-admin-2.min.js"></script>
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+    <script src="../../assets/js/responsive-tables.js"></script>
 
     <script>
         $(document).ready(function() {

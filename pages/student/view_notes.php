@@ -149,6 +149,8 @@ $pageTitle = 'View Notes';
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link rel="stylesheet" href="../../assets/css/responsive.css" />
+
 </head>
 
 <body id="page-top">
@@ -233,6 +235,7 @@ if (!$is_ajax_request) {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.4.1/jquery.easing.min.js"></script>
     <script src="https://cdn.datatables.net/1.10.21/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.10.21/js/dataTables.bootstrap4.min.js"></script>
+    <script src="../../assets/js/responsive-tables.js"></script>
     <script>
         $(document).ready(function() {
             $('#notesTable').DataTable({

@@ -1,10 +1,4 @@
 <?php
-/*
- * Filename: handle_issue.php
- * Description: Processes the issuance of a book to a borrower.
- * This script is a backend handler for a form submission and has no visual output.
- */
-
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 

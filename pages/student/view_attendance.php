@@ -70,6 +70,8 @@ foreach ($attendance_records as $record) {
 
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link rel="stylesheet" href="../../assets/css/responsive.css" />
+
 
 </head>
 
@@ -204,6 +206,8 @@ if (!$is_ajax_request) {
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
     <script src="../../assets/js/custom_student_scripts.js"></script>
+    <script src="../../assets/js/responsive-tables.js"></script>
+
 </body>
 
 </html>

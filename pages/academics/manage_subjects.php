@@ -1,6 +1,4 @@
 <?php
-// --- SETUP AND INITIALIZATION ---
-// NO session_start() as per user request.
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 include_once "../../includes/ajax_helpers.php";
@@ -116,6 +114,7 @@ try {
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link href="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../assets/css/responsive.css" />
     <style>
         /* UI FIX: Improved styles for the searchable dropdown */
         .searchable-dropdown .dropdown-menu {
@@ -221,10 +220,12 @@ try {
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
+    <?php include_once "../../includes/logout_modal.php" ?>
     <script src="/BMC-SMS/assets/vendor/jquery/jquery.min.js"></script>
     <script src="/BMC-SMS/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="/BMC-SMS/assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+    <script src="../../assets/js/responsive-tables.js"></script>
     <script>
 $(document).ready(function() {
     let dataTable = $('#dataTable').DataTable();

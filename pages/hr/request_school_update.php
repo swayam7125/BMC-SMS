@@ -180,6 +180,7 @@ function get_school_value($school_array, $key, $default = '') {
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link rel="stylesheet" href="../../assets/css/responsive.css" />
     <style>
         .select2-container .select2-selection--multiple { min-height: 38px; border-color: #d1d3e2 !important; }
         .select2-container--default .select2-selection--multiple .select2-selection__choice { background-color: #4e73df; border-color: #4e73df; color: white; }
@@ -351,6 +352,8 @@ function get_school_value($school_array, $key, $default = '') {
 <script src="../../assets/vendor/jquery/jquery.min.js"></script>
 <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="../../assets/js/responsive-tables.js"></script>
+
 <script>
 $(document).ready(function() {
     $('.multi-select').select2({

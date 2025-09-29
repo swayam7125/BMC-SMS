@@ -204,6 +204,8 @@ function haversine_distance($lat1, $lon1, $lat2, $lon2)
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="./assets/css/login.css">
+    <link rel="stylesheet" href="../../assets/css/responsive.css" />
+
 </head>
 
 <body>
@@ -294,6 +296,7 @@ function haversine_distance($lat1, $lon1, $lat2, $lon2)
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="./assets/js/login.js"></script>
+    <script src="../../assets/js/responsive-tables.js"></script>
 </body>
 
 </html>

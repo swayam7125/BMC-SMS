@@ -11,7 +11,6 @@ if (!isset($conn) || !$conn) {
 
 // This check is crucial for the AJAX navigation to work.
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
-// $is_ajax_request = is_ajax_request();
 
 // --- Authorization ---
 $role = decrypt_id($_COOKIE['encrypted_user_role'] ?? '');
@@ -132,14 +131,6 @@ try {
         $conn->rollBack();
     }
 }
-
-/*
-|--------------------------------------------------------------------------
-| FRONTEND VIEW (HTML)
-|--------------------------------------------------------------------------
-| This section contains the HTML structure and presentation logic.
-*/
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -154,6 +145,7 @@ try {
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link href="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../assets/css/responsive.css" />
 </head>
 
 <body id="page-top">
@@ -278,7 +270,6 @@ if (!$is_ajax_request) {
                         <?php endif; ?>
                     </div>
     <?php
-                    // If it's a normal page load (NOT AJAX), then we close all the layout tags and include scripts.
                     if (!$is_ajax_request):
                         include '../../includes/footer.php';
                     endif;
@@ -287,9 +278,10 @@ if (!$is_ajax_request) {
             </div>
         </div>
     </div>
+    <?php include_once "../../includes/logout_modal.php" ?>
     <script src="/BMC-SMS/assets/vendor/jquery/jquery.min.js"></script>
     <script src="/BMC-SMS/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-
+    <script src="../../assets/js/responsive-tables.js"></script>
     <script>
     $(document).ready(function() {
         const standard = "<?php echo htmlspecialchars($selected_standard ?? '', ENT_QUOTES); ?>";

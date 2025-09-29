@@ -135,6 +135,8 @@ if (!defined('BASE_WEB_PATH')) {
     <link href="/BMC-SMS/assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link href="/BMC-SMS/assets/css/sidebar.css" rel="stylesheet">
     <link href="/BMC-SMS/assets/css/scrollbar_hidden.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../assets/css/responsive.css" />
+
     <style>
         .icon-circle {
             height: 2.5rem;
@@ -269,6 +271,8 @@ if (!defined('BASE_WEB_PATH')) {
     <script src="/BMC-SMS/assets/js/sb-admin-2.min.js"></script>
     <script src="/BMC-SMS/assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+    <script src="../../assets/js/responsive-tables.js"></script>
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const base_api_path = '<?php echo BASE_WEB_PATH; ?>includes/actions/mark_notifications_as_read.php';
