@@ -47,7 +47,7 @@ $unread_teacher_salary = 0; // For teacher salary history
 $unread_principal_salary = 0; // For principal salary history
 $unread_hr_salary = 0; // For hr salary history
 $unread_hr_leave_status = 0; // For HR leave status
-$unread_admissions = 0; 
+$unread_admissions = 0;
 $unread_contact_messages = 0; // ⭐ NEW: Contact message counter
 $unread_update_requests = 0; // ⭐ NEW: School update request counter for SA
 $is_class_teacher = false; // Initialize teacher-specific flag
@@ -162,7 +162,7 @@ if (isset($conn) && $user_id) {
 
             case 'superadmin':
                 // ⭐ UPDATED: Fetching Principal Notices AND School Update Requests
-                $sql_counts = "SELECT 
+                $sql_counts = "SELECT
                                     COUNT(*) FILTER (WHERE type = 'principal_notice' AND is_read = false) AS principal_notices,
                                     COUNT(*) FILTER (WHERE type = 'school_update_request' AND is_read = false) AS update_requests
                                 FROM notifications WHERE user_id = ?";
@@ -174,9 +174,9 @@ if (isset($conn) && $user_id) {
                     $unread_update_requests = (int) ($result['update_requests'] ?? 0);
                 }
                 break;
-                
+
             case 'hr':
-                $sql_hr_counts = "SELECT 
+                $sql_hr_counts = "SELECT
                                     COUNT(*) FILTER (WHERE type = 'hr_leave_status' AND is_read = false) AS hr_leave_status,
                                     COUNT(*) FILTER (WHERE type = 'new_contact_message' AND is_read = false) AS contact_messages,
                                     COUNT(*) FILTER (WHERE type = 'new_admission_request' AND is_read = false) AS admissions
@@ -184,13 +184,13 @@ if (isset($conn) && $user_id) {
                 $stmt_hr_counts = $conn->prepare($sql_hr_counts);
                 $stmt_hr_counts->execute([$user_id]);
                 $result = $stmt_hr_counts->fetch(PDO::FETCH_ASSOC);
-                
+
                 if ($result) {
                     $unread_hr_leave_status = (int) ($result['hr_leave_status'] ?? 0);
                     $unread_contact_messages = (int) ($result['contact_messages'] ?? 0); // ⭐ NEW: Fetch contact message count
                     $unread_admissions = (int) ($result['admissions'] ?? 0);
                 }
-                
+
                 $sql_hr_salary = "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND type = 'hr_salary' AND is_read = false";
                 $stmt_hr_salary = $conn->prepare($sql_hr_salary);
                 $stmt_hr_salary->execute([$user_id]);
@@ -489,7 +489,7 @@ if (isset($conn) && $user_id) {
         </div>
     </li>
     <?php
-                $transport_pages = ['manage_vehicles.php','manage_drivers.php','manage_routes.php','teacher_transport.php','librarian_transport.php','student_transport.php'];
+                $transport_pages = ['manage_vehicles.php','manage_drivers.php','manage_routes.php','teacher_transport.php','librarian_transport.php','student_transport.php', 'hr_transport.php'];
             ?>
             <li class="nav-item">
                 <a class="nav-link <?php echo (is_active_page($transport_pages)) ? '' : 'collapsed'; ?>" href="#"
@@ -516,6 +516,8 @@ if (isset($conn) && $user_id) {
                             href="<?php echo BASE_WEB_PATH; ?>pages/transport/librarian_transport.php">Librarian Transport</a>
                         <a class="collapse-item <?php echo ($current_page == 'student_transport.php') ? 'active' : ''; ?>"
                             href="<?php echo BASE_WEB_PATH; ?>pages/transport/student_transport.php">Student Transport</a>
+                        <a class="collapse-item <?php echo ($current_page == 'hr_transport.php') ? 'active' : ''; ?>"
+                            href="<?php echo BASE_WEB_PATH; ?>pages/transport/hr_transport.php">HR Transport</a>
                     </div>
                 </div>
             </li>
