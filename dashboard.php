@@ -869,11 +869,7 @@ if ($userId && isset($conn)) {
                         include './includes/footer.php';
                     ?>
                 </div>
-<?php
-if (!$is_ajax_request) {
-    include '../../includes/footer.php';
-}
-?>            </div>
+           </div>
         </div>
     </div> <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
     <?php include_once "./includes/logout_modal.php" ?>

@@ -527,7 +527,7 @@ if (!$is_past_date) {
             </div>
             <?php
             if (!$is_ajax_request) {
-                include '../../includes/header.php';
+                include '../../includes/footer.php';
             }
             ?>
         </div>

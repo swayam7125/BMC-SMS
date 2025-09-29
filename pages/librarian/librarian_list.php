@@ -163,12 +163,12 @@ try {
                         </div>
                     </div>
                 </div>
+            </div>
                 <?php
                 if (!$is_ajax_request) {
                     include '../../includes/footer.php';
                 }
                 ?>
-            </div>
         </div>
 
         <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog">

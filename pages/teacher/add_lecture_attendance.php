@@ -74,7 +74,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 }
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -98,19 +97,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <body id="page-top">
     <div id="wrapper">
 <?php
-<?php
 if (!$is_ajax_request) {
     include '../../includes/sidebar.php';
 }
-?>        <div id="content-wrapper" class="d-flex flex-column">
-?>        <div id="content-wrapper" class="d-flex flex-column">
+?>      
+
+<div id="content-wrapper" class="d-flex flex-column">
+        <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-<?php
 <?php
 if (!$is_ajax_request) {
     include '../../includes/header.php';
 }
-?>                <div class="container-fluid">
+?>                
+<div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Add Lecture Attendance</h1>
 
                     <?php if ($message): ?>
@@ -227,12 +227,12 @@ if (!$is_ajax_request) {
                 </div>
             </div>
 <?php
-<?php
 if (!$is_ajax_request) {
     include '../../includes/footer.php';
 }
-?>        </div>
-?>        </div>
+?>        
+</div>
+    </div>
     </div>
     <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
     <?php include_once "../../includes/logout_modal.php"; ?>
