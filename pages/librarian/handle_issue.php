@@ -1,60 +1,77 @@
 <?php
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
+include_once '../../includes/log_system.php'; // Log system included
 
-// --- Authorization & Security ---
-// Ensure the user is a librarian and the request is a POST request from a form.
+session_start();
+
+// Get user info for logging
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
-if ($role !== 'librarian' || $_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header("Location: ../../dashboard.php");
+$userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+$userName = isset($_COOKIE['encrypted_user_name']) ? decrypt_id($_COOKIE['encrypted_user_name']) : 'N/A';
+
+
+if ($role !== 'librarian') {
+    // Redirect to login if not a librarian
+    header("Location: ../../login.php");
     exit;
 }
 
-// --- Input Validation ---
-$book_id = isset($_POST['book_id']) ? filter_var($_POST['book_id'], FILTER_VALIDATE_INT) : false;
-$borrower_id = isset($_POST['borrower_id']) ? filter_var($_POST['borrower_id'], FILTER_VALIDATE_INT) : false;
-$borrower_role = $_POST['borrower_role'] ?? '';
-$redirect_url = 'issue_return.php';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $book_id = $_POST['book_id'] ?? null;
+    $borrower_id = $_POST['borrower_id'] ?? null;
+    $borrower_type = $_POST['borrower_type'] ?? null;
+    $due_date = $_POST['due_date'] ?? null;
 
-if (!$book_id || !$borrower_id || !in_array($borrower_role, ['student', 'teacher'])) {
-    header("Location: $redirect_url?error=" . urlencode("Invalid data provided. Please fill out all fields correctly."));
-    exit;
-}
-
-try {
-    // --- Database Transaction ---
-    $conn->beginTransaction();
-
-    // Step 1: Check book availability and lock the row to prevent race conditions.
-    // 'FOR UPDATE' ensures that no two librarians can issue the last copy of a book simultaneously.
-    $stmt_book = $conn->prepare('SELECT "quantity_available" FROM "books" WHERE "book_id" = ? FOR UPDATE');
-    $stmt_book->execute([$book_id]);
-    $book = $stmt_book->fetch(PDO::FETCH_ASSOC);
-
-    if (!$book || $book['quantity_available'] < 1) {
-        throw new Exception("This book is currently not available for issue.");
+    if (!$book_id || !$borrower_id || !$borrower_type || !$due_date) {
+        $_SESSION['error'] = "Missing required information.";
+        header("Location: issue_return.php");
+        exit;
     }
 
-    // Step 2: Decrement the book's available quantity.
-    $stmt_update_book = $conn->prepare('UPDATE "books" SET "quantity_available" = "quantity_available" - 1 WHERE "book_id" = ?');
-    $stmt_update_book->execute([$book_id]);
+    try {
+        $conn->beginTransaction();
 
-    // Step 3: Create a new borrowing record.
-    $due_date = date('Y-m-d', strtotime('+14 days'));
-    $stmt_insert_br = $conn->prepare('INSERT INTO "borrowing_records" (book_id, borrower_id, borrower_role, checkout_date, due_date) VALUES (?, ?, ?, CURRENT_DATE, ?)');
-    $stmt_insert_br->execute([$book_id, $borrower_id, $borrower_role, $due_date]);
+        // 1. Check if the book is available
+        $stmt_check = $conn->prepare("SELECT available_copies FROM books WHERE id = ? AND available_copies > 0 FOR UPDATE");
+        $stmt_check->execute([$book_id]);
+        $book = $stmt_check->fetch(PDO::FETCH_ASSOC);
 
-    // If all steps were successful, commit the transaction.
-    $conn->commit();
-    $success_message = "Book issued successfully! Due date is " . date('d-m-Y', strtotime($due_date)) . ".";
-    header("Location: $redirect_url?success=" . urlencode($success_message));
-    exit;
-} catch (Exception $e) {
-    // If any step failed, roll back all changes.
-    if ($conn->inTransaction()) {
-        $conn->rollBack();
+        if (!$book) {
+            throw new Exception("Book not available or does not exist.");
+        }
+
+        // 2. Insert into borrowing_records
+        $stmt_insert = $conn->prepare(
+            "INSERT INTO borrowing_records (book_id, user_id, user_role, due_date, status) VALUES (?, ?, ?, ?, 'issued')"
+        );
+        $stmt_insert->execute([$book_id, $borrower_id, $borrower_type, $due_date]);
+
+        // 3. Decrement available_copies in books table
+        $stmt_update = $conn->prepare("UPDATE books SET available_copies = available_copies - 1 WHERE id = ?");
+        $stmt_update->execute([$book_id]);
+
+        $conn->commit();
+        $_SESSION['success'] = "Book issued successfully!";
+
+        // Log the successful action
+        log_interaction($role, $userId, "BOOK ISSUE: Issued Book ID {$book_id} to {$borrower_type} ID {$borrower_id}. Due date: {$due_date}", $userName);
+
+
+    } catch (Exception $e) {
+        if ($conn->inTransaction()) {
+            $conn->rollBack();
+        }
+        $_SESSION['error'] = "An error occurred: " . $e->getMessage();
+        // Log the error
+        log_interaction($role, $userId, "BOOK ISSUE ERROR: Failed to issue Book ID {$book_id}. Error: " . $e->getMessage(), $userName);
     }
-    error_log("Book issue failed: " . $e->getMessage());
-    header("Location: $redirect_url?error=" . urlencode("An error occurred during issuing: " . $e->getMessage()));
+
+    header("Location: issue_return.php");
+    exit;
+} else {
+    // Redirect if accessed directly without POST
+    header("Location: issue_return.php");
     exit;
 }
+?>

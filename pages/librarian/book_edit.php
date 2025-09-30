@@ -1,251 +1,153 @@
 <?php
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
-include_once '../../includes/ajax_helpers.php';
+include_once '../../includes/log_system.php';
 
-// This check is crucial for the AJAX navigation to work.
-$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+session_start();
+$role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
+$userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+$userName = isset($_COOKIE['encrypted_user_name']) ? decrypt_id($_COOKIE['encrypted_user_name']) : 'N/A';
 
-// --- Authorization ---
-$role = null;
-$user_id = null;
-$school_id = null;
-$books = [];
-
-if (isset($_COOKIE['encrypted_user_role'])) {
-    $role = decrypt_id($_COOKIE['encrypted_user_role']);
-}
-if (isset($_COOKIE['encrypted_user_id'])) {
-    $user_id = decrypt_id($_COOKIE['encrypted_user_id']);
-}
-
-if ($role !== 'librarian' || !$user_id) {
+if ($role !== 'librarian') {
     header("Location: ../../login.php");
     exit;
 }
 
-try {
-    // --- Data Fetching ---
-    // Get the librarian's school_id to ensure they only see their school's books
-    $stmt_school = $conn->prepare("SELECT school_id FROM librarian WHERE id = ?");
-    $stmt_school->execute([$user_id]);
-    $school_id = $stmt_school->fetchColumn();
-
-    if ($school_id) {
-        $stmt_books = $conn->prepare("SELECT * FROM books WHERE school_id = ? ORDER BY title ASC");
-        $stmt_books->execute([$school_id]);
-        $books = $stmt_books->fetchAll(PDO::FETCH_ASSOC);
-    }
-} catch (PDOException $e) {
-    die("Database Error: " . $e->getMessage());
+$book_id_from_url = $_GET['id'] ?? null;
+if (!$book_id_from_url) {
+    header("Location: book_list.php");
+    exit;
 }
 
-$pageTitle = "Book List";
+$book = null;
+$categories = [];
+$error_msg = '';
+
+try {
+    $stmt_cat = $conn->prepare("SELECT category_id, category_name FROM book_categories ORDER BY category_name");
+    $stmt_cat->execute();
+    $categories = $stmt_cat->fetchAll(PDO::FETCH_ASSOC);
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $title = $_POST['title'];
+        $author = $_POST['author'];
+        $publisher = $_POST['publisher'];
+        $isbn = $_POST['isbn'];
+        $category_id = $_POST['category_id'];
+        $quantity_total = $_POST['quantity_total'];
+        $quantity_available = $_POST['quantity_available'];
+
+        if (empty($title) || empty($author) || empty($category_id) || !is_numeric($quantity_total) || !is_numeric($quantity_available)) {
+            $error_msg = "Please fill in all fields correctly.";
+        } elseif ($quantity_available > $quantity_total) {
+            $error_msg = "Available copies cannot be greater than total quantity.";
+        } else {
+            $stmt = $conn->prepare(
+                "UPDATE books SET title = ?, author = ?, publisher = ?, isbn = ?, category_id = ?, quantity_total = ?, quantity_available = ? WHERE book_id = ?"
+            );
+            $stmt->execute([$title, $author, $publisher, $isbn, $category_id, $quantity_total, $quantity_available, $book_id_from_url]);
+            
+            $_SESSION['success'] = "Book details updated successfully!";
+            log_interaction($role, $userId, "BOOK EDIT: Updated details for Book ID {$book_id_from_url}.", $userName);
+            header("Location: book_list.php");
+            exit;
+        }
+    }
+
+    $stmt_book = $conn->prepare("SELECT * FROM books WHERE book_id = ?");
+    $stmt_book->execute([$book_id_from_url]);
+    $book = $stmt_book->fetch(PDO::FETCH_ASSOC);
+
+    if (!$book) {
+        $_SESSION['error'] = "Book not found.";
+        header("Location: book_list.php");
+        exit;
+    }
+} catch (PDOException $e) {
+    $error_msg = "Database error: " . $e->getMessage();
+    log_interaction($role, $userId, "BOOK EDIT ERROR: " . $e->getMessage(), $userName);
+}
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title><?php echo htmlspecialchars($pageTitle); ?></title>
-
-    <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
-    <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
+    <meta charset="UTF-8">
+    <title>Edit Book</title>
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-    <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/sidebar.css">
-    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700" rel="stylesheet">
+    <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/responsive/2.2.9/css/responsive.bootstrap4.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
+    <link rel="stylesheet" href="../../assets/css/table-to-card.css">
     <link rel="stylesheet" href="../../assets/css/responsive.css" />
-
-    <style>
-        .mobile-card-view {
-            display: none;
-        }
-
-        /* Hide mobile cards by default */
-
-        /* Responsive Breakpoint for Tablets and below */
-        @media (max-width: 991.98px) {
-            .desktop-table {
-                display: none;
-            }
-
-            /* Hide table on small screens */
-            .mobile-card-view {
-                display: block;
-            }
-
-            /* Show cards on small screens */
-            .info-item {
-                display: flex;
-                justify-content: space-between;
-                padding-bottom: 0.5rem;
-                margin-bottom: 0.5rem;
-                border-bottom: 1px solid #e3e6f0;
-            }
-
-            .info-item:last-of-type {
-                border-bottom: none;
-                padding-bottom: 0;
-                margin-bottom: 0;
-            }
-        }
-    </style>
 </head>
-
 <body id="page-top">
     <div id="wrapper">
-        <?php
-        if (!$is_ajax_request) {
-            include '../../includes/sidebar.php';
-        }
-        ?>
+        <?php include '../../includes/sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php
-                if (!$is_ajax_request) {
-                    include '../../includes/header.php';
-                }
-                ?>
+                <?php include '../../includes/header.php'; ?>
                 <div class="container-fluid">
-                    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                        <h1 class="h3 mb-0 text-gray-800">Book Management</h1>
-                        <a href="add_new_book.php" class="btn btn-primary shadow-sm">
-                            <i class="fas fa-plus fa-sm text-white-50"></i> Add New Book
-                        </a>
-                    </div>
-
-                    <?php if (isset($_GET['success'])): ?>
-                        <div class="alert alert-success"><?php echo htmlspecialchars($_GET['success']); ?></div>
+                    <h1 class="h3 mb-4 text-gray-800">Edit Book</h1>
+                    <?php if ($error_msg): ?>
+                        <div class="alert alert-danger"><?php echo htmlspecialchars($error_msg); ?></div>
                     <?php endif; ?>
-                    <?php if (isset($_GET['error'])): ?>
-                        <div class="alert alert-danger"><?php echo htmlspecialchars($_GET['error']); ?></div>
-                    <?php endif; ?>
-
+                    <?php if ($book): ?>
                     <div class="card shadow mb-4">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">Library Book List</h6>
-                        </div>
                         <div class="card-body">
-                            <div class="table-responsive desktop-table">
-                                <table class="table table-bordered table-striped" id="dataTable" width="100%" cellspacing="0">
-                                    <thead class="thead-light">
-                                        <tr>
-                                            <th>Title</th>
-                                            <th>Author</th>
-                                            <th>ISBN</th>
-                                            <th class="text-center">Total</th>
-                                            <th class="text-center">Available</th>
-                                            <th class="text-center">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($books as $book): ?>
-                                            <tr class="align-middle">
-                                                <td><?php echo htmlspecialchars($book['title']); ?></td>
-                                                <td><?php echo htmlspecialchars($book['author']); ?></td>
-                                                <td><?php echo htmlspecialchars($book['isbn']); ?></td>
-                                                <td class="text-center"><?php echo htmlspecialchars($book['quantity_total']); ?></td>
-                                                <td class="text-center font-weight-bold <?php echo ($book['quantity_available'] > 0) ? 'text-success' : 'text-danger'; ?>">
-                                                    <?php echo htmlspecialchars($book['quantity_available']); ?>
-                                                </td>
-                                                <td class="text-center">
-                                                    <a href="book_edit.php?id=<?php echo $book['book_id']; ?>" class="btn btn-info btn-sm" title="Edit">
-                                                        <i class="fas fa-edit"></i>
-                                                    </a>
-                                                    <a href="delete.php?id=<?php echo $book['book_id']; ?>" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure you want to delete this book? This action cannot be undone.');">
-                                                        <i class="fas fa-trash"></i>
-                                                    </a>
-                                                </td>
-                                            </tr>
+                            <form action="book_edit.php?id=<?php echo htmlspecialchars($book_id_from_url); ?>" method="post">
+                                <div class="form-group">
+                                    <label for="title">Title</label>
+                                    <input type="text" class="form-control" name="title" value="<?php echo htmlspecialchars($_POST['title'] ?? $book['title'] ?? ''); ?>" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="author">Author</label>
+                                    <input type="text" class="form-control" name="author" value="<?php echo htmlspecialchars($_POST['author'] ?? $book['author'] ?? ''); ?>" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="publisher">Publisher</label>
+                                    <input type="text" class="form-control" name="publisher" value="<?php echo htmlspecialchars($_POST['publisher'] ?? $book['publisher'] ?? ''); ?>">
+                                </div>
+                                <div class="form-group">
+                                    <label for="isbn">ISBN Number</label>
+                                    <input type="text" class="form-control" name="isbn" value="<?php echo htmlspecialchars($_POST['isbn'] ?? $book['isbn'] ?? ''); ?>">
+                                </div>
+                                <div class="form-group">
+                                    <label for="category_id">Category</label>
+                                    <select class="form-control" name="category_id" required>
+                                        <option value="">Select a category</option>
+                                        <?php foreach($categories as $category): ?>
+                                            <option value="<?php echo $category['category_id']; ?>" <?php echo (($book['category_id']) == $category['category_id']) ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($category['category_name']); ?>
+                                            </option>
                                         <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            <div class="mobile-card-view">
-                                <?php if (!empty($books)): ?>
-                                    <?php foreach ($books as $book): ?>
-                                        <div class="card shadow-sm mb-3">
-                                            <div class="card-header bg-light py-3">
-                                                <h6 class="m-0 font-weight-bold text-primary"><?php echo htmlspecialchars($book['title']); ?></h6>
-                                                <small class="text-muted">by <?php echo htmlspecialchars($book['author']); ?></small>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="info-item">
-                                                    <span class="font-weight-bold">ISBN:</span>
-                                                    <span><?php echo htmlspecialchars($book['isbn'] ?: 'N/A'); ?></span>
-                                                </div>
-                                                <div class="info-item">
-                                                    <span class="font-weight-bold">Total Copies:</span>
-                                                    <span><?php echo htmlspecialchars($book['quantity_total']); ?></span>
-                                                </div>
-                                                <div class="info-item">
-                                                    <span class="font-weight-bold">Available:</span>
-                                                    <span class="font-weight-bold <?php echo ($book['quantity_available'] > 0) ? 'text-success' : 'text-danger'; ?>">
-                                                        <?php echo htmlspecialchars($book['quantity_available']); ?>
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div class="card-footer text-right">
-                                                <a href="book_edit.php?id=<?php echo $book['book_id']; ?>" class="btn btn-info btn-icon-split btn-sm">
-                                                    <span class="icon text-white-50"><i class="fas fa-edit"></i></span>
-                                                    <span class="text">Edit</span>
-                                                </a>
-                                                <a href="delete.php?id=<?php echo $book['book_id']; ?>" class="btn btn-danger btn-icon-split btn-sm" onclick="return confirm('Are you sure you want to delete this book? This action cannot be undone.');">
-                                                    <span class="icon text-white-50"><i class="fas fa-trash"></i></span>
-                                                    <span class="text">Delete</span>
-                                                </a>
-                                            </div>
-                                        </div>
-                                    <?php endforeach; ?>
-                                <?php else: ?>
-                                    <div class="text-center py-5">
-                                        <i class="fas fa-book-dead fa-3x text-gray-400"></i>
-                                        <p class="mt-3">No books found in the library. <a href="add_new_book.php">Add the first one!</a></p>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="quantity_total">Total Quantity</label>
+                                    <input type="number" class="form-control" name="quantity_total" value="<?php echo htmlspecialchars($_POST['quantity_total'] ?? $book['quantity_total'] ?? ''); ?>" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="quantity_available">Available Copies</label>
+                                    <input type="number" class="form-control" name="quantity_available" value="<?php echo htmlspecialchars($_POST['quantity_available'] ?? $book['quantity_available'] ?? ''); ?>" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Update Book</button>
+                                <a href="book_list.php" class="btn btn-secondary">Cancel</a>
+                            </form>
                         </div>
                     </div>
+                    <?php endif; ?>
                 </div>
             </div>
-            <?php
-            if (!$is_ajax_request) {
-                include '../../includes/footer.php';
-            }
-            ?>
+            <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
-    <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
-    <?php include_once "../../includes/logout_modal.php" ?>
-
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
-    <script src="../../assets/js/responsive-tables.js"></script>
-
-    <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
-    <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
-
-    <script>
-        $(document).ready(function() {
-            // Initialize DataTable for the desktop table
-            if ($.fn.DataTable) {
-                $('#dataTable').DataTable({
-                    "order": [
-                        [0, "asc"]
-                    ], // Sort by title
-                    "pageLength": 25
-                });
-            }
-        });
-    </script>
 </body>
 </html>
-<?php
-$conn = null;
-?>

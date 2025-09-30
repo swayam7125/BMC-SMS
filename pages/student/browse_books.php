@@ -80,7 +80,7 @@ if (!$is_ajax_request) {
 ?>        <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
 <?php
-if (!$is_axax_request) {
+if (!$is_ajax_request) {
     include '../../includes/header.php';
 }
 ?>

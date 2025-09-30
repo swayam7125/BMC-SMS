@@ -1,206 +1,201 @@
 <?php
-include_once "../../encryption.php";
-include_once "../../includes/connect.php";
-include_once "../../includes/ajax_helpers.php";
+include_once '../../includes/connect.php';
+include_once '../../encryption.php';
+include_once '../../includes/log_system.php'; // Log system included
 
-// This check is crucial for the AJAX navigation to work.
-$is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// Get user info for logging
+$role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
+$userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+$userName = 'Super Admin'; // As this page is for superadmin
 
-// --- Authorization & Initialization ---
-$role = decrypt_id($_COOKIE['encrypted_user_role'] ?? '');
-$userId = decrypt_id($_COOKIE['encrypted_user_id'] ?? '');
-
-if ($role !== 'superadmin' || !$userId) {
+if ($role !== 'superadmin') {
     header("Location: ../../login.php");
     exit;
 }
 
-$successMessage = '';
-$errorMessage = '';
-$notice_history = [];
+$success_msg = '';
+$error_msg = '';
+$principals = [];
+$past_notices = [];
 
 try {
-    // --- Form Submission Handling ---
-    if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
-        $title = filter_input(INPUT_POST, 'title', FILTER_SANITIZE_STRING);
-        $content = filter_input(INPUT_POST, 'content', FILTER_SANITIZE_STRING);
-        $filePathForDB = null;
-        $originalFilename = null;
+    // Fetch all principals for the dropdown
+    $stmt_principals = $conn->prepare(
+        "SELECT p.id, p.principal_name, s.school_name 
+         FROM principal p 
+         JOIN school s ON p.school_id = s.id 
+         ORDER BY s.school_name, p.principal_name"
+    );
+    $stmt_principals->execute();
+    $principals = $stmt_principals->fetchAll(PDO::FETCH_ASSOC);
 
-        // Handle file upload
-        if (isset($_FILES['notice_file']) && $_FILES['notice_file']['error'] == 0) {
-            $originalFilename = basename($_FILES["notice_file"]["name"]);
-            $uploadDirServer = $_SERVER['DOCUMENT_ROOT'] . '/BMC-SMS/pages/bmc/uploads/';
-            if (!is_dir($uploadDirServer)) mkdir($uploadDirServer, 0777, true);
+    // Handle form submission
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $title = trim($_POST['title']);
+        $content = trim($_POST['content']);
+        $target_principals = $_POST['target_principals'] ?? [];
 
-            $safeFilename = time() . "_" . preg_replace("/[^a-zA-Z0-9.\-_]/", "_", $originalFilename);
-            $filePathForDB = '/BMC-SMS/pages/bmc/uploads/' . $safeFilename;
-
-            if (!move_uploaded_file($_FILES["notice_file"]["tmp_name"], $uploadDirServer . $safeFilename)) {
-                $errorMessage = "Sorry, there was an error uploading your file.";
-                $filePathForDB = null; // Reset on failure
-            }
-        }
-
-        if (empty($errorMessage)) {
+        if (empty($title) || empty($content) || empty($target_principals)) {
+            $error_msg = "Title, content, and at least one principal must be selected.";
+        } else {
             $conn->beginTransaction();
-
-            // Insert the notice
-            $stmt_notice = $conn->prepare("INSERT INTO notice (title, content, file_path, original_filename, user_id) VALUES (?, ?, ?, ?, ?)");            $stmt_notice->execute([$title, $content, $filePathForDB, $originalFilename, $userId]);
+            
+            // 1. Insert the notice into the 'superadmin_notices' table
+            $stmt_insert_notice = $conn->prepare(
+                "INSERT INTO notice (user_id, title, content) VALUES (?, ?, ?)"
+            );
+            $stmt_insert_notice->execute([$userId, $title, $content]);
             $notice_id = $conn->lastInsertId();
 
-            // Create notifications for all principals
-            $stmt_principals = $conn->query("SELECT id FROM principal");
-            $principals = $stmt_principals->fetchAll(PDO::FETCH_ASSOC);
-
-            $notification_message = "New notice from BMC: " . $title;
+            // 2. Create notifications for the selected principals
+            $notification_msg = "New notice from BMC: " . htmlspecialchars($title);
             $notification_link = "pages/principal/view_notice.php?notice_id=" . $notice_id;
-            $notification_type = "new_notice";
+            $notification_type = "new_notice"; // A specific type for BMC notices
 
-            $stmt_notify = $conn->prepare("INSERT INTO notifications (user_id, user_role, message, link, type) VALUES (?, 'principal', ?, ?, ?)");
-            foreach ($principals as $principal) {
-                $stmt_notify->execute([$principal['id'], $notification_message, $notification_link, $notification_type]);
+            $stmt_notify = $conn->prepare(
+                "INSERT INTO notifications (user_id, message, link, type) VALUES (?, ?, ?, ?)"
+            );
+            
+            foreach ($target_principals as $principal_id) {
+                // Ensure we are inserting a valid principal ID
+                if (filter_var($principal_id, FILTER_VALIDATE_INT)) {
+                    $stmt_notify->execute([$principal_id, $notification_msg, $notification_link, $notification_type]);
+                }
             }
-
+            
             $conn->commit();
-            $successMessage = "Notice has been successfully sent to all principals.";
+            $success_msg = "Notice has been successfully sent to the selected principals!";
+            // Log the successful actions
+            log_interaction($role, $userId, "NOTICE: Sent notice titled '{$title}' to " . count($target_principals) . " principal(s).", $userName);
+
         }
     }
 
-    // --- Data Fetching for History Table ---
-    $stmt_history = $conn->prepare("SELECT title, created_at FROM notice WHERE user_id = ? ORDER BY created_at DESC");    $stmt_history->execute([$userId]);
-    $notice_history = $stmt_history->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    if ($conn->inTransaction()) $conn->rollBack();
-    $errorMessage = "Database Error: " . $e->getMessage(); 
-}
+    // Fetch past notices sent by the superadmin
+    $stmt_past_notices = $conn->prepare(
+        "SELECT title, content, created_at FROM notice WHERE user_id = ? ORDER BY created_at DESC"
+    );
+    $stmt_past_notices->execute([$userId]);
+    $past_notices = $stmt_past_notices->fetchAll(PDO::FETCH_ASSOC);
 
+
+} catch (PDOException $e) {
+    if ($conn->inTransaction()) {
+        $conn->rollBack();
+    }
+    $error_msg = "Database Error: " . $e->getMessage();
+    // Log the error
+    log_interaction($role, $userId, "NOTICE ERROR: DB Error on Send Notice page. Error: " . $e->getMessage(), $userName);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <title>Send Notice to Principals</title>
-    <link href="../../assets/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
-    <link href="../../assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
-    <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700" rel="stylesheet">
     <link href="../../assets/css/sb-admin-2.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
-    <link rel="stylesheet" href="../../assets/css/sidebar.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="../../assets/css/sidebar.css">
+    <link rel="stylesheet" href="../../assets/css/scrollbar_hidden.css">
     <link rel="stylesheet" href="../../assets/css/responsive.css" />
 </head>
-
 <body id="page-top">
     <div id="wrapper">
-        <?php if (!$is_ajax_request) {
-            include '../../includes/sidebar.php';
-        } ?>
+        <?php include '../../includes/sidebar.php'; ?>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <?php if (!$is_ajax_request) {
-                    include '../../includes/header.php';
-                } ?>
-                <div id="main-content">
-                    <div class="container-fluid">
-                        <h1 class="h3 mb-4 text-gray-800">Send Notice to Principals</h1>
+                <?php include '../../includes/header.php'; ?>
+                <div class="container-fluid">
+                    <h1 class="h3 mb-4 text-gray-800">Send Notice to Principals</h1>
+                    
+                    <?php if ($success_msg): ?>
+                        <div class="alert alert-success"><?php echo htmlspecialchars($success_msg); ?></div>
+                    <?php endif; ?>
+                    <?php if ($error_msg): ?>
+                        <div class="alert alert-danger"><?php echo htmlspecialchars($error_msg); ?></div>
+                    <?php endif; ?>
 
-                        <?php if ($successMessage): ?>
-                            <div class="alert alert-success"><?php echo htmlspecialchars($successMessage); ?></div>
-                        <?php endif; ?>
-                        <?php if ($errorMessage): ?>
-                            <div class="alert alert-danger"><?php echo htmlspecialchars($errorMessage); ?></div>
-                        <?php endif; ?>
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">Compose Notice</h6>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST">
+                                <div class="form-group">
+                                    <label for="title">Title *</label>
+                                    <input type="text" class="form-control" id="title" name="title" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="content">Content *</label>
+                                    <textarea class="form-control" id="content" name="content" rows="5" required></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="target_principals">Send To *</label>
+                                    <select class="form-control" id="target_principals" name="target_principals[]" multiple="multiple" required>
+                                        <?php foreach ($principals as $principal): ?>
+                                            <option value="<?php echo $principal['id']; ?>">
+                                                <?php echo htmlspecialchars($principal['principal_name']) . ' (' . htmlspecialchars($principal['school_name']) . ')'; ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Send Notice</button>
+                            </form>
+                        </div>
+                    </div>
 
-                        <div class="row">
-                            <div class="col-lg-7">
-                                <div class="card shadow mb-4">
-                                    <div class="card-header">
-                                        <h6 class="m-0 font-weight-bold text-primary">New Notice</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <form action="" method="POST" enctype="multipart/form-data">
-                                            <div class="form-group">
-                                                <label for="title">Title</label>
-                                                <input type="text" name="title" id="title" class="form-control" required>
-                                            </div>
-                                            <div class="form-group">
-                                                <label for="content">Content</label>
-                                                <textarea name="content" id="content" class="form-control" rows="5" required></textarea>
-                                            </div>
-                                            <div class="form-group">
-                                                <label>Attach File (Optional)</label>
-                                                <div class="custom-file">
-                                                    <input type="file" name="notice_file" id="notice_file" class="custom-file-input">
-                                                    <label class="custom-file-label" for="notice_file">Choose file...</label>
-                                                </div>
-                                            </div>
-                                            <button type="submit" name="send_notice" class="btn btn-primary">Send Notice</button>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-lg-5">
-                                <div class="card shadow mb-4">
-                                    <div class="card-header">
-                                        <h6 class="m-0 font-weight-bold text-primary">Sent History</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="table-responsive">
-                                            <table class="table table-bordered" id="historyTable" width="100%">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Title</th>
-                                                        <th>Date Sent</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <?php foreach ($notice_history as $notice): ?>
-                                                        <tr>
-                                                            <td><?php echo htmlspecialchars($notice['title']); ?></td>
-                                                            <td><?php echo date("d-m-Y h:i A", strtotime($notice['created_at'])); ?></td>
-                                                        </tr>
-                                                    <?php endforeach; ?>
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">Sent Notices History</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                    <thead>
+                                        <tr>
+                                            <th>Date Sent</th>
+                                            <th>Title</th>
+                                            <th>Content</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($past_notices as $notice): ?>
+                                            <tr>
+                                                <td><?php echo date('d-M-Y h:i A', strtotime($notice['created_at'])); ?></td>
+                                                <td><?php echo htmlspecialchars($notice['title']); ?></td>
+                                                <td><?php echo nl2br(htmlspecialchars(substr($notice['content'], 0, 150))) . (strlen($notice['content']) > 150 ? '...' : ''); ?></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <?php if (!$is_ajax_request) {
-                include '../../includes/footer.php';
-            } ?>
+            <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php" ?>
     <script src="../../assets/vendor/jquery/jquery.min.js"></script>
     <script src="../../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="../../assets/vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="../../assets/js/sb-admin-2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="../../assets/vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="../../assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
-    <script src="../../assets/js/responsive-tables.js"></script>
     <script>
         $(document).ready(function() {
-            $('#historyTable').DataTable({
-                "order": [
-                    [1, "desc"]
-                ]
+            $('#target_principals').select2({
+                placeholder: "Select one or more principals",
+                allowClear: true
             });
-            $('.custom-file-input').on('change', function() {
-                var fileName = $(this).val().split('\\').pop();
-                $(this).siblings('.custom-file-label').addClass("selected").html(fileName);
+            $('#dataTable').DataTable({
+                "order": [[ 0, "desc" ]] 
             });
         });
     </script>
 </body>
-
 </html>
-<?php
-$conn = null;
-?>
