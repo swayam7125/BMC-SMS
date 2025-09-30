@@ -1,9 +1,118 @@
 <?php
-// --- PDF GENERATION SETUP ---
+// --- FILE INCLUDES ---
+// These files must be included first to make the database connection available to all code blocks.
+include_once '../../includes/connect.php';
+include_once '../../encryption.php';
 require_once '../../includes/dompdf/autoload.inc.php';
 
 use Dompdf\Dompdf;
 use Dompdf\Options;
+
+// --- DYNAMIC REPORT DATA FETCHER ---
+function get_full_report_data($conn, $school_id) {
+    $data = [];
+    $params = [];
+    $where_clause = '';
+    $and_clause = '';
+    if ($school_id) {
+        $where_clause = 'WHERE school_id = ?';
+        $and_clause = 'AND school_id = ?';
+        $params[] = $school_id;
+    }
+
+    // 1. Student Count by Standard
+    $query = "SELECT std, COUNT(*) as student_count FROM student $where_clause GROUP BY std ORDER BY std ASC";
+    $stmt = $conn->prepare($query);
+    $stmt->execute($params);
+    $data['student_count'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // 2. Admissions vs. Left Students
+    $admissions_query = "SELECT COUNT(id) FROM student $where_clause";
+    $admissions_stmt = $conn->prepare($admissions_query);
+    $admissions_stmt->execute($params);
+    $data['new_admissions'] = $admissions_stmt->fetchColumn();
+
+    $left_query = "SELECT COUNT(id) FROM deleted_students $where_clause";
+    $left_stmt = $conn->prepare($left_query);
+    $left_stmt->execute($params);
+    $data['students_left'] = $left_stmt->fetchColumn();
+    
+    // 3. Gender Demographics
+    $gender_query = "SELECT gender, COUNT(*) as count FROM student $where_clause GROUP BY gender";
+    $gender_stmt = $conn->prepare($gender_query);
+    $gender_stmt->execute($params);
+    $data['gender'] = $gender_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // 4. Transport Demographics
+    $transport_query = "SELECT transport_mode, COUNT(*) as count FROM student $where_clause GROUP BY transport_mode";
+    $transport_stmt = $conn->prepare($transport_query);
+    $transport_stmt->execute($params);
+    $data['transport'] = $transport_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    return $data;
+}
+
+// --- Helper function to get data for a specific section (for CSV/Excel downloads) ---
+function get_section_data($conn, $section_id, $school_id) {
+    $params = [];
+    $where_clause = '';
+    if ($school_id) {
+        $where_clause = 'WHERE school_id = ?';
+        $params[] = $school_id;
+    }
+
+    switch ($section_id) {
+        case 'std-count':
+            $query = "SELECT std, COUNT(*) as student_count FROM student $where_clause GROUP BY std ORDER BY std ASC";
+            $stmt = $conn->prepare($query);
+            $stmt->execute($params);
+            return [
+                'title' => 'Student Count per Standard',
+                'labels' => ['Standard', 'Number of Students'],
+                'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)
+            ];
+        case 'admissions-left':
+            $admissions_query = "SELECT COUNT(id) FROM student $where_clause";
+            $admissions_stmt = $conn->prepare($admissions_query);
+            $admissions_stmt->execute($params);
+            $new_admissions = $admissions_stmt->fetchColumn();
+        
+            $left_query = "SELECT COUNT(id) FROM deleted_students $where_clause";
+            $left_stmt = $conn->prepare($left_query);
+            $left_stmt->execute($params);
+            $students_left = $left_stmt->fetchColumn();
+            
+            return [
+                'title' => 'Admissions vs. Left Students',
+                'labels' => ['Category', 'Count'],
+                'data' => [
+                    ['New Admissions', $new_admissions],
+                    ['Students Left', $students_left]
+                ]
+            ];
+        case 'demographics-gender':
+            $query = "SELECT gender, COUNT(*) as count FROM student $where_clause GROUP BY gender";
+            $stmt = $conn->prepare($query);
+            $stmt->execute($params);
+            return [
+                'title' => 'Gender Demographics',
+                'labels' => ['Gender', 'Count'],
+                'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)
+            ];
+        case 'demographics-transport':
+            $query = "SELECT transport_mode, COUNT(*) as count FROM student $where_clause GROUP BY transport_mode";
+            $stmt = $conn->prepare($query);
+            $stmt->execute($params);
+            return [
+                'title' => 'Transport Mode Usage',
+                'labels' => ['Transport Mode', 'Count'],
+                'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)
+            ];
+        default:
+            return null;
+    }
+}
+
 
 // --- PDF GENERATION LOGIC ---
 if (isset($_POST['download_pdf'])) {
@@ -12,20 +121,159 @@ if (isset($_POST['download_pdf'])) {
     $dompdf = new Dompdf($options);
 
     $html = $_POST['pdf_html'];
-    // ⭐ Get the dynamic filename from the POST request, with a default fallback
     $filename = $_POST['pdf_filename'] ?? 'Enrollment_Report.pdf';
 
     $dompdf->loadHtml($html);
     $dompdf->setPaper('A4', 'portrait');
     $dompdf->render();
 
-    // ⭐ Use the dynamic filename for the download
     $dompdf->stream($filename, ["Attachment" => 1]);
     exit();
 }
 
-include_once '../../includes/connect.php';
-include_once '../../encryption.php';
+// --- CSV/EXCEL GENERATION LOGIC for INDIVIDUAL SECTIONS ---
+if (isset($_POST['download_section_csv']) || isset($_POST['download_section_excel'])) {
+    $file_type = isset($_POST['download_section_csv']) ? 'csv' : 'xls';
+    $section_id = $_POST['section_id'];
+
+    $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
+    $userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+    $school_id = get_school_id_by_user_id($conn, $role, $userId);
+    
+    $section_data = get_section_data($conn, $section_id, $school_id);
+
+    if ($file_type === 'csv') {
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="' . str_replace(' ', '_', $section_data['title']) . '.csv"');
+        $output = fopen('php://output', 'w');
+        fputcsv($output, $section_data['labels']);
+        foreach ($section_data['data'] as $row) {
+            fputcsv($output, is_array($row) ? $row : array_values($row));
+        }
+        fclose($output);
+    } else {
+        header('Content-Type: application/vnd.ms-excel');
+        header('Content-Disposition: attachment; filename="' . str_replace(' ', '_', $section_data['title']) . '.xls"');
+        echo '<table><thead><tr>';
+        foreach ($section_data['labels'] as $label) {
+            echo '<th>' . htmlspecialchars($label) . '</th>';
+        }
+        echo '</tr></thead><tbody>';
+        foreach ($section_data['data'] as $row) {
+            echo '<tr>';
+            foreach ($row as $cell) {
+                echo '<td>' . htmlspecialchars(is_array($cell) ? $cell[0] : $cell) . '</td>';
+            }
+            echo '</tr>';
+        }
+        echo '</tbody></table>';
+    }
+    exit();
+}
+
+// --- CSV/EXCEL GENERATION LOGIC for FULL REPORT ---
+if (isset($_POST['download_full_csv'])) {
+    header('Content-Type: text/csv');
+    header('Content-Disposition: attachment; filename="Full_Enrollment_Report.csv"');
+
+    $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
+    $userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+    $school_id = get_school_id_by_user_id($conn, $role, $userId);
+
+    $report_data = get_full_report_data($conn, $school_id);
+    
+    $output = fopen('php://output', 'w');
+
+    // Section 1: Student Count per Standard
+    fputcsv($output, ['Student Count per Standard']);
+    fputcsv($output, ['Standard', 'Number of Students']);
+    foreach ($report_data['student_count'] as $row) {
+        fputcsv($output, $row);
+    }
+    fputcsv($output, ['']); // Blank line for separation
+
+    // Section 2: Admissions vs. Left
+    fputcsv($output, ['Admissions vs. Left Students']);
+    fputcsv($output, ['Category', 'Count']);
+    fputcsv($output, ['New Admissions', $report_data['new_admissions']]);
+    fputcsv($output, ['Students Left', $report_data['students_left']]);
+    fputcsv($output, ['']); // Blank line for separation
+
+    // Section 3: Gender Demographics
+    fputcsv($output, ['Gender Demographics']);
+    fputcsv($output, ['Gender', 'Count']);
+    foreach ($report_data['gender'] as $row) {
+        fputcsv($output, $row);
+    }
+    fputcsv($output, ['']); // Blank line for separation
+    
+    // Section 4: Transport Demographics
+    fputcsv($output, ['Transport Demographics']);
+    fputcsv($output, ['Transport Mode', 'Count']);
+    foreach ($report_data['transport'] as $row) {
+        fputcsv($output, $row);
+    }
+
+    fclose($output);
+    exit();
+}
+
+// --- EXCEL GENERATION LOGIC for FULL REPORT ---
+if (isset($_POST['download_full_excel'])) {
+    header('Content-Type: application/vnd.ms-excel');
+    header('Content-Disposition: attachment; filename="Full_Enrollment_Report.xls"');
+
+    $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
+    $userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+    $school_id = get_school_id_by_user_id($conn, $role, $userId);
+
+    $report_data = get_full_report_data($conn, $school_id);
+
+    echo '<html><body><table>';
+
+    // Section 1: Student Count by Standard
+    echo '<tr><th colspan="2">Student Count per Standard</th></tr>';
+    echo '<tr><th>Standard</th><th>Number of Students</th></tr>';
+    foreach ($report_data['student_count'] as $row) {
+        echo '<tr><td>' . htmlspecialchars($row['std']) . '</td><td>' . htmlspecialchars($row['student_count']) . '</td></tr>';
+    }
+    echo '<tr><td colspan="2"></td></tr>';
+
+    // Section 2: Admissions vs. Left
+    echo '<tr><th colspan="2">Admissions vs. Left Students</th></tr>';
+    echo '<tr><th>Category</th><th>Count</th></tr>';
+    echo '<tr><td>New Admissions</td><td>' . htmlspecialchars($report_data['new_admissions']) . '</td></tr>';
+    echo '<tr><td>Students Left</td><td>' . htmlspecialchars($report_data['students_left']) . '</td></tr>';
+    echo '<tr><td colspan="2"></td></tr>';
+
+    // Section 3: Gender Demographics
+    echo '<tr><th colspan="2">Gender Demographics</th></tr>';
+    echo '<tr><th>Gender</th><th>Count</th></tr>';
+    foreach ($report_data['gender'] as $row) {
+        echo '<tr><td>' . htmlspecialchars($row['gender']) . '</td><td>' . htmlspecialchars($row['count']) . '</td></tr>';
+    }
+    echo '<tr><td colspan="2"></td></tr>';
+
+    // Section 4: Transport Demographics
+    echo '<tr><th colspan="2">Transport Demographics</th></tr>';
+    echo '<tr><th>Transport Mode</th><th>Count</th></tr>';
+    foreach ($report_data['transport'] as $row) {
+        echo '<tr><td>' . htmlspecialchars($row['transport_mode']) . '</td><td>' . htmlspecialchars($row['count']) . '</td></tr>';
+    }
+    echo '</table></body></html>';
+    exit();
+}
+
+function get_school_id_by_user_id($conn, $role, $userId) {
+    if ($role === 'principal') {
+        $stmt = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
+        $stmt->execute([$userId]);
+        return $stmt->fetchColumn();
+    }
+    return null;
+}
+
+// --- Main Page Logic ---
 
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
@@ -38,28 +286,20 @@ if (!in_array($role, ['principal', 'superadmin'])) {
     exit();
 }
 
-// --- MODIFIED LOGIC: Determine School ID based on role ---
 $school_id = null;
 $schools = [];
 $report_title = "Enrollment Report";
 
-// For Principals, School ID is fixed
 if ($role === 'principal') {
     $stmt = $conn->prepare("SELECT school_id FROM principal WHERE id = ?");
     $stmt->execute([$userId]);
     $school_id = $stmt->fetchColumn();
-}
-// For Superadmins, School ID comes from a filter
-else if ($role === 'superadmin') {
-    // Fetch all schools for the filter dropdown
+} else if ($role === 'superadmin') {
     $schools_stmt = $conn->query("SELECT id, school_name FROM school ORDER BY school_name ASC");
     $schools = $schools_stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // Get the selected school ID from the filter
     $school_id = isset($_GET['school_id']) && is_numeric($_GET['school_id']) ? (int)$_GET['school_id'] : null;
 }
 
-// --- Initialize variables ---
 $report_data = [];
 $school_name = "All Schools";
 $errorMessage = '';
@@ -74,8 +314,6 @@ $students_left = 0;
 $gender_data = [];
 $transport_data = [];
 
-// --- DYNAMIC WHERE CLAUSE ---
-// This will be used to filter queries by school_id when one is selected
 $where_clause = '';
 $and_clause = '';
 $params = [];
@@ -86,7 +324,6 @@ if ($school_id) {
 }
 
 try {
-    // Set report title and school name
     if ($school_id) {
         $school_stmt = $conn->prepare("SELECT school_name FROM school WHERE id = ?");
         $school_stmt->execute([$school_id]);
@@ -96,18 +333,14 @@ try {
         $report_title = "Enrollment Report (All Schools)";
     }
 
-    $pdf_filename = "Enrollment_Report.pdf"; // Default fallback
+    $pdf_filename = "Enrollment_Report.pdf";
     if ($school_id) {
-        // Sanitize the school name to make it a valid filename
         $safe_school_name = preg_replace('/[^a-zA-Z0-9]+/', '_', $school_name);
         $pdf_filename = trim($safe_school_name, '_') . "_Enrollment_report.pdf";
     } else if ($role === 'superadmin' && !$school_id) {
         $pdf_filename = "All_School_Enrollment_report.pdf";
     }
 
-    // --- UPDATED QUERIES using dynamic clauses ---
-
-    // Query for the table and bar chart
     $query = "SELECT std, COUNT(*) as student_count FROM student $where_clause GROUP BY std ORDER BY std ASC";
     $stmt = $conn->prepare($query);
     $stmt->execute($params);
@@ -118,7 +351,6 @@ try {
         $counts[] = $row['student_count'];
     }
 
-    // Query for the area chart
     $area_chart_query = "SELECT TO_CHAR(date_of_joining, 'YYYY') as year, COUNT(id) as new_students FROM student WHERE date_of_joining >= NOW() - INTERVAL '5 years' $and_clause GROUP BY year ORDER BY year ASC";
     $area_stmt = $conn->prepare($area_chart_query);
     $area_stmt->execute($params);
@@ -135,15 +367,12 @@ try {
         $area_chart_data[] = $enrollment_data[$year_key] ?? 0;
     }
 
-    // Queries for Admissions vs Left Report
     if (isset($_GET['academic_year']) && !empty($_GET['academic_year'])) {
         $selected_academic_year = $_GET['academic_year'];
     }
 
-    // ⭐ FIX START: Create a specific parameter array for the UNION query
     $years_query_base = "(SELECT DISTINCT academic_year FROM student WHERE academic_year IS NOT NULL $and_clause) UNION (SELECT DISTINCT academic_year FROM deleted_students WHERE academic_year IS NOT NULL $and_clause) ORDER BY academic_year DESC";
     $years_stmt = $conn->prepare($years_query_base);
-    // If a school is selected, the param array must contain the ID twice for the two placeholders
     $years_params = $school_id ? [$school_id, $school_id] : [];
     $years_stmt->execute($years_params);
     $academic_years = $years_stmt->fetchAll(PDO::FETCH_COLUMN);
@@ -159,7 +388,6 @@ try {
     $left_stmt->execute($left_params);
     $students_left = $left_stmt->fetchColumn();
 
-    // Queries for Demographic Analysis
     $gender_query = "SELECT gender, COUNT(*) as count FROM student $where_clause GROUP BY gender";
     $gender_stmt = $conn->prepare($gender_query);
     $gender_stmt->execute($params);
@@ -212,9 +440,16 @@ if ($role === 'principal' && !$school_id) {
                 <div class="container-fluid">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800"><?php echo $report_title; ?></h1>
-                        <button id="download-full-report-btn" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
-                            <i class="fas fa-download fa-sm text-white-50"></i> Generate Full Report
-                        </button>
+                        <div class="dropdown">
+                            <button class="btn btn-primary dropdown-toggle" type="button" id="fullReportDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="fas fa-download fa-sm text-white-50"></i> Generate Full Report
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="fullReportDropdown">
+                                <a class="dropdown-item" href="#" id="download-full-pdf">PDF Report</a>
+                                <a class="dropdown-item" href="#" id="download-full-csv">CSV Report</a>
+                                <a class="dropdown-item" href="#" id="download-full-excel">Excel Report</a>
+                            </div>
+                        </div>
                     </div>
 
                     <?php if ($role === 'superadmin'): ?>
@@ -245,7 +480,9 @@ if ($role === 'principal' && !$school_id) {
                         <div class="card shadow mb-4" id="yearly-trend-section">
                             <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                                 <h6 class="m-0 font-weight-bold text-primary">Yearly Enrollment Trend (Last 5 Years)</h6>
-                                <a href="#" class="download-section-btn" data-section="yearly-trend" title="Download this section"><i class="fas fa-download fa-sm"></i></a>
+                                <button class="btn btn-sm btn-light download-section-pdf-btn" data-section="yearly-trend">
+                                    <i class="fas fa-download fa-sm"></i>
+                                </button>
                             </div>
                             <div class="card-body">
                                 <div class="chart-area" style="height: 320px;"><canvas id="enrollmentAreaChart"></canvas></div>
@@ -269,7 +506,16 @@ if ($role === 'principal' && !$school_id) {
                                             </select>
                                         </div>
                                     </form>
-                                    <a href="#" class="download-section-btn" data-section="admissions-left" title="Download this section"><i class="fas fa-download fa-sm"></i></a>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-light dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                            <i class="fas fa-download fa-sm"></i>
+                                        </button>
+                                        <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in">
+                                            <a class="dropdown-item download-section-pdf-btn" href="#" data-section="admissions-left">PDF</a>
+                                            <a class="dropdown-item download-section-csv-btn" href="#" data-section="admissions-left">CSV</a>
+                                            <a class="dropdown-item download-section-excel-btn" href="#" data-section="admissions-left">Excel</a>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <div class="card-body">
@@ -306,7 +552,19 @@ if ($role === 'principal' && !$school_id) {
                         <div class="card shadow mb-4" id="demographics-section">
                             <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                                 <h6 class="m-0 font-weight-bold text-primary">Demographic Analysis</h6>
-                                <a href="#" class="download-section-btn" data-section="demographics" title="Download this section"><i class="fas fa-download fa-sm"></i></a>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-light dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        <i class="fas fa-download fa-sm"></i>
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in">
+                                        <a class="dropdown-item download-section-pdf-btn" href="#" data-section="demographics">PDF</a>
+                                        <a class="dropdown-item download-section-csv-btn" href="#" data-section="demographics-gender">Gender (CSV)</a>
+                                        <a class="dropdown-item download-section-excel-btn" href="#" data-section="demographics-gender">Gender (Excel)</a>
+                                        <div class="dropdown-divider"></div>
+                                        <a class="dropdown-item download-section-csv-btn" href="#" data-section="demographics-transport">Transport (CSV)</a>
+                                        <a class="dropdown-item download-section-excel-btn" href="#" data-section="demographics-transport">Transport (Excel)</a>
+                                    </div>
+                                </div>
                             </div>
                             <div class="card-body">
                                 <div class="row">
@@ -339,7 +597,16 @@ if ($role === 'principal' && !$school_id) {
                         <div class="card shadow mb-4" id="std-count-section">
                             <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                                 <h6 class="m-0 font-weight-bold text-primary">Student Count per Standard</h6>
-                                <a href="#" class="download-section-btn" data-section="std-count" title="Download this section"><i class="fas fa-download fa-sm"></i></a>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-light dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        <i class="fas fa-download fa-sm"></i>
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in">
+                                        <a class="dropdown-item download-section-pdf-btn" href="#" data-section="std-count">PDF</a>
+                                        <a class="dropdown-item download-section-csv-btn" href="#" data-section="std-count">CSV</a>
+                                        <a class="dropdown-item download-section-excel-btn" href="#" data-section="std-count">Excel</a>
+                                    </div>
+                                </div>
                             </div>
                             <div class="card-body">
                                 <div class="row">
@@ -388,7 +655,7 @@ if ($role === 'principal' && !$school_id) {
     <script src="../../assets/js/responsive-tables.js"></script>
 
     <script>
-        // Chart Instances
+        // Chart Instances (unchanged)
         var myBarChart = new Chart(document.getElementById("enrollmentBarChart"), {
             type: 'bar',
             data: {
@@ -502,41 +769,9 @@ if ($role === 'principal' && !$school_id) {
             }
         });
 
-        // --- ⭐ MODIFIED PDF Download Logic ---
-        function generateAndSubmitPdf(htmlContent, filename) {
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '?'; // Submit to the same page to be handled by the logic at the top
-
-            // Input for the HTML content
-            const hiddenInputHtml = document.createElement('input');
-            hiddenInputHtml.type = 'hidden';
-            hiddenInputHtml.name = 'pdf_html';
-            hiddenInputHtml.value = htmlContent;
-            form.appendChild(hiddenInputHtml);
-
-            // ⭐ NEW: Input for the dynamic filename
-            const hiddenInputFilename = document.createElement('input');
-            hiddenInputFilename.type = 'hidden';
-            hiddenInputFilename.name = 'pdf_filename';
-            hiddenInputFilename.value = filename;
-            form.appendChild(hiddenInputFilename);
-
-            // Input for the download flag
-            const hiddenInputFlag = document.createElement('input');
-            hiddenInputFlag.type = 'hidden';
-            hiddenInputFlag.name = 'download_pdf';
-            hiddenInputFlag.value = '1';
-            form.appendChild(hiddenInputFlag);
-
-            document.body.appendChild(form);
-            form.submit();
-        }
-
-        // ⭐ Get the main filename determined by PHP
-        const mainPdfFilename = '<?php echo $pdf_filename; ?>';
-
-        document.getElementById('download-full-report-btn').addEventListener('click', function() {
+        // --- PDF Download Logic for Full Report ---
+        document.getElementById('download-full-pdf').addEventListener('click', function(e) {
+            e.preventDefault();
             const pdfHtml = `
             <!DOCTYPE html><html><head><title>Full Enrollment Report</title><style>
                 body { font-family: sans-serif; } .header { text-align: center; margin-bottom: 20px; }
@@ -554,11 +789,69 @@ if ($role === 'principal' && !$school_id) {
                 <h3>Student Count per Standard</h3><div class="row"><div class="col-6">${document.getElementById('std-count-table').innerHTML}</div><div class="col-6"><div class="chart-container"><img src="${myBarChart.toBase64Image()}"></div></div></div>
             </body></html>`;
 
-            // ⭐ Pass the dynamic filename to the function
             generateAndSubmitPdf(pdfHtml, mainPdfFilename);
         });
 
-        document.querySelectorAll('.download-section-btn').forEach(button => {
+        // --- CSV Download Logic for Full Report ---
+        document.getElementById('download-full-csv').addEventListener('click', function(e) {
+            e.preventDefault();
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '?';
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'download_full_csv';
+            hiddenInput.value = '1';
+            form.appendChild(hiddenInput);
+            document.body.appendChild(form);
+            form.submit();
+        });
+
+        // --- Excel Download Logic for Full Report ---
+        document.getElementById('download-full-excel').addEventListener('click', function(e) {
+            e.preventDefault();
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '?';
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'download_full_excel';
+            hiddenInput.value = '1';
+            form.appendChild(hiddenInput);
+            document.body.appendChild(form);
+            form.submit();
+        });
+
+        // --- Download Logic for individual sections (PDF) ---
+        function generateAndSubmitPdf(htmlContent, filename) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '?';
+            const hiddenInputHtml = document.createElement('input');
+            hiddenInputHtml.type = 'hidden';
+            hiddenInputHtml.name = 'pdf_html';
+            hiddenInputHtml.value = htmlContent;
+            form.appendChild(hiddenInputHtml);
+
+            const hiddenInputFilename = document.createElement('input');
+            hiddenInputFilename.type = 'hidden';
+            hiddenInputFilename.name = 'pdf_filename';
+            hiddenInputFilename.value = filename;
+            form.appendChild(hiddenInputFilename);
+
+            const hiddenInputFlag = document.createElement('input');
+            hiddenInputFlag.type = 'hidden';
+            hiddenInputFlag.name = 'download_pdf';
+            hiddenInputFlag.value = '1';
+            form.appendChild(hiddenInputFlag);
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+        const mainPdfFilename = '<?php echo $pdf_filename; ?>';
+
+        document.querySelectorAll('.download-section-pdf-btn').forEach(button => {
             button.addEventListener('click', function(e) {
                 e.preventDefault();
                 const sectionId = this.dataset.section;
@@ -588,7 +881,6 @@ if ($role === 'principal' && !$school_id) {
                     if (!tableHtml) contentHtml = `<div class="chart-container"><img src="${chartImage}"></div>`;
                 }
 
-                // ⭐ Use a sanitized version of the section title for section downloads
                 const sectionFilename = title.replace(/[^a-zA-Z0-9]+/g, '_') + '_Report.pdf';
 
                 const pdfHtml = `
@@ -605,8 +897,52 @@ if ($role === 'principal' && !$school_id) {
                     ${contentHtml}
                 </body></html>`;
 
-                // ⭐ Pass the specific section filename
                 generateAndSubmitPdf(pdfHtml, sectionFilename);
+            });
+        });
+
+        // --- Download Logic for individual sections (CSV/Excel) ---
+        document.querySelectorAll('.download-section-csv-btn').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                const sectionId = this.dataset.section;
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '?';
+                const hiddenInputType = document.createElement('input');
+                hiddenInputType.type = 'hidden';
+                hiddenInputType.name = 'download_section_csv';
+                hiddenInputType.value = '1';
+                form.appendChild(hiddenInputType);
+                const hiddenInputId = document.createElement('input');
+                hiddenInputId.type = 'hidden';
+                hiddenInputId.name = 'section_id';
+                hiddenInputId.value = sectionId;
+                form.appendChild(hiddenInputId);
+                document.body.appendChild(form);
+                form.submit();
+            });
+        });
+
+        document.querySelectorAll('.download-section-excel-btn').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                const sectionId = this.dataset.section;
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '?';
+                const hiddenInputType = document.createElement('input');
+                hiddenInputType.type = 'hidden';
+                hiddenInputType.name = 'download_section_excel';
+                hiddenInputType.value = '1';
+                form.appendChild(hiddenInputType);
+                const hiddenInputId = document.createElement('input');
+                hiddenInputId.type = 'hidden';
+                hiddenInputId.name = 'section_id';
+                hiddenInputId.value = sectionId;
+                form.appendChild(hiddenInputId);
+                document.body.appendChild(form);
+                form.submit();
             });
         });
     </script>
