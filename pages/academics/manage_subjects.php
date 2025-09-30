@@ -2,12 +2,17 @@
 include_once "../../includes/connect.php";
 include_once "../../encryption.php";
 include_once "../../includes/ajax_helpers.php";
+include_once "../../includes/log_system.php";
 
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
 // --- Authorization ---
 $role = isset($_COOKIE['encrypted_user_role']) ? decrypt_id($_COOKIE['encrypted_user_role']) : null;
+$userId = isset($_COOKIE['encrypted_user_id']) ? decrypt_id($_COOKIE['encrypted_user_id']) : null;
+$userName = isset($_COOKIE['encrypted_user_name']) ? decrypt_id($_COOKIE['encrypted_user_name']) : 'Unknown User';
+
 if ($role !== 'principal') {
+    log_interaction($role, $userId, "UNAUTHORIZED_ACCESS_ATTEMPT: Tried to access subject management page", $userName);
     if ($is_ajax_request) {
         header('Content-Type: application/json');
         http_response_code(403);
@@ -44,6 +49,7 @@ try {
         // 2. Validate the CSRF token on submission.
         // The token from the POST data must exist and match the token in the cookie.
         if (!isset($_POST['csrf_token']) || !isset($_COOKIE['csrf_token']) || !hash_equals($_COOKIE['csrf_token'], $_POST['csrf_token'])) {
+            log_interaction($role, $userId, "SECURITY_WARNING: CSRF token validation failed in subject management", $userName);
             http_response_code(400); // Bad Request
             echo json_encode(['success' => false, 'message' => 'Invalid security token. Please refresh the page and try again.']);
             exit;
@@ -54,6 +60,7 @@ try {
 
         // IMPROVEMENT: More robust validation instead of deprecated filter.
         if (empty($standard) || !in_array($standard, $standards)) {
+            log_interaction($role, $userId, "SUBJECT_UPDATE_ERROR: Invalid standard selected", $userName);
             echo json_encode(['success' => false, 'message' => 'Please select a valid standard.']);
             exit;
         }
@@ -71,6 +78,7 @@ try {
         }
         
         $conn->commit();
+        log_interaction($role, $userId, "SUBJECT_UPDATE: Successfully updated subjects for Standard {$standard}. Assigned " . count($subject_ids) . " subjects", $userName);
         echo json_encode(['success' => true, 'message' => "Subject assignments for Standard {$standard} updated successfully."]);
         exit;
     }
@@ -91,7 +99,9 @@ try {
 
 } catch (PDOException $e) {
     if ($conn->inTransaction()) $conn->rollBack();
-    error_log("Database Error in manage_subjects.php: " . $e->getMessage());
+    $error_msg = "Database Error in manage_subjects.php: " . $e->getMessage();
+    error_log($error_msg);
+    log_interaction($role, $userId, "DATABASE_ERROR: " . $error_msg, $userName);
     if ($is_ajax_request) {
         header('Content-Type: application/json');
         http_response_code(500);

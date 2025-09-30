@@ -3,6 +3,40 @@ include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/log_system.php'; // Log system included
 
+/**
+ * Calculates the total incentive amount for a staff member
+ */
+function calculate_total_incentive_for_staff($conn, $staff_id, $staff_role, $school_id)
+{
+    try {
+        // First get the base salary for the staff member
+        $salary_column = $staff_role . '_salary';
+        $query = "SELECT {$salary_column} FROM {$staff_role} WHERE id = ? AND school_id = ?";
+        $stmt = $conn->prepare($query);
+        $stmt->execute([$staff_id, $school_id]);
+        $base_salary = (float) $stmt->fetchColumn();
+
+        // Then calculate total incentive percentage
+        $query = "SELECT COALESCE(SUM(i.percentage), 0)
+                 FROM staff_incentives si
+                 JOIN incentives i ON i.id = si.incentive_id
+                 WHERE si.staff_id = ? 
+                 AND si.user_role = ? 
+                 AND i.school_id = ? 
+                 AND i.is_active = true";
+        $stmt = $conn->prepare($query);
+        $stmt->execute([$staff_id, $staff_role, $school_id]);
+        $total_percentage = (float) $stmt->fetchColumn();
+
+        // Calculate final amount
+        return $base_salary * ($total_percentage / 100);
+    } catch (Exception $e) {
+        // In case of an error, return 0 and log the error for debugging
+        error_log("Error in calculate_total_incentive_for_staff: " . $e->getMessage());
+        return 0;
+    }
+}
+
 // This check is crucial for the AJAX navigation to work.
 $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
@@ -47,41 +81,19 @@ $successMessage = '';
  * @param int $school_id The ID of the school.
  * @return float The total calculated incentive amount.
  */
-function calculate_total_incentive_for_staff($conn, $staff_id, $staff_role, $school_id)
-{
-    $totalIncentive = 0;
-    try {
-        // Step 1: Fetch the base salary for the staff member
-        $salary_column = $staff_role . '_salary';
-        $stmt_salary = $conn->prepare("SELECT {$salary_column} AS base_salary FROM {$staff_role} WHERE id = ? AND school_id = ?");
-        $stmt_salary->execute([$staff_id, $school_id]);
-        $base_salary_row = $stmt_salary->fetch(PDO::FETCH_ASSOC);
-        $base_salary = $base_salary_row ? (float)$base_salary_row['base_salary'] : 0;
-
-        if ($base_salary > 0) {
-            // Step 2: Fetch all active incentives assigned to this staff member
-            $stmt_incentives = $conn->prepare(
-                "SELECT i.percentage
-                 FROM staff_incentives ia
-                 JOIN incentives i ON ia.incentive_id = i.id
-                 WHERE ia.user_id = ? AND ia.user_role = ? AND i.school_id = ? AND i.is_active = TRUE"
-            );
-            $stmt_incentives->execute([$staff_id, $staff_role, $school_id]);
-            $assigned_incentives = $stmt_incentives->fetchAll(PDO::FETCH_ASSOC);
-
-            // Step 3: Calculate the incentive amount for each assigned incentive and sum them up
-            foreach ($assigned_incentives as $incentive) {
-                $percentage = (float)$incentive['percentage'];
-                $totalIncentive += $base_salary * ($percentage / 100);
-            }
-        }
-    } catch (Exception $e) {
-        // In case of an error, return 0 and log the error for debugging
-        error_log("Error in calculate_total_incentive_for_staff: " . $e->getMessage());
-        return 0;
-    }
-    return $totalIncentive;
-}
+// Commented out legacy PostgreSQL-specific implementation
+// function calculate_total_incentive_for_staff($conn, $staff_id, $staff_role, $school_id)
+// {
+//     try {
+//         $stmt = $conn->prepare("SELECT calculate_staff_incentive(?, ?)");
+//         $stmt->execute([$staff_id, $staff_role]);
+//         return (float) $stmt->fetchColumn();
+//     } catch (Exception $e) {
+//         // In case of an error, return 0 and log the error for debugging
+//         error_log("Error in calculate_total_incentive_for_staff: " . $e->getMessage());
+//         return 0;
+//     }
+// }
 
 
 /**
@@ -129,7 +141,7 @@ function handle_incentive_action($conn, $school_id, $role, $userId, $userName)
                 $id = filter_var($_POST['incentive_id'], FILTER_VALIDATE_INT);
                 if ($id) {
                     $conn->beginTransaction();
-                    $stmt_del_assign = $conn->prepare("DELETE FROM incentive_assignments WHERE incentive_id = ?");
+                    $stmt_del_assign = $conn->prepare("DELETE FROM staff_incentives WHERE incentive_id = ?");
                     $stmt_del_assign->execute([$id]);
                     $stmt_del_inc = $conn->prepare("DELETE FROM incentives WHERE id = ? AND school_id = ?");
                     $stmt_del_inc->execute([$id, $school_id]);
@@ -146,7 +158,7 @@ function handle_incentive_action($conn, $school_id, $role, $userId, $userName)
                 $staff_id = filter_var($_POST['staff_id'], FILTER_VALIDATE_INT);
                 $staff_role = $_POST['staff_role'];
                 if ($incentive_id && $staff_id && in_array($staff_role, ['teacher', 'librarian', 'hr', 'principal'])) {
-                    $stmt = $conn->prepare("INSERT INTO incentive_assignments (incentive_id, user_id, user_role) VALUES (?, ?, ?)");
+                    $stmt = $conn->prepare("INSERT INTO staff_incentives (incentive_id, staff_id, staff_role) VALUES (?, ?, ?)");
                     $stmt->execute([$incentive_id, $staff_id, $staff_role]);
                     $response = ['success' => true, 'message' => 'Incentive assigned successfully.'];
                 } else {
@@ -157,7 +169,7 @@ function handle_incentive_action($conn, $school_id, $role, $userId, $userName)
             case 'unassign':
                 $assignment_id = filter_var($_POST['assignment_id'], FILTER_VALIDATE_INT);
                 if ($assignment_id) {
-                    $stmt = $conn->prepare("DELETE FROM incentive_assignments WHERE id = ?");
+                    $stmt = $conn->prepare("DELETE FROM staff_incentives WHERE id = ?");
                     $stmt->execute([$assignment_id]);
                     $response = ['success' => true, 'message' => 'Incentive unassigned successfully.'];
                 } else {
@@ -203,34 +215,38 @@ try {
 
     // Fetch all incentive assignments and calculate current incentive amounts
     $stmt_assignments = $conn->prepare(
-        "SELECT ia.id, ia.user_id, ia.user_role, i.incentive_name,
-                CASE ia.user_role
-                    WHEN 'teacher' THEN t.teacher_name
-                    WHEN 'librarian' THEN l.librarian_name
-                    WHEN 'hr' THEN h.hr_name
-                    WHEN 'principal' THEN p.principal_name
-                    ELSE 'Unknown'
-                END as staff_name
-         FROM incentive_assignments ia
-         JOIN incentives i ON ia.incentive_id = i.id
-         LEFT JOIN teacher t ON ia.user_id = t.id AND ia.user_role = 'teacher'
-         LEFT JOIN librarian l ON ia.user_id = l.id AND ia.user_role = 'librarian'
-         LEFT JOIN hr h ON ia.user_id = h.id AND ia.user_role = 'hr'
-         LEFT JOIN principal p ON ia.user_id = p.id AND ia.user_role = 'principal'
-         WHERE i.school_id = ?"
+        "WITH staff_names AS (
+            SELECT id, teacher_name as name, 'teacher'::user_role as role FROM teacher WHERE school_id = ?
+            UNION ALL
+            SELECT id, librarian_name, 'librarian'::user_role FROM librarian WHERE school_id = ?
+            UNION ALL
+            SELECT id, hr_name, 'hr'::user_role FROM hr WHERE school_id = ?
+            UNION ALL
+            SELECT id, principal_name, 'principal'::user_role FROM principal WHERE school_id = ?
+        )
+        SELECT 
+            ia.id,
+            ia.staff_id,
+            ia.staff_role,
+            i.incentive_name,
+            COALESCE(sn.name, 'Unknown') as staff_name
+        FROM staff_incentives ia
+        JOIN incentives i ON ia.incentive_id = i.id
+        LEFT JOIN staff_names sn ON ia.staff_id = sn.id AND ia.staff_role = sn.role
+        WHERE i.school_id = ?"
     );
-    $stmt_assignments->execute([$school_id]);
+    $stmt_assignments->execute([$school_id, $school_id, $school_id, $school_id, $school_id]);
     $assignments = $stmt_assignments->fetchAll(PDO::FETCH_ASSOC);
-    
+
     // Calculate total incentive for each assigned staff member
     $assigned_staff_incentives = [];
     foreach ($assignments as $assignment) {
-        $staff_key = $assignment['user_role'] . '-' . $assignment['user_id'];
+        $staff_key = $assignment['staff_role'] . '-' . $assignment['staff_id'];
         if (!isset($assigned_staff_incentives[$staff_key])) {
-            $total_incentive = calculate_total_incentive_for_staff($conn, $assignment['user_id'], $assignment['user_role'], $school_id);
+            $total_incentive = calculate_total_incentive_for_staff($conn, $assignment['staff_id'], $assignment['staff_role'], $school_id);
             $assigned_staff_incentives[$staff_key] = [
                 'staff_name' => $assignment['staff_name'],
-                'staff_role' => $assignment['user_role'],
+                'staff_role' => $assignment['staff_role'],
                 'total_incentive' => $total_incentive
             ];
         }
@@ -266,10 +282,10 @@ try {
 
                     <h1 class="h3 mb-4 text-gray-800">Manage Staff Incentives</h1>
 
-                    <?php if ($errorMessage) : ?>
+                    <?php if ($errorMessage): ?>
                         <div class="alert alert-danger"><?php echo htmlspecialchars($errorMessage); ?></div>
                     <?php endif; ?>
-                    <?php if ($successMessage) : ?>
+                    <?php if ($successMessage): ?>
                         <div class="alert alert-success"><?php echo htmlspecialchars($successMessage); ?></div>
                     <?php endif; ?>
 
@@ -284,13 +300,16 @@ try {
                                         <input type="hidden" name="action" value="add">
                                         <div class="form-group">
                                             <label for="incentive_name">Incentive Name</label>
-                                            <input type="text" class="form-control" name="incentive_name" placeholder="e.g., Performance Bonus" required>
+                                            <input type="text" class="form-control" name="incentive_name"
+                                                placeholder="e.g., Performance Bonus" required>
                                         </div>
                                         <div class="form-group">
                                             <label for="percentage">Percentage of Base Salary (%)</label>
-                                            <input type="number" step="0.01" class="form-control" name="percentage" placeholder="e.g., 10.5" required>
+                                            <input type="number" step="0.01" class="form-control" name="percentage"
+                                                placeholder="e.g., 10.5" required>
                                         </div>
-                                        <button type="submit" class="btn btn-success"><i class="fas fa-plus"></i> Create Incentive</button>
+                                        <button type="submit" class="btn btn-success"><i class="fas fa-plus"></i> Create
+                                            Incentive</button>
                                     </form>
                                 </div>
                             </div>
@@ -310,13 +329,20 @@ try {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                <?php foreach ($incentives as $incentive) : ?>
+                                                <?php foreach ($incentives as $incentive): ?>
                                                     <tr>
-                                                        <td><?php echo htmlspecialchars($incentive['incentive_name']); ?></td>
+                                                        <td><?php echo htmlspecialchars($incentive['incentive_name']); ?>
+                                                        </td>
                                                         <td><?php echo htmlspecialchars($incentive['percentage']); ?>%</td>
                                                         <td>
-                                                            <button class="btn btn-sm btn-info edit-incentive-btn" data-id="<?php echo $incentive['id']; ?>" data-name="<?php echo htmlspecialchars($incentive['incentive_name']); ?>" data-percentage="<?php echo $incentive['percentage']; ?>"><i class="fas fa-edit"></i></button>
-                                                            <button class="btn btn-sm btn-danger delete-incentive-btn" data-id="<?php echo $incentive['id']; ?>"><i class="fas fa-trash"></i></button>
+                                                            <button class="btn btn-sm btn-info edit-incentive-btn"
+                                                                data-id="<?php echo $incentive['id']; ?>"
+                                                                data-name="<?php echo htmlspecialchars($incentive['incentive_name']); ?>"
+                                                                data-percentage="<?php echo $incentive['percentage']; ?>"><i
+                                                                    class="fas fa-edit"></i></button>
+                                                            <button class="btn btn-sm btn-danger delete-incentive-btn"
+                                                                data-id="<?php echo $incentive['id']; ?>"><i
+                                                                    class="fas fa-trash"></i></button>
                                                         </td>
                                                     </tr>
                                                 <?php endforeach; ?>
@@ -339,8 +365,11 @@ try {
                                             <label for="staff_id">Select Staff Member</label>
                                             <select class="form-control" name="staff_id" required>
                                                 <option value="">-- Select Staff --</option>
-                                                <?php foreach ($staff as $s) : ?>
-                                                    <option value="<?php echo $s['id']; ?>" data-role="<?php echo $s['role']; ?>"><?php echo htmlspecialchars($s['name']) . " (" . ucfirst($s['role']) . ")"; ?></option>
+                                                <?php foreach ($staff as $s): ?>
+                                                    <option value="<?php echo $s['id']; ?>"
+                                                        data-role="<?php echo $s['role']; ?>">
+                                                        <?php echo htmlspecialchars($s['name']) . " (" . ucfirst($s['role']) . ")"; ?>
+                                                    </option>
                                                 <?php endforeach; ?>
                                             </select>
                                             <input type="hidden" name="staff_role" id="staff_role_hidden">
@@ -349,12 +378,15 @@ try {
                                             <label for="incentive_id">Select Incentive</label>
                                             <select class="form-control" name="incentive_id" required>
                                                 <option value="">-- Select Incentive --</option>
-                                                <?php foreach ($incentives as $incentive) : ?>
-                                                    <option value="<?php echo $incentive['id']; ?>"><?php echo htmlspecialchars($incentive['incentive_name']); ?></option>
+                                                <?php foreach ($incentives as $incentive): ?>
+                                                    <option value="<?php echo $incentive['id']; ?>">
+                                                        <?php echo htmlspecialchars($incentive['incentive_name']); ?>
+                                                    </option>
                                                 <?php endforeach; ?>
                                             </select>
                                         </div>
-                                        <button type="submit" class="btn btn-primary"><i class="fas fa-link"></i> Assign Incentive</button>
+                                        <button type="submit" class="btn btn-primary"><i class="fas fa-link"></i> Assign
+                                            Incentive</button>
                                     </form>
                                 </div>
                             </div>
@@ -365,9 +397,11 @@ try {
                                     <div class="btn-group btn-group-sm" id="roleFilterTabs">
                                         <a href="#" class="btn btn-outline-secondary active" data-role="all">All</a>
                                         <a href="#" class="btn btn-outline-secondary" data-role="teacher">Teachers</a>
-                                        <a href="#" class="btn btn-outline-secondary" data-role="librarian">Librarians</a>
+                                        <a href="#" class="btn btn-outline-secondary"
+                                            data-role="librarian">Librarians</a>
                                         <a href="#" class="btn btn-outline-secondary" data-role="hr">HR</a>
-                                        <a href="#" class="btn btn-outline-secondary" data-role="principal">Principals</a>
+                                        <a href="#" class="btn btn-outline-secondary"
+                                            data-role="principal">Principals</a>
                                     </div>
                                 </div>
                                 <div class="card-body">
@@ -382,15 +416,19 @@ try {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                <?php foreach ($assigned_staff_incentives as $key => $data) :
+                                                <?php foreach ($assigned_staff_incentives as $key => $data):
                                                     list($role, $staff_id) = explode('-', $key);
-                                                ?>
+                                                    ?>
                                                     <tr>
                                                         <td><?php echo htmlspecialchars($data['staff_name']); ?></td>
-                                                        <td><?php echo ucfirst(htmlspecialchars($data['staff_role'])); ?></td>
+                                                        <td><?php echo ucfirst(htmlspecialchars($data['staff_role'])); ?>
+                                                        </td>
                                                         <td>₹<?php echo number_format($data['total_incentive'], 2); ?></td>
                                                         <td>
-                                                            <button class="btn btn-sm btn-outline-info view-details-btn" data-staff-id="<?php echo $staff_id; ?>" data-staff-role="<?php echo $role; ?>" data-staff-name="<?php echo htmlspecialchars($data['staff_name']); ?>">
+                                                            <button class="btn btn-sm btn-outline-info view-details-btn"
+                                                                data-staff-id="<?php echo $staff_id; ?>"
+                                                                data-staff-role="<?php echo $role; ?>"
+                                                                data-staff-name="<?php echo htmlspecialchars($data['staff_name']); ?>">
                                                                 <i class="fas fa-eye"></i> View
                                                             </button>
                                                         </td>
@@ -404,7 +442,8 @@ try {
                         </div>
                     </div>
 
-                </div> </div>
+                </div>
+            </div>
             <?php include '../../includes/footer.php'; ?>
         </div>
     </div>
@@ -442,11 +481,13 @@ try {
                         <input type="hidden" name="incentive_id" id="edit_incentive_id">
                         <div class="form-group">
                             <label for="edit_incentive_name">Incentive Name</label>
-                            <input type="text" class="form-control" id="edit_incentive_name" name="incentive_name" required>
+                            <input type="text" class="form-control" id="edit_incentive_name" name="incentive_name"
+                                required>
                         </div>
                         <div class="form-group">
                             <label for="edit_percentage">Percentage</label>
-                            <input type="number" step="0.01" class="form-control" id="edit_percentage" name="percentage" required>
+                            <input type="number" step="0.01" class="form-control" id="edit_percentage" name="percentage"
+                                required>
                         </div>
                         <button type="submit" class="btn btn-primary">Save Changes</button>
                     </form>
@@ -465,7 +506,7 @@ try {
     <script src="/BMC-SMS/assets/vendor/datatables/dataTables.bootstrap4.min.js"></script>
 
     <script>
-        $(document).ready(function() {
+        $(document).ready(function () {
             const incentivesTable = $('#incentivesTable').DataTable();
             const assignedTable = $('#assignedIncentivesTable').DataTable({
                 "order": [
@@ -474,10 +515,10 @@ try {
             });
 
             function handleFormSubmit(formId, successCallback) {
-                $(formId).on('submit', function(e) {
+                $(formId).on('submit', function (e) {
                     e.preventDefault();
                     const formData = $(this).serialize();
-                    $.post('manage_incentives.php', formData, function(response) {
+                    $.post('manage_incentives.php', formData, function (response) {
                         if (response.success) {
                             alert(response.message);
                             if (successCallback) successCallback();
@@ -494,12 +535,12 @@ try {
             handleFormSubmit('#editIncentiveForm');
 
 
-            $('select[name="staff_id"]').on('change', function() {
+            $('select[name="staff_id"]').on('change', function () {
                 const selectedRole = $(this).find('option:selected').data('role');
                 $('#staff_role_hidden').val(selectedRole);
             });
 
-            $('#incentivesTable').on('click', '.edit-incentive-btn', function() {
+            $('#incentivesTable').on('click', '.edit-incentive-btn', function () {
                 const id = $(this).data('id');
                 const name = $(this).data('name');
                 const percentage = $(this).data('percentage');
@@ -509,13 +550,13 @@ try {
                 $('#editIncentiveModal').modal('show');
             });
 
-            $('#incentivesTable').on('click', '.delete-incentive-btn', function() {
+            $('#incentivesTable').on('click', '.delete-incentive-btn', function () {
                 if (confirm('Are you sure you want to delete this incentive and all its assignments?')) {
                     const id = $(this).data('id');
                     $.post('manage_incentives.php', {
                         action: 'delete',
                         incentive_id: id
-                    }, function(response) {
+                    }, function (response) {
                         if (response.success) {
                             alert(response.message);
                             location.reload();
@@ -526,7 +567,7 @@ try {
                 }
             });
 
-            $('#assignedIncentivesTable').on('click', '.view-details-btn', function() {
+            $('#assignedIncentivesTable').on('click', '.view-details-btn', function () {
                 const staffId = $(this).data('staff-id');
                 const staffRole = $(this).data('staff-role');
                 const staffName = $(this).data('staff-name');
@@ -587,7 +628,7 @@ try {
                 $('#details-content-placeholder').html(detailsHtml);
             });
 
-            $('#roleFilterTabs a').on('click', function(e) {
+            $('#roleFilterTabs a').on('click', function (e) {
                 e.preventDefault();
                 const role = $(this).data('role');
                 $('#roleFilterTabs a').removeClass('active');

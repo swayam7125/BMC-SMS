@@ -2,6 +2,7 @@
 include_once '../../includes/connect.php';
 include_once '../../encryption.php';
 include_once '../../includes/ajax_helpers.php';
+include_once '../../includes/log_system.php';
 
 // Check if database connection is successful
 if (!isset($conn) || !$conn) {
@@ -15,6 +16,7 @@ $is_ajax_request = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SER
 // --- Authorization ---
 $role = decrypt_id($_COOKIE['encrypted_user_role'] ?? '');
 $userId = decrypt_id($_COOKIE['encrypted_user_id'] ?? '');
+$userName = decrypt_id($_COOKIE['encrypted_user_name'] ?? '') ?: 'Unknown User';
 
 if ($role !== 'principal') {
     header("Location: /BMC-SMS/login.php");
@@ -87,8 +89,10 @@ try {
 
             $conn->commit();
             $successMessage = "Timetable for Standard {$standard} has been saved successfully!";
+            log_interaction($role, $userId, "TIMETABLE_UPDATE: Successfully updated timetable for Standard {$standard}", $userName);
         } else {
             $errorMessage = "Please select a standard and fill in the timetable details.";
+            log_interaction($role, $userId, "TIMETABLE_UPDATE_FAILED: Invalid or missing data for timetable update", $userName);
         }
     }
 
@@ -116,15 +120,19 @@ try {
     switch($errorType) {
         case '23000': // Duplicate entry
             $errorMessage = "This timetable entry already exists for the selected standard.";
+            log_interaction($role, $userId, "TIMETABLE_ERROR: Attempted to create duplicate entry", $userName);
             break;
         case '23001': // Foreign key violation
             $errorMessage = "Invalid teacher or subject selected. Please check your selections.";
+            log_interaction($role, $userId, "TIMETABLE_ERROR: Foreign key violation - invalid teacher or subject", $userName);
             break;
         case '42S02': // Table not found
             $errorMessage = "Database configuration error. Please contact system administrator.";
+            log_interaction($role, $userId, "TIMETABLE_ERROR: Database configuration error - table not found", $userName);
             break;
         default:
             $errorMessage = "A database error occurred. Please try again later. [Error Code: " . $errorType . "]";
+            log_interaction($role, $userId, "TIMETABLE_ERROR: Unexpected database error: " . $e->getMessage(), $userName);
     }
     
     if (isset($conn) && $conn->inTransaction()) {

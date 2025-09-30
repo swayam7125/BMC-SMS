@@ -1,6 +1,13 @@
 <?php
 header('Content-Type: application/json');
 include_once "../../includes/connect.php";
+include_once "../../includes/log_system.php";
+include_once "../../encryption.php";
+
+// Get user info for logging
+$role = decrypt_id($_COOKIE['encrypted_user_role'] ?? '');
+$userId = decrypt_id($_COOKIE['encrypted_user_id'] ?? '');
+$userName = decrypt_id($_COOKIE['encrypted_user_name'] ?? '') ?: 'Unknown User';
 
 $response = ['success' => false, 'subjects' => [], 'message' => 'Invalid Request'];
 
@@ -24,9 +31,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             }
         } catch (PDOException $e) {
             $response['message'] = 'Database Error: ' . $e->getMessage();
+            log_interaction($role, $userId, "TIMETABLE_FETCH_SUBJECTS_ERROR: Database error while fetching subjects - " . $e->getMessage(), $userName);
         }
     } else {
         $response['message'] = 'Teacher ID not provided.';
+        log_interaction($role, $userId, "TIMETABLE_FETCH_SUBJECTS_ERROR: Missing teacher ID in request", $userName);
     }
 }
 
