@@ -42,7 +42,6 @@ try {
     error_log("DB Error in browse_books.php (teacher): " . $e->getMessage());
     die("An error occurred while fetching books. Please try again later.");
 }
-    die("Database Error: " . $e->getMessage());
 ?>
 <!DOCTYPE html>
 <html lang="en">

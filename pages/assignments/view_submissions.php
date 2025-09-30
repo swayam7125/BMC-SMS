@@ -1,7 +1,6 @@
 <?php
 include_once "../../encryption.php";
 include_once "../../includes/connect.php";
-include_once "../../includes/email_functions.php";
 include_once "../../includes/ajax_helpers.php";
 
 // This check is crucial for the AJAX navigation to work.
