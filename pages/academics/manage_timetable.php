@@ -277,13 +277,13 @@ if (!$is_ajax_request) {
                         </div>
                         <?php endif; ?>
                     </div>
-    <?php
+                </div>
+            </div>
+                    <?php
                     if (!$is_ajax_request):
                         include '../../includes/footer.php';
                     endif;
                     ?>
-                </div>
-            </div>
         </div>
     </div>
     <?php include_once "../../includes/logout_modal.php" ?>
