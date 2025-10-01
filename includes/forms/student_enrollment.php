@@ -339,7 +339,6 @@ $schools = $stmt_schools->fetchAll(PDO::FETCH_ASSOC);
                                 <div class="form-group mt-4">
                                     <button type="submit" class="btn btn-primary"><i class="fas fa-user-plus"></i> Enroll Student</button>
                                     <button type="reset" class="btn btn-secondary"><i class="fas fa-times"></i> Reset Form</button>
-                                    <button type="reset" class="btn btn-secondary"><i class="fas fa-times"></i> Reset Form</button>
                                 </div>
                             </form>
                         </div>

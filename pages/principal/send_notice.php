@@ -2,7 +2,7 @@
 // Include necessary files
 include_once "../../encryption.php";
 include_once "../../includes/connect.php"; // Your PDO connection file
-include_once "../../includes/email_functions.php"; // Email functions
+// include_once "../../includes/email_functions.php"; // Email functions
 include_once "../../includes/ajax_helpers.php";
 include_once "../../includes/log_system.php"; // ADDED: Log system dependency
 
@@ -165,7 +165,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
             $notification_link = "pages/teacher/view_notice.php";
             while ($teacher = $stmt_teachers->fetch(PDO::FETCH_ASSOC)) {
                 $stmt_notify->execute([$teacher['id'], $notification_message, $notification_link, $notification_type]);
-                send_email($teacher['email'], $email_subject, "<p>Dear " . htmlspecialchars($teacher['teacher_name']) . ",</p>" . $email_content_base);
+                // send_email($teacher['email'], $email_subject, "<p>Dear " . htmlspecialchars($teacher['teacher_name']) . ",</p>" . $email_content_base);
             }
         }
 
@@ -178,7 +178,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_notice'])) {
             $notification_link = "pages/student/view_notice.php";
             while ($student = $stmt_students->fetch(PDO::FETCH_ASSOC)) {
                 $stmt_notify->execute([$student['id'], $notification_message, $notification_link, $notification_type]);
-                send_email($student['email'], $email_subject, "<p>Dear " . htmlspecialchars($student['student_name']) . ",</p>" . $email_content_base);
+                // send_email($student['email'], $email_subject, "<p>Dear " . htmlspecialchars($student['student_name']) . ",</p>" . $email_content_base);
             }
         }
     } catch (PDOException $e) {
